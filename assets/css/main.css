@@ -35,6 +35,8 @@ body {
 
 ol, ul {
 	list-style: none;
+	text-align: left; /* 讓清單對齊至左 */
+	padding-left: 0; /* 清除預設的左邊間距 */
 }
 
 blockquote, q {
@@ -4620,7 +4622,6 @@ input, select, textarea {
 			right: 0;
 			text-align: right;
 			top: 0;
-			vertical-align: middle;
 			width: 7rem;
 		}
 

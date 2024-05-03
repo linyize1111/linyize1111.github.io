@@ -11,66 +11,17 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 		<link rel="stylesheet" href="assets/css/main.css" />
 		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
-        <style>
-            body {
-              font-family: Arial, Helvetica, sans-serif;
-              font-size: 20px;
-            }
-
-            #myBtn {
-              display: none;
-              position: fixed;
-              bottom: 20px;
-              right: 30px;
-              z-index: 99;
-              font-size: 18px;
-              border: none;
-              outline: none;
-              background-color: lightcyan;
-              color: white;
-              cursor: pointer;
-              padding: 15px;
-              border-radius: 4px;
-            }
-
-            #myBtn:hover {
-              background-color: #555;
-            }
-            </style>
 	</head>
     
 	<body class="is-preload">
 
-        <button onclick="topFunction()" id="myBtn" title="Go to top">Top</button>
-        <script>
-        //Get the button
-        var mybutton = document.getElementById("myBtn");
-
-        // When the user scrolls down 20px from the top of the document, show the button
-        window.onscroll = function() {scrollFunction()};
-
-        function scrollFunction() {
-          if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
-            mybutton.style.display = "block";
-          } else {
-            mybutton.style.display = "none";
-          }
-        }
-
-        // When the user clicks on the button, scroll to the top of the document
-        function topFunction() {
-          document.body.scrollTop = 0;
-          document.documentElement.scrollTop = 0;
-        }
-        </script>
-
 		<!-- Wrapper -->
 			<div id="wrapper" class="fade-in">
-                
+
 				<!-- Intro -->
 					<div id="intro">
-						<h1>WELCOME!!!</h1>                        
-                        <p id="demo"></p>
+						<h1>WELCOME!!!</h1>
+						<p>An average student from Taiwan</p>
 						<ul class="actions">
 							<li><a href="#header" class="button icon solid solo fa-arrow-down scrolly">Continue</a></li>
 						</ul>
@@ -85,7 +36,7 @@
 					<nav id="nav">
 						<ul class="links">
 							<li class="active"><a href="index.html">首頁</a></li>
-							<li><a href="article.html">文章</a></li>
+							<li><a href="article.html">CSS 測試區</a></li>
 							<li><a href="about.html">關於</a></li>
 						</ul>
 						<ul class="icons">
@@ -98,34 +49,47 @@
 
 				<!-- Main -->
 					<div id="main">
-                        
+
 						<!-- Featured Post -->
 							<article class="post featured">
 								<header class="major">
-									<span class="date">2020/1/29</span>
-									<h2><a href="#">bruh</a></h2>
-									<p>hi</p>
+									<span class="date">最近更新日期:2020/1/29</span>
+									<h2><a href="#">我的資訊之路</a></h2>
+									<p>這個網站將記錄我目前為止在資訊領域的學習經歷，參考模板來自 "https://html5up.net"，想知道更多我的資訊請點關於。</p>
 								</header>
 								<a href="#" class="image main"><img src="images/pic1.jpg" alt="" /></a>
-								<ul class="actions special">
-									<li><a href="#" class="button large">Full Story</a></li>
-								</ul>
 							</article>
 
 						<!-- Posts -->
 							<section class="posts">
 								<article>
 									<header>
-										<span class="date">2020/1/29</span>
-										<h2><a href="#">Test<br />
-										三葉好可愛喔</a></h2>
+										<span class="date">2021/1/29</span>
+										<h2><a href="#"><br />
+										第一次的專案開發 Discord bot</a></h2>
 									</header>
 									<a href="#" class="image fit"><img src="images/pic2.jpg" alt="" /></a>
-									<p>test</p>
+									<p>從零開始使用 Node.js 開發 discord bot。</p>
 									<ul class="actions special">
 										<li><a href="#" class="button">Full Story</a></li>
 									</ul>
 								</article>
+
+								<section class="posts">
+									<article>
+										<header>
+											<span class="date">2022/4/23</span>
+											<h2><a href="generic_2.html"><br />
+											我的網頁前端設計
+											</a></h2>
+										</header>
+										<a href="generic_2.html" class="image fit"><img src="images/pic3.jpg" alt="" /></a>
+										<p>因為社團課，我第一次學到如何搭建並設計自己的網站。</p>
+										<ul class="actions special">
+											<li><a href="generic_2.html" class="button">Full Story</a></li>
+										</ul>
+									</article>
+								</section>
 							</section>
 
 						<!-- Footer -->
@@ -134,11 +98,7 @@
 									<!--<a href="#" class="previous">Prev</a>-->
 									<a href="#" class="page active">1</a>
 									<a href="#" class="page">2</a>
-									<a href="#" class="page">3</a>
 									<span class="extra">&hellip;</span>
-									<a href="#" class="page">8</a>
-									<a href="#" class="page">9</a>
-									<a href="#" class="page">10</a>
 									<a href="#" class="next">Next</a>
 								</div>
 							</footer>
@@ -170,7 +130,6 @@
 			</div>
 
 		<!-- Scripts -->
-        
 			<script src="assets/js/jquery.min.js"></script>
 			<script src="assets/js/jquery.scrollex.min.js"></script>
 			<script src="assets/js/jquery.scrolly.min.js"></script>
@@ -178,19 +137,6 @@
 			<script src="assets/js/breakpoints.min.js"></script>
 			<script src="assets/js/util.js"></script>
 			<script src="assets/js/main.js"></script>
-            <script>
-            var i = 0;
-            var txt = 'An average student from Chiayi Senior High School';
-            var speed = 50;
 
-            function typeWriter() {
-              if (i < txt.length) {
-                document.getElementById("demo").innerHTML += txt.charAt(i);
-                i++;
-                setTimeout(typeWriter, speed);
-              }
-            }
-            typeWriter();
-            </script>
 	</body>
 </html>
