@@ -1,9 +1,4 @@
 <!DOCTYPE HTML>
-<!--
-	Massively by HTML5 UP
-	html5up.net | @ajlkn
-	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
--->
 <html>
 	<head>
 		<title>LYZ`s website</title>
@@ -74,69 +69,42 @@
 										<li><a href="generic_1.html" class="button">Full Story</a></li>
 									</ul>
 								</article>
-
-								<section class="posts">
-									<article>
-										<header>
-											<span class="date">2022/4/23</span>
-											<h2><a href="generic_2.html"><br />
-											我的網頁前端設計
-											</a></h2>
-										</header>
-										<a href="generic_2.html" class="image fit"><img src="images/pic3.jpg" alt="" /></a>
-										<p>因為社團課，我第一次學到如何搭建並設計自己的網站。</p>
-										<ul class="actions special">
-											<li><a href="generic_2.html" class="button">Full Story</a></li>
-										</ul>
-									</article>
-								</section>
 							</section>
 
-						<!-- Footer -->
-							<footer>
-								<div class="pagination">
-									<!--<a href="#" class="previous">Prev</a>-->
-									<a href="#" class="page active">1</a>
-									<a href="index_2.html" class="page">2</a>
-									<span class="extra">&hellip;</span>
-									<a href="index_2.html" class="next">Next</a>
-								</div>
-							</footer>
+                        <!-- Random Nhentai Button -->
+                        <section class="posts">
+                            <article>
+                                <header>
+                                    <h2>Get a Random Nhentai</h2>
+                                </header>
+                                <button id="randomButton">Get Random Nhentai</button>
+                            </article>
+                        </section>
 
 					</div>
 
 				<!-- Footer -->
 					<footer id="footer">
-	
-						<section class="split contact">
-
-							<section>
-								<h3>Social</h3>
-								<ul class="icons alt">
-									<li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="evelope"><span class="label">Mail</span></a></li>
-                                    <li><a href="https://www.facebook.com/profile.php?id=100005119578928" target="_blank" class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
-                                    <li><a href="https://www.instagram.com/linyize1111/" target="_blank" class="icon brands fa-instagram"><span class="label">Instagram</span></a></li>
-                                    <li><a href="https://github.com/linyize1111" target="_blank" class="icon brands fa-github"><span class="label">GitHub</span></a></li>
-								</ul>
-							</section>
-						</section>
 					</footer>
-
-				<!-- Copyright -->
-					<div id="copyright">
-						<ul><li>參考模板</li><li><a href="https://html5up.net">HTML5 UP</a></li></ul>
-					</div>
-
 			</div>
 
 		<!-- Scripts -->
-			<script src="assets/js/jquery.min.js"></script>
-			<script src="assets/js/jquery.scrollex.min.js"></script>
-			<script src="assets/js/jquery.scrolly.min.js"></script>
-			<script src="assets/js/browser.min.js"></script>
-			<script src="assets/js/breakpoints.min.js"></script>
-			<script src="assets/js/util.js"></script>
-			<script src="assets/js/main.js"></script>
-
+		<script>
+			document.getElementById("randomButton").addEventListener("click", function() {
+				fetch("/getRandomId")
+					.then(response => response.json())
+					.then(data => {
+						if (data.id) {
+							window.open(`https://nhentai.net/g/${data.id}`, "_blank");
+						} else {
+							alert("Failed to get a valid ID.");
+						}
+					})
+					.catch(error => {
+						console.error("Error fetching random ID:", error);
+						alert("An error occurred. Please try again later.");
+					});
+			});
+		</script>
 	</body>
 </html>
