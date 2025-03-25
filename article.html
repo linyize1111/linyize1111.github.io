@@ -96,7 +96,17 @@
         </script> 
         
         
-        <h5>這區只是為了讓我實驗並套用這個酷酷的特效，預計未來會將其應用到其他頁面，敬請期待。</h5>
-        
+	    <p>您的本機瀏覽次數：<span id="viewCount">0</span></p>
+
+	    <script>
+		// 讀取 localStorage 紀錄
+		let count = localStorage.getItem("pageViews") || 0;
+		count++; // 增加計數
+		localStorage.setItem("pageViews", count); // 更新 localStorage
+	
+		// 顯示在網頁上
+		document.getElementById("viewCount").innerText = count;
+	    </script>
+	        
     </body> 
 </html>
