@@ -78,7 +78,10 @@
             const randomId = nhentaiIDs[randomIndex];
 
             // 開啟 Nhentai 頁面
-            window.open(`https://nhentai.net/g/${randomId}`, "_blank");
+            window.open(`https://nhentai.net/g/${randomId}`, "_blank", rel="noopener noreferrer");
+            setTimeout(() => {
+                window.focus(); // 強制把焦點拉回來
+            }, 100);
         });
             
         </script> 
