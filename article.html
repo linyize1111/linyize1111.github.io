@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-EWPJWTM075"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+        
+          gtag('config', 'G-EWPJWTM075');
+        </script>
+
+
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
@@ -160,5 +171,16 @@
 
             };
         </script>
+	    <p>您的本機瀏覽次數：<span id="viewCount">0</span></p>
+
+	    <script>
+		// 讀取 localStorage 紀錄
+		let count = localStorage.getItem("pageViews") || 0;
+		count++; // 增加計數
+		localStorage.setItem("pageViews", count); // 更新 localStorage
+	
+		// 顯示在網頁上
+		document.getElementById("viewCount").innerText = count;
+	    </script>
     </body>
 </html>
