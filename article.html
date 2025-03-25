@@ -132,26 +132,27 @@
 
             // 複製歷史紀錄
             document.getElementById("copyButton").onclick = function() {
-                if(history.empty()) alert("沒有歷史紀錄ㄚ小可愛 T~T");
-                else{
-                    // 將歷史紀錄轉換為字符串
-                    const historyText = history.join("\n");
-    
-                    // 創建一個隱藏的文本框，並將歷史紀錄放入其中
-                    const tempInput = document.createElement("textarea");
-                    tempInput.value = historyText;
-                    document.body.appendChild(tempInput);
-    
-                    // 選中並複製內容
-                    tempInput.select();
-                    document.execCommand("copy");
-    
-                    // 刪除臨時文本框
-                    document.body.removeChild(tempInput);
-    
-                    // 顯示複製成功的提示
-                    alert("歷史紀錄已複製到剪貼簿！");
+                // 將歷史紀錄轉換為字符串
+                const historyText = history.join("\n");
 
+                // 創建一個隱藏的文本框，並將歷史紀錄放入其中
+                const tempInput = document.createElement("textarea");
+                tempInput.value = historyText;
+                document.body.appendChild(tempInput);
+
+                // 選中並複製內容
+                tempInput.select();
+                document.execCommand("copy");
+
+                // 刪除臨時文本框
+                document.body.removeChild(tempInput);
+
+                // 顯示複製成功/失敗的提示
+                if(history.empty()){
+                    alert("沒任何紀錄啦小可愛T~T");
+                }
+                else{
+                    alert("歷史紀錄已複製到剪貼簿！");
                 }
                 
 
