@@ -134,6 +134,11 @@
 
             // 複製歷史紀錄
             document.getElementById("copyButton").onclick = function() {
+                if (history.length === 0) {
+                    alert("沒任何紀錄啦小可愛T~T");
+                    return; // 直接結束函式
+                }
+            
                 // 將歷史紀錄轉換為字符串
                 const historyText = history.join("\n");
 
@@ -149,13 +154,8 @@
                 // 刪除臨時文本框
                 document.body.removeChild(tempInput);
 
-                // 顯示複製成功/失敗的提示
-                if(history.empty()){
-                    alert("沒任何紀錄啦小可愛T~T");
-                }
-                else{
-                    alert("歷史紀錄已複製到剪貼簿！");
-                }
+                // 顯示複製成功的提示
+                alert("歷史紀錄已複製到剪貼簿！");
                 
 
             };
