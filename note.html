@@ -1,0 +1,110 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>閱讀筆記 - LYZ's website</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <style>
+            /* 修正 Markdown 渲染後的樣式以符合原模板 */
+            #markdown-container { text-align: left; }
+            #markdown-container img { max-width: 100%; height: auto; border-radius: 5px; margin: 1.5em 0; }
+            #markdown-container pre { background: #212931; color: #ffffff; padding: 1.5em; border-radius: 4px; overflow-x: auto; margin: 1.5em 0; }
+            #markdown-container code { background: rgba(144, 144, 144, 0.25); border-radius: 3px; padding: 0.25em 0.5em; font-family: "Courier New", monospace; }
+            #markdown-container blockquote { border-left: solid 4px #ffffff; padding-left: 1.5em; font-style: italic; margin: 1.5em 0; }
+        </style>
+	</head>
+	<body class="is-preload">
+		<div id="wrapper">
+
+				<header id="header">
+						<a href="index.html" class="logo">LYZ's website</a>
+					</header>
+
+				<nav id="nav">
+						<ul class="links">
+							<li><a href="index.html">首頁 / 筆記目錄</a></li>
+							<li class="active"><a href="#">閱讀筆記</a></li>
+							<li><a href="about.html">關於我</a></li>
+						</ul>
+					</nav>
+
+				<div id="main">
+						<section class="post">
+								<header class="major">
+									<h1 id="note-title">資料載入中<br />Please Wait...</h1>
+									<p id="note-status">正在從本地資料庫抓取 Markdown 文件</p>
+								</header>
+                                
+                                <div id="markdown-container">
+                                    <div style="text-align: center; padding: 50px 0;">
+                                        <div class="spinner"></div>
+                                        <p>Loading...</p>
+                                    </div>
+                                </div>
+							</section>
+					</div>
+
+				<div id="copyright">
+						<ul><li>&copy; LYZ</li><li>Design: <a href="https://html5up.net">HTML5 UP</a></li></ul>
+					</div>
+			</div>
+
+		<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+            <script>
+                document.addEventListener("DOMContentLoaded", () => {
+                    // 1. 取得網址列中的 file 參數
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const fileName = urlParams.get('file');
+
+                    const titleEl = document.getElementById('note-title');
+                    const statusEl = document.getElementById('note-status');
+                    const contentEl = document.getElementById('markdown-container');
+
+                    if (!fileName) {
+                        titleEl.innerText = '系統錯誤';
+                        statusEl.innerText = '未提供檔案參數 (Missing URL Parameter)';
+                        contentEl.innerHTML = '<p>請從首頁目錄選擇要閱讀的筆記。</p>';
+                        return;
+                    }
+
+                    // 2. 更新版面標題 (將底線替換為空白，並轉大寫字首)
+                    const displayTitle = fileName.replace(/_/g, ' ');
+                    titleEl.innerText = displayTitle.toUpperCase();
+                    statusEl.innerText = `檔案路徑: /notes/${fileName}.md`;
+
+                    // 3. 非同步請求 Markdown 檔案
+                    fetch(`notes/${fileName}.md`)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            return response.text();
+                        })
+                        .then(markdownText => {
+                            // 4. 過濾 HackMD 產生的 YAML Front Matter
+                            // 尋找開頭的 --- 到下一個 --- 之間的內容並移除
+                            const cleanMarkdown = markdownText.replace(/^-{3}[\s\S]+?-{3}\n/, '');
+
+                            // 5. 透過 marked.js 解析並將 HTML 注入 DOM
+                            contentEl.innerHTML = marked.parse(cleanMarkdown);
+                        })
+                        .catch(error => {
+                            console.error('Fetch error:', error);
+                            titleEl.innerText = '404 檔案未找到';
+                            statusEl.innerText = 'File Not Found';
+                            contentEl.innerHTML = `<p>無法載入筆記。請確認 <strong>/notes/${fileName}.md</strong> 檔案是否存在於您的專案目錄中。</p>`;
+                        });
+                });
+            </script>
+	</body>
+</html>

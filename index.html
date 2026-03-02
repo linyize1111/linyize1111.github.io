@@ -1,41 +1,15 @@
-<!--
-	Massively by HTML5 UP
-	html5up.net | @ajlkn
-	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
--->
+<!DOCTYPE HTML>
 <html>
 	<head>
-
-		// 網站不給別人存取
-		<script>
-		  window.location.href = "/article";
-		</script>
-
-
-		<!-- Google tag (gtag.js) -->
-		<script async src="https://www.googletagmanager.com/gtag/js?id=G-EWPJWTM075"></script>
-		<script>
-		  window.dataLayer = window.dataLayer || [];
-		  function gtag(){dataLayer.push(arguments);}
-		  gtag('js', new Date());
-		
-		  gtag('config', 'G-EWPJWTM075');
-		</script>
-		<title>LYZ`s website</title>
+		<title>LYZ's website - 筆記系統</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 		<link rel="stylesheet" href="assets/css/main.css" />
 		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
 	</head>
-
 	<body class="is-preload">
-
-		<!-- Wrapper -->
-		
-			<div id="wrapper" class="fade-in">
-
-				<!-- Intro -->
-					<div id="intro">
+		<div id="wrapper" class="fade-in">
+				<div id="intro">
 						<h1>WELCOME!!!</h1>
 						<p>An average student from Taiwan</p>
 						<ul class="actions">
@@ -43,128 +17,80 @@
 						</ul>
 					</div>
 
-				<!-- Header -->
-					<header id="header">
-						<a href="index.html" class="logo">LYZ`s website</a>
+				<header id="header">
+						<a href="index.html" class="logo">LYZ's website</a>
 					</header>
 
-				<!-- Nav -->
-					<nav id="nav">
+				<nav id="nav">
 						<ul class="links">
-							<li class="active"><a href="index.html">首頁</a></li>
-							<li><a href="article.html">特效實驗室</a></li>
-							<li><a href="about.html">關於</a></li>
+							<li class="active"><a href="index.html">首頁 / 筆記目錄</a></li>
+							<li><a href="about.html">關於我</a></li>
 						</ul>
 						<ul class="icons">
-                            <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="evelope"><span class="label">Mail</span></a></li>
-							<li><a href="https://www.facebook.com/profile.php?id=100005119578928" target="_blank" class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
-							<li><a href="https://www.instagram.com/linyize1111/" target="_blank" class="icon brands fa-instagram"><span class="label">Instagram</span></a></li>
+                            <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="envelope"><span class="label">Mail</span></a></li>
 							<li><a href="https://github.com/linyize1111" target="_blank" class="icon brands fa-github"><span class="label">GitHub</span></a></li>
 						</ul>
 					</nav>
 
-				<!-- Main -->
-					<div id="main">
-
-						<!-- Featured Post -->
-							<article class="post featured">
+				<div id="main">
+						<article class="post featured">
 								<header class="major">
-									<span class="date">最近更新日期:2020/1/29</span>
-									<h2><a href="#">我的資訊之路</a></h2>
-									<p>這個網站將記錄我目前為止在資訊領域的學習經歷，參考模板來自 "https://html5up.net"，想知道更多我的資訊請點關於。</p>
+									<span class="date">系統升級完成</span>
+									<h2><a href="#">我的資訊之路與筆記系統</a></h2>
+									<p>本網站已導入基於 Markdown 的客戶端渲染（CSR）架構，將資料與視圖分離。所有的學習筆記皆透過非同步請求動態載入。</p>
 								</header>
-								<a href="#" class="image main"><img src="images/pic1.jpg" alt="" /></a>
 							</article>
 
-						<!-- Posts -->
-							<section class="posts">
+						<section class="posts">
 								<article>
 									<header>
-										<span class="date">2021/1/29</span>
-										<h2><a href="generic_1.html"><br />
-										第一次的專案開發 Discord bot</a></h2>
+										<span class="date">資訊安全</span>
+										<h2><a href="note.html?file=security_basics">資訊安全基礎知識</a></h2>
 									</header>
-									<a href="generic_1.html" class="image fit"><img src="images/pic2.jpg" alt="" /></a>
-									<p>從零開始使用 Node.js 開發 discord bot。</p>
+									<a href="note.html?file=security_basics" class="image fit"><img src="images/pic5.jpg" alt="" /></a>
+									<p>參加資訊安全課程及其他資訊領域的自行探索紀錄。</p>
 									<ul class="actions special">
-										<li><a href="generic_1.html" class="button">Full Story</a></li>
+										<li><a href="note.html?file=security_basics" class="button">閱讀筆記</a></li>
 									</ul>
 								</article>
 
-								<section class="posts">
-									<article>
-										<header>
-											<span class="date">2022/4/23</span>
-											<h2><a href="generic_2.html"><br />
-											我的網頁前端設計
-											</a></h2>
-										</header>
-										<a href="generic_2.html" class="image fit"><img src="images/pic3.jpg" alt="" /></a>
-										<p>因為社團課，我第一次學到如何搭建並設計自己的網站。</p>
-										<ul class="actions special">
-											<li><a href="generic_2.html" class="button">Full Story</a></li>
-										</ul>
-									</article>
-								</section>
+								<article>
+									<header>
+										<span class="date">機器學習</span>
+										<h2><a href="note.html?file=machine_learning">機器學習進階理論</a></h2>
+									</header>
+									<a href="note.html?file=machine_learning" class="image fit"><img src="images/pic6.jpg" alt="" /></a>
+									<p>台大林軒田教授課程「機器學習基石」的學習筆記與重點整理。</p>
+									<ul class="actions special">
+										<li><a href="note.html?file=machine_learning" class="button">閱讀筆記</a></li>
+									</ul>
+								</article>
+                                
+                                <article>
+									<header>
+										<span class="date">程式語言</span>
+										<h2><a href="note.html?file=python_learning">Python 學習紀錄</a></h2>
+									</header>
+									<a href="note.html?file=python_learning" class="image fit"><img src="images/pic4.jpg" alt="" /></a>
+									<p>自學 Python 程式語言的基礎語法與專案實作紀錄。</p>
+									<ul class="actions special">
+										<li><a href="note.html?file=python_learning" class="button">閱讀筆記</a></li>
+									</ul>
+								</article>
 							</section>
-
-						<!-- Footer -->
-							<footer>
-								<div class="pagination">
-									<!--<a href="#" class="previous">Prev</a>-->
-									<a href="#" class="page active">1</a>
-									<a href="index_2.html" class="page">2</a>
-									<span class="extra">&hellip;</span>
-									<a href="index_2.html" class="next">Next</a>
-								</div>
-							</footer>
-
 					</div>
 
-				<!-- Footer -->
-					<footer id="footer">
-
-						<section class="split contact">
-
-							<section>
-								<h3>Social</h3>
-								<ul class="icons alt">
-									<li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="evelope"><span class="label">Mail</span></a></li>
-                                    <li><a href="https://www.facebook.com/profile.php?id=100005119578928" target="_blank" class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
-                                    <li><a href="https://www.instagram.com/linyize1111/" target="_blank" class="icon brands fa-instagram"><span class="label">Instagram</span></a></li>
-                                    <li><a href="https://github.com/linyize1111" target="_blank" class="icon brands fa-github"><span class="label">GitHub</span></a></li>
-								</ul>
-							</section>
-							<p>您的本機瀏覽次數：<span id="viewCount">0</span></p>
-						</section>
-					</footer>
-
-				<!-- Copyright -->
-					<div id="copyright">
-						<ul><li>參考模板</li><li><a href="https://html5up.net">HTML5 UP</a></li></ul>
+				<div id="copyright">
+						<ul><li>&copy; LYZ</li><li>Design: <a href="https://html5up.net">HTML5 UP</a></li></ul>
 					</div>
-				    
-
-				    <script>
-				        // 讀取 localStorage 紀錄
-				        let count = localStorage.getItem("pageViews") || 0;
-				        count++; // 增加計數
-				        localStorage.setItem("pageViews", count); // 更新 localStorage
-				
-				        // 顯示在網頁上
-				        document.getElementById("viewCount").innerText = count;
-				    </script>
-
 			</div>
 
-		<!-- Scripts -->
-			<script src="assets/js/jquery.min.js"></script>
+		<script src="assets/js/jquery.min.js"></script>
 			<script src="assets/js/jquery.scrollex.min.js"></script>
 			<script src="assets/js/jquery.scrolly.min.js"></script>
 			<script src="assets/js/browser.min.js"></script>
 			<script src="assets/js/breakpoints.min.js"></script>
 			<script src="assets/js/util.js"></script>
 			<script src="assets/js/main.js"></script>
-
 	</body>
 </html>
