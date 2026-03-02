@@ -181,6 +181,15 @@
     <!-- 引入 marked.js 用於解析 Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
+    <!-- 引入 GitHub Markdown CSS 以獲得類似 HackMD 的排版 -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown.min.css">
+
+    <!-- 引入 KaTeX 用於數學公式渲染 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -200,6 +209,12 @@
             titleEl.innerText = displayTitle.toUpperCase();
             statusEl.innerText = `檔案路徑: /notes/${fileName}.md`;
 
+            // 設定 marked.js 支援 GFM (GitHub Flavored Markdown) 表格等功能
+            marked.setOptions({
+                gfm: true,
+                breaks: true
+            });
+
             fetch(`notes/${fileName}.md`)
                 .then(response => {
                     if (!response.ok) {
@@ -208,8 +223,22 @@
                     return response.text();
                 })
                 .then(markdownText => {
+                    // 移除 YAML front matter
                     const cleanMarkdown = markdownText.replace(/^-{3}[\s\S]+?-{3}\n/, '');
-                    contentEl.innerHTML = marked.parse(cleanMarkdown);
+
+                    // 將 Markdown 轉成 HTML 並套用 GitHub Markdown CSS
+                    contentEl.innerHTML = `<div class="markdown-body" style="background: transparent; color: inherit; padding: 2em;">${marked.parse(cleanMarkdown)}</div>`;
+
+                    // 讓 KaTeX 渲染數學公式 ($...$ 或 $$...$$)
+                    if (window.renderMathInElement) {
+                        window.renderMathInElement(contentEl, {
+                            delimiters: [
+                                { left: '$$', right: '$$', display: true },
+                                { left: '$', right: '$', display: false }
+                            ],
+                            throwOnError: false
+                        });
+                    }
                 })
                 .catch(error => {
                     console.error('Fetch error:', error);
