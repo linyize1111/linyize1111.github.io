@@ -3524,34 +3524,41 @@ body.dark-mode #main .image.fit img {
 	border-collapse: collapse !important;
 }
 
-/* Force ALL rows to have the same background to avoid black/white zebra contrast issues */
-.markdown-body table tbody tr {
-	background-color: var(--color-canvas-subtle, #f6f8fa) !important;
-}
-
-.markdown-body table tbody tr:nth-child(2n + 1) {
-	background-color: var(--color-canvas-subtle, #f6f8fa) !important;
-}
-
-.markdown-body table td,
+/* 亮色模式表格 (Light Mode) */
 .markdown-body table th {
-	border: 1px solid var(--color-border-default, #d0d7de) !important;
+	background-color: #f6f8fa !important;
+	color: #24292f !important;
+	border: 1px solid #d0d7de !important;
 	padding: 6px 13px !important;
+}
+
+.markdown-body table td {
+	background-color: #ffffff !important;
+	color: #24292f !important;
+	border: 1px solid #d0d7de !important;
+	padding: 6px 13px !important;
+}
+
+/* 強制清除單數行斑馬紋 */
+.markdown-body table tbody tr {
 	background-color: transparent !important;
 }
 
-/* Dark mode specific table overrides */
-body.dark-mode .markdown-body table tbody tr {
-	background-color: var(--color-canvas-subtle, #161b22) !important;
+.markdown-body table tbody tr:nth-child(2n + 1) {
+	background-color: transparent !important;
 }
 
-body.dark-mode .markdown-body table tbody tr:nth-child(2n + 1) {
-	background-color: var(--color-canvas-subtle, #161b22) !important;
-}
-
-body.dark-mode .markdown-body table td,
+/* 暗色模式表格 (Dark Mode) */
 body.dark-mode .markdown-body table th {
-	border-color: var(--color-border-default, #30363d) !important;
+	background-color: #21262d !important;
+	color: #c9d1d9 !important;
+	border-color: #30363d !important;
+}
+
+body.dark-mode .markdown-body table td {
+	background-color: #161b22 !important;
+	color: #c9d1d9 !important;
+	border-color: #30363d !important;
 }
 
 #wrapper>.bg.fixed {
