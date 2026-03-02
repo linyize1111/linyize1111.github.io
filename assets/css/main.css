@@ -3524,18 +3524,34 @@ body.dark-mode #main .image.fit img {
 	border-collapse: collapse !important;
 }
 
+/* Force ALL rows to have the same background to avoid black/white zebra contrast issues */
+.markdown-body table tbody tr {
+	background-color: var(--color-canvas-subtle, #f6f8fa) !important;
+}
+
 .markdown-body table tbody tr:nth-child(2n + 1) {
-	background-color: transparent !important;
+	background-color: var(--color-canvas-subtle, #f6f8fa) !important;
 }
 
 .markdown-body table td,
 .markdown-body table th {
 	border: 1px solid var(--color-border-default, #d0d7de) !important;
 	padding: 6px 13px !important;
+	background-color: transparent !important;
+}
+
+/* Dark mode specific table overrides */
+body.dark-mode .markdown-body table tbody tr {
+	background-color: var(--color-canvas-subtle, #161b22) !important;
 }
 
 body.dark-mode .markdown-body table tbody tr:nth-child(2n + 1) {
-	background-color: transparent !important;
+	background-color: var(--color-canvas-subtle, #161b22) !important;
+}
+
+body.dark-mode .markdown-body table td,
+body.dark-mode .markdown-body table th {
+	border-color: var(--color-border-default, #30363d) !important;
 }
 
 #wrapper>.bg.fixed {
