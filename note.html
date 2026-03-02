@@ -53,7 +53,7 @@
     <video id="bg-video" autoplay muted loop playsinline>
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
-    <audio id="bg-music" loop>
+    <audio id="bg-music" loop preload="auto">
         <source src="images/bg-music.mp3" type="audio/mpeg">
     </audio>
 
@@ -68,33 +68,38 @@
             var savedPaused = sessionStorage.getItem('mediaPaused');
 
             video.muted = true;
-            // 音樂預設有聲音
-            music.muted = savedMuted !== null ? savedMuted === 'true' : false;
-            btnMute.innerHTML = music.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+            var isMuted = (savedMuted === 'true');
+            music.muted = isMuted;
 
-            // 預設播放
+            function updateMuteBtn() {
+                btnMute.innerHTML = music.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+            }
+            updateMuteBtn();
+
             if (savedPaused === 'true') {
                 video.pause();
                 btnPlay.innerHTML = '<i class="fas fa-play"></i>';
             } else {
-                window.addEventListener('load', function () {
-                    var p = music.play();
-                    if (p !== undefined) {
-                        p.catch(function (e) {
-                            document.addEventListener('click', function initPlay() {
-                                music.play();
-                                document.removeEventListener('click', initPlay);
-                            }, { once: true });
-                        });
-                    }
-                });
+                var playPromise = music.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(function (error) {
+                        music.muted = true;
+                        updateMuteBtn();
+                        sessionStorage.setItem('mediaMuted', 'true');
+                        music.play().catch(function (e) { });
+                    });
+                }
             }
 
             btnMute.addEventListener('click', function (e) {
                 e.stopPropagation();
                 music.muted = !music.muted;
-                btnMute.innerHTML = music.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+                updateMuteBtn();
                 sessionStorage.setItem('mediaMuted', music.muted);
+
+                if (music.paused && savedPaused !== 'true') {
+                    music.play().catch(function (e) { });
+                }
             });
 
             btnPlay.addEventListener('click', function () {
