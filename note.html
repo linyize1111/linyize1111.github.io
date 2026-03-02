@@ -200,60 +200,76 @@
         document.addEventListener("DOMContentLoaded", () => {
             const urlParams = new URLSearchParams(window.location.search);
             const fileName = urlParams.get('file');
+            const pdfName = urlParams.get('pdf'); // 新增對 PDF 的支援
             const titleEl = document.getElementById('note-title');
             const statusEl = document.getElementById('note-status');
             const contentEl = document.getElementById('markdown-container');
 
-            if (!fileName) {
+            if (!fileName && !pdfName) {
                 titleEl.innerText = '系統錯誤';
                 statusEl.innerText = '未提供檔案參數 (Missing URL Parameter)';
-                contentEl.innerHTML = '<p>請從首頁目錄選擇要閱讀的筆記。</p>';
+                contentEl.innerHTML = '<p>請從首頁目錄選擇要閱讀的筆記或簡報。</p>';
                 return;
             }
 
-            const displayTitle = fileName.replace(/_/g, ' ');
-            titleEl.innerText = displayTitle.toUpperCase();
-            statusEl.innerText = `檔案路徑: /notes/${fileName}.md`;
+            if (pdfName) {
+                // 如果是 PDF 模式
+                const displayTitle = pdfName.replace(/_/g, ' ');
+                titleEl.innerText = displayTitle.toUpperCase();
+                statusEl.innerText = `檔案路徑: /images/${pdfName}.pdf`;
 
-            // 設定 marked.js 支援 GFM (GitHub Flavored Markdown) 表格等功能
-            marked.setOptions({
-                gfm: true,
-                breaks: true
-            });
+                // 嵌入 PDF
+                contentEl.innerHTML = `
+                    <div style="width: 100%; height: 85vh; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                        <iframe src="images/${pdfName}.pdf" width="100%" height="100%" style="border: none;"></iframe>
+                    </div>
+                `;
+            } else if (fileName) {
+                // 如果是 Markdown 模式
+                const displayTitle = fileName.replace(/_/g, ' ');
+                titleEl.innerText = displayTitle.toUpperCase();
+                statusEl.innerText = `檔案路徑: /notes/${fileName}.md`;
 
-            fetch(`notes/${fileName}.md`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.text();
-                })
-                .then(markdownText => {
-                    // 移除 YAML front matter
-                    const cleanMarkdown = markdownText.replace(/^-{3}[\s\S]+?-{3}\n/, '');
-
-                    // 將 Markdown 轉成 HTML 並套用 GitHub Markdown CSS
-                    // 加入 data-theme 屬性以便配合深色模式切換
-                    const currentTheme = localStorage.getItem('theme') || 'light';
-                    contentEl.innerHTML = `<div class="markdown-body" data-theme="${currentTheme}" style="background: transparent; color: inherit; padding: 2em;">${marked.parse(cleanMarkdown)}</div>`;
-
-                    // 讓 KaTeX 渲染數學公式 ($...$ 或 $$...$$)
-                    if (window.renderMathInElement) {
-                        window.renderMathInElement(contentEl, {
-                            delimiters: [
-                                { left: '$$', right: '$$', display: true },
-                                { left: '$', right: '$', display: false }
-                            ],
-                            throwOnError: false
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Fetch error:', error);
-                    titleEl.innerText = '404 檔案未找到';
-                    statusEl.innerText = 'File Not Found';
-                    contentEl.innerHTML = `<p>無法載入筆記。請確認 <strong>/notes/${fileName}.md</strong> 檔案是否存在於您的專案目錄中。</p>`;
+                // 設定 marked.js 支援 GFM (GitHub Flavored Markdown) 表格等功能
+                marked.setOptions({
+                    gfm: true,
+                    breaks: true
                 });
+
+                fetch(`notes/${fileName}.md`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.text();
+                    })
+                    .then(markdownText => {
+                        // 移除 YAML front matter
+                        const cleanMarkdown = markdownText.replace(/^-{3}[\s\S]+?-{3}\n/, '');
+
+                        // 將 Markdown 轉成 HTML 並套用 GitHub Markdown CSS
+                        // 加入 data-theme 屬性以便配合深色模式切換
+                        const currentTheme = localStorage.getItem('theme') || 'light';
+                        contentEl.innerHTML = `<div class="markdown-body" data-theme="${currentTheme}" style="background: transparent; color: inherit; padding: 2em;">${marked.parse(cleanMarkdown)}</div>`;
+
+                        // 讓 KaTeX 渲染數學公式 ($...$ 或 $$...$$)
+                        if (window.renderMathInElement) {
+                            window.renderMathInElement(contentEl, {
+                                delimiters: [
+                                    { left: '$$', right: '$$', display: true },
+                                    { left: '$', right: '$', display: false }
+                                ],
+                                throwOnError: false
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Fetch error:', error);
+                        titleEl.innerText = '404 檔案未找到';
+                        statusEl.innerText = 'File Not Found';
+                        contentEl.innerHTML = `<p>無法載入筆記。請確認 <strong>/notes/${fileName}.md</strong> 檔案是否存在於您的專案目錄中。</p>`;
+                    });
+            }
         });
 
         // 🌙 深色模式切換邏輯
