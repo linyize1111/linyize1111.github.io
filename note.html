@@ -49,10 +49,60 @@
 
 <body class="is-preload">
 
-    <!-- 🎬 影片背景 -->
-    <video id="bg-video" autoplay muted loop playsinline>
-        <source src="images/bg-video.mp4" type="video/mp4">
-    </video>
+    <!-- 🎬 YouTube 影片背景 -->
+    <div id="yt-bg-wrapper">
+        <div id="yt-player"></div>
+    </div>
+
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        (function () {
+            var VIDEO_ID = 'J_DE2d1F9wU';
+            var btnMute = document.getElementById('btn-mute');
+            var btnPlay = document.getElementById('btn-play');
+            var ytPlayer = null;
+            var savedMuted = sessionStorage.getItem('videoMuted');
+            var savedPaused = sessionStorage.getItem('videoPaused');
+            window.onYouTubeIframeAPIReady = function () {
+                ytPlayer = new YT.Player('yt-player', {
+                    videoId: VIDEO_ID,
+                    playerVars: { autoplay: 1, mute: 1, loop: 1, playlist: VIDEO_ID, controls: 0, rel: 0, iv_load_policy: 3, modestbranding: 1, playsinline: 1 },
+                    events: {
+                        onReady: function () {
+                            if (savedMuted === 'false') { ytPlayer.unMute(); btnMute.innerHTML = '<i class="fas fa-volume-up"></i>'; }
+                            else { ytPlayer.mute(); }
+                            if (savedPaused === 'true') { ytPlayer.pauseVideo(); btnPlay.innerHTML = '<i class="fas fa-play"></i>'; }
+                            if (savedMuted === null) {
+                                document.addEventListener('click', function unmute() {
+                                    ytPlayer.unMute(); btnMute.innerHTML = '<i class="fas fa-volume-up"></i>';
+                                    sessionStorage.setItem('videoMuted', 'false');
+                                    document.removeEventListener('click', unmute);
+                                }, { once: true });
+                            }
+                        }
+                    }
+                });
+            };
+            btnMute.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (!ytPlayer) return;
+                if (ytPlayer.isMuted()) { ytPlayer.unMute(); btnMute.innerHTML = '<i class="fas fa-volume-up"></i>'; sessionStorage.setItem('videoMuted', 'false'); }
+                else { ytPlayer.mute(); btnMute.innerHTML = '<i class="fas fa-volume-mute"></i>'; sessionStorage.setItem('videoMuted', 'true'); }
+            });
+            btnPlay.addEventListener('click', function () {
+                if (!ytPlayer) return;
+                var state = ytPlayer.getPlayerState();
+                if (state === YT.PlayerState.PLAYING) { ytPlayer.pauseVideo(); btnPlay.innerHTML = '<i class="fas fa-play"></i>'; sessionStorage.setItem('videoPaused', 'true'); }
+                else { ytPlayer.playVideo(); btnPlay.innerHTML = '<i class="fas fa-pause"></i>'; sessionStorage.setItem('videoPaused', 'false'); }
+            });
+            window.addEventListener('beforeunload', function () {
+                if (!ytPlayer) return;
+                sessionStorage.setItem('videoMuted', ytPlayer.isMuted());
+                sessionStorage.setItem('videoPaused', ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING);
+            });
+        })();
+    </script>
 
     <!-- 🌸 櫻花特效透明層 -->
     <canvas id="sakura-canvas"
@@ -151,50 +201,7 @@
     <script src="https://unpkg.com/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
 
-    <script>
-        (function () {
-            var video = document.getElementById('bg-video');
-            var btnMute = document.getElementById('btn-mute');
-            var btnPlay = document.getElementById('btn-play');
 
-            var savedMuted = sessionStorage.getItem('videoMuted');
-            var savedPaused = sessionStorage.getItem('videoPaused');
-
-            video.muted = savedMuted !== null ? savedMuted === 'true' : true;
-            btnMute.innerHTML = video.muted
-                ? '<i class="fas fa-volume-mute"></i>'
-                : '<i class="fas fa-volume-up"></i>';
-
-            if (savedPaused === 'true') {
-                video.pause();
-                btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-            }
-
-            if (savedMuted === null) {
-                document.addEventListener('click', function unmute() {
-                    video.muted = false;
-                    btnMute.innerHTML = '<i class="fas fa-volume-up"></i>';
-                    sessionStorage.setItem('videoMuted', 'false');
-                    document.removeEventListener('click', unmute);
-                }, { once: true });
-            }
-
-            btnMute.addEventListener('click', function (e) {
-                e.stopPropagation();
-                video.muted = !video.muted;
-                btnMute.innerHTML = video.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
-                sessionStorage.setItem('videoMuted', video.muted);
-            });
-            btnPlay.addEventListener('click', function () {
-                if (video.paused) { video.play(); btnPlay.innerHTML = '<i class="fas fa-pause"></i>'; sessionStorage.setItem('videoPaused', 'false'); }
-                else { video.pause(); btnPlay.innerHTML = '<i class="fas fa-play"></i>'; sessionStorage.setItem('videoPaused', 'true'); }
-            });
-            window.addEventListener('beforeunload', function () {
-                sessionStorage.setItem('videoMuted', video.muted);
-                sessionStorage.setItem('videoPaused', video.paused);
-            });
-        })();
-    </script>
 </body>
 
 </html>
