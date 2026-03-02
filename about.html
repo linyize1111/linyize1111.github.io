@@ -22,7 +22,7 @@
 	</audio>
 
 	<script>
-		(function () {
+		document.addEventListener('DOMContentLoaded', function () {
 			var video = document.getElementById('bg-video');
 			var music = document.getElementById('bg-music');
 			var btnMute = document.getElementById('btn-mute');
@@ -84,7 +84,7 @@
 				sessionStorage.setItem('mediaMuted', music.muted);
 				sessionStorage.setItem('mediaPaused', video.paused);
 			});
-		})();
+		});
 	</script>
 
 	<!-- 🌸 櫻花特效透明層 -->
