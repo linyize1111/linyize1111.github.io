@@ -1,0 +1,200 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>閱讀筆記 - LYZ's website</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+    <noscript>
+        <link rel="stylesheet" href="assets/css/noscript.css" />
+    </noscript>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        #markdown-container {
+            text-align: left;
+        }
+
+        #markdown-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin: 1.5em 0;
+        }
+
+        #markdown-container pre {
+            background: #212931;
+            color: #ffffff;
+            padding: 1.5em;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1.5em 0;
+        }
+
+        #markdown-container code {
+            background: rgba(144, 144, 144, 0.25);
+            border-radius: 3px;
+            padding: 0.25em 0.5em;
+            font-family: "Courier New", monospace;
+        }
+
+        #markdown-container blockquote {
+            border-left: solid 4px #ffffff;
+            padding-left: 1.5em;
+            font-style: italic;
+            margin: 1.5em 0;
+        }
+    </style>
+</head>
+
+<body class="is-preload">
+
+    <!-- 🎬 影片背景 -->
+    <video id="bg-video" autoplay muted loop playsinline>
+        <source src="images/bg-video.mp4" type="video/mp4">
+    </video>
+
+    <!-- 🌸 櫻花特效透明層 -->
+    <canvas id="sakura-canvas"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
+
+    <!-- 🎵 右下角影片控制按鈕 -->
+    <div id="video-controls">
+        <button id="btn-mute" title="音效開/關"><i class="fas fa-volume-mute"></i></button>
+        <button id="btn-play" title="暫停/播放"><i class="fas fa-pause"></i></button>
+    </div>
+
+    <div id="wrapper">
+        <header id="header">
+            <a href="index.html" class="logo">LYZ's website</a>
+        </header>
+
+        <nav id="nav">
+            <ul class="links">
+                <li><a href="index.html">首頁 / 筆記目錄</a></li>
+                <li class="active"><a href="#">閱讀筆記</a></li>
+                <li><a href="about.html">關於我</a></li>
+            </ul>
+        </nav>
+
+        <div id="main">
+            <section class="post">
+                <header class="major">
+                    <h1 id="note-title">資料載入中<br />Please Wait...</h1>
+                    <p id="note-status">正在從本地資料庫抓取 Markdown 文件</p>
+                </header>
+
+                <div id="markdown-container">
+                    <div style="text-align: center; padding: 50px 0;">
+                        <div class="spinner"></div>
+                        <p>Loading...</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="copyright">
+            <ul>
+                <li>&copy; LYZ</li>
+                <li>Design: <a href="https://html5up.net">HTML5 UP</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/js/jquery.scrollex.min.js"></script>
+    <script src="assets/js/jquery.scrolly.min.js"></script>
+    <script src="assets/js/browser.min.js"></script>
+    <script src="assets/js/breakpoints.min.js"></script>
+    <script src="assets/js/util.js"></script>
+    <script src="assets/js/main.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileName = urlParams.get('file');
+            const titleEl = document.getElementById('note-title');
+            const statusEl = document.getElementById('note-status');
+            const contentEl = document.getElementById('markdown-container');
+
+            if (!fileName) {
+                titleEl.innerText = '系統錯誤';
+                statusEl.innerText = '未提供檔案參數 (Missing URL Parameter)';
+                contentEl.innerHTML = '<p>請從首頁目錄選擇要閱讀的筆記。</p>';
+                return;
+            }
+
+            const displayTitle = fileName.replace(/_/g, ' ');
+            titleEl.innerText = displayTitle.toUpperCase();
+            statusEl.innerText = `檔案路徑: /notes/${fileName}.md`;
+
+            fetch(`notes/${fileName}.md`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(markdownText => {
+                    const cleanMarkdown = markdownText.replace(/^-{3}[\s\S]+?-{3}\n/, '');
+                    contentEl.innerHTML = marked.parse(cleanMarkdown);
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    titleEl.innerText = '404 檔案未找到';
+                    statusEl.innerText = 'File Not Found';
+                    contentEl.innerHTML = `<p>無法載入筆記。請確認 <strong>/notes/${fileName}.md</strong> 檔案是否存在於您的專案目錄中。</p>`;
+                });
+        });
+    </script>
+
+    <script src="https://unpkg.com/zdog@1/dist/zdog.dist.min.js"></script>
+    <script src="assets/js/mouse-effect.js"></script>
+
+    <script>
+        (function () {
+            var video = document.getElementById('bg-video');
+            var btnMute = document.getElementById('btn-mute');
+            var btnPlay = document.getElementById('btn-play');
+
+            var savedMuted = sessionStorage.getItem('videoMuted');
+            var savedPaused = sessionStorage.getItem('videoPaused');
+
+            video.muted = savedMuted !== null ? savedMuted === 'true' : true;
+            btnMute.innerHTML = video.muted
+                ? '<i class="fas fa-volume-mute"></i>'
+                : '<i class="fas fa-volume-up"></i>';
+
+            if (savedPaused === 'true') {
+                video.pause();
+                btnPlay.innerHTML = '<i class="fas fa-play"></i>';
+            }
+
+            if (savedMuted === null) {
+                document.addEventListener('click', function unmute() {
+                    video.muted = false;
+                    btnMute.innerHTML = '<i class="fas fa-volume-up"></i>';
+                    sessionStorage.setItem('videoMuted', 'false');
+                    document.removeEventListener('click', unmute);
+                }, { once: true });
+            }
+
+            btnMute.addEventListener('click', function (e) {
+                e.stopPropagation();
+                video.muted = !video.muted;
+                btnMute.innerHTML = video.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+                sessionStorage.setItem('videoMuted', video.muted);
+            });
+            btnPlay.addEventListener('click', function () {
+                if (video.paused) { video.play(); btnPlay.innerHTML = '<i class="fas fa-pause"></i>'; sessionStorage.setItem('videoPaused', 'false'); }
+                else { video.pause(); btnPlay.innerHTML = '<i class="fas fa-play"></i>'; sessionStorage.setItem('videoPaused', 'true'); }
+            });
+            window.addEventListener('beforeunload', function () {
+                sessionStorage.setItem('videoMuted', video.muted);
+                sessionStorage.setItem('videoPaused', video.paused);
+            });
+        })();
+    </script>
+</body>
+
+</html>
