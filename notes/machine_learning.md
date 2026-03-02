@@ -1,8 +1,3 @@
----
-title: Machine Learning
-
----
-
 # Machine Learning
 ---
 [TOC]
