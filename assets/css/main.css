@@ -3525,16 +3525,21 @@ body.dark-mode #main .image.fit img {
 }
 
 /* 亮色模式表格 (Light Mode) */
-.markdown-body table th {
-	background-color: #f6f8fa !important;
+.markdown-body table th,
+.markdown-body table th *,
+.markdown-body table td,
+.markdown-body table td * {
 	color: #ffffff !important;
+}
+
+.markdown-body table th {
+	background-color: #21262d !important;
 	border: 1px solid #d0d7de !important;
 	padding: 6px 13px !important;
 }
 
 .markdown-body table td {
-	background-color: #ffffff !important;
-	color: #ffffff !important;
+	background-color: #30363d !important;
 	border: 1px solid #d0d7de !important;
 	padding: 6px 13px !important;
 }
@@ -3551,13 +3556,11 @@ body.dark-mode #main .image.fit img {
 /* 暗色模式表格 (Dark Mode) */
 body.dark-mode .markdown-body table th {
 	background-color: #21262d !important;
-	color: #ffffff !important;
 	border-color: #30363d !important;
 }
 
 body.dark-mode .markdown-body table td {
-	background-color: #161b22 !important;
-	color: #ffffff !important;
+	background-color: #30363d !important;
 	border-color: #30363d !important;
 }
 
