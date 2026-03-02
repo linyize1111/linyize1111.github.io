@@ -3392,30 +3392,37 @@ table.alt tbody tr td {
 	display: flex;
 	gap: 0.6rem;
 	align-items: center;
+	padding: 0.5rem;
+	/* Add some padding to make it clickable even if slightly overlapped */
 }
 
 #video-controls button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 2.75rem;
-	height: 2.75rem;
+	width: 3.5rem;
+	/* Increase size to make them more prominent than social icons */
+	height: 3.5rem;
 	border-radius: 50%;
 	border: none;
 	cursor: pointer;
-	font-size: 0.85rem;
+	font-size: 1.25rem;
+	/* Larger icon */
 	font-family: 'Font Awesome 5 Free';
 	font-weight: 900;
-	background: transparent;
-	color: rgba(255, 255, 255, 0.75);
-	box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45);
-	transition: color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background 0.2s ease-in-out;
+	background: rgba(0, 0, 0, 0.4);
+	/* Give it a slight dark background so it stands out against social icons if they overlap */
+	color: rgba(255, 255, 255, 0.9);
+	box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+	transition: color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background 0.2s ease-in-out, transform 0.2s ease-in-out;
 }
 
 #video-controls button:hover {
 	color: #ffffff;
 	box-shadow: inset 0 0 0 2px #ffffff;
-	background: rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.2);
+	transform: scale(1.05);
+	/* Add a slight hover grow to make it clear it's interactive */
 }
 
 #wrapper>.bg.fixed {
