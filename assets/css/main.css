@@ -3371,35 +3371,16 @@ table.alt tbody tr td {
 	z-index: -1;
 }
 
-/* YouTube 影片背景 */
-#yt-bg-wrapper {
+/* 影片背景 */
+#bg-video {
 	position: fixed;
 	top: 0;
 	left: 0;
 	width: 100%;
 	height: 100%;
+	object-fit: cover;
 	z-index: -2;
 	pointer-events: none;
-	overflow: hidden;
-	background: #1a1e26;
-}
-
-#yt-player {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	width: 100vw;
-	height: 56.25vw;
-	/* 16:9 */
-	min-height: 100vh;
-	min-width: 177.78vh;
-	/* 16:9 */
-	transform: translate(-50%, -50%);
-}
-
-#yt-player iframe {
-	width: 100%;
-	height: 100%;
 }
 
 /* 右下角影片控制按鈕 */

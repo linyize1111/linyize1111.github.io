@@ -13,95 +13,86 @@
 
 <body class="is-preload">
 
-    <!-- YouTube IFrame API -->
-    <script src="https://www.youtube.com/iframe_api"></script>
+    <!-- 🎬 影片與音樂背景 -->
+    <video id="bg-video" autoplay muted loop playsinline>
+        <source src="images/bg-video.mp4" type="video/mp4">
+    </video>
+    <audio id="bg-music" loop>
+        <source src="images/bg-music.mp3" type="audio/mpeg">
+    </audio>
+
     <script>
         (function () {
-            var VIDEO_ID = 'J_DE2d1F9wU';
+            var video = document.getElementById('bg-video');
+            var music = document.getElementById('bg-music');
             var btnMute = document.getElementById('btn-mute');
             var btnPlay = document.getElementById('btn-play');
-            var ytPlayer = null;
 
-            var savedMuted = sessionStorage.getItem('videoMuted');
-            var savedPaused = sessionStorage.getItem('videoPaused');
+            var savedMuted = sessionStorage.getItem('mediaMuted');
+            var savedPaused = sessionStorage.getItem('mediaPaused');
 
-            window.onYouTubeIframeAPIReady = function () {
-                ytPlayer = new YT.Player('yt-player', {
-                    videoId: VIDEO_ID,
-                    playerVars: {
-                        autoplay: 1, mute: 1, loop: 1,
-                        playlist: VIDEO_ID,
-                        controls: 0, rel: 0, iv_load_policy: 3,
-                        modestbranding: 1, playsinline: 1
-                    },
-                    events: {
-                        onReady: function () {
-                            // 還原静音狀態
-                            if (savedMuted === 'false') {
-                                ytPlayer.unMute();
-                                btnMute.innerHTML = '<i class="fas fa-volume-up"></i>';
-                            } else {
-                                ytPlayer.mute();
-                            }
-                            // 還原暫停狀態
-                            if (savedPaused === 'true') {
-                                ytPlayer.pauseVideo();
-                                btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-                            }
-                            // 第一次進入：點擊任何地方自動開音
-                            if (savedMuted === null) {
-                                document.addEventListener('click', function unmute() {
-                                    ytPlayer.unMute();
-                                    btnMute.innerHTML = '<i class="fas fa-volume-up"></i>';
-                                    sessionStorage.setItem('videoMuted', 'false');
-                                    document.removeEventListener('click', unmute);
-                                }, { once: true });
-                            }
-                        }
-                    }
+            // 影片永遠靜音
+            video.muted = true;
+
+            // 音樂預設靜音
+            music.muted = savedMuted !== null ? savedMuted === 'true' : true;
+            btnMute.innerHTML = music.muted
+                ? '<i class="fas fa-volume-mute"></i>'
+                : '<i class="fas fa-volume-up"></i>';
+
+            if (savedPaused === 'true') {
+                video.pause();
+                btnPlay.innerHTML = '<i class="fas fa-play"></i>';
+            } else {
+                window.addEventListener('load', function () {
+                    var p = music.play();
+                    if (p !== undefined) p.catch(function (e) { });
                 });
+            }
+
+            var initPlay = function () {
+                if (savedPaused !== 'true' && music.paused) {
+                    var p = music.play();
+                    if (p !== undefined) p.catch(function (e) { });
+                }
+                if (savedMuted === null) {
+                    music.muted = false;
+                    btnMute.innerHTML = '<i class="fas fa-volume-up"></i>';
+                    sessionStorage.setItem('mediaMuted', 'false');
+                }
+                document.removeEventListener('click', initPlay);
             };
+            document.addEventListener('click', initPlay);
 
             btnMute.addEventListener('click', function (e) {
                 e.stopPropagation();
-                if (!ytPlayer) return;
-                if (ytPlayer.isMuted()) {
-                    ytPlayer.unMute();
-                    btnMute.innerHTML = '<i class="fas fa-volume-up"></i>';
-                    sessionStorage.setItem('videoMuted', 'false');
-                } else {
-                    ytPlayer.mute();
-                    btnMute.innerHTML = '<i class="fas fa-volume-mute"></i>';
-                    sessionStorage.setItem('videoMuted', 'true');
-                }
+                music.muted = !music.muted;
+                btnMute.innerHTML = music.muted
+                    ? '<i class="fas fa-volume-mute"></i>'
+                    : '<i class="fas fa-volume-up"></i>';
+                sessionStorage.setItem('mediaMuted', music.muted);
             });
 
             btnPlay.addEventListener('click', function () {
-                if (!ytPlayer) return;
-                var state = ytPlayer.getPlayerState();
-                if (state === YT.PlayerState.PLAYING) {
-                    ytPlayer.pauseVideo();
-                    btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-                    sessionStorage.setItem('videoPaused', 'true');
-                } else {
-                    ytPlayer.playVideo();
+                if (video.paused) {
+                    video.play();
+                    music.play();
                     btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
-                    sessionStorage.setItem('videoPaused', 'false');
+                    sessionStorage.setItem('mediaPaused', 'false');
+                } else {
+                    video.pause();
+                    music.pause();
+                    btnPlay.innerHTML = '<i class="fas fa-play"></i>';
+                    sessionStorage.setItem('mediaPaused', 'true');
                 }
             });
 
             window.addEventListener('beforeunload', function () {
-                if (!ytPlayer) return;
-                sessionStorage.setItem('videoMuted', ytPlayer.isMuted());
-                sessionStorage.setItem('videoPaused', ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING);
+                sessionStorage.setItem('mediaMuted', music.muted);
+                sessionStorage.setItem('mediaPaused', video.paused);
             });
         })();
     </script>
-
-    <!-- 🎬 YouTube 影片背景 -->
-    <div id="yt-bg-wrapper">
-        <div id="yt-player"></div>
-    </div>
 
     <!-- 🌸 櫻花特效透明層（固定在最上層，不影響互動） -->
     <canvas id="sakura-canvas"
