@@ -3524,22 +3524,22 @@ body.dark-mode #main .image.fit img {
 	border-collapse: collapse !important;
 }
 
-/* 亮色模式表格 (Light Mode) */
+/* 亮色模式表格 (Light Mode) - 覆寫字體顏色為深色 */
 .markdown-body table th,
 .markdown-body table th *,
 .markdown-body table td,
 .markdown-body table td * {
-	color: #ffffff !important;
+	color: #24292f !important;
 }
 
 .markdown-body table th {
-	background-color: #21262d !important;
+	background-color: #f6f8fa !important;
 	border: 1px solid #d0d7de !important;
 	padding: 6px 13px !important;
 }
 
 .markdown-body table td {
-	background-color: #30363d !important;
+	background-color: #ffffff !important;
 	border: 1px solid #d0d7de !important;
 	padding: 6px 13px !important;
 }
@@ -3553,14 +3553,21 @@ body.dark-mode #main .image.fit img {
 	background-color: transparent !important;
 }
 
-/* 暗色模式表格 (Dark Mode) */
+/* 暗色模式表格 (Dark Mode) - 覆寫字體顏色為白色 */
+body.dark-mode .markdown-body table th,
+body.dark-mode .markdown-body table th *,
+body.dark-mode .markdown-body table td,
+body.dark-mode .markdown-body table td * {
+	color: #ffffff !important;
+}
+
 body.dark-mode .markdown-body table th {
 	background-color: #21262d !important;
 	border-color: #30363d !important;
 }
 
 body.dark-mode .markdown-body table td {
-	background-color: #30363d !important;
+	background-color: #161b22 !important;
 	border-color: #30363d !important;
 }
 

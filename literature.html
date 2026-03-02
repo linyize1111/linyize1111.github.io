@@ -118,8 +118,8 @@
         <nav id="nav">
             <ul class="links">
                 <li><a href="index.html">首頁</a></li>
-                <li class="active"><a href="directory.html">學科筆記</a></li>
-                <li><a href="literature.html">文學隨筆</a></li>
+                <li><a href="directory.html">學科筆記</a></li>
+                <li class="active"><a href="literature.html">文學隨筆</a></li>
                 <li><a href="about.html">關於我</a></li>
             </ul>
             <ul class="icons">
@@ -133,9 +133,9 @@
         <div id="main">
             <article class="post featured">
                 <header class="major">
-                    <span class="date">系統升級完成</span>
-                    <h2><a href="#">我的學科筆記與學習區</a></h2>
-                    <p>本網站已導入基於 Markdown 的客戶端渲染（CSR）架構，將資料與視圖分離。所有的學習筆記皆透過非同步請求動態載入。</p>
+                    <span class="date">文學與隨筆</span>
+                    <h2><a href="#">我的生活紀實與閱讀心得</a></h2>
+                    <p>這裡收錄了我平常的讀書心得、對各式文本的解析、生活觀察以及心情隨筆。在程式碼與安全漏洞之外，用另一種維度記錄自己的思想軌跡。</p>
                 </header>
             </article>
 
@@ -147,9 +147,9 @@
                         style="display:inline-block; margin-right: 10px; margin-bottom: 0; font-weight: bold;">分類篩選:</label>
                     <select id="filter-category" style="display:inline-block; width: auto; min-width: 150px;">
                         <option value="all">所有分類 (All)</option>
-                        <option value="資訊安全">資訊安全</option>
-                        <option value="機器學習">機器學習</option>
-                        <option value="程式語言">程式語言</option>
+                        <option value="隨筆">心情隨筆</option>
+                        <option value="心得">閱讀心得</option>
+                        <option value="創作">文學創作</option>
                     </select>
                 </div>
                 <div>
@@ -167,44 +167,15 @@
             </div>
 
             <section class="posts" id="posts-container">
-                <article class="note-item" data-category="資訊安全" data-upload="2023-10-01" data-edit="2023-11-20"
-                    data-title="資訊安全基礎知識">
+                <article class="note-item" data-category="隨筆" data-upload="2023-11-01" data-edit="2023-11-01"
+                    data-title="持續寫作中...">
                     <header>
-                        <span class="date">資訊安全 | 上傳: 2023-10-01 | 編輯: 2023-11-20</span>
-                        <h2><a href="note.html?file=security_basics">資訊安全基礎知識</a></h2>
+                        <span class="date">2023-11-01 | 分類: 隨筆</span>
+                        <h2><a href="#">持續寫作中...</a></h2>
                     </header>
-                    <a href="note.html?file=security_basics" class="image fit"><img src="images/pic5.jpg" alt="" /></a>
-                    <p>參加資訊安全課程及其他資訊領域的自行探索紀錄。</p>
+                    <p>未來的文學與心得文章將會陸續收錄於此。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?file=security_basics" class="button">閱讀筆記</a></li>
-                        <li><a href="note.html?pdf=資安" class="button primary">檢視簡報 (PDF)</a></li>
-                    </ul>
-                </article>
-
-                <article class="note-item" data-category="機器學習" data-upload="2023-09-15" data-edit="2023-10-25"
-                    data-title="機器學習進階理論">
-                    <header>
-                        <span class="date">機器學習 | 上傳: 2023-09-15 | 編輯: 2023-10-25</span>
-                        <h2><a href="note.html?file=machine_learning">機器學習進階理論</a></h2>
-                    </header>
-                    <a href="note.html?file=machine_learning" class="image fit"><img src="images/pic6.jpg" alt="" /></a>
-                    <p>台大林軒田教授課程「機器學習基石」的學習筆記與重點整理。</p>
-                    <ul class="actions special">
-                        <li><a href="note.html?file=machine_learning" class="button">閱讀筆記</a></li>
-                    </ul>
-                </article>
-
-                <article class="note-item" data-category="程式語言" data-upload="2023-08-10" data-edit="2023-12-05"
-                    data-title="Python 學習紀錄">
-                    <header>
-                        <span class="date">程式語言 | 上傳: 2023-08-10 | 編輯: 2023-12-05</span>
-                        <h2><a href="note.html?file=python_learning">Python 學習紀錄</a></h2>
-                    </header>
-                    <a href="note.html?file=python_learning" class="image fit"><img src="images/pic4.jpg" alt="" /></a>
-                    <p>自學 Python 程式語言的基礎語法與專案實作紀錄。</p>
-                    <ul class="actions special">
-                        <li><a href="note.html?file=python_learning" class="button">閱讀筆記</a></li>
-                        <li><a href="note.html?pdf=Python" class="button primary">檢視簡報 (PDF)</a></li>
+                        <li><a href="#" class="button disabled">尚無內容</a></li>
                     </ul>
                 </article>
             </section>
@@ -367,14 +338,14 @@
                         return 0;
                     });
                 } else {
-                    // 恢復預設排序：從 initialOrder 裡面挑出有過濾到的元素
+                    // 恢復預設排序
                     filteredItems = initialOrder.filter(item => filteredItems.includes(item));
                 }
 
                 // 4. 重排 DOM 並顯示
                 filteredItems.forEach(item => {
                     item.style.display = ''; // 恢復顯示
-                    container.appendChild(item); // 會把 element 移動到 container 最後面
+                    container.appendChild(item); // 把 element 移動到 container 最後面
                 });
             }
 
