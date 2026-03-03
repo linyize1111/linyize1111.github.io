@@ -69,7 +69,7 @@
 
 <body class="is-preload">
 
-    <!-- 🎬 影片與音樂背景 -->
+    <!--  影片與音樂背景 -->
     <video id="bg-video" autoplay muted loop playsinline>
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
@@ -149,11 +149,11 @@
         });
     </script>
 
-    <!-- 🌸 櫻花特效透明層（固定在最上層，不影響互動） -->
+    <!--  櫻花特效透明層（固定在最上層，不影響互動） -->
     <canvas id="sakura-canvas"
         style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-    <!-- 🎵 右下角影片控制與深色模式切換 -->
+    <!--  右下角影片控制與深色模式切換 -->
     <div id="video-controls">
         <label class="theme-switch-wrapper" for="checkbox">
             <div class="theme-switch" title="切換深色模式">
@@ -277,10 +277,9 @@
     <script src="https://unpkg.com/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
 
-    <!-- 🌸 純 Canvas 2D 櫻花特效（零依賴，不需要圖片） -->
+    <!--  純 Canvas 2D 櫻花特效（零依賴，不需要圖片） -->
     <script>
         (function () {
-            // == 櫻花特效程式碼 (保持不變) ==
             var canvas = document.getElementById('sakura-canvas');
             var ctx = canvas.getContext('2d');
 
@@ -477,7 +476,7 @@
 
 
 
-    <!-- 🌙 深色模式切換邏輯 -->
+    <!--  深色模式切換邏輯 -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');

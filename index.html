@@ -13,7 +13,7 @@
 
 <body class="is-preload">
 
-    <!-- 🎬 影片與音樂背景 -->
+    <!--  影片與音樂背景 -->
     <video id="bg-video" autoplay muted loop playsinline>
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
@@ -93,11 +93,11 @@
         });
     </script>
 
-    <!-- 🌸 櫻花特效透明層（固定在最上層，不影響互動） -->
+    <!--  櫻花特效透明層（固定在最上層，不影響互動） -->
     <canvas id="sakura-canvas"
         style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-    <!-- 🎵 右下角影片控制與深色模式切換 -->
+    <!--  右下角影片控制與深色模式切換 -->
     <div id="video-controls">
         <label class="theme-switch-wrapper" for="checkbox">
             <div class="theme-switch" title="切換深色模式">
@@ -144,10 +144,10 @@
         <div id="main">
             <article class="post featured">
                 <header class="major">
-                    <span class="date">關於我</span>
-                    <h2><a href="about.html">認識 LYZ</a></h2>
-                    <p>我是一名來自台灣的學生，對各種資訊科技領域充滿熱情。<br />
-                        透過這個網站，我記錄下我的學習歷程，包含資訊安全、機器學習與程式語言等專案與筆記。</p>
+                    <span class="date">HELLO WORLD</span>
+                    <h2><a href="about.html">關於本站與我</a></h2>
+                    <p>我是林佾則，目前就讀中山大學資訊工程學系二年級。<br />
+                        這個網站的生日是 2020/12/06，十分感謝當時資訊社的學長教我搭建自己的網站。雖然那時只有雛形，網站也不臻完美，但自此開始我有了個專屬的地方記錄下我的學習歷程。在我大二開始，我開始重拾閱讀的習慣，並且也對文學、藝術、咖啡、吉他等產生濃厚興趣，並在 2026/03/03 開始將網站翻新、優化，往後這裡會成為我記錄文字的小天地，歡迎各位閱覽。</p>
                 </header>
                 <a href="about.html" class="image main"><img src="images/pic1.jpg" alt="About Me" /></a>
                 <ul class="actions special">
@@ -158,11 +158,11 @@
             <section class="posts">
                 <article>
                     <header>
-                        <span class="date">系統升級完成</span>
-                        <h2><a href="directory.html">理科與學科筆記</a></h2>
+                        <span class="date">學習歷程</span>
+                        <h2><a href="directory.html">學科筆記</a></h2>
                     </header>
                     <a href="directory.html" class="image fit"><img src="images/pic2.jpg" alt="學科筆記" /></a>
-                    <p>這裡收錄了我的學術知識與技術歷程，包含資訊安全、機器學習、程式語言等專案與學習筆記，支援 Markdown 與 PDF 閱讀。</p>
+                    <p>這裡收錄了我過去的學習歷程與專案紀錄。</p>
                     <ul class="actions special">
                         <li><a href="directory.html" class="button primary large">查看學科筆記目錄</a></li>
                     </ul>
@@ -201,7 +201,7 @@
     <script src="https://unpkg.com/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
 
-    <!-- 🌸 純 Canvas 2D 櫻花特效（零依賴，不需要圖片） -->
+    <!--  純 Canvas 2D 櫻花特效（零依賴，不需要圖片） -->
     <script>
         (function () {
             var canvas = document.getElementById('sakura-canvas');
@@ -297,7 +297,7 @@
 
 
 
-    <!-- 🌙 深色模式切換邏輯 -->
+    <!--  深色模式切換邏輯 -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
