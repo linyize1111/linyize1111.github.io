@@ -71,7 +71,7 @@
 
         #posts-container.list-view>article.note-item {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            grid-template-columns: auto 2fr 1fr 1fr 1fr auto;
             align-items: center;
             width: 100%;
             padding: 0.75rem 1rem;
@@ -110,8 +110,9 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            grid-column: 1;
+            grid-column: 2;
             grid-row: 1;
+            align-self: center;
         }
 
         /* 將 metadata (分類、日期) 從 .date 中分離並分配到 grid 欄位 */
@@ -119,27 +120,28 @@
             display: contents;
             /* 讓內部的 span 可以參與 grid 排版 */
             font-size: 0.9em;
-            color: rgba(255, 255, 255, 0.6);
+            opacity: 0.7;
         }
 
         #posts-container.list-view>article.note-item header .date span {
             text-align: left;
             padding-right: 1rem;
             white-space: nowrap;
+            align-self: center;
         }
 
         #posts-container.list-view>article.note-item header .date span.meta-cat {
-            grid-column: 2;
-            grid-row: 1;
-        }
-
-        #posts-container.list-view>article.note-item header .date span.meta-up {
             grid-column: 3;
             grid-row: 1;
         }
 
-        #posts-container.list-view>article.note-item header .date span.meta-ed {
+        #posts-container.list-view>article.note-item header .date span.meta-up {
             grid-column: 4;
+            grid-row: 1;
+        }
+
+        #posts-container.list-view>article.note-item header .date span.meta-ed {
+            grid-column: 5;
             grid-row: 1;
         }
 
@@ -149,7 +151,7 @@
             align-items: center;
             justify-content: flex-end;
             gap: 0.5rem;
-            grid-column: 5;
+            grid-column: 6;
             grid-row: 1;
         }
 
@@ -166,18 +168,29 @@
             font-size: 0.8em;
         }
 
+        #posts-container.list-view>article.note-item .list-index {
+            grid-column: 1;
+            grid-row: 1;
+            padding-right: 1rem;
+            font-weight: bold;
+            opacity: 0.7;
+            align-self: center;
+        }
+
         /* 列表模式下的表頭 (動態產生) */
         .list-view-header {
             display: none;
-            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            grid-template-columns: auto 2fr 1fr 1fr 1fr auto;
             padding: 0.5rem 1rem;
             font-weight: bold;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            border-bottom: 2px solid rgba(128, 128, 128, 0.2);
             margin-bottom: 0.5rem;
+            opacity: 0.8;
         }
 
         .list-view-header span:nth-child(1) {
             text-align: left;
+            padding-right: 1rem;
         }
 
         .list-view-header span:nth-child(2) {
@@ -193,6 +206,10 @@
         }
 
         .list-view-header span:nth-child(5) {
+            text-align: left;
+        }
+
+        .list-view-header span:nth-child(6) {
             text-align: right;
         }
 
@@ -408,7 +425,11 @@
                 <article class="note-item" data-category="程式語言" data-upload="2023-08-10" data-edit="2023-12-05"
                     data-title="Python 學習紀錄">
                     <header>
-                        <span class="date">程式語言 | 上傳: 2023-08-10 | 編輯: 2023-12-05</span>
+                        <span class="date">
+                            <span class="meta-cat">程式語言</span>
+                            <span class="meta-up">上傳: 2023-08-10</span>
+                            <span class="meta-ed">編輯: 2023-12-05</span>
+                        </span>
                         <h2><a href="note.html?file=python_learning">Python 學習紀錄</a></h2>
                     </header>
                     <a href="note.html?file=python_learning" class="image fit"><img src="images/pic_note3.jpg"
@@ -423,7 +444,11 @@
                 <article class="note-item" data-category="程式語言" data-upload="2026-03-03" data-edit="2026-03-03"
                     data-title="開發discord聊天機器人">
                     <header>
-                        <span class="date">程式語言 | 上傳: 2026-03-03 | 編輯: 2026-03-03</span>
+                        <span class="date">
+                            <span class="meta-cat">程式語言</span>
+                            <span class="meta-up">上傳: 2026-03-03</span>
+                            <span class="meta-ed">編輯: 2026-03-03</span>
+                        </span>
                         <h2><a href="note.html?file=discord_bot">開發 Discord 聊天機器人</a></h2>
                     </header>
                     <a href="note.html?file=discord_bot" class="image fit"><img src="images/pic_note4.jpg" alt="" /></a>
@@ -438,7 +463,11 @@
                 <article class="note-item" data-category="程式語言" data-upload="2026-03-03" data-edit="2026-03-03"
                     data-title="搭建自己的網站">
                     <header>
-                        <span class="date">程式語言 | 上傳: 2026-03-03 | 編輯: 2026-03-03</span>
+                        <span class="date">
+                            <span class="meta-cat">程式語言</span>
+                            <span class="meta-up">上傳: 2026-03-03</span>
+                            <span class="meta-ed">編輯: 2026-03-03</span>
+                        </span>
                         <h2><a href="note.html?file=build_website">搭建自己的網站</a></h2>
                     </header>
                     <a href="note.html?file=build_website" class="image fit"><img src="images/pic_note5.jpg"
@@ -452,7 +481,11 @@
                 <article class="note-item" data-category="人文" data-upload="2026-03-03" data-edit="2026-03-03"
                     data-title="普通心理學筆記">
                     <header>
-                        <span class="date">人文 | 上傳: 2026-03-03 | 編輯: 2026-03-03</span>
+                        <span class="date">
+                            <span class="meta-cat">人文</span>
+                            <span class="meta-up">上傳: 2026-03-03</span>
+                            <span class="meta-ed">編輯: 2026-03-03</span>
+                        </span>
                         <h2><a href="note.html?file=psychology">普通心理學筆記</a></h2>
                     </header>
                     <a href="note.html?file=psychology" class="image fit"><img src="images/pic_note6.jpg" alt="" /></a>
@@ -597,7 +630,7 @@
             // 建立列表模式表頭
             const listHeader = document.createElement('div');
             listHeader.className = 'list-view-header';
-            listHeader.innerHTML = '<span>名稱</span><span>分類</span><span>上傳時間</span><span>最後編輯</span><span>操作</span>';
+            listHeader.innerHTML = '<span>#</span><span>名稱</span><span>分類</span><span>上傳時間</span><span>最後編輯</span><span>操作</span>';
             container.insertBefore(listHeader, container.firstChild);
 
             function getFilteredSorted() {
@@ -631,10 +664,19 @@
                 const start = (currentPage - 1) * ITEMS_PER_PAGE;
                 const end = start + ITEMS_PER_PAGE;
 
-                // 隱藏所有項目，再顯示當頁項目，並保持 DOM 順序
-                allItems.forEach(item => item.style.display = 'none');
+                container.appendChild(listHeader);
+
                 activeItems.forEach((item, i) => {
                     item.style.display = (i >= start && i < end) ? '' : 'none';
+                    if (item.style.display !== 'none') {
+                        let idx = item.querySelector('.list-index');
+                        if (!idx) {
+                            idx = document.createElement('span');
+                            idx.className = 'list-index';
+                            item.insertBefore(idx, item.firstChild);
+                        }
+                        idx.textContent = (i + 1) + ".";
+                    }
                     container.appendChild(item);
                 });
 
