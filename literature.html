@@ -66,26 +66,24 @@
         #posts-container.list-view {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 0.5rem;
         }
 
         #posts-container.list-view>article.note-item {
-            display: flex;
-            flex-direction: row;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
             align-items: center;
-            justify-content: space-between;
             width: 100%;
-            padding: 1.5rem;
+            padding: 0.75rem 1rem;
             margin: 0;
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 4px;
             background: rgba(255, 255, 255, 0.05);
-            transition: transform 0.2s ease, background 0.2s ease;
+            transition: background 0.2s ease;
         }
 
         #posts-container.list-view>article.note-item:hover {
-            transform: translateY(-2px);
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.15);
         }
 
         #posts-container.list-view>article.note-item .image,
@@ -94,39 +92,66 @@
         }
 
         #posts-container.list-view>article.note-item header {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            margin: 0;
-            border: none;
-            text-align: left;
+            display: contents;
         }
 
         #posts-container.list-view>article.note-item header h2 {
             margin: 0;
-            font-size: 1.2em;
+            font-size: 1.1em;
+            text-align: left;
+            padding-right: 1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
+        /* 將 metadata (分類、日期) 從 .date 中分離並分配到 grid 欄位 */
         #posts-container.list-view>article.note-item header .date {
-            margin: 0 0 0.5em 0;
-            font-size: 0.8em;
+            display: contents;
+            /* 讓內部的 span 可以參與 grid 排版 */
+            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        #posts-container.list-view>article.note-item header .date span {
+            text-align: left;
+            padding-right: 1rem;
+            white-space: nowrap;
         }
 
         #posts-container.list-view>article.note-item .actions {
-            margin: 0 0 0 2rem;
+            margin: 0;
             display: flex;
             align-items: center;
-            flex-direction: row;
+            justify-content: flex-end;
+            gap: 0.5rem;
         }
 
         #posts-container.list-view>article.note-item .actions li {
             padding: 0;
-            margin-left: 0.5rem;
+            margin: 0;
         }
 
         #posts-container.list-view>article.note-item .actions .button {
-            margin-bottom: 0;
-            padding: 0 1rem;
+            margin: 0;
+            padding: 0 0.75rem;
+            height: 2rem;
+            line-height: 2rem;
+            font-size: 0.8em;
+        }
+
+        /* 列表模式下的表頭 (動態產生) */
+        .list-view-header {
+            display: none;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            padding: 0.5rem 1rem;
+            font-weight: bold;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 0.5rem;
+        }
+
+        #posts-container.list-view .list-view-header {
+            display: grid;
         }
     </style>
     <noscript>
@@ -300,7 +325,11 @@
                 <article class="note-item" data-category="心得" data-upload="2026-03-03" data-edit="2026-03-03"
                     data-title="鼠疫閱讀心得">
                     <header>
-                        <span class="date">2026-03-03 | 分類: 閱讀心得</span>
+                        <span class="date">
+                            <span class="meta-cat">閱讀心得</span>
+                            <span class="meta-up">上傳: 2026-03-03</span>
+                            <span class="meta-ed">編輯: 2026-03-03</span>
+                        </span>
                         <h2><a href="note.html?file=plague">鼠疫閱讀心得</a></h2>
                     </header>
                     <a href="note.html?file=plague" class="image fit"><img src="images/pic_lit1.jpg" alt="" /></a>
@@ -313,7 +342,11 @@
                 <article class="note-item" data-category="心得" data-upload="2026-03-03" data-edit="2026-03-03"
                     data-title="盲目閱讀心得">
                     <header>
-                        <span class="date">2026-03-03 | 分類: 閱讀心得</span>
+                        <span class="date">
+                            <span class="meta-cat">閱讀心得</span>
+                            <span class="meta-up">上傳: 2026-03-03</span>
+                            <span class="meta-ed">編輯: 2026-03-03</span>
+                        </span>
                         <h2><a href="note.html?file=blindness">盲目閱讀心得</a></h2>
                     </header>
                     <a href="note.html?file=blindness" class="image fit"><img src="images/pic_lit2.jpg" alt="" /></a>
@@ -455,6 +488,12 @@
             let currentPage = 1;
             let activeItems = []; // 當前篩選+排序後的所有項目
 
+            // 建立列表模式表頭
+            const listHeader = document.createElement('div');
+            listHeader.className = 'list-view-header';
+            listHeader.innerHTML = '<span>名稱</span><span>分類</span><span>上傳時間</span><span>最後編輯</span><span>操作</span>';
+            container.insertBefore(listHeader, container.firstChild);
+
             function getFilteredSorted() {
                 const category = filterCategory.value;
                 const sortType = sortBy.value;
@@ -488,6 +527,11 @@
 
                 // 隱藏所有項目，再顯示當頁項目，並保持 DOM 順序
                 allItems.forEach(item => item.style.display = 'none');
+
+                // 確保列表模式時，表頭也一起被排版進去，但永遠在最上方
+                container.innerHTML = '';
+                container.appendChild(listHeader);
+
                 activeItems.forEach((item, i) => {
                     item.style.display = (i >= start && i < end) ? '' : 'none';
                     container.appendChild(item);
