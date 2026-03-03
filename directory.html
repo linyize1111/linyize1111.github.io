@@ -103,6 +103,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            order: 1;
         }
 
         /* 將 metadata (分類、日期) 從 .date 中分離並分配到 grid 欄位 */
@@ -119,12 +120,25 @@
             white-space: nowrap;
         }
 
+        #posts-container.list-view>article.note-item header .date span.meta-cat {
+            order: 2;
+        }
+
+        #posts-container.list-view>article.note-item header .date span.meta-up {
+            order: 3;
+        }
+
+        #posts-container.list-view>article.note-item header .date span.meta-ed {
+            order: 4;
+        }
+
         #posts-container.list-view>article.note-item .actions {
             margin: 0;
             display: flex;
             align-items: center;
             justify-content: flex-end;
             gap: 0.5rem;
+            order: 5;
         }
 
         #posts-container.list-view>article.note-item .actions li {
