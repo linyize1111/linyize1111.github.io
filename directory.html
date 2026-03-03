@@ -183,54 +183,6 @@
         #posts-container:not(.list-view) .list-index {
             display: none !important;
         }
-
-        /* 列表模式下的表頭 (動態產生) */
-        .list-view-header {
-            display: none;
-            width: 100%;
-            align-items: center;
-            grid-template-columns: 4% 32% 13% 16% 16% 19%;
-            padding: 0.5rem 1rem;
-            font-weight: bold;
-            border-bottom: 2px solid rgba(128, 128, 128, 0.2);
-            border-left: 1px solid transparent;
-            border-right: 1px solid transparent;
-            /* Match .note-item horizontal border offset */
-            margin-bottom: 0.5rem;
-            opacity: 0.8;
-            color: inherit;
-        }
-
-        .list-view-header span:nth-child(1) {
-            text-align: left;
-            padding-left: 0.5rem;
-            /* Match list-index padding */
-            padding-right: 1rem;
-        }
-
-        .list-view-header span:nth-child(2) {
-            text-align: left;
-        }
-
-        .list-view-header span:nth-child(3) {
-            text-align: left;
-        }
-
-        .list-view-header span:nth-child(4) {
-            text-align: left;
-        }
-
-        .list-view-header span:nth-child(5) {
-            text-align: left;
-        }
-
-        .list-view-header span:nth-child(6) {
-            text-align: right;
-        }
-
-        #posts-container.list-view .list-view-header {
-            display: grid;
-        }
     </style>
     <noscript>
         <link rel="stylesheet" href="assets/css/noscript.css" />
@@ -635,12 +587,6 @@
             const ITEMS_PER_PAGE = 4;
             let currentPage = 1;
             let activeItems = []; // 當前篩選+排序後的所有項目
-
-            // 建立列表模式表頭
-            const listHeader = document.createElement('div');
-            listHeader.className = 'list-view-header';
-            listHeader.innerHTML = '<span>#</span><span>名稱</span><span>分類</span><span>上傳時間</span><span>最後編輯</span><span>操作</span>';
-            container.insertBefore(listHeader, container.firstChild);
 
             function getFilteredSorted() {
                 const category = filterCategory.value;
