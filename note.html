@@ -133,14 +133,8 @@
     <canvas id="sakura-canvas"
         style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-    <!--  右下角影片控制與深色模式切換 -->
+    <!--  右下角影片控制 -->
     <div id="video-controls">
-        <label class="theme-switch-wrapper" for="checkbox">
-            <div class="theme-switch" title="切換深色模式">
-                <input type="checkbox" id="checkbox" />
-                <div class="slider"></div>
-            </div>
-        </label>
         <button id="btn-mute" title="音效開/關"><i class="fas fa-volume-mute"></i></button>
         <button id="btn-play" title="暫停/播放"><i class="fas fa-pause"></i></button>
     </div>
@@ -266,8 +260,7 @@
 
                         // 將 Markdown 轉成 HTML 並套用 GitHub Markdown CSS
                         // 加入 data-theme 屬性以便配合深色模式切換
-                        const currentTheme = localStorage.getItem('theme') || 'light';
-                        contentEl.innerHTML = `<div class="markdown-body" data-theme="${currentTheme}" style="background: transparent; color: inherit; padding: 2em;">${marked.parse(cleanMarkdown)}</div>`;
+                        contentEl.innerHTML = `<div class="markdown-body" style="background: transparent; color: inherit; padding: 2em;">${marked.parse(cleanMarkdown)}</div>`;
 
                         // 讓 KaTeX 渲染數學公式 ($...$ 或 $$...$$)
                         if (window.renderMathInElement) {
@@ -289,36 +282,6 @@
             }
         });
 
-        //  深色模式切換邏輯
-        document.addEventListener("DOMContentLoaded", () => {
-            const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
-            const currentTheme = localStorage.getItem('theme');
-            const markdownContainer = document.getElementById('markdown-container');
-
-            if (currentTheme) {
-                if (currentTheme === 'dark') {
-                    document.body.classList.add('dark-mode');
-                    toggleSwitch.checked = true;
-                    // 如果有 markdown-body，強制套用深色屬性
-                    if (markdownContainer) markdownContainer.setAttribute('data-color-mode', 'dark');
-                }
-            }
-
-            function switchTheme(e) {
-                if (e.target.checked) {
-                    document.body.classList.add('dark-mode');
-                    localStorage.setItem('theme', 'dark');
-                    if (markdownContainer) markdownContainer.setAttribute('data-color-mode', 'dark');
-                    if (document.querySelector('.markdown-body')) document.querySelector('.markdown-body').setAttribute('data-theme', 'dark');
-                } else {
-                    document.body.classList.remove('dark-mode');
-                    localStorage.setItem('theme', 'light');
-                    if (markdownContainer) markdownContainer.removeAttribute('data-color-mode');
-                    if (document.querySelector('.markdown-body')) document.querySelector('.markdown-body').removeAttribute('data-theme');
-                }
-            }
-            toggleSwitch.addEventListener('change', switchTheme, false);
-        });
     </script>
 
     <script src="https://unpkg.com/zdog@1/dist/zdog.dist.min.js"></script>
