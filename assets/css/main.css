@@ -3515,6 +3515,44 @@ body.dark-mode #main .image.fit img {
 	/* Slightly dim images in dark mode */
 }
 
+/* Dark Mode Form & Button Overrides */
+body.dark-mode #main input[type="submit"],
+body.dark-mode #main input[type="reset"],
+body.dark-mode #main input[type="button"],
+body.dark-mode #main button,
+body.dark-mode #main .button {
+	box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+	color: #e0e0e0 !important;
+}
+
+body.dark-mode #main input[type="submit"]:hover,
+body.dark-mode #main input[type="reset"]:hover,
+body.dark-mode #main input[type="button"]:hover,
+body.dark-mode #main button:hover,
+body.dark-mode #main .button:hover {
+	box-shadow: inset 0 0 0 2px #66b3ff;
+	color: #66b3ff !important;
+	background-color: rgba(102, 179, 255, 0.05);
+}
+
+body.dark-mode #main input[type="submit"].primary,
+body.dark-mode #main input[type="reset"].primary,
+body.dark-mode #main input[type="button"].primary,
+body.dark-mode #main button.primary,
+body.dark-mode #main .button.primary {
+	box-shadow: none;
+	background-color: #66b3ff;
+	color: #1e1e1e !important;
+}
+
+body.dark-mode #main input[type="submit"].primary:hover,
+body.dark-mode #main input[type="reset"].primary:hover,
+body.dark-mode #main input[type="button"].primary:hover,
+body.dark-mode #main button.primary:hover,
+body.dark-mode #main .button.primary:hover {
+	background-color: #99ccff;
+}
+
 /* =========================================
    Markdown Viewer (GitHub CSS) Overrides
    ========================================= */
