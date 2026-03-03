@@ -3425,6 +3425,44 @@ table.alt tbody tr td {
 	/* Add a slight hover grow to make it clear it's interactive */
 }
 
+/* =========================================
+   Markdown Viewer (GitHub CSS) Overrides
+   ========================================= */
+/* HTML5UP table styles conflict with GFM, these reset the specific markdown area */
+.markdown-body table {
+	margin: 0 !important;
+	border-collapse: collapse !important;
+}
+
+/* 確保字體顏色為深色 */
+.markdown-body table th,
+.markdown-body table th *,
+.markdown-body table td,
+.markdown-body table td * {
+	color: #24292f !important;
+}
+
+.markdown-body table th {
+	background-color: #f6f8fa !important;
+	border: 1px solid #d0d7de !important;
+	padding: 6px 13px !important;
+}
+
+.markdown-body table td {
+	background-color: #ffffff !important;
+	border: 1px solid #d0d7de !important;
+	padding: 6px 13px !important;
+}
+
+/* 強制清除單數行斑馬紋 */
+.markdown-body table tbody tr {
+	background-color: transparent !important;
+}
+
+.markdown-body table tbody tr:nth-child(2n + 1) {
+	background-color: transparent !important;
+}
+
 
 
 #wrapper>.bg.fixed {
