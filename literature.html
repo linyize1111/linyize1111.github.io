@@ -61,6 +61,73 @@
             text-align: center;
             margin-bottom: 0.5rem;
         }
+
+        /* 列表模式檢視 */
+        #posts-container.list-view {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        #posts-container.list-view>article.note-item {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 1.5rem;
+            margin: 0;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        #posts-container.list-view>article.note-item:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #posts-container.list-view>article.note-item .image,
+        #posts-container.list-view>article.note-item p {
+            display: none;
+        }
+
+        #posts-container.list-view>article.note-item header {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+            border: none;
+            text-align: left;
+        }
+
+        #posts-container.list-view>article.note-item header h2 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        #posts-container.list-view>article.note-item header .date {
+            margin: 0 0 0.5em 0;
+            font-size: 0.8em;
+        }
+
+        #posts-container.list-view>article.note-item .actions {
+            margin: 0 0 0 2rem;
+            display: flex;
+            align-items: center;
+            flex-direction: row;
+        }
+
+        #posts-container.list-view>article.note-item .actions li {
+            padding: 0;
+            margin-left: 0.5rem;
+        }
+
+        #posts-container.list-view>article.note-item .actions .button {
+            margin-bottom: 0;
+            padding: 0 1rem;
+        }
     </style>
     <noscript>
         <link rel="stylesheet" href="assets/css/noscript.css" />
@@ -224,6 +291,7 @@
                         <option value="edit-desc">最後編輯 (新到舊)</option>
                         <option value="title-asc">名稱 (A-Z)</option>
                         <option value="title-desc">名稱 (Z-A)</option>
+                        <option value="list">列表檢視 (僅標題)</option>
                     </select>
                 </div>
             </div>
@@ -396,7 +464,7 @@
                     return item.dataset.category === category;
                 });
 
-                if (sortType !== 'default') {
+                if (sortType !== 'default' && sortType !== 'list') {
                     filtered.sort((a, b) => {
                         if (sortType === 'upload-desc') return new Date(b.dataset.upload) - new Date(a.dataset.upload);
                         if (sortType === 'upload-asc') return new Date(a.dataset.upload) - new Date(b.dataset.upload);
@@ -464,6 +532,12 @@
 
             function updateView() {
                 currentPage = 1;
+                const sortType = sortBy.value;
+                if (sortType === 'list') {
+                    container.classList.add('list-view');
+                } else {
+                    container.classList.remove('list-view');
+                }
                 activeItems = getFilteredSorted();
                 renderPage();
             }
