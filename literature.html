@@ -623,9 +623,7 @@
                 // 隱藏所有項目，再顯示當頁項目，並保持 DOM 順序
                 allItems.forEach(item => item.style.display = 'none');
 
-                // 確保列表模式時，表頭也一起被排版進去，但永遠在最上方
                 container.innerHTML = '';
-                container.appendChild(listHeader);
 
                 activeItems.forEach((item, i) => {
                     item.style.display = (i >= start && i < end) ? '' : 'none';
