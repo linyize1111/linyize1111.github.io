@@ -52,7 +52,7 @@
 <body class="is-preload">
 
     <!--  影片與音樂背景 -->
-    <video id="bg-video" autoplay muted loop playsinline poster="images/bg.jpg">
+    <video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="none">
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
     <audio id="bg-music" loop preload="none">
@@ -351,6 +351,16 @@
 
 
 <script src="assets/js/spa.js"></script>
+    <script>
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                var v = document.getElementById('bg-video');
+                if (v && sessionStorage.getItem('mediaPaused') !== 'true') {
+                    v.play().catch(function(e){ console.log('Autoplay prevented:', e); });
+                }
+            }, 500); // Small delay to ensure priority is given to rendering the page
+        });
+    </script>
 </body>
 
 </html>
