@@ -59,7 +59,78 @@
             font-size: 0.85em;
             opacity: 0.7;
             text-align: center;
-            margin-bottom: 0.5rem;
+        }
+
+        /* 輪播圖 (Carousel) 樣式 */
+        .card-carousel {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+
+        .carousel-slide {
+            display: none;
+            position: relative;
+            width: 100%;
+        }
+
+        .carousel-slide.active {
+            display: block;
+            animation: carousel-fade 0.5s;
+        }
+
+        @keyframes carousel-fade {
+            from {
+                opacity: 0.4;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .carousel-prev,
+        .carousel-next {
+            cursor: pointer;
+            position: absolute;
+            top: 50%;
+            width: auto;
+            padding: 12px;
+            margin-top: -22px;
+            color: white !important;
+            font-weight: bold;
+            font-size: 18px;
+            transition: 0.3s ease;
+            border-radius: 0 3px 3px 0;
+            user-select: none;
+            background-color: rgba(0, 0, 0, 0.3);
+            text-decoration: none;
+            border: none;
+            z-index: 10;
+        }
+
+        .carousel-prev:hover,
+        .carousel-next:hover {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .carousel-next {
+            right: 0;
+            border-radius: 3px 0 0 3px;
+        }
+
+        .carousel-caption {
+            position: absolute;
+            bottom: 8px;
+            left: 16px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            pointer-events: none;
+            z-index: 5;
         }
 
         /* 列表模式檢視 */
@@ -441,9 +512,25 @@
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類">《鼠疫》閱讀筆記 (一)</a></h2>
+                        <h2><a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類">《鼠疫》閱讀系列</a></h2>
                     </header>
-                    <p>劇情大綱與哲學層次分類</p>
+
+                    <div class="card-carousel">
+                        <div class="carousel-slide">
+                            <a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類" class="image fit" style="margin-bottom:0;">
+                                <img src="images/pic_lit1.jpg" alt="" />
+                                <span class="carousel-caption">第一部：大綱與哲學層次</span>
+                            </a>
+                        </div>
+                        <div class="carousel-slide">
+                            <a href="note.html?lit=plague" class="image fit" style="margin-bottom:0;">
+                                <img src="images/pic_lit2.jpg" alt="" />
+                                <span class="carousel-caption">第二部：人物與荒謬解構</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <p style="margin-top: 1.5rem;">點擊圖片即前往對應篇章的閱讀筆記。</p>
                     <ul class="actions special">
                         <li><a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類" class="button">閱讀心得</a></li>
                     </ul>
@@ -802,6 +889,52 @@
 
 
 
+    <!-- 🖼️ 幻燈片輪播 (Carousel) 控制邏輯 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化輪播圖
+            document.querySelectorAll('.card-carousel').forEach(carousel => {
+                const slides = carousel.querySelectorAll('.carousel-slide');
+                if (slides.length <= 1) return; // 單張圖片不需要輪播控制
+
+                // 插入按鈕
+                const prevBtn = document.createElement('a');
+                prevBtn.className = 'carousel-prev';
+                prevBtn.innerHTML = '&#10094;';
+
+                const nextBtn = document.createElement('a');
+                nextBtn.className = 'carousel-next';
+                nextBtn.innerHTML = '&#10095;';
+
+                carousel.appendChild(prevBtn);
+                carousel.appendChild(nextBtn);
+
+                let slideIndex = 0;
+                slides[slideIndex].classList.add('active');
+
+                function showSlide(index) {
+                    slides.forEach(s => s.classList.remove('active'));
+                    if (index >= slides.length) slideIndex = 0;
+                    if (index < 0) slideIndex = slides.length - 1;
+                    slides[slideIndex].classList.add('active');
+                }
+
+                prevBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    slideIndex--;
+                    showSlide(slideIndex);
+                });
+
+                nextBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    slideIndex++;
+                    showSlide(slideIndex);
+                });
+            });
+        });
+    </script>
 </body>
 
 </html>
