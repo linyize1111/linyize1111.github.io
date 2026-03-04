@@ -498,6 +498,78 @@
         })();
     </script>
 
+    <!-- 🔍 動態檢查檔案是否存在 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const articles = document.querySelectorAll('article.note-item');
+            articles.forEach(article => {
+                const mdButton = article.querySelector('a[href*="?file="].button');
+                const pdfButton = article.querySelector('a[href*="?pdf="].button');
+                const titleLink = article.querySelector('header h2 a');
+                const imageLink = article.querySelector('a.image');
+
+                let mdExists = true;
+                let pdfExists = true;
+                let promises = [];
+
+                if (mdButton) {
+                    const href = mdButton.getAttribute('href');
+                    const match = href.match(/\?file=([^&]+)/);
+                    if (match) {
+                        promises.push(
+                            fetch(`notes/${match[1]}.md`, { method: 'HEAD' })
+                                .then(res => {
+                                    if (!res.ok) {
+                                        mdExists = false;
+                                        if (mdButton.closest('li')) mdButton.closest('li').remove();
+                                        else mdButton.remove();
+                                    }
+                                }).catch(() => {
+                                    mdExists = false;
+                                    if (mdButton.closest('li')) mdButton.closest('li').remove();
+                                    else mdButton.remove();
+                                })
+                        );
+                    }
+                }
+
+                if (pdfButton) {
+                    const href = pdfButton.getAttribute('href');
+                    const match = href.match(/\?pdf=([^&]+)/);
+                    if (match) {
+                        promises.push(
+                            fetch(`images/${match[1]}.pdf`, { method: 'HEAD' })
+                                .then(res => {
+                                    if (!res.ok) {
+                                        pdfExists = false;
+                                        if (pdfButton.closest('li')) pdfButton.closest('li').remove();
+                                        else pdfButton.remove();
+                                    }
+                                }).catch(() => {
+                                    pdfExists = false;
+                                    if (pdfButton.closest('li')) pdfButton.closest('li').remove();
+                                    else pdfButton.remove();
+                                })
+                        );
+                    }
+                }
+
+                // 當檢查完畢後，如果沒有 md 但有 pdf，就把卡片的標題與圖片連結改為指向 pdf
+                Promise.all(promises).then(() => {
+                    if (!mdExists && pdfExists && pdfButton) {
+                        const pdfHref = pdfButton.getAttribute('href');
+                        if (titleLink) titleLink.setAttribute('href', pdfHref);
+                        if (imageLink) imageLink.setAttribute('href', pdfHref);
+                    } else if (!mdExists && !pdfExists) {
+                        // 都沒有則取消預設超連結，避免點擊後 404
+                        if (titleLink) titleLink.removeAttribute('href');
+                        if (imageLink) imageLink.removeAttribute('href');
+                    }
+                });
+            });
+        });
+    </script>
+
     <!-- 📂 文章排序與篩選邏輯 -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
