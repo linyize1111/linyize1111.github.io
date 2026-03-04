@@ -266,7 +266,7 @@
                     breaks: true
                 });
 
-                fetch(`${folderName}/${targetName}.md`)
+                fetch(`${folderName}/${targetName}.md`, { cache: 'no-cache' })
                     .then(response => {
                         if (!response.ok) {
                             throw new Error(`HTTP error! status: ${response.status}`);
@@ -274,12 +274,23 @@
                         return response.text();
                     })
                     .then(markdownText => {
-                        // 移除 YAML front matter
-                        const cleanMarkdown = markdownText.replace(/^-{3}[\s\S]+?-{3}\n/, '');
+                        // 移除所有 YAML front matter 區塊（部分檔案有雙重 --- 區塊）
+                        let cleanMarkdown = markdownText.trim();
+                        while (cleanMarkdown.startsWith('---')) {
+                            const endIdx = cleanMarkdown.indexOf('---', 3);
+                            if (endIdx === -1) break;
+                            cleanMarkdown = cleanMarkdown.slice(endIdx + 3).trimStart();
+                        }
 
                         // 將 Markdown 轉成 HTML 並套用 GitHub Markdown CSS
-                        // 加入 data-theme 屬性以便配合深色模式切換
                         contentEl.innerHTML = `<div class="markdown-body" style="background: transparent; color: inherit; padding: 2em;">${marked.parse(cleanMarkdown)}</div>`;
+
+                        // 更新標題為文章的第一個 h1 標題
+                        const firstH1 = contentEl.querySelector('h1');
+                        if (firstH1) {
+                            titleEl.innerText = firstH1.textContent;
+                            firstH1.remove();
+                        }
 
                         // 讓 KaTeX 渲染數學公式 ($...$ 或 $$...$$)
                         if (window.renderMathInElement) {
