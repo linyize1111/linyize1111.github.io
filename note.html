@@ -275,9 +275,15 @@
                     })
                     .catch(error => {
                         console.error('Fetch error:', error);
-                        titleEl.innerText = '404 檔案未找到';
-                        statusEl.innerText = 'File Not Found';
-                        contentEl.innerHTML = `<p>無法載入筆記。請確認 <strong>/notes/${fileName}.md</strong> 檔案是否存在於您的專案目錄中。</p>`;
+                        if (window.location.protocol === 'file:') {
+                            titleEl.innerText = '本機檔案安全限制 (CORS)';
+                            statusEl.innerText = 'Local File Restriction';
+                            contentEl.innerHTML = `<p>您目前因為直接點擊開啟 HTML 檔案 (使用 <code>file://</code> 協議)，導致瀏覽器的安全機制 (CORS) 阻擋了讀取 <strong>/notes/${fileName}.md</strong> 的請求。</p><p>這不是網站壞掉，而是瀏覽器安全設定！您只需要將檔案推送到 GitHub Pages 上再觀看，或是使用 VS Code 的 Live Server 套件啟動本地伺服器即可正常顯示筆記內容！🚀</p>`;
+                        } else {
+                            titleEl.innerText = '404 檔案未找到';
+                            statusEl.innerText = 'File Not Found';
+                            contentEl.innerHTML = `<p>無法載入筆記。請確認 <strong>/notes/${fileName}.md</strong> 檔案是否存在於您的專案目錄中，且檔名大小寫相符。</p>`;
+                        }
                     });
             }
         });

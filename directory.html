@@ -577,6 +577,12 @@
     <!-- 🔍 動態檢查檔案是否存在 -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // 如果在本機端直接開啟 HTML (file://)，fetch 會因為 CORS 失敗，導致所有按鈕被誤刪，因此直接略過檢查
+            if (window.location.protocol === 'file:') {
+                console.warn("Local file:// protocol detected. Auto-hide file checks are disabled to prevent CORS blocking.");
+                return;
+            }
+
             const articles = document.querySelectorAll('article.note-item');
             articles.forEach(article => {
                 const mdButton = article.querySelector('a[href*="?file="].button');
