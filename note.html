@@ -17,9 +17,12 @@
 
         #markdown-container img {
             max-width: 100%;
-            height: auto;
+            height: 250px;
+            object-fit: contain;
             border-radius: 5px;
-            margin: 1.5em 0;
+            margin: 1.5em auto;
+            background: rgba(0, 0, 0, 0.2);
+            display: block;
         }
 
         #markdown-container pre {
@@ -266,7 +269,7 @@
                     breaks: true
                 });
 
-                fetch(`${folderName}/${targetName}.md`, { cache: 'no-cache' })
+                fetch(`${folderName}/${targetName}.md`)
                     .then(response => {
                         if (!response.ok) {
                             throw new Error(`HTTP error! status: ${response.status}`);
