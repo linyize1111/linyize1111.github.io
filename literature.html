@@ -519,15 +519,9 @@
                         promises.push(
                             fetch(`notes/${match[1]}.md`, { method: 'HEAD' })
                                 .then(res => {
-                                    if (!res.ok) {
-                                        mdExists = false;
-                                        if (mdButton.closest('li')) mdButton.closest('li').remove();
-                                        else mdButton.remove();
-                                    }
+                                    if (!res.ok) mdExists = false;
                                 }).catch(() => {
                                     mdExists = false;
-                                    if (mdButton.closest('li')) mdButton.closest('li').remove();
-                                    else mdButton.remove();
                                 })
                         );
                     }
@@ -540,30 +534,35 @@
                         promises.push(
                             fetch(`images/${match[1]}.pdf`, { method: 'HEAD' })
                                 .then(res => {
-                                    if (!res.ok) {
-                                        pdfExists = false;
-                                        if (pdfButton.closest('li')) pdfButton.closest('li').remove();
-                                        else pdfButton.remove();
-                                    }
+                                    if (!res.ok) pdfExists = false;
                                 }).catch(() => {
                                     pdfExists = false;
-                                    if (pdfButton.closest('li')) pdfButton.closest('li').remove();
-                                    else pdfButton.remove();
                                 })
                         );
+                    } else {
+                        pdfExists = false; // No PDF button = no PDF exists for this article
                     }
+                } else {
+                    pdfExists = false;
                 }
 
-                // 當檢查完畢後，如果沒有 md 但有 pdf，就把卡片的標題與圖片連結改為指向 pdf
+                // 當檢查完畢後執行顯示邏輯
                 Promise.all(promises).then(() => {
-                    if (!mdExists && pdfExists && pdfButton) {
+                    // 若沒有 MD，但「有 PDF」，才把 MD 按鈕刪掉
+                    if (!mdExists && pdfExists) {
+                        if (mdButton) {
+                            if (mdButton.closest('li')) mdButton.closest('li').remove();
+                            else mdButton.remove();
+                        }
+                        // 並將卡片標題/圖片連結改為 PDF
                         const pdfHref = pdfButton.getAttribute('href');
                         if (titleLink) titleLink.setAttribute('href', pdfHref);
                         if (imageLink) imageLink.setAttribute('href', pdfHref);
-                    } else if (!mdExists && !pdfExists) {
-                        // 都沒有則取消預設超連結，避免點擊後 404
-                        if (titleLink) titleLink.removeAttribute('href');
-                        if (imageLink) imageLink.removeAttribute('href');
+                    }
+                    // 如果這張卡片有寫出 PDF 按鈕，但實際上找不到 PDF 文件，就把 PDF 按鈕刪掉
+                    if (!pdfExists && pdfButton) {
+                        if (pdfButton.closest('li')) pdfButton.closest('li').remove();
+                        else pdfButton.remove();
                     }
                 });
             });
