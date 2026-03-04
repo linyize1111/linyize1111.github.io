@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>閱讀筆記 - LYZ's website</title>
+    <title>?��?筆�? - LYZ's website</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <link rel="stylesheet" href="assets/css/main.css" />
@@ -52,11 +52,11 @@
 
 <body class="is-preload">
 
-    <!--  影片與音樂背景 -->
-    <video id="bg-video" autoplay muted loop playsinline>
+    <!--  影�??�音樂�???-->
+    <video id="bg-video" autoplay muted loop playsinline preload="none">
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
-    <audio id="bg-music" loop preload="auto">
+    <audio id="bg-music" loop preload="none">
         <source src="images/bg-music.mp3" type="audio/mpeg">
     </audio>
 
@@ -70,10 +70,10 @@
             var savedMuted = sessionStorage.getItem('mediaMuted');
             var savedPaused = sessionStorage.getItem('mediaPaused');
 
-            // 影片永遠靜音
+            // 影�?永�??�音
             video.muted = true;
 
-            // 如果 session 記錄為真才靜音，否則預設想開聲音
+            // 如�? session 記�??��??��??��??��??�設?��??�音
             var isMuted = (savedMuted === 'true');
             music.muted = isMuted;
 
@@ -86,11 +86,11 @@
                 video.pause();
                 btnPlay.innerHTML = '<i class="fas fa-play"></i>';
             } else {
-                // 嘗試即刻播放
+                // ?�試?�刻?�放
                 var playPromise = music.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(function (error) {
-                        // 有聲音自動播放被瀏覽器阻擋！強制靜音並偷偷在背景繼續播放，確保按下按鈕瞬間有聲音
+                        // ?�聲?�自?�播?�被?�覽?�阻?��?強制?�音並偷?�在?�景繼�??�放，確保�?下�??�瞬?��??�音
                         music.muted = true;
                         updateMuteBtn();
                         sessionStorage.setItem('mediaMuted', 'true');
@@ -105,7 +105,7 @@
                 updateMuteBtn();
                 sessionStorage.setItem('mediaMuted', music.muted);
 
-                // 防呆：如果音樂根本沒開始播，接觸解靜音時順便啟動
+                // ?��?：�??�音樂根?��??��??��??�觸�???��??�便?��?
                 if (music.paused && savedPaused !== 'true') {
                     music.play().catch(function (e) { });
                 }
@@ -132,29 +132,29 @@
         });
     </script>
 
-    <!--  櫻花特效透明層（固定在最上層，不影響互動） -->
+    <!--  櫻花?��??��?層�??��??��?上層，�?影響互�?�?-->
     <canvas id="sakura-canvas"
         style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-    <!-- 全域導航器 -->
+    <!-- ?��?導航??-->
     <div id="global-nav"
         style="position: fixed; top: 20px; right: 20px; z-index: 10000; background: rgba(0, 0, 0, 0.5); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; gap: 15px;">
         <a href="index.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首頁</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首�?</a>
         <a href="directory.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">筆記</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">筆�?</a>
         <a href="literature.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">文學</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">?�學</a>
         <a href="about.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">關於我</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">?�於??/a>
     </div>
 
-    <!--  右下角影片控制 -->
+    <!--  ?��?角影?�控??-->
     <div id="video-controls">
-        <button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
+        <button id="btn-top" title="?�到?�部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
             style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
-        <button id="btn-mute" title="音效開/關"><i class="fas fa-volume-mute"></i></button>
-        <button id="btn-play" title="暫停/播放"><i class="fas fa-pause"></i></button>
+        <button id="btn-mute" title="?��?????><i class="fas fa-volume-mute"></i></button>
+        <button id="btn-play" title="?��?/?�放"><i class="fas fa-pause"></i></button>
     </div>
 
     <div id="wrapper" class="fade-in">
@@ -164,10 +164,10 @@
 
         <nav id="nav">
             <ul class="links">
-                <li><a href="index.html">首頁</a></li>
-                <li><a href="directory.html">學科筆記</a></li>
-                <li><a href="literature.html">文學隨筆</a></li>
-                <li><a href="about.html">關於我</a></li>
+                <li><a href="index.html">首�?</a></li>
+                <li><a href="directory.html">學�?筆�?</a></li>
+                <li><a href="literature.html">?�學?��?</a></li>
+                <li><a href="about.html">?�於??/a></li>
             </ul>
             <ul class="icons">
                 <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
@@ -184,8 +184,8 @@
         <div id="main">
             <section class="post">
                 <header class="major">
-                    <h1 id="note-title">資料載入中<br />Please Wait...</h1>
-                    <p id="note-status">正在從本地資料庫抓取 Markdown 文件</p>
+                    <h1 id="note-title">資�?載入�?br />Please Wait...</h1>
+                    <p id="note-status">�?��從本?��??�庫?��? Markdown ?�件</p>
                 </header>
 
                 <div id="markdown-container">
@@ -213,14 +213,14 @@
     <script src="assets/js/util.js"></script>
     <script src="assets/js/main.js"></script>
 
-    <!-- 引入 marked.js 用於解析 Markdown -->
+    <!-- 引入 marked.js ?�於�?? Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-    <!-- 引入 GitHub Markdown CSS 以獲得類似 HackMD 的排版 -->
+    <!-- 引入 GitHub Markdown CSS 以獲得�?�?HackMD ?��???-->
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown.min.css">
 
-    <!-- 引入 KaTeX 用於數學公式渲染 -->
+    <!-- 引入 KaTeX ?�於?�學?��?渲�? -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
@@ -229,24 +229,24 @@
         document.addEventListener("DOMContentLoaded", () => {
             const urlParams = new URLSearchParams(window.location.search);
             const fileName = urlParams.get('file');
-            const pdfName = urlParams.get('pdf'); // 新增對 PDF 的支援
-            const litName = urlParams.get('lit'); // 新增對文學筆記的支援
+            const pdfName = urlParams.get('pdf'); // ?��?�?PDF ?�支??
+            const litName = urlParams.get('lit'); // ?��?對�?學�?記�??�援
             const titleEl = document.getElementById('note-title');
             const statusEl = document.getElementById('note-status');
             const contentEl = document.getElementById('markdown-container');
 
             if (!fileName && !pdfName && !litName) {
-                titleEl.innerText = '系統錯誤';
-                statusEl.innerText = '未提供檔案參數 (Missing URL Parameter)';
-                contentEl.innerHTML = '<p>請從首頁目錄選擇要閱讀的筆記或簡報。</p>';
+                titleEl.innerText = '系統?�誤';
+                statusEl.innerText = '?��?供�?案�???(Missing URL Parameter)';
+                contentEl.innerHTML = '<p>請�?首�??��??��?要閱讀?��?記�?簡報??/p>';
                 return;
             }
 
             if (pdfName) {
-                // 如果是 PDF 模式
+                // 如�???PDF 模�?
                 const displayTitle = pdfName.replace(/_/g, ' ');
                 titleEl.innerText = displayTitle.toUpperCase();
-                statusEl.innerText = `檔案路徑: /pdfs/${pdfName}.pdf`;
+                statusEl.innerText = `檔�?路�?: /pdfs/${pdfName}.pdf`;
 
                 // 嵌入 PDF
                 contentEl.innerHTML = `
@@ -255,15 +255,15 @@
                     </div>
                 `;
             } else if (fileName || litName) {
-                // 如果是 Markdown 模式 (學術筆記 或 文學筆記)
+                // 如�???Markdown 模�? (學�?筆�? ???�學筆�?)
                 const targetName = fileName || litName;
                 const folderName = fileName ? 'notes' : 'literature';
                 const displayTitle = targetName.replace(/_/g, ' ');
 
                 titleEl.innerText = displayTitle.toUpperCase();
-                statusEl.innerText = `檔案路徑: /${folderName}/${targetName}.md`;
+                statusEl.innerText = `檔�?路�?: /${folderName}/${targetName}.md`;
 
-                // 設定 marked.js 支援 GFM (GitHub Flavored Markdown) 表格等功能
+                // 設�? marked.js ?�援 GFM (GitHub Flavored Markdown) 表格等�???
                 marked.setOptions({
                     gfm: true,
                     breaks: true
@@ -277,7 +277,7 @@
                         return response.text();
                     })
                     .then(markdownText => {
-                        // 移除所有 YAML front matter 區塊（部分檔案有雙重 --- 區塊）
+                        // 移除?�??YAML front matter ?�塊�??��?檔�??��???--- ?�塊�?
                         let cleanMarkdown = markdownText.trim();
                         while (cleanMarkdown.startsWith('---')) {
                             const endIdx = cleanMarkdown.indexOf('---', 3);
@@ -285,17 +285,17 @@
                             cleanMarkdown = cleanMarkdown.slice(endIdx + 3).trimStart();
                         }
 
-                        // 將 Markdown 轉成 HTML 並套用 GitHub Markdown CSS
+                        // �?Markdown 轉�? HTML 並�???GitHub Markdown CSS
                         contentEl.innerHTML = `<div class="markdown-body" style="background: transparent; color: inherit; padding: 2em;">${marked.parse(cleanMarkdown)}</div>`;
 
-                        // 更新標題為文章的第一個 h1 標題
+                        // ?�新標�??��?章�?第�???h1 標�?
                         const firstH1 = contentEl.querySelector('h1');
                         if (firstH1) {
                             titleEl.innerText = firstH1.textContent;
                             firstH1.remove();
                         }
 
-                        // 讓 KaTeX 渲染數學公式 ($...$ 或 $$...$$)
+                        // �?KaTeX 渲�??�學?��? ($...$ ??$$...$$)
                         if (window.renderMathInElement) {
                             window.renderMathInElement(contentEl, {
                                 delimiters: [
@@ -309,13 +309,13 @@
                     .catch(error => {
                         console.error('Fetch error:', error);
                         if (window.location.protocol === 'file:') {
-                            titleEl.innerText = '本機檔案安全限制 (CORS)';
+                            titleEl.innerText = '?��?檔�?安全?�制 (CORS)';
                             statusEl.innerText = 'Local File Restriction';
-                            contentEl.innerHTML = `<p>您目前因為直接點擊開啟 HTML 檔案 (使用 <code>file://</code> 協議)，導致瀏覽器的安全機制 (CORS) 阻擋了讀取 <strong>/${folderName}/${targetName}.md</strong> 的請求。</p><p>這不是網站壞掉，而是瀏覽器安全設定！您只需要將檔案推送到 GitHub Pages 上再觀看，或是使用 VS Code 的 Live Server 套件啟動本地伺服器即可正常顯示筆記內容！🚀</p>`;
+                            contentEl.innerHTML = `<p>?�目?��??�直?��??��???HTML 檔�? (使用 <code>file://</code> ?�議)，�??�瀏覽?��?安全機制 (CORS) ?��?了�???<strong>/${folderName}/${targetName}.md</strong> ?��?求�?/p><p>?��??�網站�??��??�是?�覽?��??�設定�??�只?�要�?檔�??�送到 GitHub Pages 上�?觀?��??�是使用 VS Code ??Live Server 套件?��??�地伺�??�即?�正常顯示�?記內容�???</p>`;
                         } else {
-                            titleEl.innerText = '404 檔案未找到';
+                            titleEl.innerText = '404 檔�??�找??;
                             statusEl.innerText = 'File Not Found';
-                            contentEl.innerHTML = `<p>無法載入筆記。請確認 <strong>/${folderName}/${targetName}.md</strong> 檔案是否存在於您的專案目錄中，且檔名大小寫相符。</p>`;
+                            contentEl.innerHTML = `<p>?��?載入筆�??��?確�? <strong>/${folderName}/${targetName}.md</strong> 檔�??�否存在?�您?��?案目?�中，�?檔�?大�?寫相符�?/p>`;
                         }
                     });
             }
@@ -327,7 +327,7 @@
     <script src="assets/js/mouse-effect.js"></script>
 
 
-    <!--  純 Canvas 2D 櫻花特效（零依賴，不需要圖片） -->
+    <!--  �?Canvas 2D 櫻花?��?（零依賴，�??�要�??��? -->
     <script>
         (function () {
             var canvas = document.getElementById('sakura-canvas');
