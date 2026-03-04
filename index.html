@@ -9,6 +9,33 @@
     <noscript>
         <link rel="stylesheet" href="assets/css/noscript.css" />
     </noscript>
+    <style>
+        /* 統一主圖的圖片尺寸並裁切 */
+        .post.featured .image.main {
+            height: 400px;
+            display: flex;
+        }
+
+        .post.featured .image.main img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        /* 統一小卡片圖片的尺寸並裁切 */
+        .posts article .image.fit {
+            height: 250px;
+            display: flex;
+        }
+
+        .posts article .image.fit img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+    </style>
 </head>
 
 <body class="is-preload">

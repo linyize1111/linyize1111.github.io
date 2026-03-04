@@ -17,6 +17,23 @@
             margin-top: auto;
         }
 
+        /* 統一卡片圖片的尺寸並裁切 */
+        .note-item .image.fit {
+            height: 250px;
+            /* 固定高度，可依照需求微調 */
+            display: flex;
+            margin-bottom: 1.5rem;
+        }
+
+        .note-item .image.fit img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            /* 關鍵：縮放並裁切以填滿區域，不變形 */
+            object-position: center;
+            /* 圖片置中對齊 */
+        }
+
         /* 分頁按鈕區域 */
         #pagination-controls {
             display: flex;
