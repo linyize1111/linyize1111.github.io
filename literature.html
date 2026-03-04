@@ -354,12 +354,12 @@
                             <span class="meta-up">上傳: 2026-03-03</span>
                             <span class="meta-ed">編輯: 2026-03-03</span>
                         </span>
-                        <h2><a href="note.html?file=plague">鼠疫閱讀心得</a></h2>
+                        <h2><a href="note.html?lit=plague">鼠疫閱讀心得</a></h2>
                     </header>
-                    <a href="note.html?file=plague" class="image fit"><img src="images/pic_lit1.jpg" alt="" /></a>
+                    <a href="note.html?lit=plague" class="image fit"><img src="images/pic_lit1.jpg" alt="" /></a>
                     <p>閱讀卡繆《鼠疫》的心得與感想，探討人類面對絕望與苦難時的對抗精神，以及存在主義考察下的陽明與暗影。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?file=plague" class="button">閱讀心得</a></li>
+                        <li><a href="note.html?lit=plague" class="button">閱讀心得</a></li>
                     </ul>
                 </article>
 
@@ -371,12 +371,12 @@
                             <span class="meta-up">上傳: 2026-03-03</span>
                             <span class="meta-ed">編輯: 2026-03-03</span>
                         </span>
-                        <h2><a href="note.html?file=blindness">盲目閱讀心得</a></h2>
+                        <h2><a href="note.html?lit=blindness">盲目閱讀心得</a></h2>
                     </header>
-                    <a href="note.html?file=blindness" class="image fit"><img src="images/pic_lit2.jpg" alt="" /></a>
+                    <a href="note.html?lit=blindness" class="image fit"><img src="images/pic_lit2.jpg" alt="" /></a>
                     <p>閱讀薩拉馬戈《盲目》的心得，語闡失控的文明、人性的崩壞與對存對意義的永恆呼喚。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?file=blindness" class="button">閱讀心得</a></li>
+                        <li><a href="note.html?lit=blindness" class="button">閱讀心得</a></li>
                     </ul>
                 </article>
             </section>
@@ -509,7 +509,7 @@
 
             const articles = document.querySelectorAll('article.note-item');
             articles.forEach(article => {
-                const mdButton = article.querySelector('a[href*="?file="].button');
+                const mdButton = article.querySelector('a[href*="?lit="].button');
                 const pdfButton = article.querySelector('a[href*="?pdf="].button');
                 const titleLink = article.querySelector('header h2 a');
                 const imageLink = article.querySelector('a.image');
@@ -520,10 +520,10 @@
 
                 if (mdButton) {
                     const href = mdButton.getAttribute('href');
-                    const match = href.match(/\?file=([^&]+)/);
+                    const match = href.match(/\?lit=([^&]+)/);
                     if (match) {
                         promises.push(
-                            fetch(`notes/${match[1]}.md`, { method: 'HEAD' })
+                            fetch(`literature/${match[1]}.md`, { method: 'HEAD' })
                                 .then(res => {
                                     if (!res.ok) mdExists = false;
                                 }).catch(() => {
