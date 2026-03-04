@@ -61,23 +61,40 @@
             text-align: center;
         }
 
-        /* 輪播圖 (Carousel) 樣式 */
         .card-carousel {
             position: relative;
             width: 100%;
             overflow: hidden;
             border-radius: 4px;
+            flex-grow: 1;
+            /* 允許輪播組件佔滿剩餘高度，讓按鈕貼底 */
+            display: flex;
+            flex-direction: column;
         }
 
         .carousel-slide {
             display: none;
             position: relative;
             width: 100%;
+            height: 100%;
+            /* 填滿輪播容器高度 */
         }
 
         .carousel-slide.active {
             display: block;
             animation: carousel-fade 0.5s;
+        }
+
+        .carousel-slide .image.fit {
+            height: 100%;
+            margin-bottom: 0;
+            display: flex;
+        }
+
+        .carousel-slide .image.fit img {
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
         }
 
         @keyframes carousel-fade {
@@ -450,13 +467,13 @@
                         <div class="carousel-slide">
                             <a href="note.html?lit=2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證" class="image fit"
                                 style="margin-bottom:0;">
-                                <img src="images/忠烈祠的貓與夜空下的見證附圖1.jpg" alt="" />
+                                <img src="images/忠烈祠的貓與夜空下的見證附圖2.jpg" alt="" />
                             </a>
                         </div>
                         <div class="carousel-slide">
                             <a href="note.html?lit=2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證" class="image fit"
                                 style="margin-bottom:0;">
-                                <img src="images/忠烈祠的貓與夜空下的見證附圖2.jpg" alt="" />
+                                <img src="images/忠烈祠的貓與夜空下的見證附圖1.jpg" alt="" />
                             </a>
                         </div>
                     </div>
@@ -534,7 +551,7 @@
                     <div class="card-carousel">
                         <div class="carousel-slide">
                             <a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類" class="image fit" style="margin-bottom:0;">
-                                <img src="images/pic_lit1.jpg" alt="" />
+                                <img src="images/鼠疫附圖.jpg" alt="" />
                                 <span class="carousel-caption">第一部：大綱與哲學層次</span>
                             </a>
                         </div>
