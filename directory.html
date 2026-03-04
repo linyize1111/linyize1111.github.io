@@ -2,12 +2,12 @@
 <html>
 
 <head>
-    <title>LYZ's website - 筆�?系統</title>
+    <title>LYZ's website - 筆記系統</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <link rel="stylesheet" href="assets/css/main.css" />
     <style>
-        /* ?��??��?等�?：�??�固定在底部 */
+        /* 文章卡片等高：按鈕固定在底部 */
         #posts-container.posts>article.note-item {
             display: flex;
             flex-direction: column;
@@ -17,7 +17,7 @@
             margin-top: auto;
         }
 
-        /* 統�??��??��??�尺�?*/
+        /* 統一卡片圖片的尺寸 */
         .note-item .image.fit {
             height: 250px;
             display: flex;
@@ -34,7 +34,7 @@
             object-position: center;
         }
 
-        /* ?��??��??�??*/
+        /* 分頁按鈕區域 */
         #pagination-controls {
             display: flex;
             justify-content: center;
@@ -80,7 +80,7 @@
             margin-bottom: 0.5rem;
         }
 
-        /* ?�表模�?檢�? */
+        /* 列表模式檢視 */
         #posts-container.list-view {
             display: flex;
             flex-direction: column;
@@ -133,10 +133,10 @@
             align-self: center;
         }
 
-        /* �?metadata (?��??�日?? �?.date 中�??�並?��???grid 欄�? */
+        /* 將 metadata (分類、日期) 從 .date 中分離並分配到 grid 欄位 */
         #posts-container.list-view>article.note-item header .date {
             display: contents;
-            /* 讓內?��? span ?�以?��? grid ?��? */
+            /* 讓內部的 span 可以參與 grid 排版 */
             font-size: 0.9em;
         }
 
@@ -209,11 +209,11 @@
 
 <body class="is-preload">
 
-    <!--  影�??�音樂�???-->
-    <video id="bg-video" autoplay muted loop playsinline preload="none">
+    <!--  影片與音樂背景 -->
+    <video id="bg-video" autoplay muted loop playsinline>
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
-    <audio id="bg-music" loop preload="none">
+    <audio id="bg-music" loop preload="auto">
         <source src="images/bg-music.mp3" type="audio/mpeg">
     </audio>
 
@@ -227,10 +227,10 @@
             var savedMuted = sessionStorage.getItem('mediaMuted');
             var savedPaused = sessionStorage.getItem('mediaPaused');
 
-            // 影�?永�??�音
+            // 影片永遠靜音
             video.muted = true;
 
-            // 如�? session 記�??��??��??��??��??�設?��??�音
+            // 如果 session 記錄為真才靜音，否則預設想開聲音
             var isMuted = (savedMuted === 'true');
             music.muted = isMuted;
 
@@ -243,11 +243,11 @@
                 video.pause();
                 btnPlay.innerHTML = '<i class="fas fa-play"></i>';
             } else {
-                // ?�試?�刻?�放
+                // 嘗試即刻播放
                 var playPromise = music.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(function (error) {
-                        // ?�聲?�自?�播?�被?�覽?�阻?��?強制?�音並偷?�在?�景繼�??�放，確保�?下�??�瞬?��??�音
+                        // 有聲音自動播放被瀏覽器阻擋！強制靜音並偷偷在背景繼續播放，確保按下按鈕瞬間有聲音
                         music.muted = true;
                         updateMuteBtn();
                         sessionStorage.setItem('mediaMuted', 'true');
@@ -262,7 +262,7 @@
                 updateMuteBtn();
                 sessionStorage.setItem('mediaMuted', music.muted);
 
-                // ?��?：�??�音樂根?��??��??��??�觸�???��??�便?��?
+                // 防呆：如果音樂根本沒開始播，接觸解靜音時順便啟動
                 if (music.paused && savedPaused !== 'true') {
                     music.play().catch(function (e) { });
                 }
@@ -289,25 +289,25 @@
         });
     </script>
 
-    <!-- ?��?導航??-->
+    <!-- 全域導航器 -->
     <div id="global-nav"
         style="position: fixed; top: 20px; right: 20px; z-index: 10000; background: rgba(0, 0, 0, 0.5); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; gap: 15px;">
         <a href="index.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首�?</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首頁</a>
         <a href="directory.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">筆�?</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">筆記</a>
         <a href="literature.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">?�學</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">文學</a>
         <a href="about.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">?�於??/a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">關於我</a>
     </div>
 
-    <!--  ?��?角影?�控??-->
+    <!--  右下角影片控制 -->
     <div id="video-controls">
-        <button id="btn-top" title="?�到?�部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
+        <button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
             style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
-        <button id="btn-mute" title="?��?????><i class="fas fa-volume-mute"></i></button>
-        <button id="btn-play" title="?��?/?�放"><i class="fas fa-pause"></i></button>
+        <button id="btn-mute" title="音效開/關"><i class="fas fa-volume-mute"></i></button>
+        <button id="btn-play" title="暫停/播放"><i class="fas fa-pause"></i></button>
     </div>
 
     <div id="wrapper" class="fade-in">
@@ -318,10 +318,10 @@
 
         <nav id="nav">
             <ul class="links">
-                <li><a href="index.html">首�?</a></li>
-                <li class="active"><a href="directory.html">學�?筆�?</a></li>
-                <li><a href="literature.html">?�學?��?</a></li>
-                <li><a href="about.html">?�於??/a></li>
+                <li><a href="index.html">首頁</a></li>
+                <li class="active"><a href="directory.html">學科筆記</a></li>
+                <li><a href="literature.html">文學隨筆</a></li>
+                <li><a href="about.html">關於我</a></li>
             </ul>
             <ul class="icons">
                 <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
@@ -338,189 +338,189 @@
         <div id="main">
             <article class="post featured">
                 <header class="major">
-                    <span class="date">學�?歷�?</span>
-                    <h2><a href="#">學�?筆�?</a></h2>
-                    <p>?�裡?��?了�??��??�學習�?跡�??��?專�?紀?��?涵�?了在資�?工�??��??��??�探索。�??��??��?式�?言學�??�進�??��?算�??��??�庫概念，到資�?安全?��??�學習�?實�??�用，�?詳實?��??�於此。�??�這�?筆�?不�??��??��??�人專業?�長?��?證�?也能?�為?��?好們相互交流、�?磋�??��?寶庫??
+                    <span class="date">學習歷程</span>
+                    <h2><a href="#">學科筆記</a></h2>
+                    <p>這裡收錄了我過往的學習軌跡與重要專案紀錄，涵蓋了在資訊工程領域的各項探索。從基礎的程式語言學習、進階的演算法與資料庫概念，到資訊安全、機器學習等實務應用，皆詳實地記錄於此。期望這些筆記不僅能作為我個人專業成長的見證，也能成為與同好們相互交流、切磋的知識寶庫。
                     </p>
                 </header>
             </article>
 
-            <!-- 篩選?��?序控?�面??-->
+            <!-- 篩選與排序控制面板 -->
             <div id="sort-filter-controls"
                 style="display: flex; gap: 15px; margin-bottom: 2rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                 <div>
                     <label for="filter-category"
-                        style="display:inline-block; margin-right: 10px; margin-bottom: 0; font-weight: bold;">?��?篩選:</label>
+                        style="display:inline-block; margin-right: 10px; margin-bottom: 0; font-weight: bold;">分類篩選:</label>
                     <select id="filter-category" style="display:inline-block; width: auto; min-width: 150px;">
-                        <option value="all">?�?��?�?(All)</option>
-                        <option value="資�?安全">資�?安全</option>
-                        <option value="機器學�?">機器學�?</option>
-                        <option value="程�?語�?">程�?語�?</option>
-                        <option value="人�?">人�?</option>
+                        <option value="all">所有分類 (All)</option>
+                        <option value="資訊安全">資訊安全</option>
+                        <option value="機器學習">機器學習</option>
+                        <option value="程式語言">程式語言</option>
+                        <option value="人文">人文</option>
                     </select>
                 </div>
                 <div>
                     <label for="sort-by"
-                        style="display:inline-block; margin-right: 10px; margin-bottom: 0; font-weight: bold;">?��??��?:</label>
+                        style="display:inline-block; margin-right: 10px; margin-bottom: 0; font-weight: bold;">排序方式:</label>
                     <select id="sort-by" style="display:inline-block; width: auto; min-width: 150px;">
-                        <option value="default">?�設?��?</option>
-                        <option value="upload-desc" selected>上傳?��? (?�到??</option>
-                        <option value="upload-asc">上傳?��? (?�到??</option>
-                        <option value="edit-desc">?�後編�?(?�到??</option>
-                        <option value="title-asc">?�稱 (A-Z)</option>
-                        <option value="title-desc">?�稱 (Z-A)</option>
-                        <option value="list">?�表檢�? (?��?�?</option>
+                        <option value="default">預設排序</option>
+                        <option value="upload-desc" selected>上傳時間 (新到舊)</option>
+                        <option value="upload-asc">上傳時間 (舊到新)</option>
+                        <option value="edit-desc">最後編輯 (新到舊)</option>
+                        <option value="title-asc">名稱 (A-Z)</option>
+                        <option value="title-desc">名稱 (Z-A)</option>
+                        <option value="list">列表檢視 (僅標題)</option>
                     </select>
                 </div>
             </div>
 
             <section class="posts" id="posts-container">
-                <article class="note-item" data-category="資�?安全" data-upload="2023-10-01" data-edit="2023-11-20"
-                    data-title="資�?安全?��??��?">
+                <article class="note-item" data-category="資訊安全" data-upload="2023-10-01" data-edit="2023-11-20"
+                    data-title="資訊安全基礎知識">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">資�?安全</span>
+                            <span class="meta-cat">資訊安全</span>
                             <span class="meta-up">上傳: 2023-10-01</span>
                             <span class="meta-ed">編輯: 2023-11-20</span>
                         </span>
-                        <h2><a href="note.html?file=security_basics">資�?安全?��??��?</a></h2>
+                        <h2><a href="note.html?file=security_basics">資訊安全基礎知識</a></h2>
                     </header>
-                    <a href="note.html?file=security_basics" class="image fit"><img loading="lazy" src="images/pic_note1.jpg"
+                    <a href="note.html?file=security_basics" class="image fit"><img src="images/pic_note1.jpg"
                             alt="" /></a>
-                    <p>?��?資�?安全課�??�其他�?訊�??��??��??�索紀?��?/p>
+                    <p>參加資訊安全課程及其他資訊領域的自行探索紀錄。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?file=security_basics" class="button">?��?筆�?</a></li>
-                        <li><a href="note.html?pdf=資�?" class="button primary">檢�?簡報 (PDF)</a></li>
+                        <li><a href="note.html?file=security_basics" class="button">閱讀筆記</a></li>
+                        <li><a href="note.html?pdf=資安" class="button primary">檢視簡報 (PDF)</a></li>
                     </ul>
                 </article>
 
-                <article class="note-item" data-category="機器學�?" data-upload="2023-09-15" data-edit="2023-10-25"
-                    data-title="機器學�??��??��?">
+                <article class="note-item" data-category="機器學習" data-upload="2023-09-15" data-edit="2023-10-25"
+                    data-title="機器學習進階理論">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">機器學�?</span>
+                            <span class="meta-cat">機器學習</span>
                             <span class="meta-up">上傳: 2023-09-15</span>
                             <span class="meta-ed">編輯: 2023-10-25</span>
                         </span>
-                        <h2><a href="note.html?file=machine_learning">機器學�??��??��?</a></h2>
+                        <h2><a href="note.html?file=machine_learning">機器學習進階理論</a></h2>
                     </header>
-                    <a href="note.html?file=machine_learning" class="image fit"><img loading="lazy" src="images/pic_note2.jpg"
+                    <a href="note.html?file=machine_learning" class="image fit"><img src="images/pic_note2.jpg"
                             alt="" /></a>
-                    <p>?�大?��??��??�課程「�??�學習基?�」�?學�?筆�??��?點整?��?/p>
+                    <p>台大林軒田教授課程「機器學習基石」的學習筆記與重點整理。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?file=machine_learning" class="button">?��?筆�?</a></li>
+                        <li><a href="note.html?file=machine_learning" class="button">閱讀筆記</a></li>
                     </ul>
                 </article>
 
-                <article class="note-item" data-category="程�?語�?" data-upload="2023-08-10" data-edit="2023-12-05"
-                    data-title="Python 學�?紀??>
+                <article class="note-item" data-category="程式語言" data-upload="2023-08-10" data-edit="2023-12-05"
+                    data-title="Python 學習紀錄">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">程�?語�?</span>
+                            <span class="meta-cat">程式語言</span>
                             <span class="meta-up">上傳: 2023-08-10</span>
                             <span class="meta-ed">編輯: 2023-12-05</span>
                         </span>
-                        <h2><a href="note.html?file=python_learning">Python 學�?紀??/a></h2>
+                        <h2><a href="note.html?file=python_learning">Python 學習紀錄</a></h2>
                     </header>
-                    <a href="note.html?file=python_learning" class="image fit"><img loading="lazy" src="images/pic_note3.jpg"
+                    <a href="note.html?file=python_learning" class="image fit"><img src="images/pic_note3.jpg"
                             alt="" /></a>
-                    <p>?�學 Python 程�?語�??�基礎�?法�?專�?實�?紀?��?/p>
+                    <p>自學 Python 程式語言的基礎語法與專案實作紀錄。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?file=python_learning" class="button">?��?筆�?</a></li>
-                        <li><a href="note.html?pdf=Python" class="button primary">檢�?簡報 (PDF)</a></li>
+                        <li><a href="note.html?file=python_learning" class="button">閱讀筆記</a></li>
+                        <li><a href="note.html?pdf=Python" class="button primary">檢視簡報 (PDF)</a></li>
                     </ul>
                 </article>
 
-                <article class="note-item" data-category="程�?語�?" data-upload="2026-03-03" data-edit="2026-03-03"
-                    data-title="?�發discord?�天機器�?>
+                <article class="note-item" data-category="程式語言" data-upload="2026-03-03" data-edit="2026-03-03"
+                    data-title="開發discord聊天機器人">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">程�?語�?</span>
+                            <span class="meta-cat">程式語言</span>
                             <span class="meta-up">上傳: 2026-03-03</span>
                             <span class="meta-ed">編輯: 2026-03-03</span>
                         </span>
-                        <h2><a href="note.html?file=discord_bot">?�發 Discord ?�天機器�?/a></h2>
+                        <h2><a href="note.html?file=discord_bot">開發 Discord 聊天機器人</a></h2>
                     </header>
-                    <a href="note.html?file=discord_bot" class="image fit"><img loading="lazy" src="images/pic_note4.jpg" alt="" /></a>
-                    <p>使用 Python ??discord.py ?��?庫�?從零?��?建�?一?�具?��?令系統�??��??��??�能??Discord 機器人�?/p>
+                    <a href="note.html?file=discord_bot" class="image fit"><img src="images/pic_note4.jpg" alt="" /></a>
+                    <p>使用 Python 與 discord.py 函式庫，從零開始建構一個具備指令系統與自動回覆功能的 Discord 機器人。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?file=discord_bot" class="button">?��?筆�?</a></li>
+                        <li><a href="note.html?file=discord_bot" class="button">閱讀筆記</a></li>
                         <li><a href="note.html?pdf=%E5%A4%9A%E5%85%83%E8%A1%A8%E7%8F%BE%20%E8%87%AA%E8%A3%BDdiscord%E6%A9%9F%E5%99%A8%E4%BA%BA"
-                                class="button primary">檢�?簡報 (PDF)</a></li>
+                                class="button primary">檢視簡報 (PDF)</a></li>
                     </ul>
                 </article>
 
-                <article class="note-item" data-category="程�?語�?" data-upload="2026-03-03" data-edit="2026-03-03"
-                    data-title="?�建?�己?�網�?>
+                <article class="note-item" data-category="程式語言" data-upload="2026-03-03" data-edit="2026-03-03"
+                    data-title="搭建自己的網站">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">程�?語�?</span>
+                            <span class="meta-cat">程式語言</span>
                             <span class="meta-up">上傳: 2026-03-03</span>
                             <span class="meta-ed">編輯: 2026-03-03</span>
                         </span>
-                        <h2><a href="note.html?file=build_website">?�建?�己?�網�?/a></h2>
+                        <h2><a href="note.html?file=build_website">搭建自己的網站</a></h2>
                     </header>
-                    <a href="note.html?file=build_website" class="image fit"><img loading="lazy" src="images/pic_note5.jpg"
+                    <a href="note.html?file=build_website" class="image fit"><img src="images/pic_note5.jpg"
                             alt="" /></a>
-                    <p>從購買網?�、設�?GitHub Pages，到設�??�端?�面，�??��??�建立個人網�??�全?��???/p>
+                    <p>從購買網域、設定 GitHub Pages，到設計前端頁面，完整記錄建立個人網站的全過程。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?file=build_website" class="button">?��?筆�?</a></li>
+                        <li><a href="note.html?file=build_website" class="button">閱讀筆記</a></li>
                     </ul>
                 </article>
 
-                <article class="note-item" data-category="人�?" data-upload="2026-03-03" data-edit="2026-03-03"
-                    data-title="?�通�??�學筆�?">
+                <article class="note-item" data-category="人文" data-upload="2026-03-03" data-edit="2026-03-03"
+                    data-title="普通心理學筆記">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">人�?</span>
+                            <span class="meta-cat">人文</span>
                             <span class="meta-up">上傳: 2026-03-03</span>
                             <span class="meta-ed">編輯: 2026-03-03</span>
                         </span>
-                        <h2><a href="note.html?file=psychology">?�通�??�學筆�?</a></h2>
+                        <h2><a href="note.html?file=psychology">普通心理學筆記</a></h2>
                     </header>
-                    <a href="note.html?file=psychology" class="image fit"><img loading="lazy" src="images/pic_note6.jpg" alt="" /></a>
-                    <p>修�??�通�??�學課�??�學習�?記�?涵�??�知?��??�、�?緒、發展�??�學等核心�?論�?/p>
+                    <a href="note.html?file=psychology" class="image fit"><img src="images/pic_note6.jpg" alt="" /></a>
+                    <p>修習普通心理學課程的學習筆記，涵蓋感知、記憶、情緒、發展心理學等核心理論。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?file=psychology" class="button">?��?筆�?</a></li>
+                        <li><a href="note.html?file=psychology" class="button">閱讀筆記</a></li>
                     </ul>
                 </article>
 
-                <article class="note-item" data-category="程�?語�?" data-upload="2023-06-01" data-edit="2023-06-01"
-                    data-title="高�??��?程�?設�?課�?學�??��?">
+                <article class="note-item" data-category="程式語言" data-upload="2023-06-01" data-edit="2023-06-01"
+                    data-title="高三進階程式設計課程學習成果">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">程�?語�?</span>
+                            <span class="meta-cat">程式語言</span>
                             <span class="meta-up">上傳: 2023-06-01</span>
                             <span class="meta-ed">編輯: 2023-06-01</span>
                         </span>
-                        <h2><a href="note.html?pdf=31711高�??��?程�?設�?課�?學�??��?">高�??��?程�?設�?課�?學�??��?</a></h2>
+                        <h2><a href="note.html?pdf=31711高三進階程式設計課程學習成果">高三進階程式設計課程學習成果</a></h2>
                     </header>
-                    <a href="note.html?pdf=31711高�??��?程�?設�?課�?學�??��?" class="image fit"><img loading="lazy" src="images/pic_note1.jpg"
+                    <a href="note.html?pdf=31711高三進階程式設計課程學習成果" class="image fit"><img src="images/pic_note1.jpg"
                             alt="" /></a>
-                    <p>高�??��??��?程�?設�?課�??�學習�??�簡?��?涵�??��?程�?專�??�實作�??��?/p>
+                    <p>高三時期進階程式設計課程的學習成果簡報，涵蓋各項程式專題與實作紀錄。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?pdf=31711高�??��?程�?設�?課�?學�??��?" class="button primary">檢�?簡報 (PDF)</a></li>
+                        <li><a href="note.html?pdf=31711高三進階程式設計課程學習成果" class="button primary">檢視簡報 (PDF)</a></li>
                     </ul>
                 </article>
 
-                <article class="note-item" data-category="人�?" data-upload="2024-01-01" data-edit="2024-01-01"
-                    data-title="學�?歷�?117-11">
+                <article class="note-item" data-category="人文" data-upload="2024-01-01" data-edit="2024-01-01"
+                    data-title="學習歷程117-11">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">人�?</span>
+                            <span class="meta-cat">人文</span>
                             <span class="meta-up">上傳: 2024-01-01</span>
                             <span class="meta-ed">編輯: 2024-01-01</span>
                         </span>
-                        <h2><a href="note.html?pdf=學�?歷�?117-11">學�?歷�? 117-11</a></h2>
+                        <h2><a href="note.html?pdf=學習歷程117-11">學習歷程 117-11</a></h2>
                     </header>
-                    <a href="note.html?pdf=學�?歷�?117-11" class="image fit"><img loading="lazy" src="images/pic_note6.jpg" alt="" /></a>
-                    <p>高中?�段?�學習歷程�?案�?記�?學�??�就?�課外�??��??�人?�長軌跡??/p>
+                    <a href="note.html?pdf=學習歷程117-11" class="image fit"><img src="images/pic_note6.jpg" alt="" /></a>
+                    <p>高中階段的學習歷程檔案，記錄學科成就、課外參與及個人成長軌跡。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?pdf=學�?歷�?117-11" class="button primary">檢�?簡報 (PDF)</a></li>
+                        <li><a href="note.html?pdf=學習歷程117-11" class="button primary">檢視簡報 (PDF)</a></li>
                     </ul>
                 </article>
             </section>
-            <!-- ?��?資�??��???-->
+            <!-- 分頁資訊與按鈕 -->
             <div id="pagination-controls"></div>
             <p id="page-info" style="margin-top: 1.5rem;"></p>
         </div>
@@ -544,7 +544,7 @@
     <script src="https://unpkg.com/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
 
-    <!--  �?Canvas 2D 櫻花?��?（零依賴，�??�要�??��? -->
+    <!--  純 Canvas 2D 櫻花特效（零依賴，不需要圖片） -->
     <script>
         (function () {
             var canvas = document.getElementById('sakura-canvas');
@@ -638,10 +638,10 @@
         })();
     </script>
 
-    <!-- ?? ?��?檢查檔�??�否存在 -->
+    <!-- 🔍 動態檢查檔案是否存在 -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // 如�??�本機端?�接?��? HTML (file://)，fetch ?��???CORS 失�?，�??��??��??�被誤刪，�?此直?�略?�檢??
+            // 如果在本機端直接開啟 HTML (file://)，fetch 會因為 CORS 失敗，導致所有按鈕被誤刪，因此直接略過檢查
             if (window.location.protocol === 'file:') {
                 console.warn("Local file:// protocol detected. Auto-hide file checks are disabled to prevent CORS blocking.");
                 return;
@@ -692,20 +692,20 @@
                     pdfExists = false;
                 }
 
-                // ?�檢?��??��??��?顯示?�輯
+                // 當檢查完畢後執行顯示邏輯
                 Promise.all(promises).then(() => {
-                    // ?��???MD，�??��? PDF?��??��? MD ?��??��?
+                    // 若沒有 MD，但「有 PDF」，才把 MD 按鈕刪掉
                     if (!mdExists && pdfExists) {
                         if (mdButton) {
                             if (mdButton.closest('li')) mdButton.closest('li').remove();
                             else mdButton.remove();
                         }
-                        // 並�??��?標�?/?��?????�為 PDF
+                        // 並將卡片標題/圖片連結改為 PDF
                         const pdfHref = pdfButton.getAttribute('href');
                         if (titleLink) titleLink.setAttribute('href', pdfHref);
                         if (imageLink) imageLink.setAttribute('href', pdfHref);
                     }
-                    // 如�??�張?��??�寫??PDF ?��?，�?實�?上找不到 PDF ?�件，就??PDF ?��??��?
+                    // 如果這張卡片有寫出 PDF 按鈕，但實際上找不到 PDF 文件，就把 PDF 按鈕刪掉
                     if (!pdfExists && pdfButton) {
                         if (pdfButton.closest('li')) pdfButton.closest('li').remove();
                         else pdfButton.remove();
@@ -715,7 +715,7 @@
         });
     </script>
 
-    <!-- ?? ?��??��??�篩?��?�?-->
+    <!-- 📂 文章排序與篩選邏輯 -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const filterCategory = document.getElementById('filter-category');
@@ -727,7 +727,7 @@
             const initialOrder = allItems.slice();
             const ITEMS_PER_PAGE = 4;
             let currentPage = 1;
-            let activeItems = []; // ?��?篩選+?��?後�??�?��???
+            let activeItems = []; // 當前篩選+排序後的所有項目
 
             function getFilteredSorted() {
                 const category = filterCategory.value;
@@ -774,12 +774,12 @@
                     container.appendChild(item);
                 });
 
-                // ?�新?�碼資�?
+                // 更新頁碼資訊
                 pageInfo.textContent = activeItems.length > 0
-                    ? `�?${currentPage} ?��???${totalPages} ?��?${activeItems.length} 篇�?章�?`
-                    : '?�符?��?件�??�容';
+                    ? `第 ${currentPage} 頁，共 ${totalPages} 頁（${activeItems.length} 篇文章）`
+                    : '無符合條件的內容';
 
-                // 建�??��??��?
+                // 建立分頁按鈕
                 paginationControls.innerHTML = '';
                 if (totalPages <= 1) return;
 
@@ -801,9 +801,9 @@
                 }
 
                 paginationControls.appendChild(makeBtn('«', 1, currentPage === 1, false));
-                paginationControls.appendChild(makeBtn('??, currentPage - 1, currentPage === 1, false));
+                paginationControls.appendChild(makeBtn('‹', currentPage - 1, currentPage === 1, false));
 
-                // 顯示?�碼?��?（�?多�???5 ?��?
+                // 顯示頁碼按鈕（最多展現 5 頁）
                 let startPage = Math.max(1, currentPage - 2);
                 let endPage = Math.min(totalPages, startPage + 4);
                 if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
@@ -812,7 +812,7 @@
                     paginationControls.appendChild(makeBtn(p, p, false, p === currentPage));
                 }
 
-                paginationControls.appendChild(makeBtn('??, currentPage + 1, currentPage === totalPages, false));
+                paginationControls.appendChild(makeBtn('›', currentPage + 1, currentPage === totalPages, false));
                 paginationControls.appendChild(makeBtn('»', totalPages, currentPage === totalPages, false));
             }
 
@@ -831,7 +831,7 @@
             filterCategory.addEventListener('change', updateView);
             sortBy.addEventListener('change', updateView);
 
-            // ?��???
+            // 初始化
             updateView();
         });
     </script>

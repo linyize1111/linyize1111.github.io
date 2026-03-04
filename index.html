@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>LYZ's website - 筆�?系統</title>
+    <title>LYZ's website - 筆記系統</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <link rel="stylesheet" href="assets/css/main.css" />
@@ -10,14 +10,14 @@
         <link rel="stylesheet" href="assets/css/noscript.css" />
     </noscript>
     <style>
-        /* 統�?主�??��??�尺寸並裁�? */
+        /* 統一主圖的圖片尺寸並裁切 */
         .post.featured .image.main {
             height: 400px;
             display: flex;
             justify-content: center;
             align-items: center;
             background: rgba(0, 0, 0, 0.8);
-            /* 深色?�景襯�??�填滿�???*/
+            /* 深色背景襯托未填滿區域 */
         }
 
         .post.featured .image.main img {
@@ -29,7 +29,7 @@
             object-position: center;
         }
 
-        /* 統�?小卡?��??��?尺寸並�???*/
+        /* 統一小卡片圖片的尺寸並裁切 */
         .posts article .image.fit {
             height: 250px;
             display: flex;
@@ -51,11 +51,11 @@
 
 <body class="is-preload">
 
-    <!--  影�??�音樂�???-->
-    <video id="bg-video" autoplay muted loop playsinline preload="none">
+    <!--  影片與音樂背景 -->
+    <video id="bg-video" autoplay muted loop playsinline>
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
-    <audio id="bg-music" loop preload="none">
+    <audio id="bg-music" loop preload="auto">
         <source src="images/bg-music.mp3" type="audio/mpeg">
     </audio>
 
@@ -69,10 +69,10 @@
             var savedMuted = sessionStorage.getItem('mediaMuted');
             var savedPaused = sessionStorage.getItem('mediaPaused');
 
-            // 影�?永�??�音
+            // 影片永遠靜音
             video.muted = true;
 
-            // 如�? session 記�??��??��??��??��??�設?��??�音
+            // 如果 session 記錄為真才靜音，否則預設想開聲音
             var isMuted = (savedMuted === 'true');
             music.muted = isMuted;
 
@@ -85,11 +85,11 @@
                 video.pause();
                 btnPlay.innerHTML = '<i class="fas fa-play"></i>';
             } else {
-                // ?�試?�刻?�放
+                // 嘗試即刻播放
                 var playPromise = music.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(function (error) {
-                        // ?�聲?�自?�播?�被?�覽?�阻?��?強制?�音並偷?�在?�景繼�??�放，確保�?下�??�瞬?��??�音
+                        // 有聲音自動播放被瀏覽器阻擋！強制靜音並偷偷在背景繼續播放，確保按下按鈕瞬間有聲音
                         music.muted = true;
                         updateMuteBtn();
                         sessionStorage.setItem('mediaMuted', 'true');
@@ -104,7 +104,7 @@
                 updateMuteBtn();
                 sessionStorage.setItem('mediaMuted', music.muted);
 
-                // ?��?：�??�音樂根?��??��??��??�觸�???��??�便?��?
+                // 防呆：如果音樂根本沒開始播，接觸解靜音時順便啟動
                 if (music.paused && savedPaused !== 'true') {
                     music.play().catch(function (e) { });
                 }
@@ -131,29 +131,29 @@
         });
     </script>
 
-    <!--  櫻花?��??��?層�??��??��?上層，�?影響互�?�?-->
+    <!--  櫻花特效透明層（固定在最上層，不影響互動） -->
     <canvas id="sakura-canvas"
         style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-    <!-- ?��?導航??-->
+    <!-- 全域導航器 -->
     <div id="global-nav"
         style="position: fixed; top: 20px; right: 20px; z-index: 10000; background: rgba(0, 0, 0, 0.5); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; gap: 15px;">
         <a href="index.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首�?</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首頁</a>
         <a href="directory.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">筆�?</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">筆記</a>
         <a href="literature.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">?�學</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">文學</a>
         <a href="about.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">?�於??/a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">關於我</a>
     </div>
 
-    <!--  ?��?角影?�控??-->
+    <!--  右下角影片控制 -->
     <div id="video-controls">
-        <button id="btn-top" title="?�到?�部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
+        <button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
             style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
-        <button id="btn-mute" title="?��?????><i class="fas fa-volume-mute"></i></button>
-        <button id="btn-play" title="?��?/?�放"><i class="fas fa-pause"></i></button>
+        <button id="btn-mute" title="音效開/關"><i class="fas fa-volume-mute"></i></button>
+        <button id="btn-play" title="暫停/播放"><i class="fas fa-pause"></i></button>
     </div>
 
     <div id="wrapper" class="fade-in">
@@ -171,10 +171,10 @@
 
         <nav id="nav">
             <ul class="links">
-                <li><a href="index.html">首�?</a></li>
-                <li><a href="directory.html">學�?筆�?</a></li>
-                <li><a href="literature.html">?�學?��?</a></li>
-                <li><a href="about.html">?�於??/a></li>
+                <li><a href="index.html">首頁</a></li>
+                <li><a href="directory.html">學科筆記</a></li>
+                <li><a href="literature.html">文學隨筆</a></li>
+                <li><a href="about.html">關於我</a></li>
             </ul>
             <ul class="icons">
                 <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
@@ -192,43 +192,43 @@
             <article class="post featured">
                 <header class="major">
                     <span class="date">HELLO WORLD</span>
-                    <h2><a href="about.html">?�於?��??��?</a></h2>
-                    <p>?�是?�佾?��??��?就�??��?立中山大學�?訊工程學系�?年�???br /><br />
-                        ?�網站於 2020 �?12 ?��?試啼?��?????��??��?資�?社學?��??��?，�??��?以搭建出?��?屬於?��??��?空�??��??�當?��??��?形�??��??�為?��??�學習歷程�??�貴起�???br /><br />
-                        ?��?大�?後�??��??�在程�?語�??��?訊�?學�??��?精進�??��??�拾起閱讀?��????�??涉獵?�學?��?術、音樂�??�啡等�??��??�。基?��?美學?��?術�??��?追�?，�??��??��??��?網�??��??�方位�?翻新?�優?�。未來�??�裡將�?續蛻變為?��??��?術�?記�??�活?�想?��?謐天?��?歡�??��?駐足?�閱覽�?
+                    <h2><a href="about.html">關於本站與我</a></h2>
+                    <p>我是林佾則，目前就讀於國立中山大學資訊工程學系二年級。<br /><br />
+                        本網站於 2020 年 12 月初試啼聲，那時十分感謝資訊社學長的指導，讓我得以搭建出這專屬於我的數位空間。雖然當時僅具雛形，卻也成為我記錄學習歷程的珍貴起點。<br /><br />
+                        升上大二後，我不僅在程式語言與資訊科學上持續精進，更重新拾起閱讀的習慣，廣泛涉獵文學、藝術、音樂與咖啡等多元領域。基於對美學與技術的雙重追求，我於近期著手將網站進行全方位的翻新與優化。未來，這裡將持續蛻變為我記錄技術筆記與生活思想的靜謐天地，歡迎您的駐足與閱覽。
                     </p>
                 </header>
-                <a href="about.html" class="image main"><img loading="lazy" src="images/pic1.jpg" alt="About Me" /></a>
+                <a href="about.html" class="image main"><img src="images/pic1.jpg" alt="About Me" /></a>
                 <ul class="actions special">
-                    <li><a href="about.html" class="button large">了解?��??�於??/a></li>
+                    <li><a href="about.html" class="button large">了解更多關於我</a></li>
                 </ul>
             </article>
 
             <section class="posts">
                 <article>
                     <header>
-                        <span class="date">學�?歷�?</span>
-                        <h2><a href="directory.html">學�?筆�?</a></h2>
+                        <span class="date">學習歷程</span>
+                        <h2><a href="directory.html">學科筆記</a></h2>
                     </header>
-                    <a href="directory.html" class="image fit"><img loading="lazy" src="images/pic2.jpg" alt="學�?筆�?" /></a>
-                    <p>?�裡?��?了�??��??�學習�?跡�??��?專�?紀?��?涵�?了在資�?工�??��??��??�探索。�??��??��?式�?言學�??�進�??��?算�??��??�庫概念，到資�?安全?��??�學習�?實�??�用，�?詳實?��??�於此。�??�這�?筆�?不�??��??��??�人專業?�長?��?證�?也能?�為?��?好們相互交流、�?磋�??��?寶庫??
+                    <a href="directory.html" class="image fit"><img src="images/pic2.jpg" alt="學科筆記" /></a>
+                    <p>這裡收錄了我過往的學習軌跡與重要專案紀錄，涵蓋了在資訊工程領域的各項探索。從基礎的程式語言學習、進階的演算法與資料庫概念，到資訊安全、機器學習等實務應用，皆詳實地記錄於此。期望這些筆記不僅能作為我個人專業成長的見證，也能成為與同好們相互交流、切磋的知識寶庫。
                     </p>
                     <ul class="actions special">
-                        <li><a href="directory.html" class="button primary large">?��?學�?筆�??��?</a></li>
+                        <li><a href="directory.html" class="button primary large">查看學科筆記目錄</a></li>
                     </ul>
                 </article>
 
                 <article>
                     <header>
-                        <span class="date">?�活?��???/span>
-                        <h2><a href="literature.html">?�學紀實�??��?</a></h2>
+                        <span class="date">生活與反思</span>
+                        <h2><a href="literature.html">文學紀實與隨筆</a></h2>
                     </header>
-                    <a href="literature.html" class="image fit"><img loading="lazy" src="images/pic3.jpg" alt="?�學?��?" /></a>
-                    <p>?�裡?��??��??�?��?輯�?角�?外�??��?字�?澱思�??�避風港??br /><br />
-                        ?��?了日常�?讀?��?得、深度�??�解?�、�?活�?跡�?察以?�偶?��?心�??��??�在程�?碼�??�性思維?�空?�中，�?試�??��??��??�寫作�??��?世�??�溫度�??��?存在?��?學�?人性�??�種?��??��?一篇隨筆�??�是?�維漫�??��?實�??��?
+                    <a href="literature.html" class="image fit"><img src="images/pic3.jpg" alt="文學隨筆" /></a>
+                    <p>這裡是我在科技與邏輯視角之外，用文字沉澱思緒的避風港。<br /><br />
+                        收錄了日常的讀書心得、深度文本解析、生活軌跡觀察以及偶發的心情隨筆。在程式碼與理性思維的空隙中，我試圖透過閱讀與寫作來感受世界的溫度，探討存在、文學與人性的各種面向。每一篇隨筆，都是思維漫遊的真實紀錄。
                     </p>
                     <ul class="actions special">
-                        <li><a href="literature.html" class="button primary large">?��??�學?��??��?</a></li>
+                        <li><a href="literature.html" class="button primary large">查看文學隨筆目錄</a></li>
                     </ul>
                 </article>
             </section>
@@ -253,7 +253,7 @@
     <script src="https://unpkg.com/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
 
-    <!--  �?Canvas 2D 櫻花?��?（零依賴，�??�要�??��? -->
+    <!--  純 Canvas 2D 櫻花特效（零依賴，不需要圖片） -->
     <script>
         (function () {
             var canvas = document.getElementById('sakura-canvas');

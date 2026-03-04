@@ -2,12 +2,12 @@
 <html>
 
 <head>
-    <title>LYZ's website - 筆�?系統</title>
+    <title>LYZ's website - 筆記系統</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <link rel="stylesheet" href="assets/css/main.css" />
     <style>
-        /* ?��??��?等�?：�??�固定在底部 */
+        /* 文章卡片等高：按鈕固定在底部 */
         #posts-container.posts>article.note-item {
             display: flex;
             flex-direction: column;
@@ -17,7 +17,7 @@
             margin-top: auto;
         }
 
-        /* 統�??��??��??�尺寸並裁�? */
+        /* 統一卡片圖片的尺寸並裁切 */
         .note-item .image.fit {
             height: 250px;
             display: flex;
@@ -36,7 +36,7 @@
             object-position: center;
         }
 
-        /* ?��??��??�??*/
+        /* 分頁按鈕區域 */
         #pagination-controls {
             display: flex;
             justify-content: center;
@@ -85,16 +85,16 @@
             position: relative;
             width: 100%;
             height: 250px;
-            /* ?�確?��?高度，�??�張?��??��?裡面??img ?�能�?��計�?高度 */
+            /* 明確固定高度，與單張圖一致，裡面的 img 才能正確計算高度 */
             border-radius: 4px;
             flex-shrink: 0;
-            /* overflow: hidden 對�??��?表示?�影?��??�用 carousel-slide �?overflow: hidden */
+            /* overflow: hidden 對子元素表示有影響，改用 carousel-slide 中 overflow: hidden */
         }
 
         .carousel-slide {
             display: none;
             position: absolute;
-            /* 綕�?定�?，�??��?不�??�推?�其他內�?*/
+            /* 綕對定位，展開時不會然推擠其他內容 */
             top: 0;
             left: 0;
             width: 100%;
@@ -114,7 +114,7 @@
             justify-content: center;
             align-items: center;
             overflow: hidden;
-            /* ?��?裁�??�制??slide 層決不在 carousel �?*/
+            /* 圖片裁切限制在 slide 層決不在 carousel 層 */
         }
 
         .carousel-slide .image.fit img {
@@ -151,7 +151,7 @@
             text-decoration: none;
             border: none;
             z-index: 20;
-            /* 高於 slide，確保�??��?定在?�上面 */
+            /* 高於 slide，確保简頭一定在最上面 */
         }
 
         .carousel-prev:hover,
@@ -182,7 +182,7 @@
             z-index: 5;
         }
 
-        /* ?�表模�?檢�? */
+        /* 列表模式檢視 */
         #posts-container.list-view {
             display: flex;
             flex-direction: column;
@@ -235,10 +235,10 @@
             align-self: center;
         }
 
-        /* �?metadata (?��??�日?? �?.date 中�??�並?��???grid 欄�? */
+        /* 將 metadata (分類、日期) 從 .date 中分離並分配到 grid 欄位 */
         #posts-container.list-view>article.note-item header .date {
             display: contents;
-            /* 讓內?��? span ?�以?��? grid ?��? */
+            /* 讓內部的 span 可以參與 grid 排版 */
             font-size: 0.9em;
         }
 
@@ -311,11 +311,11 @@
 
 <body class="is-preload">
 
-    <!--  影�??�音樂�???-->
-    <video id="bg-video" autoplay muted loop playsinline preload="none">
+    <!--  影片與音樂背景 -->
+    <video id="bg-video" autoplay muted loop playsinline>
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
-    <audio id="bg-music" loop preload="none">
+    <audio id="bg-music" loop preload="auto">
         <source src="images/bg-music.mp3" type="audio/mpeg">
     </audio>
 
@@ -329,10 +329,10 @@
             var savedMuted = sessionStorage.getItem('mediaMuted');
             var savedPaused = sessionStorage.getItem('mediaPaused');
 
-            // 影�?永�??�音
+            // 影片永遠靜音
             video.muted = true;
 
-            // 如�? session 記�??��??��??��??��??�設?��??�音
+            // 如果 session 記錄為真才靜音，否則預設想開聲音
             var isMuted = (savedMuted === 'true');
             music.muted = isMuted;
 
@@ -345,11 +345,11 @@
                 video.pause();
                 btnPlay.innerHTML = '<i class="fas fa-play"></i>';
             } else {
-                // ?�試?�刻?�放
+                // 嘗試即刻播放
                 var playPromise = music.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(function (error) {
-                        // ?�聲?�自?�播?�被?�覽?�阻?��?強制?�音並偷?�在?�景繼�??�放，確保�?下�??�瞬?��??�音
+                        // 有聲音自動播放被瀏覽器阻擋！強制靜音並偷偷在背景繼續播放，確保按下按鈕瞬間有聲音
                         music.muted = true;
                         updateMuteBtn();
                         sessionStorage.setItem('mediaMuted', 'true');
@@ -364,7 +364,7 @@
                 updateMuteBtn();
                 sessionStorage.setItem('mediaMuted', music.muted);
 
-                // ?��?：�??�音樂根?��??��??��??�觸�???��??�便?��?
+                // 防呆：如果音樂根本沒開始播，接觸解靜音時順便啟動
                 if (music.paused && savedPaused !== 'true') {
                     music.play().catch(function (e) { });
                 }
@@ -391,25 +391,25 @@
         });
     </script>
 
-    <!-- ?��?導航??-->
+    <!-- 全域導航器 -->
     <div id="global-nav"
         style="position: fixed; top: 20px; right: 20px; z-index: 10000; background: rgba(0, 0, 0, 0.5); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; gap: 15px;">
         <a href="index.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首�?</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首頁</a>
         <a href="directory.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">筆�?</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">筆記</a>
         <a href="literature.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">?�學</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">文學</a>
         <a href="about.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">?�於??/a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">關於我</a>
     </div>
 
-    <!--  ?��?角影?�控??-->
+    <!--  右下角影片控制 -->
     <div id="video-controls">
-        <button id="btn-top" title="?�到?�部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
+        <button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
             style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
-        <button id="btn-mute" title="?��?????><i class="fas fa-volume-mute"></i></button>
-        <button id="btn-play" title="?��?/?�放"><i class="fas fa-pause"></i></button>
+        <button id="btn-mute" title="音效開/關"><i class="fas fa-volume-mute"></i></button>
+        <button id="btn-play" title="暫停/播放"><i class="fas fa-pause"></i></button>
     </div>
 
     <div id="wrapper" class="fade-in">
@@ -420,10 +420,10 @@
 
         <nav id="nav">
             <ul class="links">
-                <li><a href="index.html">首�?</a></li>
-                <li><a href="directory.html">學�?筆�?</a></li>
-                <li class="active"><a href="literature.html">?�學?��?</a></li>
-                <li><a href="about.html">?�於??/a></li>
+                <li><a href="index.html">首頁</a></li>
+                <li><a href="directory.html">學科筆記</a></li>
+                <li class="active"><a href="literature.html">文學隨筆</a></li>
+                <li><a href="about.html">關於我</a></li>
             </ul>
             <ul class="icons">
                 <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
@@ -440,305 +440,305 @@
         <div id="main">
             <article class="post featured">
                 <header class="major">
-                    <span class="date">?�活?��???/span>
-                    <h2><a href="#">?�學紀實�??��?</a></h2>
-                    <p>?�裡?��??��??�?��?輯�?角�?外�??��?字�?澱思�??�避風港??br /><br />
-                        ?��?了日常�?讀?��?得、深度�??�解?�、�?活�?跡�?察以?�偶?��?心�??��??�在程�?碼�??�性思維?�空?�中，�?試�??��??��??�寫作�??��?世�??�溫度�??��?存在?��?學�?人性�??�種?��??��?一篇隨筆�??�是?�維漫�??��?實�??��?
+                    <span class="date">生活與反思</span>
+                    <h2><a href="#">文學紀實與隨筆</a></h2>
+                    <p>這裡是我在科技與邏輯視角之外，用文字沉澱思緒的避風港。<br /><br />
+                        收錄了日常的讀書心得、深度文本解析、生活軌跡觀察以及偶發的心情隨筆。在程式碼與理性思維的空隙中，我試圖透過閱讀與寫作來感受世界的溫度，探討存在、文學與人性的各種面向。每一篇隨筆，都是思維漫遊的真實紀錄。
                     </p>
                 </header>
             </article>
 
-            <!-- 篩選?��?序控?�面??-->
+            <!-- 篩選與排序控制面板 -->
             <div id="sort-filter-controls"
                 style="display: flex; gap: 15px; margin-bottom: 2rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                 <div>
                     <label for="filter-category"
-                        style="display:inline-block; margin-right: 10px; margin-bottom: 0; font-weight: bold;">?��?篩選:</label>
+                        style="display:inline-block; margin-right: 10px; margin-bottom: 0; font-weight: bold;">分類篩選:</label>
                     <select id="filter-category" style="display:inline-block; width: auto; min-width: 150px;">
-                        <option value="all">?�?��?�?(All)</option>
-                        <option value="?��?">心�??��?</option>
-                        <option value="心�?">?��?心�?</option>
-                        <option value="?��?">?�學?��?</option>
+                        <option value="all">所有分類 (All)</option>
+                        <option value="隨筆">心情隨筆</option>
+                        <option value="心得">閱讀心得</option>
+                        <option value="創作">文學創作</option>
                     </select>
                 </div>
                 <div>
                     <label for="sort-by"
-                        style="display:inline-block; margin-right: 10px; margin-bottom: 0; font-weight: bold;">?��??��?:</label>
+                        style="display:inline-block; margin-right: 10px; margin-bottom: 0; font-weight: bold;">排序方式:</label>
                     <select id="sort-by" style="display:inline-block; width: auto; min-width: 150px;">
-                        <option value="default">?�設?��?</option>
-                        <option value="upload-desc" selected>上傳?��? (?�到??</option>
-                        <option value="upload-asc">上傳?��? (?�到??</option>
-                        <option value="edit-desc">?�後編�?(?�到??</option>
-                        <option value="title-asc">?�稱 (A-Z)</option>
-                        <option value="title-desc">?�稱 (Z-A)</option>
-                        <option value="list">?�表檢�? (?��?�?</option>
+                        <option value="default">預設排序</option>
+                        <option value="upload-desc" selected>上傳時間 (新到舊)</option>
+                        <option value="upload-asc">上傳時間 (舊到新)</option>
+                        <option value="edit-desc">最後編輯 (新到舊)</option>
+                        <option value="title-asc">名稱 (A-Z)</option>
+                        <option value="title-desc">名稱 (Z-A)</option>
+                        <option value="list">列表檢視 (僅標題)</option>
                     </select>
                 </div>
             </div>
 
             <section class="posts" id="posts-container">
-                <!-- Removed duplicate plague.md --> <!-- 2024�???3???�活?��?：中山大學入學日�?md -->
-                <article class="note-item" data-category="?��?" data-upload="2024-09-13" data-edit="2024-09-13"
-                    data-title="?�活?��?：中山大學入學日�?>
+                <!-- Removed duplicate plague.md --> <!-- 2024年9月13日 生活札記：中山大學入學日記.md -->
+                <article class="note-item" data-category="隨筆" data-upload="2024-09-13" data-edit="2024-09-13"
+                    data-title="生活札記：中山大學入學日記">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">心�??��?</span>
+                            <span class="meta-cat">心情隨筆</span>
                             <span class="meta-up">上傳: 2024-09-13</span>
                             <span class="meta-ed">編輯: 2024-09-13</span>
                         </span>
-                        <h2><a href="note.html?lit=2024�???3???�活?��?：中山大學入學日�?>中山大學?�學?��?</a></h2>
+                        <h2><a href="note.html?lit=2024年9月13日 生活札記：中山大學入學日記">中山大學入學日記</a></h2>
                     </header>
-                    <a href="note.html?lit=2024�???3???�活?��?：中山大學入學日�? class="image fit"><img loading="lazy" src="images/中山大學?�學?��?1.jpg"
+                    <a href="note.html?lit=2024年9月13日 生活札記：中山大學入學日記" class="image fit"><img src="images/中山大學入學圖片1.jpg"
                             alt="" /></a>
-                    <p>來�??�個禮?��??�學紀?�。�?山�?海�??��??�獼?��??��??��??�港??��?��?夜風??Yorushika，以?��?次長大�?不�?實�???/p>
+                    <p>來了兩個禮拜的入學紀錄。依山傍海的環境、獼猴與蛇的生態、港口公園的夜風與 Yorushika，以及初次長大的不真實感。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=2024�???3???�活?��?：中山大學入學日�? class="button">?��??��?</a></li>
+                        <li><a href="note.html?lit=2024年9月13日 生活札記：中山大學入學日記" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
-                <!-- 2025�?1??3???�活?��?：�??��??��??��?空�??��?�?md -->
-                <article class="note-item" data-category="?��?" data-upload="2025-11-23" data-edit="2025-11-23"
-                    data-title="?�活?��?：�??��??��??��?空�??��?�?>
+                <!-- 2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證.md -->
+                <article class="note-item" data-category="隨筆" data-upload="2025-11-23" data-edit="2025-11-23"
+                    data-title="生活札記：忠烈祠的貓與夜空下的見證">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">心�??��?</span>
+                            <span class="meta-cat">心情隨筆</span>
                             <span class="meta-up">上傳: 2025-11-23</span>
                             <span class="meta-ed">編輯: 2025-11-23</span>
                         </span>
-                        <h2><a href="note.html?lit=2025�?1??3???�活?��?：�??��??��??��?空�??��?�?>忠�?祠�?貓�?夜空下�?見�?</a></h2>
+                        <h2><a href="note.html?lit=2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證">忠烈祠的貓與夜空下的見證</a></h2>
                     </header>
                     <div class="card-carousel">
                         <div class="carousel-slide">
-                            <a href="note.html?lit=2025�?1??3???�活?��?：�??��??��??��?空�??��?�? class="image fit"
+                            <a href="note.html?lit=2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證" class="image fit"
                                 style="margin-bottom:0;">
-                                <img loading="lazy" src="images/忠�?祠�?貓�?夜空下�?見�??��?2.jpg" alt="" />
+                                <img src="images/忠烈祠的貓與夜空下的見證附圖2.jpg" alt="" />
                             </a>
                         </div>
                         <div class="carousel-slide">
-                            <a href="note.html?lit=2025�?1??3???�活?��?：�??��??��??��?空�??��?�? class="image fit"
+                            <a href="note.html?lit=2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證" class="image fit"
                                 style="margin-bottom:0;">
-                                <img loading="lazy" src="images/忠�?祠�?貓�?夜空下�?見�??��?1.jpg" alt="" />
+                                <img src="images/忠烈祠的貓與夜空下的見證附圖1.jpg" alt="" />
                             </a>
                         </div>
                     </div>
-                    <p style="margin-top: 1.5rem;">2025�?1??3???�活?��?</p>
+                    <p style="margin-top: 1.5rem;">2025年11月23日 生活札記</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=2025�?1??3???�活?��?：�??��??��??��?空�??��?�? class="button">?��??��?</a></li>
+                        <li><a href="note.html?lit=2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
-                <!-- 2025�???5???�活?��?：�?海�?�?md -->
-                <article class="note-item" data-category="?��?" data-upload="2025-06-15" data-edit="2025-06-15"
-                    data-title="?�活?��?：�?海�?�?>
+                <!-- 2025年6月15日 生活札記：與海對話.md -->
+                <article class="note-item" data-category="隨筆" data-upload="2025-06-15" data-edit="2025-06-15"
+                    data-title="生活札記：與海對話">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">心�??��?</span>
+                            <span class="meta-cat">心情隨筆</span>
                             <span class="meta-up">上傳: 2025-06-15</span>
                             <span class="meta-ed">編輯: 2025-06-15</span>
                         </span>
-                        <h2><a href="note.html?lit=2025�???5???�活?��?：�?海�?�?>?�海對話</a></h2>
+                        <h2><a href="note.html?lit=2025年6月15日 生活札記：與海對話">與海對話</a></h2>
                     </header>
-                    <p>2025�???5???�活?��?</p>
+                    <p>2025年6月15日 生活札記</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=2025�???5???�活?��?：�?海�?�? class="button">?��??��?</a></li>
+                        <li><a href="note.html?lit=2025年6月15日 生活札記：與海對話" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
-                <!-- 2026�???4???�活?��?：�??��?點�??��?謬�?平凡.md -->
-                <article class="note-item" data-category="?��?" data-upload="2026-01-14" data-edit="2026-01-14"
-                    data-title="?�活?��?：�??��?點�??��?謬�?平凡">
+                <!-- 2026年1月14日 生活札記：凌晨三點半的荒謬與平凡.md -->
+                <article class="note-item" data-category="隨筆" data-upload="2026-01-14" data-edit="2026-01-14"
+                    data-title="生活札記：凌晨三點半的荒謬與平凡">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">心�??��?</span>
+                            <span class="meta-cat">心情隨筆</span>
                             <span class="meta-up">上傳: 2026-01-14</span>
                             <span class="meta-ed">編輯: 2026-01-14</span>
                         </span>
-                        <h2><a href="note.html?lit=2026�???4???�活?��?：�??��?點�??��?謬�?平凡">?�晨三�??��??�謬?�平??/a></h2>
+                        <h2><a href="note.html?lit=2026年1月14日 生活札記：凌晨三點半的荒謬與平凡">凌晨三點半的荒謬與平凡</a></h2>
                     </header>
-                    <a href="note.html?lit=2026�???4???�活?��?：�??��?點�??��?謬�?平凡" class="image fit"><img
-                            src="images/中山大學?�學?��?1.jpg" alt="" /></a>
-                    <p>2026�???4???�活?��?</p>
+                    <a href="note.html?lit=2026年1月14日 生活札記：凌晨三點半的荒謬與平凡" class="image fit"><img
+                            src="images/中山大學入學圖片1.jpg" alt="" /></a>
+                    <p>2026年1月14日 生活札記</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=2026�???4???�活?��?：�??��?點�??��?謬�?平凡" class="button">?��??��?</a></li>
+                        <li><a href="note.html?lit=2026年1月14日 生活札記：凌晨三點半的荒謬與平凡" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
-                <!-- _?�離?�義?�性�?一?�人?�自願�??�格.md -->
-                <article class="note-item" data-category="?��?" data-upload="2026-03-04" data-edit="2026-03-04"
-                    data-title="?�離?�義?�性�?一?�人?�自願�??�格">
+                <!-- _抽離意義的性：一場人性自願的降格.md -->
+                <article class="note-item" data-category="隨筆" data-upload="2026-03-04" data-edit="2026-03-04"
+                    data-title="抽離意義的性：一場人性自願的降格">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">心�??��?</span>
+                            <span class="meta-cat">心情隨筆</span>
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=_?�離?�義?�性�?一?�人?�自願�??�格">?�離?�義?�性�?一?�人?�自願�??�格</a></h2>
+                        <h2><a href="note.html?lit=_抽離意義的性：一場人性自願的降格">抽離意義的性：一場人性自願的降格</a></h2>
                     </header>
-                    <p>對於人性現象�?觀察�?深度?��???/p>
+                    <p>對於人性現象的觀察與深度隨筆。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=_?�離?�義?�性�?一?�人?�自願�??�格" class="button">?��??��?</a></li>
+                        <li><a href="note.html?lit=_抽離意義的性：一場人性自願的降格" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
-                <!-- ?��??�》閱讀筆�? (一)：�??�大綱�??�學層次?��?.md -->
-                <article class="note-item" data-category="心�?" data-upload="2026-03-04" data-edit="2026-03-04"
-                    data-title="?��??�》閱讀筆�? (一)：�??�大綱�??�學層次?��?">
+                <!-- 《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類.md -->
+                <article class="note-item" data-category="心得" data-upload="2026-03-04" data-edit="2026-03-04"
+                    data-title="《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">?��?心�?</span>
+                            <span class="meta-cat">閱讀心得</span>
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=?��??�》閱讀筆�? (一)：�??�大綱�??�學層次?��?">?��??�》閱讀系�?</a></h2>
+                        <h2><a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類">《鼠疫》閱讀系列</a></h2>
                     </header>
 
                     <div class="card-carousel">
                         <div class="carousel-slide">
-                            <a href="note.html?lit=?��??�》閱讀筆�? (一)：�??�大綱�??�學層次?��?" class="image fit">
-                                <img loading="lazy" src="images/鼠疫?��?.jpg" alt="" />
-                                <span class="carousel-caption">第�??��?大綱?�哲學層�?/span>
+                            <a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類" class="image fit">
+                                <img src="images/鼠疫附圖.jpg" alt="" />
+                                <span class="carousel-caption">第一部：大綱與哲學層次</span>
                             </a>
                         </div>
                         <div class="carousel-slide">
-                            <a href="note.html?lit=?��??�》閱讀筆�? (一)：�??�大綱�??�學層次?��?" class="image fit">
-                                <img loading="lazy" src="images/rat.jpg" alt="第�??��?人物?��?謬解�? onerror="this.src='images/pic1.jpg'" />
-                                <span class="carousel-caption">第�??��?人物?��?謬解�?/span>
+                            <a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類" class="image fit">
+                                <img src="images/rat.jpg" alt="第二部：人物與荒謬解構" onerror="this.src='images/pic1.jpg'" />
+                                <span class="carousel-caption">第二部：人物與荒謬解構</span>
                             </a>
                         </div>
                     </div>
 
-                    <p style="margin-top: 1.5rem;">點�??��??��?往對�?篇�??�閱讀筆�???/p>
+                    <p style="margin-top: 1.5rem;">點擊圖片即前往對應篇章的閱讀筆記。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=?��??�》閱讀筆�? (一)：�??�大綱�??�學層次?��?" class="button">?��?心�?</a></li>
+                        <li><a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類" class="button">閱讀心得</a></li>
                     </ul>
                 </article>
 
-                <!-- 如�?讀一?�書.md -->
-                <article class="note-item" data-category="心�?" data-upload="2026-03-04" data-edit="2026-03-04"
-                    data-title="如�?讀一?�書">
+                <!-- 如何讀一本書.md -->
+                <article class="note-item" data-category="心得" data-upload="2026-03-04" data-edit="2026-03-04"
+                    data-title="如何讀一本書">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">?��?心�?</span>
+                            <span class="meta-cat">閱讀心得</span>
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=如�?讀一?�書">如�?讀一?�書</a></h2>
+                        <h2><a href="note.html?lit=如何讀一本書">如何讀一本書</a></h2>
                     </header>
-                    <p>?�於?��??��??�層次�?深度?��???/p>
+                    <p>關於閱讀方法與層次的深度探討。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=如�?讀一?�書" class="button">?��?心�?</a></li>
+                        <li><a href="note.html?lit=如何讀一本書" class="button">閱讀心得</a></li>
                     </ul>
                 </article>
 
-                <!-- ?�窮?��?交響???��?心�?.md -->
-                <article class="note-item" data-category="心�?" data-upload="2026-03-04" data-edit="2026-03-04"
-                    data-title="?�窮?��?交響???��?心�?">
+                <!-- 無窮盡的交響曲 閱讀心得.md -->
+                <article class="note-item" data-category="心得" data-upload="2026-03-04" data-edit="2026-03-04"
+                    data-title="無窮盡的交響曲 閱讀心得">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">?��?心�?</span>
+                            <span class="meta-cat">閱讀心得</span>
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=?�窮?��?交響???��?心�?">?�窮?��?交響??/a></h2>
+                        <h2><a href="note.html?lit=無窮盡的交響曲 閱讀心得">無窮盡的交響曲</a></h2>
                     </header>
-                    <a href="note.html?lit=?�窮?��?交響???��?心�?" class="image fit"><img loading="lazy" src="images/?�窮?��?交響?��?得�???jpg"
+                    <a href="note.html?lit=無窮盡的交響曲 閱讀心得" class="image fit"><img src="images/無窮盡的交響曲心得附圖.jpg"
                             alt="" /></a>
-                    <p>?��?心�??��??��?/p>
+                    <p>閱讀心得與省思。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=?�窮?��?交響???��?心�?" class="button">?��?心�?</a></li>
+                        <li><a href="note.html?lit=無窮盡的交響曲 閱讀心得" class="button">閱讀心得</a></li>
                     </ul>
                 </article>
 
-                <!-- Charlie Kirk 之死?��?主社?��?失溫.md -->
-                <article class="note-item" data-category="?��?" data-upload="2025-09-12" data-edit="2025-09-12"
-                    data-title="Charlie Kirk 之死?��?主社?��?失溫">
+                <!-- Charlie Kirk 之死與民主社會的失溫.md -->
+                <article class="note-item" data-category="隨筆" data-upload="2025-09-12" data-edit="2025-09-12"
+                    data-title="Charlie Kirk 之死與民主社會的失溫">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">?��??��?/span>
+                            <span class="meta-cat">時事反思</span>
                             <span class="meta-up">上傳: 2025-09-12</span>
                             <span class="meta-ed">編輯: 2025-09-12</span>
                         </span>
-                        <h2><a href="note.html?lit=2026�????��?：Charlie Kirk 之死?��?主社?��?失溫">Charlie Kirk 之死?��?主社?��?失溫</a></h2>
+                        <h2><a href="note.html?lit=2026年3月 札記：Charlie Kirk 之死與民主社會的失溫">Charlie Kirk 之死與民主社會的失溫</a></h2>
                     </header>
-                    <a href="note.html?lit=2026�????��?：Charlie Kirk 之死?��?主社?��?失溫" class="image fit"><img
-                            src="images/charlie_kirk_?��?.jpg" alt="" /></a>
-                    <p>?��?近�??��?之�??��??��???/p>
+                    <a href="note.html?lit=2026年3月 札記：Charlie Kirk 之死與民主社會的失溫" class="image fit"><img
+                            src="images/charlie_kirk_附圖.jpg" alt="" /></a>
+                    <p>針對近期時事之反思與隨筆。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=2026�????��?：Charlie Kirk 之死?��?主社?��?失溫" class="button">?��??��?</a></li>
+                        <li><a href="note.html?lit=2026年3月 札記：Charlie Kirk 之死與民主社會的失溫" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
-                <!-- ?��??��?????real filename is ?��??��???md -->
-                <article class="note-item" data-category="?��?" data-upload="2025-03-19" data-edit="2025-03-19"
-                    data-title="?��??��???>
+                <!-- 噬血的邂逅 → real filename is 嗜血的邂逅.md -->
+                <article class="note-item" data-category="隨筆" data-upload="2025-03-19" data-edit="2025-03-19"
+                    data-title="嗜血的邂逅">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">心�??��?</span>
+                            <span class="meta-cat">心情隨筆</span>
                             <span class="meta-up">上傳: 2025-03-19</span>
                             <span class="meta-ed">編輯: 2025-03-19</span>
                         </span>
-                        <h2><a href="note.html?lit=?��??��???>?��??��???/a></h2>
+                        <h2><a href="note.html?lit=嗜血的邂逅">嗜血的邂逅</a></h2>
                     </header>
                     <div class="card-carousel">
                         <div class="carousel-slide">
-                            <a href="note.html?lit=?��??��??? class="image fit">
-                                <img loading="lazy" src="images/spoiler.svg" alt="?�雷警�?" />
+                            <a href="note.html?lit=嗜血的邂逅" class="image fit">
+                                <img src="images/spoiler.svg" alt="防雷警告" />
                             </a>
                         </div>
                         <div class="carousel-slide">
-                            <a href="note.html?lit=?��??��??? class="image fit">
-                                <img loading="lazy" src="images/?��??��?).jpg" alt="?��??��?" />
-                                <span class="carousel-caption">第�?幕�?活�??��??��?�?/span>
+                            <a href="note.html?lit=嗜血的邂逅" class="image fit">
+                                <img src="images/邂逅(蚊子).jpg" alt="蚊子照片" />
+                                <span class="carousel-caption">第一幕：活生生的吸血鬼</span>
                             </a>
                         </div>
                         <div class="carousel-slide">
-                            <a href="note.html?lit=?��??��??? class="image fit">
-                                <img loading="lazy" src="images/?��??��?屍�?).jpg" alt="?��?屍�??��?" />
-                                <span class="carousel-caption">第�?幕�?死於?�命</span>
+                            <a href="note.html?lit=嗜血的邂逅" class="image fit">
+                                <img src="images/邂逅(蚊子屍體).jpg" alt="蚊子屍體照片" />
+                                <span class="carousel-caption">第二幕：死於非命</span>
                             </a>
                         </div>
                     </div>
-                    <p style="margin-top: 1.5rem;">一次�?滿�??�味?��??��??��?以�??��??��?死�???/p>
+                    <p style="margin-top: 1.5rem;">一次充滿血腥味的夜半邂逅，以及蚊子們的死狀。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=?��??��??? class="button">?��??��?</a></li>
+                        <li><a href="note.html?lit=嗜血的邂逅" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
-                <!-- ?��??�詩：�??�、�??�、死亡、�???md -->
-                <article class="note-item" data-category="?��?" data-upload="2026-03-04" data-edit="2026-03-04"
-                    data-title="?��??�詩：�??�、�??�、死亡、�???>
+                <!-- 四幕短詩：告白、分手、死亡、重逢.md -->
+                <article class="note-item" data-category="創作" data-upload="2026-03-04" data-edit="2026-03-04"
+                    data-title="四幕短詩：告白、分手、死亡、重逢">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">?�學?��?</span>
+                            <span class="meta-cat">文學創作</span>
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=?��??�詩：�??�、�??�、死亡、�???>?��??�詩：�??�、�??�、死亡、�???/a></h2>
+                        <h2><a href="note.html?lit=四幕短詩：告白、分手、死亡、重逢">四幕短詩：告白、分手、死亡、重逢</a></h2>
                     </header>
-                    <p>?��??�戰：在不�??��??�本身�??��?下�?以�?許句子勾?�出?�白?��??�、死亡、�??��??��??��?輪�??��??�。�?首現�?��，以?��??�主軸�?記�??�聲?��??��??��?/p>
+                    <p>文字挑戰：在不提及題目本身的前提下，以少許句子勾勒出告白、分手、死亡、重逢四個題目的輪廓與氛圍。四首現代詩，以時間為主軸，記錄無聲的情感流動。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=?��??�詩：�??�、�??�、死亡、�??? class="button">?��?詩�?</a></li>
+                        <li><a href="note.html?lit=四幕短詩：告白、分手、死亡、重逢" class="button">閱讀詩集</a></li>
                     </ul>
                 </article>
 
-                <!-- 該死?��??��?.md -->
-                <article class="note-item" data-category="?��?" data-upload="2026-03-04" data-edit="2026-03-04"
-                    data-title="該死?��??��?">
+                <!-- 該死的咖啡因.md -->
+                <article class="note-item" data-category="創作" data-upload="2026-03-04" data-edit="2026-03-04"
+                    data-title="該死的咖啡因">
                     <header>
                         <span class="date">
-                            <span class="meta-cat">?�學?��?</span>
+                            <span class="meta-cat">文學創作</span>
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=該死?��??��?">?�該死�??�啡?��?/a></h2>
+                        <h2><a href="note.html?lit=該死的咖啡因">《該死的咖啡因》</a></h2>
                     </header>
-                    <p>?�晨?��??�失?��?一?��??��?念頭，�??��??��????外�??��?神�?姊�??��??��?寶寶?�第一次�??��?以�????溫猶存�??�啡?�味?��?/p>
+                    <p>凌晨四點的失眠，一個衝動的念頭，和在超商門口意外邂逅的神秘姊姊。一個乖寶寶的第一次叛逆，以及那餘溫猶存的咖啡因味道。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=該死?��??��?" class="button">?��??��?</a></li>
+                        <li><a href="note.html?lit=該死的咖啡因" class="button">閱讀故事</a></li>
                     </ul>
                 </article>
             </section>
-            <!-- ?��?資�??��???-->
+            <!-- 分頁資訊與按鈕 -->
             <div id="pagination-controls"></div>
             <p id="page-info" style="margin-top: 1.5rem;"></p>
         </div>
@@ -762,7 +762,7 @@
     <script src="https://unpkg.com/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
 
-    <!--  �?Canvas 2D 櫻花?��?（零依賴，�??�要�??��? -->
+    <!--  純 Canvas 2D 櫻花特效（零依賴，不需要圖片） -->
     <script>
         (function () {
             var canvas = document.getElementById('sakura-canvas');
@@ -856,10 +856,10 @@
         })();
     </script>
 
-    <!-- ?? ?��?檢查檔�??�否存在 -->
+    <!-- 🔍 動態檢查檔案是否存在 -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // 如�??�本機端?�接?��? HTML (file://)，fetch ?��???CORS 失�?，�??��??��??�被誤刪，�?此直?�略?�檢??
+            // 如果在本機端直接開啟 HTML (file://)，fetch 會因為 CORS 失敗，導致所有按鈕被誤刪，因此直接略過檢查
             if (window.location.protocol === 'file:') {
                 console.warn("Local file:// protocol detected. Auto-hide file checks are disabled to prevent CORS blocking.");
                 return;
@@ -910,20 +910,20 @@
                     pdfExists = false;
                 }
 
-                // ?�檢?��??��??��?顯示?�輯
+                // 當檢查完畢後執行顯示邏輯
                 Promise.all(promises).then(() => {
-                    // ?��???MD，�??��? PDF?��??��? MD ?��??��?
+                    // 若沒有 MD，但「有 PDF」，才把 MD 按鈕刪掉
                     if (!mdExists && pdfExists) {
                         if (mdButton) {
                             if (mdButton.closest('li')) mdButton.closest('li').remove();
                             else mdButton.remove();
                         }
-                        // 並�??��?標�?/?��?????�為 PDF
+                        // 並將卡片標題/圖片連結改為 PDF
                         const pdfHref = pdfButton.getAttribute('href');
                         if (titleLink) titleLink.setAttribute('href', pdfHref);
                         if (imageLink) imageLink.setAttribute('href', pdfHref);
                     }
-                    // 如�??�張?��??�寫??PDF ?��?，�?實�?上找不到 PDF ?�件，就??PDF ?��??��?
+                    // 如果這張卡片有寫出 PDF 按鈕，但實際上找不到 PDF 文件，就把 PDF 按鈕刪掉
                     if (!pdfExists && pdfButton) {
                         if (pdfButton.closest('li')) pdfButton.closest('li').remove();
                         else pdfButton.remove();
@@ -933,7 +933,7 @@
         });
     </script>
 
-    <!-- ?? ?��??��??�篩?��?�?-->
+    <!-- 📂 文章排序與篩選邏輯 -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const filterCategory = document.getElementById('filter-category');
@@ -945,7 +945,7 @@
             const initialOrder = allItems.slice();
             const ITEMS_PER_PAGE = 4;
             let currentPage = 1;
-            let activeItems = []; // ?��?篩選+?��?後�??�?��???
+            let activeItems = []; // 當前篩選+排序後的所有項目
 
             function getFilteredSorted() {
                 const category = filterCategory.value;
@@ -978,7 +978,7 @@
                 const start = (currentPage - 1) * ITEMS_PER_PAGE;
                 const end = start + ITEMS_PER_PAGE;
 
-                // ?��??�?��??��??�顯示當?��??��?並�???DOM ?��?
+                // 隱藏所有項目，再顯示當頁項目，並保持 DOM 順序
                 allItems.forEach(item => item.style.display = 'none');
 
                 container.innerHTML = '';
@@ -997,12 +997,12 @@
                     container.appendChild(item);
                 });
 
-                // ?�新?�碼資�?
+                // 更新頁碼資訊
                 pageInfo.textContent = activeItems.length > 0
-                    ? `�?${currentPage} ?��???${totalPages} ?��?${activeItems.length} 篇�?章�?`
-                    : '?�符?��?件�??�容';
+                    ? `第 ${currentPage} 頁，共 ${totalPages} 頁（${activeItems.length} 篇文章）`
+                    : '無符合條件的內容';
 
-                // 建�??��??��?
+                // 建立分頁按鈕
                 paginationControls.innerHTML = '';
                 if (totalPages <= 1) return;
 
@@ -1024,9 +1024,9 @@
                 }
 
                 paginationControls.appendChild(makeBtn('«', 1, currentPage === 1, false));
-                paginationControls.appendChild(makeBtn('??, currentPage - 1, currentPage === 1, false));
+                paginationControls.appendChild(makeBtn('‹', currentPage - 1, currentPage === 1, false));
 
-                // 顯示?�碼?��?（�?多�???5 ?��?
+                // 顯示頁碼按鈕（最多展現 5 頁）
                 let startPage = Math.max(1, currentPage - 2);
                 let endPage = Math.min(totalPages, startPage + 4);
                 if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
@@ -1035,7 +1035,7 @@
                     paginationControls.appendChild(makeBtn(p, p, false, p === currentPage));
                 }
 
-                paginationControls.appendChild(makeBtn('??, currentPage + 1, currentPage === totalPages, false));
+                paginationControls.appendChild(makeBtn('›', currentPage + 1, currentPage === totalPages, false));
                 paginationControls.appendChild(makeBtn('»', totalPages, currentPage === totalPages, false));
             }
 
@@ -1054,7 +1054,7 @@
             filterCategory.addEventListener('change', updateView);
             sortBy.addEventListener('change', updateView);
 
-            // ?��???
+            // 初始化
             updateView();
         });
     </script>
@@ -1062,15 +1062,15 @@
 
 
 
-    <!-- ?���?幻�??�輪??(Carousel) ?�制?�輯 -->
+    <!-- 🖼️ 幻燈片輪播 (Carousel) 控制邏輯 -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // ?��??�輪?��?
+            // 初始化輪播圖
             document.querySelectorAll('.card-carousel').forEach(carousel => {
                 const slides = carousel.querySelectorAll('.carousel-slide');
-                if (slides.length <= 1) return; // ?�張?��?不�?要輪?�控??
+                if (slides.length <= 1) return; // 單張圖片不需要輪播控制
 
-                // ?�入?��?
+                // 插入按鈕
                 const prevBtn = document.createElement('a');
                 prevBtn.className = 'carousel-prev';
                 prevBtn.innerHTML = '&#10094;';
