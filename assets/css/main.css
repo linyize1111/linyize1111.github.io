@@ -1,5 +1,5 @@
 @import url(fontawesome-all.min.css);
-@import url("https://fonts.googleapis.com/css?family=Merriweather:300,700,300italic,700italic|Source+Sans+Pro:900");
+/* Google Fonts moved to <link> in HTML heads to avoid render-blocking @import */
 
 /*
 	Massively by HTML5 UP
@@ -195,6 +195,11 @@ html {
 
 body {
 	background-color: #1e252d;
+	background-image: url('../images/bg.png');
+	background-size: cover;
+	background-position: center;
+	background-attachment: fixed;
+	background-repeat: no-repeat;
 }
 
 body.is-preload *,
@@ -3492,8 +3497,9 @@ table.alt tbody tr td {
 	width: 100%;
 }
 
+/* Removed: this was causing the black semi-overlay during preload. The bg.png on body makes a black overlay jarring. */
 body.is-preload #wrapper.fade-in:before {
-	opacity: 0.5;
+	opacity: 0;
 }
 
 @media screen and (orientation: portrait) {
@@ -4954,15 +4960,20 @@ body.is-preload #intro:not(.hidden)+#header+#nav {
 
 }
 
-/* ========== Custom Loading Overlay ========== */
+/* ========== Loading Overlay - shows bg.png immediately, no black flash ========== */
 #loading-screen {
 	position: fixed;
-	top: 0; 
-	left: 0; 
-	width: 100vw; 
+	top: 0;
+	left: 0;
+	width: 100vw;
 	height: 100vh;
 	z-index: 10001;
-	background: url('../images/bg.png') center/cover no-repeat #000;
-	transition: opacity 0.5s ease;
-	pointer-events: none; /* Let clicks pass through just in case during fade */
+	background: url('../images/bg.png') center/cover no-repeat #1e252d;
+	transition: opacity 0.6s ease;
+	pointer-events: all;
+}
+
+#loading-screen.fade-out {
+	opacity: 0;
+	pointer-events: none;
 }

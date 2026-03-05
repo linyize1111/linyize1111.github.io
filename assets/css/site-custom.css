@@ -1,0 +1,451 @@
+/*
+ * site-custom.css
+ * 
+ * Custom overrides for LYZ's website:
+ * 1. CSS Variable-based theme system (light & dark)
+ * 2. Image beautification (markdown-body and article images)
+ * 3. Dark mode control button styling
+ */
+
+/* ============================================================
+   1. CSS VARIABLES — Light Mode Defaults
+   ============================================================ */
+:root {
+    --color-bg: #f5f4f0;
+    --color-bg-secondary: rgba(255, 255, 255, 0.85);
+    --color-text: #212931;
+    --color-text-muted: #555c66;
+    --color-heading: #1a1f26;
+    --color-link: #0a6b91;
+    --color-link-hover: #18bfef;
+    --color-border: #dde1e6;
+    --color-card-bg: rgba(255, 255, 255, 0.9);
+    --color-code-bg: rgba(220, 220, 220, 0.4);
+    --color-code-border: #dde1e6;
+    --color-blockquote-border: #18bfef;
+    --color-blockquote-bg: rgba(24, 191, 239, 0.06);
+    --color-table-head-bg: rgba(24, 191, 239, 0.12);
+    --color-table-row-alt: rgba(0, 0, 0, 0.03);
+    --color-table-border: #dde1e6;
+    --color-input-bg: #fff;
+    --color-nav-bg: rgba(255, 255, 255, 0.95);
+    --shadow-img: 0 4px 20px rgba(0, 0, 0, 0.14);
+    --radius-img: 8px;
+}
+
+/* ============================================================
+   Dark Mode Variables
+   ============================================================ */
+[data-theme="dark"] {
+    --color-bg: #1a1f28;
+    --color-bg-secondary: rgba(30, 38, 52, 0.92);
+    --color-text: #e8eaf0;
+    --color-text-muted: #9aa3b0;
+    --color-heading: #f0f2f8;
+    --color-link: #56d0f8;
+    --color-link-hover: #a8f0ff;
+    --color-border: #3a4455;
+    --color-card-bg: rgba(30, 38, 52, 0.9);
+    --color-code-bg: rgba(0, 0, 0, 0.35);
+    --color-code-border: #3a4455;
+    --color-blockquote-border: #56d0f8;
+    --color-blockquote-bg: rgba(86, 208, 248, 0.08);
+    --color-table-head-bg: rgba(86, 208, 248, 0.1);
+    --color-table-row-alt: rgba(255, 255, 255, 0.04);
+    --color-table-border: #3a4455;
+    --color-input-bg: #252d3a;
+    --color-nav-bg: rgba(26, 31, 40, 0.97);
+    --shadow-img: 0 4px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ============================================================
+   2. Dark Mode Body & Containers
+   ============================================================ */
+[data-theme="dark"] body {
+    background-color: #1a1f28;
+    color: var(--color-text);
+}
+
+[data-theme="dark"] #wrapper,
+[data-theme="dark"] #main {
+    background-color: transparent;
+}
+
+/* Header and nav */
+[data-theme="dark"] #header {
+    background: rgba(26, 31, 40, 0.96);
+    border-bottom: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] #header a.logo {
+    color: var(--color-heading);
+}
+
+[data-theme="dark"] #nav {
+    background: var(--color-nav-bg);
+    border-bottom: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] #nav ul.links a {
+    color: var(--color-text);
+    border-bottom-color: transparent;
+}
+
+[data-theme="dark"] #nav ul.links li.active a,
+[data-theme="dark"] #nav ul.links a:hover {
+    color: var(--color-link-hover) !important;
+    border-bottom-color: var(--color-link-hover);
+}
+
+[data-theme="dark"] #nav ul.icons a {
+    color: var(--color-text-muted);
+}
+
+/* Posts and Articles */
+[data-theme="dark"] article.post,
+[data-theme="dark"] .posts article,
+[data-theme="dark"] article.note-item {
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .post header h2 a,
+[data-theme="dark"] .posts article header h2 a,
+[data-theme="dark"] article.note-item header h2 a {
+    color: var(--color-heading);
+}
+
+[data-theme="dark"] .post header .date,
+[data-theme="dark"] article.note-item header .date {
+    color: var(--color-text-muted);
+}
+
+/* General text */
+[data-theme="dark"] p,
+[data-theme="dark"] li,
+[data-theme="dark"] td,
+[data-theme="dark"] th,
+[data-theme="dark"] label {
+    color: var(--color-text);
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6 {
+    color: var(--color-heading);
+}
+
+[data-theme="dark"] a {
+    color: var(--color-link);
+    border-bottom-color: rgba(86, 208, 248, 0.35);
+}
+
+[data-theme="dark"] a:hover {
+    color: var(--color-link-hover) !important;
+    border-bottom-color: transparent;
+}
+
+/* Blockquote */
+[data-theme="dark"] blockquote {
+    border-left-color: var(--color-blockquote-border);
+    background: var(--color-blockquote-bg);
+    color: var(--color-text);
+    border-radius: 0 6px 6px 0;
+    padding: 0.75rem 1rem 0.75rem 1.5rem;
+}
+
+/* Code */
+[data-theme="dark"] code {
+    background: var(--color-code-bg);
+    border-color: var(--color-code-border);
+    color: #f0a0c0;
+}
+
+[data-theme="dark"] pre {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--color-code-border);
+    border-radius: 6px;
+}
+
+[data-theme="dark"] pre code {
+    color: #e8eaf0;
+    background: transparent;
+    border: none;
+}
+
+/* Tables */
+[data-theme="dark"] table {
+    border-color: var(--color-table-border);
+}
+
+[data-theme="dark"] table thead tr {
+    background: var(--color-table-head-bg);
+    color: var(--color-heading);
+    border-bottom: 2px solid var(--color-border);
+}
+
+[data-theme="dark"] table tbody tr:nth-child(even) {
+    background: var(--color-table-row-alt);
+}
+
+[data-theme="dark"] table td,
+[data-theme="dark"] table th {
+    border-color: var(--color-table-border);
+    color: var(--color-text);
+}
+
+/* HR */
+[data-theme="dark"] hr {
+    border-bottom-color: var(--color-border);
+}
+
+/* Input elements */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background-color: var(--color-input-bg);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+/* Buttons */
+[data-theme="dark"] .button {
+    background: transparent;
+    border-color: var(--color-border);
+    color: var(--color-text) !important;
+}
+
+[data-theme="dark"] .button:hover {
+    background: rgba(86, 208, 248, 0.1);
+    border-color: var(--color-link);
+    color: var(--color-link) !important;
+}
+
+[data-theme="dark"] .button.primary {
+    background: #1a6b85;
+    border-color: #1a6b85;
+    color: #fff !important;
+}
+
+/* Copyright footer */
+[data-theme="dark"] #copyright {
+    color: var(--color-text-muted);
+    border-top-color: var(--color-border);
+}
+
+[data-theme="dark"] #copyright a {
+    color: var(--color-text-muted);
+}
+
+/* Intro section */
+[data-theme="dark"] #intro {
+    color: #e8eaf0;
+}
+
+/* NavPanel (mobile) */
+[data-theme="dark"] #navPanel {
+    background: #1a1f28;
+    border-right: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] #navPanel .links a {
+    color: var(--color-text);
+    border-top-color: var(--color-border);
+}
+
+/* Markdown / note page */
+[data-theme="dark"] .markdown-body {
+    color: var(--color-text) !important;
+    background: transparent !important;
+}
+
+[data-theme="dark"] .markdown-body h1,
+[data-theme="dark"] .markdown-body h2,
+[data-theme="dark"] .markdown-body h3,
+[data-theme="dark"] .markdown-body h4,
+[data-theme="dark"] .markdown-body h5,
+[data-theme="dark"] .markdown-body h6 {
+    color: var(--color-heading);
+    border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .markdown-body a {
+    color: var(--color-link);
+}
+
+[data-theme="dark"] .markdown-body code {
+    background: var(--color-code-bg);
+    border-color: var(--color-code-border);
+    color: #f0a0c0;
+}
+
+[data-theme="dark"] .markdown-body pre {
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--color-code-border);
+}
+
+[data-theme="dark"] .markdown-body pre code {
+    color: #e8eaf0;
+    background: transparent;
+    border: none;
+}
+
+[data-theme="dark"] .markdown-body blockquote {
+    border-left-color: var(--color-blockquote-border);
+    background: var(--color-blockquote-bg);
+    color: var(--color-text-muted);
+}
+
+[data-theme="dark"] .markdown-body table {
+    border-color: var(--color-table-border);
+}
+
+[data-theme="dark"] .markdown-body tbody tr:nth-child(even) {
+    background: var(--color-table-row-alt);
+}
+
+[data-theme="dark"] .markdown-body td,
+[data-theme="dark"] .markdown-body th {
+    border-color: var(--color-table-border);
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .markdown-body thead {
+    background: var(--color-table-head-bg);
+    color: var(--color-heading);
+}
+
+/* KaTeX / Math */
+[data-theme="dark"] .katex,
+[data-theme="dark"] .katex-display {
+    color: var(--color-text);
+}
+
+/* Sort/filter controls */
+[data-theme="dark"] #sort-filter-controls {
+    background: var(--color-bg-secondary);
+    border-color: var(--color-border);
+}
+
+[data-theme="dark"] #sort-filter-controls label,
+[data-theme="dark"] #sort-filter-controls select {
+    color: var(--color-text);
+    background: var(--color-input-bg);
+    border-color: var(--color-border);
+}
+
+[data-theme="dark"] #pagination-controls button {
+    background: var(--color-card-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] #pagination-controls button.active {
+    background: var(--color-link);
+    color: #fff;
+}
+
+[data-theme="dark"] #page-info {
+    color: var(--color-text-muted);
+}
+
+/* ============================================================
+   3. Image Beautification — Article Content & Markdown
+   ============================================================ */
+
+/* Images inside markdown-body (note.html rendered content) */
+.markdown-body img {
+    display: block;
+    max-width: min(100%, 800px);
+    max-height: 600px;
+    width: auto;
+    height: auto;
+    margin: 2rem auto;
+    border-radius: var(--radius-img, 8px);
+    box-shadow: var(--shadow-img, 0 4px 20px rgba(0, 0, 0, 0.14));
+    object-fit: contain;
+    object-position: center;
+}
+
+/* Figure + figcaption wrapping for captioned images */
+.markdown-body figure {
+    margin: 2rem auto;
+    text-align: center;
+}
+
+.markdown-body figure img {
+    margin: 0 auto 0.6rem;
+}
+
+.markdown-body figcaption {
+    font-size: 0.85rem;
+    color: var(--color-text-muted, #555c66);
+    font-style: italic;
+    margin-top: 0.4rem;
+}
+
+/* Multiple consecutive images – consistent gap */
+.markdown-body img+img,
+.markdown-body p+p>img:only-child,
+.markdown-body figure+figure {
+    margin-top: 1.5rem;
+}
+
+/* Article post images (directory/literature/index) */
+.posts article .image.fit,
+article.post .image.main {
+    overflow: hidden;
+    border-radius: 6px;
+}
+
+.posts article .image.fit img,
+article.post .image.main img {
+    border-radius: 6px;
+}
+
+/* Mobile: full-width, reasonable height */
+@media screen and (max-width: 736px) {
+    .markdown-body img {
+        max-height: 400px;
+        border-radius: 6px;
+    }
+}
+
+/* ============================================================
+   4. Dark Mode Toggle Button in #video-controls
+   ============================================================ */
+#btn-darkmode {
+    /* inherits from video-controls button styles */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================================
+   5. Misc Quality of Life
+   ============================================================ */
+
+/* Smooth theme transition (only on semantic elements, not bg-image) */
+body,
+#wrapper,
+#main,
+#header,
+#nav,
+article,
+.markdown-body,
+blockquote,
+code,
+pre,
+table,
+#navPanel {
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+/* Prevent transition flicker on initial load */
+.no-transition,
+.no-transition * {
+    transition: none !important;
+}

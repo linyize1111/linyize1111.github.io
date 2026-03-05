@@ -9,9 +9,23 @@
 	<noscript>
 		<link rel="stylesheet" href="assets/css/noscript.css" />
 	</noscript>
+    <!-- Google Fonts: loaded as <link> to avoid render-blocking @import -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
+    <!-- Site Custom CSS: dark mode + image styles -->
+    <link rel="stylesheet" href="assets/css/site-custom.css" />
 </head>
 
 <body class="is-preload">
+    <!-- Prevent flash on initial dark mode load -->
+    <script>
+        (function() {
+            var saved = localStorage.getItem('colorTheme');
+            var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
 
     <!-- 真正的 Loading Screen -->
     <div id="loading-screen"></div>

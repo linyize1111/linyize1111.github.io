@@ -2,35 +2,30 @@
  * common.js
  * 
  * Shared logic for LYZ's website:
- * 1. Loading screen overlay
+ * 1. Loading screen overlay (bg.png always visible, short delay)
  * 2. Media controls (background video & music)
  * 3. Sakura effect (with DOM guard)
+ * 4. Dark mode toggle initialization
  */
 
- function initLoadingScreen() {
-    // Show bg.png immediately via CSS in #loading-screen
-    // Wait for window load
+function initLoadingScreen() {
+    var loader = document.getElementById('loading-screen');
+    if (!loader) return;
+
+    // The #loading-screen already shows bg.png via CSS immediately.
+    // Just wait for DOM+resources to be ready, then fade out quickly (1.2s).
     window.addEventListener('load', function () {
         setTimeout(function () {
-            var loader = document.getElementById('loading-screen');
-            if (loader) {
-                loader.style.opacity = '0';
-                setTimeout(function () {
-                    loader.style.display = 'none';
-                    // Start video after fade out
-                    var v = document.getElementById('bg-video');
-                    if (v && sessionStorage.getItem('mediaPaused') !== 'true') {
-                        v.play().catch(function (e) { console.log('Autoplay prevented:', e); });
-                    }
-                }, 500); // 0.5s fade transition
-            } else {
-                // Flash fallback if no loader
+            loader.classList.add('fade-out');
+            setTimeout(function () {
+                loader.style.display = 'none';
+                // Start video only after fade is complete
                 var v = document.getElementById('bg-video');
                 if (v && sessionStorage.getItem('mediaPaused') !== 'true') {
                     v.play().catch(function (e) { console.log('Autoplay prevented:', e); });
                 }
-            }
-        }, 5000); // Wait 5 seconds to ensure stability
+            }, 700); // Match CSS transition 0.6s + small buffer
+        }, 400); // Very short delay — bg.png loads immediately, we just wait for paint
     });
 }
 
@@ -46,10 +41,9 @@ function initMediaControls() {
         var savedMuted = sessionStorage.getItem('mediaMuted');
         var savedPaused = sessionStorage.getItem('mediaPaused');
 
-        // 影片永遠靜音
+        // Video always muted for autoplay compatibility
         video.muted = true;
 
-        // 如果 session 記錄為真才靜音，否則預設想開聲音
         var isMuted = (savedMuted === 'true');
         music.muted = isMuted;
 
@@ -62,7 +56,6 @@ function initMediaControls() {
             video.pause();
             btnPlay.innerHTML = '<i class="fas fa-play"></i>';
         } else {
-            // 嘗試即刻播放 (若被瀏覽器阻擋則先靜音播放)
             var playPromise = music.play();
             if (playPromise !== undefined) {
                 playPromise.catch(function () {
@@ -79,8 +72,6 @@ function initMediaControls() {
             music.muted = !music.muted;
             updateMuteBtn();
             sessionStorage.setItem('mediaMuted', music.muted);
-
-            // 防呆：如果音樂根本沒開始播，接觸解靜音時順便啟動
             if (music.paused && savedPaused !== 'true') {
                 music.play().catch(function () { });
             }
@@ -108,10 +99,9 @@ function initMediaControls() {
 }
 
 function initSakuraIfPresent() {
-    // Sakura effect canvas
     var canvas = document.getElementById('sakura-canvas');
-    if (!canvas) return; // ✅ DOM guard directly prevents errors if absent
-    
+    if (!canvas) return;
+
     var ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -200,20 +190,83 @@ function initSakuraIfPresent() {
         requestID = requestAnimationFrame(animate);
     }
 
-    // Cancel old animation on re-init just in case
     if (window._sakuraAnimId) {
         cancelAnimationFrame(window._sakuraAnimId);
     }
-    
+
     animate();
     window._sakuraAnimId = requestID;
 }
 
+// ─── Dark Mode ───────────────────────────────────────────────────────────────
+
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+}
+
+function initDarkMode() {
+    // Read preference: localStorage > system preference
+    var saved = localStorage.getItem('colorTheme');
+    var preferred;
+    if (saved) {
+        preferred = saved;
+    } else {
+        preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    applyTheme(preferred);
+
+    // Create toggle button when DOM is ready
+    document.addEventListener('DOMContentLoaded', function () {
+        var controls = document.getElementById('video-controls');
+        var btn = document.createElement('button');
+        btn.id = 'btn-darkmode';
+        btn.title = '切換深色/亮色模式';
+        btn.innerHTML = '<i class="fas fa-moon"></i>';
+
+        function updateIcon() {
+            var isDark = document.documentElement.hasAttribute('data-theme');
+            btn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            btn.title = isDark ? '切換亮色模式' : '切換深色模式';
+        }
+        updateIcon();
+
+        btn.addEventListener('click', function () {
+            var isDark = document.documentElement.hasAttribute('data-theme');
+            var newTheme = isDark ? 'light' : 'dark';
+            applyTheme(newTheme);
+            localStorage.setItem('colorTheme', newTheme);
+            updateIcon();
+        });
+
+        if (controls) {
+            // Insert at top of controls panel
+            controls.insertBefore(btn, controls.firstChild);
+        } else {
+            // Fallback: inject a standalone controls panel
+            var panel = document.createElement('div');
+            panel.id = 'video-controls';
+            panel.appendChild(btn);
+            document.body.appendChild(panel);
+        }
+    });
+
+    // Also watch for system changes (if user hasn't manually set a preference)
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+        if (!localStorage.getItem('colorTheme')) {
+            applyTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+}
+
 function initCommon() {
+    initDarkMode(); // Must be first so theme applies before paint
     initLoadingScreen();
     initMediaControls();
     initSakuraIfPresent();
 }
 
-// Ensure execution
 initCommon();
