@@ -710,11 +710,12 @@ html[data-theme] table {
     margin-bottom: 3rem;
 }
 
-/* On content pages (not index) push the entire wrapper down 
-   to reveal the background like the index hero area,
-   avoiding any detached transparent spacers. */
-body:not(:has(#intro)) #wrapper {
-    padding-top: 55vh;
+/* On content pages (not index) push the header down 
+   moderate amount to reveal the background like the index hero area,
+   avoiding any detached transparent spacers and preventing 
+   the logo from hitting the bottom video controls. */
+body:not(:has(#intro)) #header {
+    margin-top: 15vh;
 }
 
 /* ============================================================
