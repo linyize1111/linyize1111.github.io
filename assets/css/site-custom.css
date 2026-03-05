@@ -800,47 +800,63 @@ article.post .image.main img {
 /* ============================================================
    H. HERO SPACER — Non-index pages background visibility
    ============================================================
-   ROOT CAUSE: index.html has a full #intro section (tall, 100vh-like)
-   that sits between the parallax bg and #main, giving bg breathing room.
-   Other pages: #wrapper goes directly header → nav → #main (solid white),
-   so the entire viewport is immediately covered, exposing only the top
-   sliver of the background image.
+   JS (common.js initHeroSpacer) injects:
+     <div id="page-hero-spacer"></div>
+   BEFORE #main on every page that lacks #intro (sub-pages).
 
-   FIX: On pages WITHOUT #intro, give #main a generous margin-top so the
-   background is visible above #main. We detect via .no-intro class,
-   which is set on #wrapper when there is no #intro (sub-pages).
-   The #header on sub-pages only takes up ~20rem so we need extra space.
+   This div is 100% transparent and creates vertical space so the
+   fixed background image/video is visible before content begins.
+
+   Target:  like index's #intro — user sees most of the bg first.
+   Spacer height:
+     Desktop: clamp(18rem, 70vh, 42rem)  ≈ 70% viewport
+     Mobile:  clamp(10rem, 52vh, 26rem)  ≈ 52% viewport
    ============================================================ */
 
-/* When #intro is NOT present, simulate a hero breathing area.
-   This applies to about / directory / literature / note pages.
-   Strategy: push #main down with margin-top so the fixed background shows
-   through the gap between #nav bottom and #main top. */
-#wrapper.page-hero-spacer #main,
-body:not(:has(#intro)) #main {
-    margin-top: clamp(3rem, 18vh, 9rem);
+#page-hero-spacer {
+    /* Purely a height holder — totally transparent */
+    display: block;
+    width: 100%;
+
+    /* Desktop: ~70vh of visible background above #main */
+    height: clamp(18rem, 70vh, 42rem);
+
+    /* Transparent — background image/video shows through */
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    pointer-events: none;
+
+    /* Must be ABOVE the bg layer but BELOW #main */
+    position: relative;
+    z-index: 1;
 }
 
-/* Keep the same width/centering on subpages */
-#wrapper.page-hero-spacer #main {
-    margin-left: auto;
-    margin-right: auto;
-}
-
-/* On mobile the gap doesn't need to be as big */
+/* Mobile: smaller but still dramatic */
 @media screen and (max-width: 736px) {
-
-    #wrapper.page-hero-spacer #main,
-    body:not(:has(#intro)) #main {
-        margin-top: clamp(2rem, 10vh, 4rem);
+    #page-hero-spacer {
+        height: clamp(10rem, 52vh, 26rem);
     }
 }
 
-/* Also ensure sub-page #header (the logo area) has a comfortable visible height
-   so users naturally see background before the content block */
+/* Tablet middle ground */
+@media screen and (max-width: 980px) and (min-width: 737px) {
+    #page-hero-spacer {
+        height: clamp(14rem, 60vh, 32rem);
+    }
+}
+
+/* Remove #main margin-top since the spacer now handles the gap.
+   Keep auto margins for centering. */
+#page-hero-spacer+#main {
+    margin-top: 0 !important;
+}
+
+/* Ensure sub-page #header (logo area) is tall and transparent */
 body:not(:has(#intro)) #header {
-    height: clamp(16rem, 28vh, 22rem);
-    padding-bottom: clamp(4rem, 10vh, 8rem);
-    /* Show background under logo */
+    height: clamp(16rem, 22vh, 20rem);
+    padding-bottom: clamp(3rem, 6vh, 5rem);
     background: transparent;
 }

@@ -197,12 +197,10 @@ function currentTheme() {
 }
 
 function initTheme() {
-    // Requirement 3: Default is LIGHT. Do NOT fall back to prefers-color-scheme.
     var saved = localStorage.getItem('colorTheme');
     var theme = (saved && THEMES.indexOf(saved) !== -1) ? saved : 'light';
     applyTheme(theme);
 
-    // Build toggle button once DOM is ready
     document.addEventListener('DOMContentLoaded', function () {
         var controls = document.getElementById('video-controls');
         var btn = document.createElement('button');
@@ -237,9 +235,33 @@ function initTheme() {
     });
 }
 
+/* ─── Hero Spacer for Non-Index pages ───────────────────────
+ * Index has a tall #intro section that lets background show.
+ * All other pages go straight header→nav→#main, covering bg.
+ * Fix: inject a transparent spacer div BEFORE #main on sub-pages.
+ * The spacer is z-index 1 (above bg, below content) and fully
+ * transparent so only the fixed background is visible through it.
+ */
+function initHeroSpacer() {
+    document.addEventListener('DOMContentLoaded', function () {
+        // Only run on pages without #intro (sub-pages)
+        var intro = document.getElementById('intro');
+        if (intro) return; // Index — leave alone
+
+        var main = document.getElementById('main');
+        if (!main) return;
+
+        // Create the spacer
+        var spacer = document.createElement('div');
+        spacer.id = 'page-hero-spacer';
+        main.parentNode.insertBefore(spacer, main);
+    });
+}
+
 /* ─── Init ───────────────────────────────────────────────────── */
 function initCommon() {
     initTheme();           // Must be first — applies theme before paint
+    initHeroSpacer();      // Inject hero spacer before #main on sub-pages
     initLoadingScreen();
     initMediaControls();
     initSakuraIfPresent();
