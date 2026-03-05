@@ -48,6 +48,11 @@ function initMediaControls() {
         }
         updateMuteBtn();
 
+        var savedTime = sessionStorage.getItem('musicCurrentTime');
+        if (savedTime && !isNaN(savedTime)) {
+            music.currentTime = parseFloat(savedTime);
+        }
+
         if (sessionStorage.getItem('mediaPaused') === 'true') {
             btnPlay.innerHTML = '<i class="fas fa-play"></i>';
         } else {
@@ -87,6 +92,7 @@ function initMediaControls() {
         window.addEventListener('beforeunload', function () {
             sessionStorage.setItem('mediaMuted', music.muted);
             sessionStorage.setItem('mediaPaused', video.paused);
+            sessionStorage.setItem('musicCurrentTime', music.currentTime);
         });
     });
 }
