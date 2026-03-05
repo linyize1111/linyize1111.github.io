@@ -50,7 +50,15 @@ function initMediaControls() {
 
         var savedTime = sessionStorage.getItem('musicCurrentTime');
         if (savedTime && !isNaN(savedTime)) {
-            music.currentTime = parseFloat(savedTime);
+            var timeToSet = parseFloat(savedTime);
+            // 由於 preload="none" ，在音樂還沒載入 metadata 前無法設定 currentTime
+            if (music.readyState >= 1) { // HAVE_METADATA or higher
+                music.currentTime = timeToSet;
+            } else {
+                music.addEventListener('loadedmetadata', function () {
+                    music.currentTime = timeToSet;
+                }, { once: true });
+            }
         }
 
         if (sessionStorage.getItem('mediaPaused') === 'true') {
