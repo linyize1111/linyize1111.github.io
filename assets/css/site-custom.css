@@ -796,3 +796,51 @@ article.post .image.main img {
     align-items: center;
     justify-content: center;
 }
+
+/* ============================================================
+   H. HERO SPACER — Non-index pages background visibility
+   ============================================================
+   ROOT CAUSE: index.html has a full #intro section (tall, 100vh-like)
+   that sits between the parallax bg and #main, giving bg breathing room.
+   Other pages: #wrapper goes directly header → nav → #main (solid white),
+   so the entire viewport is immediately covered, exposing only the top
+   sliver of the background image.
+
+   FIX: On pages WITHOUT #intro, give #main a generous margin-top so the
+   background is visible above #main. We detect via .no-intro class,
+   which is set on #wrapper when there is no #intro (sub-pages).
+   The #header on sub-pages only takes up ~20rem so we need extra space.
+   ============================================================ */
+
+/* When #intro is NOT present, simulate a hero breathing area.
+   This applies to about / directory / literature / note pages.
+   Strategy: push #main down with margin-top so the fixed background shows
+   through the gap between #nav bottom and #main top. */
+#wrapper.page-hero-spacer #main,
+body:not(:has(#intro)) #main {
+    margin-top: clamp(3rem, 18vh, 9rem);
+}
+
+/* Keep the same width/centering on subpages */
+#wrapper.page-hero-spacer #main {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* On mobile the gap doesn't need to be as big */
+@media screen and (max-width: 736px) {
+
+    #wrapper.page-hero-spacer #main,
+    body:not(:has(#intro)) #main {
+        margin-top: clamp(2rem, 10vh, 4rem);
+    }
+}
+
+/* Also ensure sub-page #header (the logo area) has a comfortable visible height
+   so users naturally see background before the content block */
+body:not(:has(#intro)) #header {
+    height: clamp(16rem, 28vh, 22rem);
+    padding-bottom: clamp(4rem, 10vh, 8rem);
+    /* Show background under logo */
+    background: transparent;
+}

@@ -15,21 +15,41 @@
             text-align: left;
         }
 
-        #markdown-container img {
-            max-width: 100%;
-            height: 250px;
-            object-fit: contain;
-            border-radius: 5px;
-            margin: 1.5em auto;
-            background: rgba(0, 0, 0, 0.2);
-            display: block;
+        /* ── Image styles: these are the DEFINITIVE rules for note page images.
+           They MUST be here (not only in site-custom.css) because they need to
+           beat the base main.css cascade with higher specificity. ── */
+        #markdown-container img,
+        #markdown-container .markdown-body img,
+        #markdown-container p > img,
+        #markdown-container figure img,
+        #markdown-container a > img {
+            display: block !important;
+            max-width: min(100%, 860px) !important;
+            max-height: 65vh !important;   /* Not 250px — allow images to breathe */
+            width: auto !important;
+            height: auto !important;       /* Never force height: auto lets image scale naturally */
+            margin: 2.5rem auto !important;
+            border-radius: 10px !important;
+            box-shadow: 0 6px 28px rgba(0, 0, 0, 0.18) !important;
+            object-fit: contain !important;
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        /* Mobile */
+        @media screen and (max-width: 736px) {
+            #markdown-container img,
+            #markdown-container .markdown-body img {
+                max-height: 50vh !important;
+                border-radius: 8px !important;
+                margin: 1.75rem auto !important;
+            }
         }
 
         #markdown-container pre {
             background: #212931;
             color: #ffffff;
             padding: 1.5em;
-            border-radius: 4px;
+            border-radius: 6px;
             overflow-x: auto;
             margin: 1.5em 0;
         }
@@ -42,10 +62,19 @@
         }
 
         #markdown-container blockquote {
-            border-left: solid 4px #ffffff;
+            border-left: solid 4px #18bfef;
             padding-left: 1.5em;
             font-style: italic;
             margin: 1.5em 0;
+        }
+
+        /* figcaption styling */
+        #markdown-container figcaption {
+            text-align: center;
+            font-size: 0.85rem;
+            font-style: italic;
+            color: #888;
+            margin-top: 0.4rem;
         }
     </style>
     <!-- Google Fonts: loaded as <link> to avoid render-blocking @import -->
