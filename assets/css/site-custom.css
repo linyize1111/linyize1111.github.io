@@ -710,10 +710,11 @@ html[data-theme] table {
     margin-bottom: 3rem;
 }
 
-/* On content pages (not index) add padding-top so the parallax
-   bg header area is not completely hidden by the nav */
-body:not(:has(#intro)) #main {
-    padding-top: 1rem;
+/* On content pages (not index) push the entire wrapper down 
+   to reveal the background like the index hero area,
+   avoiding any detached transparent spacers. */
+body:not(:has(#intro)) #wrapper {
+    padding-top: 55vh;
 }
 
 /* ============================================================
