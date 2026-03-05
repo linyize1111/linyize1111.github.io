@@ -214,12 +214,14 @@
 </head>
 
 <body class="is-preload">
-    <!-- Prevent flash on initial dark mode load -->
+    <!-- Theme FOUC prevention: apply saved theme before first paint -->
     <script>
         (function() {
             var saved = localStorage.getItem('colorTheme');
-            var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+            // Default is 'light' — only apply if saved is 'dark' or 'glass'
+            if (saved === 'dark' || saved === 'glass') {
+                document.documentElement.setAttribute('data-theme', saved);
+            }
         })();
     </script>
 

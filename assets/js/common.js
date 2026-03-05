@@ -1,34 +1,33 @@
 /**
  * common.js
- * 
+ *
  * Shared logic for LYZ's website:
- * 1. Loading screen overlay (bg.png always visible, short delay)
- * 2. Media controls (background video & music)
- * 3. Sakura effect (with DOM guard)
- * 4. Dark mode toggle initialization
+ * 1. Loading screen
+ * 2. Media controls (video + audio)
+ * 3. Sakura canvas animation
+ * 4. Three-mode theme system: light / dark / glass
  */
 
+/* ─── 1. Loading Screen ─────────────────────────────────────── */
 function initLoadingScreen() {
     var loader = document.getElementById('loading-screen');
     if (!loader) return;
 
-    // The #loading-screen already shows bg.png via CSS immediately.
-    // Just wait for DOM+resources to be ready, then fade out quickly (1.2s).
     window.addEventListener('load', function () {
         setTimeout(function () {
             loader.classList.add('fade-out');
             setTimeout(function () {
                 loader.style.display = 'none';
-                // Start video only after fade is complete
                 var v = document.getElementById('bg-video');
                 if (v && sessionStorage.getItem('mediaPaused') !== 'true') {
-                    v.play().catch(function (e) { console.log('Autoplay prevented:', e); });
+                    v.play().catch(function () { });
                 }
-            }, 700); // Match CSS transition 0.6s + small buffer
-        }, 400); // Very short delay — bg.png loads immediately, we just wait for paint
+            }, 700);
+        }, 400);
     });
 }
 
+/* ─── 2. Media Controls ─────────────────────────────────────── */
 function initMediaControls() {
     document.addEventListener('DOMContentLoaded', function () {
         var video = document.getElementById('bg-video');
@@ -38,27 +37,23 @@ function initMediaControls() {
 
         if (!video || !music || !btnMute || !btnPlay) return;
 
-        var savedMuted = sessionStorage.getItem('mediaMuted');
-        var savedPaused = sessionStorage.getItem('mediaPaused');
-
-        // Video always muted for autoplay compatibility
         video.muted = true;
-
-        var isMuted = (savedMuted === 'true');
+        var isMuted = (sessionStorage.getItem('mediaMuted') === 'true');
         music.muted = isMuted;
 
         function updateMuteBtn() {
-            btnMute.innerHTML = music.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+            btnMute.innerHTML = music.muted
+                ? '<i class="fas fa-volume-mute"></i>'
+                : '<i class="fas fa-volume-up"></i>';
         }
         updateMuteBtn();
 
-        if (savedPaused === 'true') {
-            video.pause();
+        if (sessionStorage.getItem('mediaPaused') === 'true') {
             btnPlay.innerHTML = '<i class="fas fa-play"></i>';
         } else {
-            var playPromise = music.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(function () {
+            var pp = music.play();
+            if (pp !== undefined) {
+                pp.catch(function () {
                     music.muted = true;
                     updateMuteBtn();
                     sessionStorage.setItem('mediaMuted', 'true');
@@ -72,20 +67,18 @@ function initMediaControls() {
             music.muted = !music.muted;
             updateMuteBtn();
             sessionStorage.setItem('mediaMuted', music.muted);
-            if (music.paused && savedPaused !== 'true') {
+            if (music.paused && sessionStorage.getItem('mediaPaused') !== 'true') {
                 music.play().catch(function () { });
             }
         });
 
         btnPlay.addEventListener('click', function () {
             if (video.paused) {
-                video.play();
-                music.play();
+                video.play(); music.play();
                 btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
                 sessionStorage.setItem('mediaPaused', 'false');
             } else {
-                video.pause();
-                music.pause();
+                video.pause(); music.pause();
                 btnPlay.innerHTML = '<i class="fas fa-play"></i>';
                 sessionStorage.setItem('mediaPaused', 'true');
             }
@@ -98,36 +91,25 @@ function initMediaControls() {
     });
 }
 
+/* ─── 3. Sakura Canvas ──────────────────────────────────────── */
 function initSakuraIfPresent() {
     var canvas = document.getElementById('sakura-canvas');
     if (!canvas) return;
-
     var ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    }
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     resize();
     window.addEventListener('resize', resize);
 
-    var COLORS = [
-        [255, 183, 197],
-        [255, 160, 180],
-        [255, 200, 210],
-        [250, 140, 165],
-        [255, 218, 225]
-    ];
-
-    var PETAL_COUNT = 80;
+    var COLORS = [[255, 183, 197], [255, 160, 180], [255, 200, 210], [250, 140, 165], [255, 218, 225]];
     var petals = [];
 
-    function makePetal(startFromTop) {
+    function makePetal(top) {
         var c = COLORS[Math.floor(Math.random() * COLORS.length)];
         return {
             x: Math.random() * canvas.width,
-            y: startFromTop ? -20 - Math.random() * 100 : Math.random() * canvas.height,
+            y: top ? -20 - Math.random() * 100 : Math.random() * canvas.height,
             size: 8 + Math.random() * 14,
             speedY: 0.25 + Math.random() * 0.45,
             speedX: -0.1 + Math.random() * 0.3,
@@ -141,129 +123,123 @@ function initSakuraIfPresent() {
         };
     }
 
-    for (var i = 0; i < PETAL_COUNT; i++) {
-        petals.push(makePetal(false));
-    }
+    for (var i = 0; i < 80; i++) petals.push(makePetal(false));
 
     function drawPetal(p) {
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.angle);
-
-        var w = p.size * 0.55;
-        var h = p.size;
-
+        var w = p.size * 0.55, h = p.size;
         ctx.beginPath();
         ctx.moveTo(0, -h / 2);
         ctx.bezierCurveTo(w, -h * 0.1, w, h * 0.4, 0, h / 2);
         ctx.bezierCurveTo(-w, h * 0.4, -w, -h * 0.1, 0, -h / 2);
-
-        var grad = ctx.createRadialGradient(0, -h * 0.1, 0, 0, 0, h / 2);
-        grad.addColorStop(0, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + Math.min(1, p.alpha + 0.2).toFixed(2) + ')');
-        grad.addColorStop(1, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + (p.alpha * 0.3).toFixed(2) + ')');
-
-        ctx.fillStyle = grad;
+        var g = ctx.createRadialGradient(0, -h * 0.1, 0, 0, 0, h / 2);
+        g.addColorStop(0, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + Math.min(1, p.alpha + 0.2).toFixed(2) + ')');
+        g.addColorStop(1, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + (p.alpha * 0.3).toFixed(2) + ')');
+        ctx.fillStyle = g;
         ctx.fill();
         ctx.restore();
     }
 
-    var requestID;
+    var rid;
     function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        for (var i = 0; i < petals.length; i++) {
-            var p = petals[i];
-
+        petals.forEach(function (p, i) {
             p.sway += p.swaySpeed;
             p.x += p.speedX + Math.sin(p.sway) * p.swayAmp;
             p.y += p.speedY;
             p.angle += p.spin;
-
             if (p.y > canvas.height + 30 || p.x < -60 || p.x > canvas.width + 60) {
                 petals[i] = makePetal(true);
                 petals[i].x = Math.random() * canvas.width;
             }
-
             drawPetal(petals[i]);
-        }
-
-        requestID = requestAnimationFrame(animate);
+        });
+        rid = requestAnimationFrame(animate);
     }
-
-    if (window._sakuraAnimId) {
-        cancelAnimationFrame(window._sakuraAnimId);
-    }
-
+    if (window._sakuraAnimId) cancelAnimationFrame(window._sakuraAnimId);
     animate();
-    window._sakuraAnimId = requestID;
+    window._sakuraAnimId = rid;
 }
 
-// ─── Dark Mode ───────────────────────────────────────────────────────────────
+/* ─── 4. Three-Mode Theme System ───────────────────────────── */
+/**
+ * Themes:
+ *   'light' (default) — normal light panels
+ *   'dark'            — dark glass panels
+ *   'glass'           — transparent/no panel, text protected by shadows
+ *
+ * Applied via data-theme="" on <html>:
+ *   light → attribute absent (default CSS)
+ *   dark  → data-theme="dark"
+ *   glass → data-theme="glass"
+ */
+
+var THEMES = ['light', 'dark', 'glass'];
+
+var THEME_META = {
+    light: { icon: '<i class="fas fa-sun"></i>', label: '亮色模式 (Light)', next: 'dark' },
+    dark: { icon: '<i class="fas fa-moon"></i>', label: '暗色模式 (Dark)', next: 'glass' },
+    glass: { icon: '<i class="fas fa-eye"></i>', label: '透明模式 (Glass)', next: 'light' }
+};
 
 function applyTheme(theme) {
-    if (theme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
+    if (!theme || theme === 'light') {
         document.documentElement.removeAttribute('data-theme');
+    } else {
+        document.documentElement.setAttribute('data-theme', theme);
     }
 }
 
-function initDarkMode() {
-    // Read preference: localStorage > system preference
-    var saved = localStorage.getItem('colorTheme');
-    var preferred;
-    if (saved) {
-        preferred = saved;
-    } else {
-        preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    applyTheme(preferred);
+function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'light';
+}
 
-    // Create toggle button when DOM is ready
+function initTheme() {
+    // Requirement 3: Default is LIGHT. Do NOT fall back to prefers-color-scheme.
+    var saved = localStorage.getItem('colorTheme');
+    var theme = (saved && THEMES.indexOf(saved) !== -1) ? saved : 'light';
+    applyTheme(theme);
+
+    // Build toggle button once DOM is ready
     document.addEventListener('DOMContentLoaded', function () {
         var controls = document.getElementById('video-controls');
         var btn = document.createElement('button');
-        btn.id = 'btn-darkmode';
-        btn.title = '切換深色/亮色模式';
-        btn.innerHTML = '<i class="fas fa-moon"></i>';
+        btn.id = 'btn-theme';
+        btn.style.cssText = 'position:relative;';
 
-        function updateIcon() {
-            var isDark = document.documentElement.hasAttribute('data-theme');
-            btn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-            btn.title = isDark ? '切換亮色模式' : '切換深色模式';
+        function updateBtn() {
+            var t = currentTheme();
+            var meta = THEME_META[t];
+            btn.innerHTML = meta.icon;
+            btn.title = '切換：' + meta.label + ' → ' + THEME_META[meta.next].label;
+            btn.setAttribute('aria-label', meta.label);
         }
-        updateIcon();
+        updateBtn();
 
         btn.addEventListener('click', function () {
-            var isDark = document.documentElement.hasAttribute('data-theme');
-            var newTheme = isDark ? 'light' : 'dark';
-            applyTheme(newTheme);
-            localStorage.setItem('colorTheme', newTheme);
-            updateIcon();
+            var t = currentTheme();
+            var next = THEME_META[t].next;
+            applyTheme(next);
+            localStorage.setItem('colorTheme', next);
+            updateBtn();
         });
 
         if (controls) {
-            // Insert at top of controls panel
             controls.insertBefore(btn, controls.firstChild);
         } else {
-            // Fallback: inject a standalone controls panel
             var panel = document.createElement('div');
             panel.id = 'video-controls';
             panel.appendChild(btn);
             document.body.appendChild(panel);
         }
     });
-
-    // Also watch for system changes (if user hasn't manually set a preference)
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
-        if (!localStorage.getItem('colorTheme')) {
-            applyTheme(e.matches ? 'dark' : 'light');
-        }
-    });
 }
 
+/* ─── Init ───────────────────────────────────────────────────── */
 function initCommon() {
-    initDarkMode(); // Must be first so theme applies before paint
+    initTheme();           // Must be first — applies theme before paint
     initLoadingScreen();
     initMediaControls();
     initSakuraIfPresent();
