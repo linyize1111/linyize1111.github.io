@@ -1,267 +1,463 @@
 /*
  * site-custom.css
  * 
- * Custom overrides for LYZ's website:
- * 1. CSS Variable-based theme system (light & dark)
- * 2. Image beautification (markdown-body and article images)
- * 3. Dark mode control button styling
+ * Theme system for LYZ's website:
+ * 1. CSS Variables  — light & dark token definitions
+ * 2. Dark mode structural overrides (glass / translucent panels)
+ * 3. Dark mode text → high-contrast color system
+ * 4. Image beautification (markdown-body and article images)
+ *
+ * DESIGN PHILOSOPHY:
+ *   Dark mode ≠ "paint everything black".
+ *   Instead: glass panels with backdrop-filter + light text on dark glass,
+ *   while the background video/image remains visible through the panels.
  */
 
 /* ============================================================
-   1. CSS VARIABLES — Light Mode Defaults
+   0. PREVENT FOUC — apply before first paint (via inline <script>)
+   ============================================================ */
+/* Smooth theme transitions (applied after paint via JS class) */
+html[data-theme] body,
+html[data-theme] #main,
+html[data-theme] #header,
+html[data-theme] #nav,
+html[data-theme] article,
+html[data-theme] .markdown-body,
+html[data-theme] blockquote,
+html[data-theme] pre,
+html[data-theme] table {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease,
+        box-shadow 0.3s ease;
+}
+
+/* ============================================================
+   1. CSS TOKEN SYSTEM — Light Mode (default)
    ============================================================ */
 :root {
-    --color-bg: #f5f4f0;
-    --color-bg-secondary: rgba(255, 255, 255, 0.85);
-    --color-text: #212931;
-    --color-text-muted: #555c66;
-    --color-heading: #1a1f26;
-    --color-link: #0a6b91;
-    --color-link-hover: #18bfef;
-    --color-border: #dde1e6;
-    --color-card-bg: rgba(255, 255, 255, 0.9);
-    --color-code-bg: rgba(220, 220, 220, 0.4);
-    --color-code-border: #dde1e6;
-    --color-blockquote-border: #18bfef;
-    --color-blockquote-bg: rgba(24, 191, 239, 0.06);
-    --color-table-head-bg: rgba(24, 191, 239, 0.12);
-    --color-table-row-alt: rgba(0, 0, 0, 0.03);
-    --color-table-border: #dde1e6;
-    --color-input-bg: #fff;
-    --color-nav-bg: rgba(255, 255, 255, 0.95);
+    /* Panels */
+    --panel-bg: #ffffff;
+    --panel-bg-alt: #f5f6f8;
+    --panel-border: rgba(0, 0, 0, 0.08);
+    --panel-shadow: 0 2px 16px rgba(0, 0, 0, 0.10);
+
+    /* Text */
+    --text-primary: #212931;
+    --text-heading: #1a1f26;
+    --text-muted: #6b7280;
+    --text-on-dark: #ffffff;
+    /* text on colored/dark backgrounds */
+
+    /* Links */
+    --link-color: #0a6b91;
+    --link-hover: #18bfef;
+
+    /* Accent */
+    --accent: #18bfef;
+    --accent-subtle: rgba(24, 191, 239, 0.10);
+
+    /* UI elements */
+    --code-bg: rgba(220, 220, 220, 0.40);
+    --code-border: #dde1e6;
+    --code-text: #d63384;
+    --blockquote-bar: #18bfef;
+    --blockquote-bg: rgba(24, 191, 239, 0.06);
+    --table-head: rgba(24, 191, 239, 0.10);
+    --table-alt: rgba(0, 0, 0, 0.03);
+    --table-border: #dde1e6;
+    --input-bg: #ffffff;
+    --input-border: #c8cdd4;
+    --btn-border: #c8cdd4;
+    --btn-hover-bg: rgba(24, 191, 239, 0.08);
+    --hr-color: #dde1e6;
+
+    /* Image effects */
     --shadow-img: 0 4px 20px rgba(0, 0, 0, 0.14);
     --radius-img: 8px;
 }
 
 /* ============================================================
-   Dark Mode Variables
+   2. CSS TOKENS — Dark Mode
    ============================================================ */
 [data-theme="dark"] {
-    --color-bg: #1a1f28;
-    --color-bg-secondary: rgba(30, 38, 52, 0.92);
-    --color-text: #e8eaf0;
-    --color-text-muted: #9aa3b0;
-    --color-heading: #f0f2f8;
-    --color-link: #56d0f8;
-    --color-link-hover: #a8f0ff;
-    --color-border: #3a4455;
-    --color-card-bg: rgba(30, 38, 52, 0.9);
-    --color-code-bg: rgba(0, 0, 0, 0.35);
-    --color-code-border: #3a4455;
-    --color-blockquote-border: #56d0f8;
-    --color-blockquote-bg: rgba(86, 208, 248, 0.08);
-    --color-table-head-bg: rgba(86, 208, 248, 0.1);
-    --color-table-row-alt: rgba(255, 255, 255, 0.04);
-    --color-table-border: #3a4455;
-    --color-input-bg: #252d3a;
-    --color-nav-bg: rgba(26, 31, 40, 0.97);
-    --shadow-img: 0 4px 24px rgba(0, 0, 0, 0.45);
+    /* Panels — use glass/translucent so background stays visible */
+    --panel-bg: rgba(18, 24, 36, 0.82);
+    --panel-bg-alt: rgba(22, 30, 46, 0.75);
+    --panel-border: rgba(255, 255, 255, 0.10);
+    --panel-shadow: 0 4px 24px rgba(0, 0, 0, 0.50);
+
+    /* Text */
+    --text-primary: #e8eaf2;
+    --text-heading: #f4f6ff;
+    --text-muted: #9aa3b5;
+    --text-on-dark: #f4f6ff;
+
+    /* Links */
+    --link-color: #56d0f8;
+    --link-hover: #a8f0ff;
+
+    /* Accent */
+    --accent: #56d0f8;
+    --accent-subtle: rgba(86, 208, 248, 0.10);
+
+    /* UI elements */
+    --code-bg: rgba(0, 0, 0, 0.50);
+    --code-border: rgba(255, 255, 255, 0.12);
+    --code-text: #f4a8c8;
+    --blockquote-bar: #56d0f8;
+    --blockquote-bg: rgba(86, 208, 248, 0.07);
+    --table-head: rgba(86, 208, 248, 0.12);
+    --table-alt: rgba(255, 255, 255, 0.04);
+    --table-border: rgba(255, 255, 255, 0.12);
+    --input-bg: rgba(255, 255, 255, 0.06);
+    --input-border: rgba(255, 255, 255, 0.16);
+    --btn-border: rgba(255, 255, 255, 0.20);
+    --btn-hover-bg: rgba(86, 208, 248, 0.14);
+    --hr-color: rgba(255, 255, 255, 0.12);
+
+    /* Image effects */
+    --shadow-img: 0 4px 28px rgba(0, 0, 0, 0.55);
 }
 
 /* ============================================================
-   2. Dark Mode Body & Containers
+   3. DARK MODE — STRUCTURAL / PANEL OVERRIDES
+   ==  KEY PHILOSOPHY: every "panel" becomes dark glass with
+   ==  backdrop-blur so the background is still visible.
    ============================================================ */
-/* Dark mode body: Only set text/color. Do NOT set background-color or background-image here
-   because the page background is rendered by #wrapper>.bg fixed divs + #bg-video.
-   Overriding bg here would cover the video and parallax layer. */
-[data-theme="dark"] body {
-    color: var(--color-text);
-}
 
-[data-theme="dark"] #wrapper,
+/* ── 3a. #main  (THE critical element — was solid white #ffffff) ── */
 [data-theme="dark"] #main {
-    background-color: transparent;
+    background-color: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-left: 1px solid var(--panel-border);
+    border-right: 1px solid var(--panel-border);
+    box-shadow: var(--panel-shadow);
 }
 
-/* Header and nav */
-[data-theme="dark"] #header {
-    background: rgba(26, 31, 40, 0.96);
-    border-bottom: 1px solid var(--color-border);
+[data-theme="dark"] #main>* {
+    border-top-color: var(--panel-border);
 }
 
-[data-theme="dark"] #header a.logo {
-    color: var(--color-heading);
-}
-
+/* ── 3b. #nav  (was rgba(255,255,255,0.175) — dark glass) ── */
 [data-theme="dark"] #nav {
-    background: var(--color-nav-bg);
-    border-bottom: 1px solid var(--color-border);
+    background: rgba(15, 20, 30, 0.70);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--panel-border);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.40);
 }
 
-[data-theme="dark"] #nav ul.links a {
-    color: var(--color-text);
-    border-bottom-color: transparent;
+/* ── 3c. Active nav tab ── */
+[data-theme="dark"] #nav ul.links li.active {
+    background-color: var(--accent-subtle);
 }
 
-[data-theme="dark"] #nav ul.links li.active a,
-[data-theme="dark"] #nav ul.links a:hover {
-    color: var(--color-link-hover) !important;
-    border-bottom-color: var(--color-link-hover);
+[data-theme="dark"] #nav ul.links li.active a {
+    color: var(--accent) !important;
 }
 
-[data-theme="dark"] #nav ul.icons a {
-    color: var(--color-text-muted);
+[data-theme="dark"] #nav ul.links li a:hover {
+    background-color: var(--accent-subtle);
+    color: var(--link-hover) !important;
 }
 
-/* Posts and Articles */
+/* ── 3d. #header (logo area) — stays glass on the parallax bg ── */
+[data-theme="dark"] #header .logo {
+    background: rgba(10, 15, 25, 0.50);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-color: rgba(255, 255, 255, 0.55) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] #header .logo:hover {
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+}
+
+/* ── 3e. article / post cards ── */
 [data-theme="dark"] article.post,
 [data-theme="dark"] .posts article,
-[data-theme="dark"] article.note-item {
-    background: var(--color-card-bg);
-    border: 1px solid var(--color-border);
+[data-theme="dark"] article.note-item,
+[data-theme="dark"] #main>.post {
+    background: var(--panel-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--panel-border);
+    border-bottom: 1px solid var(--panel-border);
 }
 
-[data-theme="dark"] .post header h2 a,
-[data-theme="dark"] .posts article header h2 a,
-[data-theme="dark"] article.note-item header h2 a {
-    color: var(--color-heading);
+/* ── 3f. #copyright / footer ── */
+[data-theme="dark"] #copyright {
+    border-top-color: var(--panel-border);
 }
 
-[data-theme="dark"] .post header .date,
-[data-theme="dark"] article.note-item header .date {
-    color: var(--color-text-muted);
+/* ── 3g. #navPanel (mobile slide-in) ── */
+[data-theme="dark"] #navPanel {
+    background: rgba(12, 18, 28, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-right: 1px solid var(--panel-border);
 }
 
-/* General text */
-[data-theme="dark"] p,
-[data-theme="dark"] li,
-[data-theme="dark"] td,
-[data-theme="dark"] th,
-[data-theme="dark"] label {
-    color: var(--color-text);
+/* ── 3h. navPanelToggle (mobile menu button) ── */
+[data-theme="dark"] #navPanelToggle {
+    background: rgba(20, 28, 45, 0.80);
 }
 
+/* ── 3i. Sort/filter control panel ── */
+[data-theme="dark"] #sort-filter-controls {
+    background: var(--panel-bg-alt);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--panel-border);
+}
+
+/* ── 3j. Pagination ── */
+[data-theme="dark"] #pagination-controls button {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    border: 1px solid var(--btn-border);
+}
+
+[data-theme="dark"] #pagination-controls button:hover {
+    background: var(--btn-hover-bg);
+    border-color: var(--accent);
+    color: var(--link-hover);
+}
+
+[data-theme="dark"] #pagination-controls button.active {
+    background: var(--accent-subtle);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+}
+
+/* ── 3k. Markdown container ── */
+[data-theme="dark"] .markdown-body {
+    background: transparent !important;
+}
+
+/* ============================================================
+   4. DARK MODE — TEXT COLOR SYSTEM (comprehensive)
+   ============================================================ */
+
+/* Global body text */
+[data-theme="dark"] body {
+    color: var(--text-primary);
+}
+
+/* Headings */
 [data-theme="dark"] h1,
 [data-theme="dark"] h2,
 [data-theme="dark"] h3,
 [data-theme="dark"] h4,
 [data-theme="dark"] h5,
 [data-theme="dark"] h6 {
-    color: var(--color-heading);
+    color: var(--text-heading);
 }
 
+/* Paragraphs, lists, spans */
+[data-theme="dark"] p,
+[data-theme="dark"] li,
+[data-theme="dark"] span,
+[data-theme="dark"] small,
+[data-theme="dark"] figcaption,
+[data-theme="dark"] caption {
+    color: var(--text-primary);
+}
+
+/* Strong / em */
+[data-theme="dark"] strong,
+[data-theme="dark"] b {
+    color: var(--text-heading);
+}
+
+[data-theme="dark"] em,
+[data-theme="dark"] i {
+    color: var(--text-primary);
+}
+
+/* Links */
 [data-theme="dark"] a {
-    color: var(--color-link);
-    border-bottom-color: rgba(86, 208, 248, 0.35);
+    color: var(--link-color);
+    border-bottom-color: rgba(86, 208, 248, 0.30);
 }
 
 [data-theme="dark"] a:hover {
-    color: var(--color-link-hover) !important;
+    color: var(--link-hover) !important;
     border-bottom-color: transparent;
+}
+
+/* Nav links (override nav's white-on-dark) — ensure high contrast */
+[data-theme="dark"] #nav a,
+[data-theme="dark"] #nav ul.links li a,
+[data-theme="dark"] #navPanel .links a {
+    color: #e8eaf2 !important;
+}
+
+[data-theme="dark"] #nav ul.icons a,
+[data-theme="dark"] #nav ul.icons a:before {
+    color: #c5cad5 !important;
+}
+
+/* header / intro area — keep white text (already on parallax) */
+[data-theme="dark"] #header,
+[data-theme="dark"] #header a,
+[data-theme="dark"] #header h1,
+[data-theme="dark"] #header h2,
+[data-theme="dark"] #header h3,
+[data-theme="dark"] #intro,
+[data-theme="dark"] #intro p,
+[data-theme="dark"] #intro h1,
+[data-theme="dark"] #intro h2,
+[data-theme="dark"] #intro h3 {
+    color: #ffffff !important;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* #main general */
+[data-theme="dark"] #main h1,
+[data-theme="dark"] #main h2,
+[data-theme="dark"] #main h3,
+[data-theme="dark"] #main h4,
+[data-theme="dark"] #main h5,
+[data-theme="dark"] #main h6 {
+    color: var(--text-heading);
+}
+
+[data-theme="dark"] #main p,
+[data-theme="dark"] #main li {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] #main a {
+    color: var(--link-color);
+}
+
+/* date / muted metadata on article headers */
+[data-theme="dark"] .post header .date,
+[data-theme="dark"] article.note-item header .date,
+[data-theme="dark"] #page-info {
+    color: var(--text-muted);
+}
+
+/* HR */
+[data-theme="dark"] hr {
+    border-bottom-color: var(--hr-color);
 }
 
 /* Blockquote */
 [data-theme="dark"] blockquote {
-    border-left-color: var(--color-blockquote-border);
-    background: var(--color-blockquote-bg);
-    color: var(--color-text);
+    border-left-color: var(--blockquote-bar);
+    background: var(--blockquote-bg);
+    color: var(--text-primary);
     border-radius: 0 6px 6px 0;
-    padding: 0.75rem 1rem 0.75rem 1.5rem;
 }
 
-/* Code */
+[data-theme="dark"] blockquote p {
+    color: var(--text-primary);
+}
+
+/* Inline code */
 [data-theme="dark"] code {
-    background: var(--color-code-bg);
-    border-color: var(--color-code-border);
-    color: #f0a0c0;
+    background: var(--code-bg);
+    border-color: var(--code-border);
+    color: var(--code-text);
 }
 
+/* Preformatted / code blocks */
 [data-theme="dark"] pre {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid var(--color-code-border);
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid var(--code-border);
     border-radius: 6px;
 }
 
 [data-theme="dark"] pre code {
-    color: #e8eaf0;
+    color: #e8f0fe;
     background: transparent;
     border: none;
 }
 
 /* Tables */
-[data-theme="dark"] table {
-    border-color: var(--color-table-border);
+[data-theme="dark"] table,
+[data-theme="dark"] table * {
+    border-color: var(--table-border);
 }
 
+[data-theme="dark"] table thead,
 [data-theme="dark"] table thead tr {
-    background: var(--color-table-head-bg);
-    color: var(--color-heading);
-    border-bottom: 2px solid var(--color-border);
+    background: var(--table-head);
+}
+
+[data-theme="dark"] table thead th,
+[data-theme="dark"] table th {
+    color: var(--text-heading) !important;
+    background: var(--table-head) !important;
+    border-color: var(--table-border) !important;
 }
 
 [data-theme="dark"] table tbody tr:nth-child(even) {
-    background: var(--color-table-row-alt);
+    background: var(--table-alt);
 }
 
 [data-theme="dark"] table td,
 [data-theme="dark"] table th {
-    border-color: var(--color-table-border);
-    color: var(--color-text);
+    color: var(--text-primary) !important;
+    border-color: var(--table-border) !important;
 }
 
-/* HR */
-[data-theme="dark"] hr {
-    border-bottom-color: var(--color-border);
+[data-theme="dark"] table td {
+    background: transparent !important;
 }
 
-/* Input elements */
+/* Inputs, selects, textareas */
 [data-theme="dark"] input,
 [data-theme="dark"] select,
-[data-theme="dark"] textarea {
-    background-color: var(--color-input-bg);
-    color: var(--color-text);
-    border-color: var(--color-border);
+[data-theme="dark"] textarea,
+[data-theme="dark"] label {
+    color: var(--text-primary);
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
 }
 
 /* Buttons */
 [data-theme="dark"] .button {
     background: transparent;
-    border-color: var(--color-border);
-    color: var(--color-text) !important;
+    border-color: var(--btn-border);
+    color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] .button:hover {
-    background: rgba(86, 208, 248, 0.1);
-    border-color: var(--color-link);
-    color: var(--color-link) !important;
+    background: var(--btn-hover-bg);
+    border-color: var(--accent);
+    color: var(--link-hover) !important;
 }
 
-[data-theme="dark"] .button.primary {
-    background: #1a6b85;
-    border-color: #1a6b85;
-    color: #fff !important;
+[data-theme="dark"] .button.primary,
+[data-theme="dark"] input[type="submit"],
+[data-theme="dark"] input[type="button"],
+[data-theme="dark"] input[type="reset"] {
+    background: rgba(86, 208, 248, 0.18);
+    border-color: var(--accent);
+    color: var(--accent) !important;
 }
 
-/* Copyright footer */
-[data-theme="dark"] #copyright {
-    color: var(--color-text-muted);
-    border-top-color: var(--color-border);
+[data-theme="dark"] .button.primary:hover {
+    background: rgba(86, 208, 248, 0.28);
+    color: var(--link-hover) !important;
 }
 
+/* Copyright */
+[data-theme="dark"] #copyright,
+[data-theme="dark"] #copyright li,
 [data-theme="dark"] #copyright a {
-    color: var(--color-text-muted);
+    color: var(--text-muted);
 }
 
-/* Intro section */
-[data-theme="dark"] #intro {
-    color: #e8eaf0;
-}
-
-/* NavPanel (mobile) */
-[data-theme="dark"] #navPanel {
-    background: #1a1f28;
-    border-right: 1px solid var(--color-border);
-}
-
-[data-theme="dark"] #navPanel .links a {
-    color: var(--color-text);
-    border-top-color: var(--color-border);
-}
-
-/* Markdown / note page */
+/* ─── Markdown body: comprehensive ─────────────────────────── */
 [data-theme="dark"] .markdown-body {
-    color: var(--color-text) !important;
-    background: transparent !important;
+    color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] .markdown-body h1,
@@ -270,95 +466,127 @@
 [data-theme="dark"] .markdown-body h4,
 [data-theme="dark"] .markdown-body h5,
 [data-theme="dark"] .markdown-body h6 {
-    color: var(--color-heading);
-    border-bottom-color: var(--color-border);
+    color: var(--text-heading) !important;
+    border-bottom-color: var(--hr-color);
+}
+
+[data-theme="dark"] .markdown-body p,
+[data-theme="dark"] .markdown-body li,
+[data-theme="dark"] .markdown-body span {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .markdown-body strong,
+[data-theme="dark"] .markdown-body b {
+    color: var(--text-heading) !important;
+}
+
+[data-theme="dark"] .markdown-body em,
+[data-theme="dark"] .markdown-body i {
+    color: #c5d0e8 !important;
 }
 
 [data-theme="dark"] .markdown-body a {
-    color: var(--color-link);
+    color: var(--link-color) !important;
 }
 
-[data-theme="dark"] .markdown-body code {
-    background: var(--color-code-bg);
-    border-color: var(--color-code-border);
-    color: #f0a0c0;
-}
-
-[data-theme="dark"] .markdown-body pre {
-    background: rgba(0, 0, 0, 0.45);
-    border: 1px solid var(--color-code-border);
-}
-
-[data-theme="dark"] .markdown-body pre code {
-    color: #e8eaf0;
-    background: transparent;
-    border: none;
+[data-theme="dark"] .markdown-body a:hover {
+    color: var(--link-hover) !important;
 }
 
 [data-theme="dark"] .markdown-body blockquote {
-    border-left-color: var(--color-blockquote-border);
-    background: var(--color-blockquote-bg);
-    color: var(--color-text-muted);
+    border-left-color: var(--blockquote-bar) !important;
+    background: var(--blockquote-bg) !important;
+    color: #c5d0e8 !important;
+}
+
+[data-theme="dark"] .markdown-body blockquote p {
+    color: #c5d0e8 !important;
+}
+
+[data-theme="dark"] .markdown-body code {
+    background: var(--code-bg) !important;
+    border-color: var(--code-border) !important;
+    color: var(--code-text) !important;
+}
+
+[data-theme="dark"] .markdown-body pre {
+    background: rgba(0, 0, 0, 0.55) !important;
+    border: 1px solid var(--code-border) !important;
+    border-radius: 6px;
+}
+
+[data-theme="dark"] .markdown-body pre code {
+    color: #e8f0fe !important;
+    background: transparent !important;
+    border: none !important;
 }
 
 [data-theme="dark"] .markdown-body table {
-    border-color: var(--color-table-border);
+    border-color: var(--table-border) !important;
 }
 
-[data-theme="dark"] .markdown-body tbody tr:nth-child(even) {
-    background: var(--color-table-row-alt);
-}
-
-[data-theme="dark"] .markdown-body td,
+[data-theme="dark"] .markdown-body thead th,
 [data-theme="dark"] .markdown-body th {
-    border-color: var(--color-table-border);
-    color: var(--color-text);
+    background: var(--table-head) !important;
+    color: var(--text-heading) !important;
+    border-color: var(--table-border) !important;
 }
 
-[data-theme="dark"] .markdown-body thead {
-    background: var(--color-table-head-bg);
-    color: var(--color-heading);
+[data-theme="dark"] .markdown-body td {
+    color: var(--text-primary) !important;
+    background: transparent !important;
+    border-color: var(--table-border) !important;
 }
 
-/* KaTeX / Math */
+[data-theme="dark"] .markdown-body tbody tr:nth-child(even) td {
+    background: var(--table-alt) !important;
+}
+
+[data-theme="dark"] .markdown-body hr {
+    background-color: var(--hr-color) !important;
+    border-color: var(--hr-color) !important;
+}
+
+[data-theme="dark"] .markdown-body figcaption,
+[data-theme="dark"] .markdown-body caption {
+    color: var(--text-muted) !important;
+}
+
+/* KaTeX / math */
 [data-theme="dark"] .katex,
+[data-theme="dark"] .katex-display,
+[data-theme="dark"] .katex .base,
+[data-theme="dark"] .katex .strut {
+    color: var(--text-primary) !important;
+}
+
 [data-theme="dark"] .katex-display {
-    color: var(--color-text);
+    background: rgba(86, 208, 248, 0.04);
+    border-radius: 4px;
+    padding: 0.5rem;
 }
 
-/* Sort/filter controls */
-[data-theme="dark"] #sort-filter-controls {
-    background: var(--color-bg-secondary);
-    border-color: var(--color-border);
+/* navPanel links */
+[data-theme="dark"] #navPanel .links a {
+    color: #e8eaf2 !important;
+    border-top-color: var(--panel-border);
 }
 
+/* Sort/filter selects */
 [data-theme="dark"] #sort-filter-controls label,
 [data-theme="dark"] #sort-filter-controls select {
-    color: var(--color-text);
-    background: var(--color-input-bg);
-    border-color: var(--color-border);
-}
-
-[data-theme="dark"] #pagination-controls button {
-    background: var(--color-card-bg);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-}
-
-[data-theme="dark"] #pagination-controls button.active {
-    background: var(--color-link);
-    color: #fff;
-}
-
-[data-theme="dark"] #page-info {
-    color: var(--color-text-muted);
+    color: var(--text-primary);
+    background: var(--input-bg);
+    border-color: var(--input-border);
+    border-radius: 4px;
 }
 
 /* ============================================================
-   3. Image Beautification — Article Content & Markdown
+   5. IMAGE BEAUTIFICATION
    ============================================================ */
 
-/* Images inside markdown-body (note.html rendered content) */
+/* Markdown images */
 .markdown-body img {
     display: block;
     max-width: min(100%, 800px);
@@ -372,7 +600,6 @@
     object-position: center;
 }
 
-/* Figure + figcaption wrapping for captioned images */
 .markdown-body figure {
     margin: 2rem auto;
     text-align: center;
@@ -384,19 +611,17 @@
 
 .markdown-body figcaption {
     font-size: 0.85rem;
-    color: var(--color-text-muted, #555c66);
+    color: var(--text-muted, #6b7280);
     font-style: italic;
     margin-top: 0.4rem;
 }
 
-/* Multiple consecutive images – consistent gap */
 .markdown-body img+img,
-.markdown-body p+p>img:only-child,
 .markdown-body figure+figure {
     margin-top: 1.5rem;
 }
 
-/* Article post images (directory/literature/index) */
+/* Article card images */
 .posts article .image.fit,
 article.post .image.main {
     overflow: hidden;
@@ -408,7 +633,7 @@ article.post .image.main img {
     border-radius: 6px;
 }
 
-/* Mobile: full-width, reasonable height */
+/* Mobile */
 @media screen and (max-width: 736px) {
     .markdown-body img {
         max-height: 400px;
@@ -417,37 +642,10 @@ article.post .image.main img {
 }
 
 /* ============================================================
-   4. Dark Mode Toggle Button in #video-controls
+   6. DARK MODE TOGGLE BUTTON
    ============================================================ */
 #btn-darkmode {
-    /* inherits from video-controls button styles */
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-/* ============================================================
-   5. Misc Quality of Life
-   ============================================================ */
-
-/* Smooth theme transition (only on semantic elements, not bg-image) */
-body,
-#wrapper,
-#main,
-#header,
-#nav,
-article,
-.markdown-body,
-blockquote,
-code,
-pre,
-table,
-#navPanel {
-    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
-}
-
-/* Prevent transition flicker on initial load */
-.no-transition,
-.no-transition * {
-    transition: none !important;
 }

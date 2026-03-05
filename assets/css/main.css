@@ -3436,33 +3436,33 @@ table.alt tbody tr td {
 	border-collapse: collapse !important;
 }
 
-/* 確保字體顏色為深色 */
+/* Light mode markdown table styles — NOT !important so dark mode can override */
 .markdown-body table th,
 .markdown-body table th *,
 .markdown-body table td,
 .markdown-body table td * {
-	color: #24292f !important;
+	color: #24292f;
 }
 
 .markdown-body table th {
-	background-color: #f6f8fa !important;
-	border: 1px solid #d0d7de !important;
-	padding: 6px 13px !important;
+	background-color: #f6f8fa;
+	border: 1px solid #d0d7de;
+	padding: 6px 13px;
 }
 
 .markdown-body table td {
-	background-color: #ffffff !important;
-	border: 1px solid #d0d7de !important;
-	padding: 6px 13px !important;
+	background-color: #ffffff;
+	border: 1px solid #d0d7de;
+	padding: 6px 13px;
 }
 
-/* 強制清除單數行斑馬紋 */
+/* Reset zebra striping for base layer */
 .markdown-body table tbody tr {
-	background-color: transparent !important;
+	background-color: transparent;
 }
 
 .markdown-body table tbody tr:nth-child(2n + 1) {
-	background-color: transparent !important;
+	background-color: transparent;
 }
 
 
