@@ -51,6 +51,9 @@
 
 <body class="is-preload">
 
+    <!-- 真正的 Loading Screen -->
+    <div id="loading-screen"></div>
+
     <!--  影片與音樂背景 -->
     <video id="bg-video" muted loop playsinline poster="images/bg.png" preload="none">
         <source src="images/bg-video.mp4" type="video/mp4">
@@ -59,77 +62,7 @@
         <source src="images/bg-music.mp3" type="audio/mpeg">
     </audio>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var video = document.getElementById('bg-video');
-            var music = document.getElementById('bg-music');
-            var btnMute = document.getElementById('btn-mute');
-            var btnPlay = document.getElementById('btn-play');
-
-            var savedMuted = sessionStorage.getItem('mediaMuted');
-            var savedPaused = sessionStorage.getItem('mediaPaused');
-
-            // 影片永遠靜音
-            video.muted = true;
-
-            // 如果 session 記錄為真才靜音，否則預設想開聲音
-            var isMuted = (savedMuted === 'true');
-            music.muted = isMuted;
-
-            function updateMuteBtn() {
-                btnMute.innerHTML = music.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
-            }
-            updateMuteBtn();
-
-            if (savedPaused === 'true') {
-                video.pause();
-                btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-            } else {
-                // 嘗試即刻播放
-                var playPromise = music.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(function (error) {
-                        // 有聲音自動播放被瀏覽器阻擋！強制靜音並偷偷在背景繼續播放，確保按下按鈕瞬間有聲音
-                        music.muted = true;
-                        updateMuteBtn();
-                        sessionStorage.setItem('mediaMuted', 'true');
-                        music.play().catch(function (e) { });
-                    });
-                }
-            }
-
-            btnMute.addEventListener('click', function (e) {
-                e.stopPropagation();
-                music.muted = !music.muted;
-                updateMuteBtn();
-                sessionStorage.setItem('mediaMuted', music.muted);
-
-                // 防呆：如果音樂根本沒開始播，接觸解靜音時順便啟動
-                if (music.paused && savedPaused !== 'true') {
-                    music.play().catch(function (e) { });
-                }
-            });
-
-            btnPlay.addEventListener('click', function () {
-                if (video.paused) {
-                    video.play();
-                    music.play();
-                    btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
-                    sessionStorage.setItem('mediaPaused', 'false');
-                } else {
-                    video.pause();
-                    music.pause();
-                    btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-                    sessionStorage.setItem('mediaPaused', 'true');
-                }
-            });
-
-            window.addEventListener('beforeunload', function () {
-                sessionStorage.setItem('mediaMuted', music.muted);
-                sessionStorage.setItem('mediaPaused', video.paused);
-            });
-        });
-    </script>
+    
 
     <!--  櫻花特效透明層（固定在最上層，不影響互動） -->
     <canvas id="sakura-canvas"
@@ -350,17 +283,7 @@
 
 
 
-<script src="assets/js/spa.js"></script>
-    <script>
-        window.addEventListener('load', function() {
-            setTimeout(function() {
-                var v = document.getElementById('bg-video');
-                if (v && sessionStorage.getItem('mediaPaused') !== 'true') {
-                    v.play().catch(function(e){ console.log('Autoplay prevented:', e); });
-                }
-            }, 5000); // Small delay to ensure priority is given to rendering the page
-        });
-    </script>
+<script src="assets/js/common.js"></script>
 </body>
 
 </html>

@@ -4953,3 +4953,16 @@ body.is-preload #intro:not(.hidden)+#header+#nav {
 	}
 
 }
+
+/* ========== Custom Loading Overlay ========== */
+#loading-screen {
+	position: fixed;
+	top: 0; 
+	left: 0; 
+	width: 100vw; 
+	height: 100vh;
+	z-index: 10001;
+	background: url('../images/bg.png') center/cover no-repeat #000;
+	transition: opacity 0.5s ease;
+	pointer-events: none; /* Let clicks pass through just in case during fade */
+}

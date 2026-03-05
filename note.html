@@ -52,6 +52,9 @@
 
 <body class="is-preload">
 
+    <!-- 真正的 Loading Screen -->
+    <div id="loading-screen"></div>
+
     <!--  影片與音樂背景 -->
     <video id="bg-video" muted loop playsinline poster="images/bg.png" preload="none">
         <source src="images/bg-video.mp4" type="video/mp4">
@@ -60,77 +63,7 @@
         <source src="images/bg-music.mp3" type="audio/mpeg">
     </audio>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var video = document.getElementById('bg-video');
-            var music = document.getElementById('bg-music');
-            var btnMute = document.getElementById('btn-mute');
-            var btnPlay = document.getElementById('btn-play');
-
-            var savedMuted = sessionStorage.getItem('mediaMuted');
-            var savedPaused = sessionStorage.getItem('mediaPaused');
-
-            // 影片永遠靜音
-            video.muted = true;
-
-            // 如果 session 記錄為真才靜音，否則預設想開聲音
-            var isMuted = (savedMuted === 'true');
-            music.muted = isMuted;
-
-            function updateMuteBtn() {
-                btnMute.innerHTML = music.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
-            }
-            updateMuteBtn();
-
-            if (savedPaused === 'true') {
-                video.pause();
-                btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-            } else {
-                // 嘗試即刻播放
-                var playPromise = music.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(function (error) {
-                        // 有聲音自動播放被瀏覽器阻擋！強制靜音並偷偷在背景繼續播放，確保按下按鈕瞬間有聲音
-                        music.muted = true;
-                        updateMuteBtn();
-                        sessionStorage.setItem('mediaMuted', 'true');
-                        music.play().catch(function (e) { });
-                    });
-                }
-            }
-
-            btnMute.addEventListener('click', function (e) {
-                e.stopPropagation();
-                music.muted = !music.muted;
-                updateMuteBtn();
-                sessionStorage.setItem('mediaMuted', music.muted);
-
-                // 防呆：如果音樂根本沒開始播，接觸解靜音時順便啟動
-                if (music.paused && savedPaused !== 'true') {
-                    music.play().catch(function (e) { });
-                }
-            });
-
-            btnPlay.addEventListener('click', function () {
-                if (video.paused) {
-                    video.play();
-                    music.play();
-                    btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
-                    sessionStorage.setItem('mediaPaused', 'false');
-                } else {
-                    video.pause();
-                    music.pause();
-                    btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-                    sessionStorage.setItem('mediaPaused', 'true');
-                }
-            });
-
-            window.addEventListener('beforeunload', function () {
-                sessionStorage.setItem('mediaMuted', music.muted);
-                sessionStorage.setItem('mediaPaused', video.paused);
-            });
-        });
-    </script>
+    
 
     <!--  櫻花特效透明層（固定在最上層，不影響互動） -->
     <canvas id="sakura-canvas"
@@ -225,103 +158,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const fileName = urlParams.get('file');
-            const pdfName = urlParams.get('pdf'); // 新增對 PDF 的支援
-            const litName = urlParams.get('lit'); // 新增對文學筆記的支援
-            const titleEl = document.getElementById('note-title');
-            const statusEl = document.getElementById('note-status');
-            const contentEl = document.getElementById('markdown-container');
-
-            if (!fileName && !pdfName && !litName) {
-                titleEl.innerText = '系統錯誤';
-                statusEl.innerText = '未提供檔案參數 (Missing URL Parameter)';
-                contentEl.innerHTML = '<p>請從首頁目錄選擇要閱讀的筆記或簡報。</p>';
-                return;
-            }
-
-            if (pdfName) {
-                // 如果是 PDF 模式
-                const displayTitle = pdfName.replace(/_/g, ' ');
-                titleEl.innerText = displayTitle.toUpperCase();
-                statusEl.innerText = `檔案路徑: /pdfs/${pdfName}.pdf`;
-
-                // 嵌入 PDF
-                contentEl.innerHTML = `
-                    <div style="width: 100%; height: 85vh; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                        <iframe src="pdfs/${pdfName}.pdf" width="100%" height="100%" style="border: none;"></iframe>
-                    </div>
-                `;
-            } else if (fileName || litName) {
-                // 如果是 Markdown 模式 (學術筆記 或 文學筆記)
-                const targetName = fileName || litName;
-                const folderName = fileName ? 'notes' : 'literature';
-                const displayTitle = targetName.replace(/_/g, ' ');
-
-                titleEl.innerText = displayTitle.toUpperCase();
-                statusEl.innerText = `檔案路徑: /${folderName}/${targetName}.md`;
-
-                // 設定 marked.js 支援 GFM (GitHub Flavored Markdown) 表格等功能
-                marked.setOptions({
-                    gfm: true,
-                    breaks: true
-                });
-
-                fetch(`${folderName}/${targetName}.md`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.text();
-                    })
-                    .then(markdownText => {
-                        // 移除所有 YAML front matter 區塊（部分檔案有雙重 --- 區塊）
-                        let cleanMarkdown = markdownText.trim();
-                        while (cleanMarkdown.startsWith('---')) {
-                            const endIdx = cleanMarkdown.indexOf('---', 3);
-                            if (endIdx === -1) break;
-                            cleanMarkdown = cleanMarkdown.slice(endIdx + 3).trimStart();
-                        }
-
-                        // 將 Markdown 轉成 HTML 並套用 GitHub Markdown CSS
-                        contentEl.innerHTML = `<div class="markdown-body" style="background: transparent; color: inherit; padding: 2em;">${marked.parse(cleanMarkdown)}</div>`;
-
-                        // 更新標題為文章的第一個 h1 標題
-                        const firstH1 = contentEl.querySelector('h1');
-                        if (firstH1) {
-                            titleEl.innerText = firstH1.textContent;
-                            firstH1.remove();
-                        }
-
-                        // 讓 KaTeX 渲染數學公式 ($...$ 或 $$...$$)
-                        if (window.renderMathInElement) {
-                            window.renderMathInElement(contentEl, {
-                                delimiters: [
-                                    { left: '$$', right: '$$', display: true },
-                                    { left: '$', right: '$', display: false }
-                                ],
-                                throwOnError: false
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Fetch error:', error);
-                        if (window.location.protocol === 'file:') {
-                            titleEl.innerText = '本機檔案安全限制 (CORS)';
-                            statusEl.innerText = 'Local File Restriction';
-                            contentEl.innerHTML = `<p>您目前因為直接點擊開啟 HTML 檔案 (使用 <code>file://</code> 協議)，導致瀏覽器的安全機制 (CORS) 阻擋了讀取 <strong>/${folderName}/${targetName}.md</strong> 的請求。</p><p>這不是網站壞掉，而是瀏覽器安全設定！您只需要將檔案推送到 GitHub Pages 上再觀看，或是使用 VS Code 的 Live Server 套件啟動本地伺服器即可正常顯示筆記內容！🚀</p>`;
-                        } else {
-                            titleEl.innerText = '404 檔案未找到';
-                            statusEl.innerText = 'File Not Found';
-                            contentEl.innerHTML = `<p>無法載入筆記。請確認 <strong>/${folderName}/${targetName}.md</strong> 檔案是否存在於您的專案目錄中，且檔名大小寫相符。</p>`;
-                        }
-                    });
-            }
-        });
-
-    </script>
+    
 
     <script src="https://unpkg.com/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
@@ -420,17 +257,8 @@
             animate();
         })();
     </script>
-<script src="assets/js/spa.js"></script>
-    <script>
-        window.addEventListener('load', function() {
-            setTimeout(function() {
-                var v = document.getElementById('bg-video');
-                if (v && sessionStorage.getItem('mediaPaused') !== 'true') {
-                    v.play().catch(function(e){ console.log('Autoplay prevented:', e); });
-                }
-            }, 5000); // Small delay to ensure priority is given to rendering the page
-        });
-    </script>
+<script src="assets/js/common.js"></script>
+    <script src="assets/js/page-note.js"></script>
 </body>
 
 </html>

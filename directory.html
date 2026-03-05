@@ -209,6 +209,9 @@
 
 <body class="is-preload">
 
+    <!-- 真正的 Loading Screen -->
+    <div id="loading-screen"></div>
+
     <!--  影片與音樂背景 -->
     <video id="bg-video" muted loop playsinline poster="images/bg.png" preload="none">
         <source src="images/bg-video.mp4" type="video/mp4">
@@ -217,77 +220,7 @@
         <source src="images/bg-music.mp3" type="audio/mpeg">
     </audio>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var video = document.getElementById('bg-video');
-            var music = document.getElementById('bg-music');
-            var btnMute = document.getElementById('btn-mute');
-            var btnPlay = document.getElementById('btn-play');
-
-            var savedMuted = sessionStorage.getItem('mediaMuted');
-            var savedPaused = sessionStorage.getItem('mediaPaused');
-
-            // 影片永遠靜音
-            video.muted = true;
-
-            // 如果 session 記錄為真才靜音，否則預設想開聲音
-            var isMuted = (savedMuted === 'true');
-            music.muted = isMuted;
-
-            function updateMuteBtn() {
-                btnMute.innerHTML = music.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
-            }
-            updateMuteBtn();
-
-            if (savedPaused === 'true') {
-                video.pause();
-                btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-            } else {
-                // 嘗試即刻播放
-                var playPromise = music.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(function (error) {
-                        // 有聲音自動播放被瀏覽器阻擋！強制靜音並偷偷在背景繼續播放，確保按下按鈕瞬間有聲音
-                        music.muted = true;
-                        updateMuteBtn();
-                        sessionStorage.setItem('mediaMuted', 'true');
-                        music.play().catch(function (e) { });
-                    });
-                }
-            }
-
-            btnMute.addEventListener('click', function (e) {
-                e.stopPropagation();
-                music.muted = !music.muted;
-                updateMuteBtn();
-                sessionStorage.setItem('mediaMuted', music.muted);
-
-                // 防呆：如果音樂根本沒開始播，接觸解靜音時順便啟動
-                if (music.paused && savedPaused !== 'true') {
-                    music.play().catch(function (e) { });
-                }
-            });
-
-            btnPlay.addEventListener('click', function () {
-                if (video.paused) {
-                    video.play();
-                    music.play();
-                    btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
-                    sessionStorage.setItem('mediaPaused', 'false');
-                } else {
-                    video.pause();
-                    music.pause();
-                    btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-                    sessionStorage.setItem('mediaPaused', 'true');
-                }
-            });
-
-            window.addEventListener('beforeunload', function () {
-                sessionStorage.setItem('mediaMuted', music.muted);
-                sessionStorage.setItem('mediaPaused', video.paused);
-            });
-        });
-    </script>
+    
 
     <!-- 全域導航器 -->
     <div id="global-nav"
@@ -390,7 +323,7 @@
                     <p>參加資訊安全課程及其他資訊領域的自行探索紀錄。</p>
                     <ul class="actions special">
                         <li><a href="note.html?file=security_basics" class="button">閱讀筆記</a></li>
-                        <li><a href="note.html?pdf=資安" class="button primary">檢視簡報 (PDF)</a></li>
+                        <li><a href="note.html?pdf=%E8%B3%87%E5%AE%89" class="button primary">檢視簡報 (PDF)</a></li>
                     </ul>
                 </article>
 
@@ -493,13 +426,13 @@
                             <span class="meta-up">上傳: 2023-06-01</span>
                             <span class="meta-ed">編輯: 2023-06-01</span>
                         </span>
-                        <h2><a href="note.html?pdf=31711高三進階程式設計課程學習成果">高三進階程式設計課程學習成果</a></h2>
+                        <h2><a href="note.html?pdf=31711%E9%AB%98%E4%B8%89%E9%80%B2%E9%9A%8E%E7%A8%8B%E5%BC%8F%E8%A8%AD%E8%A8%88%E8%AA%B2%E7%A8%8B%E5%AD%B8%E7%BF%92%E6%88%90%E6%9E%9C">高三進階程式設計課程學習成果</a></h2>
                     </header>
-                    <a href="note.html?pdf=31711高三進階程式設計課程學習成果" class="image fit"><img loading="lazy" src="images/pic_note1.jpg"
+                    <a href="note.html?pdf=31711%E9%AB%98%E4%B8%89%E9%80%B2%E9%9A%8E%E7%A8%8B%E5%BC%8F%E8%A8%AD%E8%A8%88%E8%AA%B2%E7%A8%8B%E5%AD%B8%E7%BF%92%E6%88%90%E6%9E%9C" class="image fit"><img loading="lazy" src="images/pic_note1.jpg"
                             alt="" /></a>
                     <p>高三時期進階程式設計課程的學習成果簡報，涵蓋各項程式專題與實作紀錄。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?pdf=31711高三進階程式設計課程學習成果" class="button primary">檢視簡報 (PDF)</a></li>
+                        <li><a href="note.html?pdf=31711%E9%AB%98%E4%B8%89%E9%80%B2%E9%9A%8E%E7%A8%8B%E5%BC%8F%E8%A8%AD%E8%A8%88%E8%AA%B2%E7%A8%8B%E5%AD%B8%E7%BF%92%E6%88%90%E6%9E%9C" class="button primary">檢視簡報 (PDF)</a></li>
                     </ul>
                 </article>
 
@@ -511,12 +444,12 @@
                             <span class="meta-up">上傳: 2024-01-01</span>
                             <span class="meta-ed">編輯: 2024-01-01</span>
                         </span>
-                        <h2><a href="note.html?pdf=學習歷程117-11">學習歷程 117-11</a></h2>
+                        <h2><a href="note.html?pdf=%E5%AD%B8%E7%BF%92%E6%AD%B7%E7%A8%8B117-11">學習歷程 117-11</a></h2>
                     </header>
-                    <a href="note.html?pdf=學習歷程117-11" class="image fit"><img loading="lazy" src="images/pic_note6.jpg" alt="" /></a>
+                    <a href="note.html?pdf=%E5%AD%B8%E7%BF%92%E6%AD%B7%E7%A8%8B117-11" class="image fit"><img loading="lazy" src="images/pic_note6.jpg" alt="" /></a>
                     <p>高中階段的學習歷程檔案，記錄學科成就、課外參與及個人成長軌跡。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?pdf=學習歷程117-11" class="button primary">檢視簡報 (PDF)</a></li>
+                        <li><a href="note.html?pdf=%E5%AD%B8%E7%BF%92%E6%AD%B7%E7%A8%8B117-11" class="button primary">檢視簡報 (PDF)</a></li>
                     </ul>
                 </article>
             </section>
@@ -638,218 +571,15 @@
         })();
     </script>
 
-    <!-- 🔍 動態檢查檔案是否存在 -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // 如果在本機端直接開啟 HTML (file://)，fetch 會因為 CORS 失敗，導致所有按鈕被誤刪，因此直接略過檢查
-            if (window.location.protocol === 'file:') {
-                console.warn("Local file:// protocol detected. Auto-hide file checks are disabled to prevent CORS blocking.");
-                return;
-            }
+    
 
-            const articles = document.querySelectorAll('article.note-item');
-            articles.forEach(article => {
-                const mdButton = article.querySelector('a[href*="?file="].button');
-                const pdfButton = article.querySelector('a[href*="?pdf="].button');
-                const titleLink = article.querySelector('header h2 a');
-                const imageLink = article.querySelector('a.image');
-
-                let mdExists = true;
-                let pdfExists = true;
-                let promises = [];
-
-                if (mdButton) {
-                    const href = mdButton.getAttribute('href');
-                    const match = href.match(/\?file=([^&]+)/);
-                    if (match) {
-                        promises.push(
-                            fetch(`notes/${match[1]}.md`, { method: 'HEAD' })
-                                .then(res => {
-                                    if (!res.ok) mdExists = false;
-                                }).catch(() => {
-                                    mdExists = false;
-                                })
-                        );
-                    }
-                }
-
-                if (pdfButton) {
-                    const href = pdfButton.getAttribute('href');
-                    const match = href.match(/\?pdf=([^&]+)/);
-                    if (match) {
-                        promises.push(
-                            fetch(`pdfs/${match[1]}.pdf`, { method: 'HEAD' })
-                                .then(res => {
-                                    if (!res.ok) pdfExists = false;
-                                }).catch(() => {
-                                    pdfExists = false;
-                                })
-                        );
-                    } else {
-                        pdfExists = false; // No PDF button = no PDF exists for this article
-                    }
-                } else {
-                    pdfExists = false;
-                }
-
-                // 當檢查完畢後執行顯示邏輯
-                Promise.all(promises).then(() => {
-                    // 若沒有 MD，但「有 PDF」，才把 MD 按鈕刪掉
-                    if (!mdExists && pdfExists) {
-                        if (mdButton) {
-                            if (mdButton.closest('li')) mdButton.closest('li').remove();
-                            else mdButton.remove();
-                        }
-                        // 並將卡片標題/圖片連結改為 PDF
-                        const pdfHref = pdfButton.getAttribute('href');
-                        if (titleLink) titleLink.setAttribute('href', pdfHref);
-                        if (imageLink) imageLink.setAttribute('href', pdfHref);
-                    }
-                    // 如果這張卡片有寫出 PDF 按鈕，但實際上找不到 PDF 文件，就把 PDF 按鈕刪掉
-                    if (!pdfExists && pdfButton) {
-                        if (pdfButton.closest('li')) pdfButton.closest('li').remove();
-                        else pdfButton.remove();
-                    }
-                });
-            });
-        });
-    </script>
-
-    <!-- 📂 文章排序與篩選邏輯 -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const filterCategory = document.getElementById('filter-category');
-            const sortBy = document.getElementById('sort-by');
-            const container = document.getElementById('posts-container');
-            const paginationControls = document.getElementById('pagination-controls');
-            const pageInfo = document.getElementById('page-info');
-            const allItems = Array.from(container.getElementsByClassName('note-item'));
-            const initialOrder = allItems.slice();
-            const ITEMS_PER_PAGE = 4;
-            let currentPage = 1;
-            let activeItems = []; // 當前篩選+排序後的所有項目
-
-            function getFilteredSorted() {
-                const category = filterCategory.value;
-                const sortType = sortBy.value;
-
-                let filtered = allItems.filter(item => {
-                    if (category === 'all') return true;
-                    return item.dataset.category === category;
-                });
-
-                if (sortType !== 'default' && sortType !== 'list') {
-                    filtered.sort((a, b) => {
-                        if (sortType === 'upload-desc') return new Date(b.dataset.upload) - new Date(a.dataset.upload);
-                        if (sortType === 'upload-asc') return new Date(a.dataset.upload) - new Date(b.dataset.upload);
-                        if (sortType === 'edit-desc') return new Date(b.dataset.edit) - new Date(a.dataset.edit);
-                        if (sortType === 'title-asc') return a.dataset.title.localeCompare(b.dataset.title, 'zh-TW');
-                        if (sortType === 'title-desc') return b.dataset.title.localeCompare(a.dataset.title, 'zh-TW');
-                        return 0;
-                    });
-                } else {
-                    filtered = initialOrder.filter(item => filtered.includes(item));
-                }
-                return filtered;
-            }
-
-            function renderPage() {
-                const totalPages = Math.max(1, Math.ceil(activeItems.length / ITEMS_PER_PAGE));
-                if (currentPage > totalPages) currentPage = totalPages;
-
-                const start = (currentPage - 1) * ITEMS_PER_PAGE;
-                const end = start + ITEMS_PER_PAGE;
-
-                activeItems.forEach((item, i) => {
-                    item.style.display = (i >= start && i < end) ? '' : 'none';
-                    if (item.style.display !== 'none') {
-                        let idx = item.querySelector('.list-index');
-                        if (!idx) {
-                            idx = document.createElement('span');
-                            idx.className = 'list-index';
-                            item.insertBefore(idx, item.firstChild);
-                        }
-                        idx.textContent = (i + 1) + ".";
-                    }
-                    container.appendChild(item);
-                });
-
-                // 更新頁碼資訊
-                pageInfo.textContent = activeItems.length > 0
-                    ? `第 ${currentPage} 頁，共 ${totalPages} 頁（${activeItems.length} 篇文章）`
-                    : '無符合條件的內容';
-
-                // 建立分頁按鈕
-                paginationControls.innerHTML = '';
-                if (totalPages <= 1) return;
-
-                function makeBtn(label, page, disabled, isActive) {
-                    const btn = document.createElement('button');
-                    btn.textContent = label;
-                    if (disabled) btn.disabled = true;
-                    if (isActive) btn.classList.add('active');
-                    btn.addEventListener('click', function () {
-                        currentPage = page;
-                        renderPage();
-                        const filterPanel = document.getElementById('sort-filter-controls');
-                        if (filterPanel) {
-                            const y = filterPanel.getBoundingClientRect().top + window.scrollY - 80;
-                            window.scrollTo({ top: y, behavior: 'smooth' });
-                        }
-                    });
-                    return btn;
-                }
-
-                paginationControls.appendChild(makeBtn('«', 1, currentPage === 1, false));
-                paginationControls.appendChild(makeBtn('‹', currentPage - 1, currentPage === 1, false));
-
-                // 顯示頁碼按鈕（最多展現 5 頁）
-                let startPage = Math.max(1, currentPage - 2);
-                let endPage = Math.min(totalPages, startPage + 4);
-                if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
-
-                for (let p = startPage; p <= endPage; p++) {
-                    paginationControls.appendChild(makeBtn(p, p, false, p === currentPage));
-                }
-
-                paginationControls.appendChild(makeBtn('›', currentPage + 1, currentPage === totalPages, false));
-                paginationControls.appendChild(makeBtn('»', totalPages, currentPage === totalPages, false));
-            }
-
-            function updateView() {
-                currentPage = 1;
-                const sortType = sortBy.value;
-                if (sortType === 'list') {
-                    container.classList.add('list-view');
-                } else {
-                    container.classList.remove('list-view');
-                }
-                activeItems = getFilteredSorted();
-                renderPage();
-            }
-
-            filterCategory.addEventListener('change', updateView);
-            sortBy.addEventListener('change', updateView);
-
-            // 初始化
-            updateView();
-        });
-    </script>
+    
 
 
 
 
-<script src="assets/js/spa.js"></script>
-    <script>
-        window.addEventListener('load', function() {
-            setTimeout(function() {
-                var v = document.getElementById('bg-video');
-                if (v && sessionStorage.getItem('mediaPaused') !== 'true') {
-                    v.play().catch(function(e){ console.log('Autoplay prevented:', e); });
-                }
-            }, 5000); // Small delay to ensure priority is given to rendering the page
-        });
-    </script>
+<script src="assets/js/common.js"></script>
+    <script src="assets/js/page-list.js"></script>
 </body>
 
 </html>

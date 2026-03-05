@@ -311,6 +311,9 @@
 
 <body class="is-preload">
 
+    <!-- 真正的 Loading Screen -->
+    <div id="loading-screen"></div>
+
     <!--  影片與音樂背景 -->
     <video id="bg-video" muted loop playsinline poster="images/bg.png" preload="none">
         <source src="images/bg-video.mp4" type="video/mp4">
@@ -319,77 +322,7 @@
         <source src="images/bg-music.mp3" type="audio/mpeg">
     </audio>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var video = document.getElementById('bg-video');
-            var music = document.getElementById('bg-music');
-            var btnMute = document.getElementById('btn-mute');
-            var btnPlay = document.getElementById('btn-play');
-
-            var savedMuted = sessionStorage.getItem('mediaMuted');
-            var savedPaused = sessionStorage.getItem('mediaPaused');
-
-            // 影片永遠靜音
-            video.muted = true;
-
-            // 如果 session 記錄為真才靜音，否則預設想開聲音
-            var isMuted = (savedMuted === 'true');
-            music.muted = isMuted;
-
-            function updateMuteBtn() {
-                btnMute.innerHTML = music.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
-            }
-            updateMuteBtn();
-
-            if (savedPaused === 'true') {
-                video.pause();
-                btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-            } else {
-                // 嘗試即刻播放
-                var playPromise = music.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(function (error) {
-                        // 有聲音自動播放被瀏覽器阻擋！強制靜音並偷偷在背景繼續播放，確保按下按鈕瞬間有聲音
-                        music.muted = true;
-                        updateMuteBtn();
-                        sessionStorage.setItem('mediaMuted', 'true');
-                        music.play().catch(function (e) { });
-                    });
-                }
-            }
-
-            btnMute.addEventListener('click', function (e) {
-                e.stopPropagation();
-                music.muted = !music.muted;
-                updateMuteBtn();
-                sessionStorage.setItem('mediaMuted', music.muted);
-
-                // 防呆：如果音樂根本沒開始播，接觸解靜音時順便啟動
-                if (music.paused && savedPaused !== 'true') {
-                    music.play().catch(function (e) { });
-                }
-            });
-
-            btnPlay.addEventListener('click', function () {
-                if (video.paused) {
-                    video.play();
-                    music.play();
-                    btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
-                    sessionStorage.setItem('mediaPaused', 'false');
-                } else {
-                    video.pause();
-                    music.pause();
-                    btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-                    sessionStorage.setItem('mediaPaused', 'true');
-                }
-            });
-
-            window.addEventListener('beforeunload', function () {
-                sessionStorage.setItem('mediaMuted', music.muted);
-                sessionStorage.setItem('mediaPaused', video.paused);
-            });
-        });
-    </script>
+    
 
     <!-- 全域導航器 -->
     <div id="global-nav"
@@ -486,13 +419,13 @@
                             <span class="meta-up">上傳: 2024-09-13</span>
                             <span class="meta-ed">編輯: 2024-09-13</span>
                         </span>
-                        <h2><a href="note.html?lit=2024年9月13日 生活札記：中山大學入學日記">中山大學入學日記</a></h2>
+                        <h2><a href="note.html?lit=2024%E5%B9%B49%E6%9C%8813%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E4%B8%AD%E5%B1%B1%E5%A4%A7%E5%AD%B8%E5%85%A5%E5%AD%B8%E6%97%A5%E8%A8%98">中山大學入學日記</a></h2>
                     </header>
-                    <a href="note.html?lit=2024年9月13日 生活札記：中山大學入學日記" class="image fit"><img loading="lazy" src="images/中山大學入學圖片1.jpg"
+                    <a href="note.html?lit=2024%E5%B9%B49%E6%9C%8813%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E4%B8%AD%E5%B1%B1%E5%A4%A7%E5%AD%B8%E5%85%A5%E5%AD%B8%E6%97%A5%E8%A8%98" class="image fit"><img loading="lazy" src="images/中山大學入學圖片1.jpg"
                             alt="" /></a>
                     <p>來了兩個禮拜的入學紀錄。依山傍海的環境、獼猴與蛇的生態、港口公園的夜風與 Yorushika，以及初次長大的不真實感。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=2024年9月13日 生活札記：中山大學入學日記" class="button">閱讀文章</a></li>
+                        <li><a href="note.html?lit=2024%E5%B9%B49%E6%9C%8813%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E4%B8%AD%E5%B1%B1%E5%A4%A7%E5%AD%B8%E5%85%A5%E5%AD%B8%E6%97%A5%E8%A8%98" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
@@ -505,17 +438,17 @@
                             <span class="meta-up">上傳: 2025-11-23</span>
                             <span class="meta-ed">編輯: 2025-11-23</span>
                         </span>
-                        <h2><a href="note.html?lit=2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證">忠烈祠的貓與夜空下的見證</a></h2>
+                        <h2><a href="note.html?lit=2025%E5%B9%B411%E6%9C%8823%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E5%BF%A0%E7%83%88%E7%A5%A0%E7%9A%84%E8%B2%93%E8%88%87%E5%A4%9C%E7%A9%BA%E4%B8%8B%E7%9A%84%E8%A6%8B%E8%AD%89">忠烈祠的貓與夜空下的見證</a></h2>
                     </header>
                     <div class="card-carousel">
                         <div class="carousel-slide">
-                            <a href="note.html?lit=2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證" class="image fit"
+                            <a href="note.html?lit=2025%E5%B9%B411%E6%9C%8823%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E5%BF%A0%E7%83%88%E7%A5%A0%E7%9A%84%E8%B2%93%E8%88%87%E5%A4%9C%E7%A9%BA%E4%B8%8B%E7%9A%84%E8%A6%8B%E8%AD%89" class="image fit"
                                 style="margin-bottom:0;">
                                 <img loading="lazy" src="images/忠烈祠的貓與夜空下的見證附圖2.jpg" alt="" />
                             </a>
                         </div>
                         <div class="carousel-slide">
-                            <a href="note.html?lit=2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證" class="image fit"
+                            <a href="note.html?lit=2025%E5%B9%B411%E6%9C%8823%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E5%BF%A0%E7%83%88%E7%A5%A0%E7%9A%84%E8%B2%93%E8%88%87%E5%A4%9C%E7%A9%BA%E4%B8%8B%E7%9A%84%E8%A6%8B%E8%AD%89" class="image fit"
                                 style="margin-bottom:0;">
                                 <img loading="lazy" src="images/忠烈祠的貓與夜空下的見證附圖1.jpg" alt="" />
                             </a>
@@ -523,7 +456,7 @@
                     </div>
                     <p style="margin-top: 1.5rem;">2025年11月23日 生活札記</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證" class="button">閱讀文章</a></li>
+                        <li><a href="note.html?lit=2025%E5%B9%B411%E6%9C%8823%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E5%BF%A0%E7%83%88%E7%A5%A0%E7%9A%84%E8%B2%93%E8%88%87%E5%A4%9C%E7%A9%BA%E4%B8%8B%E7%9A%84%E8%A6%8B%E8%AD%89" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
@@ -536,11 +469,11 @@
                             <span class="meta-up">上傳: 2025-06-15</span>
                             <span class="meta-ed">編輯: 2025-06-15</span>
                         </span>
-                        <h2><a href="note.html?lit=2025年6月15日 生活札記：與海對話">與海對話</a></h2>
+                        <h2><a href="note.html?lit=2025%E5%B9%B46%E6%9C%8815%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E8%88%87%E6%B5%B7%E5%B0%8D%E8%A9%B1">與海對話</a></h2>
                     </header>
                     <p>2025年6月15日 生活札記</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=2025年6月15日 生活札記：與海對話" class="button">閱讀文章</a></li>
+                        <li><a href="note.html?lit=2025%E5%B9%B46%E6%9C%8815%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E8%88%87%E6%B5%B7%E5%B0%8D%E8%A9%B1" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
@@ -553,13 +486,13 @@
                             <span class="meta-up">上傳: 2026-01-14</span>
                             <span class="meta-ed">編輯: 2026-01-14</span>
                         </span>
-                        <h2><a href="note.html?lit=2026年1月14日 生活札記：凌晨三點半的荒謬與平凡">凌晨三點半的荒謬與平凡</a></h2>
+                        <h2><a href="note.html?lit=2026%E5%B9%B41%E6%9C%8814%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E5%87%8C%E6%99%A8%E4%B8%89%E9%BB%9E%E5%8D%8A%E7%9A%84%E8%8D%92%E8%AC%AC%E8%88%87%E5%B9%B3%E5%87%A1">凌晨三點半的荒謬與平凡</a></h2>
                     </header>
-                    <a href="note.html?lit=2026年1月14日 生活札記：凌晨三點半的荒謬與平凡" class="image fit"><img
+                    <a href="note.html?lit=2026%E5%B9%B41%E6%9C%8814%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E5%87%8C%E6%99%A8%E4%B8%89%E9%BB%9E%E5%8D%8A%E7%9A%84%E8%8D%92%E8%AC%AC%E8%88%87%E5%B9%B3%E5%87%A1" class="image fit"><img
                             src="images/中山大學入學圖片1.jpg" alt="" /></a>
                     <p>2026年1月14日 生活札記</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=2026年1月14日 生活札記：凌晨三點半的荒謬與平凡" class="button">閱讀文章</a></li>
+                        <li><a href="note.html?lit=2026%E5%B9%B41%E6%9C%8814%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E5%87%8C%E6%99%A8%E4%B8%89%E9%BB%9E%E5%8D%8A%E7%9A%84%E8%8D%92%E8%AC%AC%E8%88%87%E5%B9%B3%E5%87%A1" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
@@ -572,11 +505,11 @@
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=_抽離意義的性：一場人性自願的降格">抽離意義的性：一場人性自願的降格</a></h2>
+                        <h2><a href="note.html?lit=_%E6%8A%BD%E9%9B%A2%E6%84%8F%E7%BE%A9%E7%9A%84%E6%80%A7%EF%BC%9A%E4%B8%80%E5%A0%B4%E4%BA%BA%E6%80%A7%E8%87%AA%E9%A1%98%E7%9A%84%E9%99%8D%E6%A0%BC">抽離意義的性：一場人性自願的降格</a></h2>
                     </header>
                     <p>對於人性現象的觀察與深度隨筆。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=_抽離意義的性：一場人性自願的降格" class="button">閱讀文章</a></li>
+                        <li><a href="note.html?lit=_%E6%8A%BD%E9%9B%A2%E6%84%8F%E7%BE%A9%E7%9A%84%E6%80%A7%EF%BC%9A%E4%B8%80%E5%A0%B4%E4%BA%BA%E6%80%A7%E8%87%AA%E9%A1%98%E7%9A%84%E9%99%8D%E6%A0%BC" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
@@ -589,18 +522,18 @@
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類">《鼠疫》閱讀系列</a></h2>
+                        <h2><a href="note.html?lit=%E3%80%8A%E9%BC%A0%E7%96%AB%E3%80%8B%E9%96%B1%E8%AE%80%E7%AD%86%E8%A8%98%20(%E4%B8%80)%EF%BC%9A%E5%8A%87%E6%83%85%E5%A4%A7%E7%B6%B1%E8%88%87%E5%93%B2%E5%AD%B8%E5%B1%A4%E6%AC%A1%E5%88%86%E9%A1%9E">《鼠疫》閱讀系列</a></h2>
                     </header>
 
                     <div class="card-carousel">
                         <div class="carousel-slide">
-                            <a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類" class="image fit">
+                            <a href="note.html?lit=%E3%80%8A%E9%BC%A0%E7%96%AB%E3%80%8B%E9%96%B1%E8%AE%80%E7%AD%86%E8%A8%98%20(%E4%B8%80)%EF%BC%9A%E5%8A%87%E6%83%85%E5%A4%A7%E7%B6%B1%E8%88%87%E5%93%B2%E5%AD%B8%E5%B1%A4%E6%AC%A1%E5%88%86%E9%A1%9E" class="image fit">
                                 <img loading="lazy" src="images/鼠疫附圖.jpg" alt="" />
                                 <span class="carousel-caption">第一部：大綱與哲學層次</span>
                             </a>
                         </div>
                         <div class="carousel-slide">
-                            <a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類" class="image fit">
+                            <a href="note.html?lit=%E3%80%8A%E9%BC%A0%E7%96%AB%E3%80%8B%E9%96%B1%E8%AE%80%E7%AD%86%E8%A8%98%20(%E4%B8%80)%EF%BC%9A%E5%8A%87%E6%83%85%E5%A4%A7%E7%B6%B1%E8%88%87%E5%93%B2%E5%AD%B8%E5%B1%A4%E6%AC%A1%E5%88%86%E9%A1%9E" class="image fit">
                                 <img loading="lazy" src="images/rat.jpg" alt="第二部：人物與荒謬解構" onerror="this.src='images/pic1.jpg'" />
                                 <span class="carousel-caption">第二部：人物與荒謬解構</span>
                             </a>
@@ -609,7 +542,7 @@
 
                     <p style="margin-top: 1.5rem;">點擊圖片即前往對應篇章的閱讀筆記。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類" class="button">閱讀心得</a></li>
+                        <li><a href="note.html?lit=%E3%80%8A%E9%BC%A0%E7%96%AB%E3%80%8B%E9%96%B1%E8%AE%80%E7%AD%86%E8%A8%98%20(%E4%B8%80)%EF%BC%9A%E5%8A%87%E6%83%85%E5%A4%A7%E7%B6%B1%E8%88%87%E5%93%B2%E5%AD%B8%E5%B1%A4%E6%AC%A1%E5%88%86%E9%A1%9E" class="button">閱讀心得</a></li>
                     </ul>
                 </article>
 
@@ -622,11 +555,11 @@
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=如何讀一本書">如何讀一本書</a></h2>
+                        <h2><a href="note.html?lit=%E5%A6%82%E4%BD%95%E8%AE%80%E4%B8%80%E6%9C%AC%E6%9B%B8">如何讀一本書</a></h2>
                     </header>
                     <p>關於閱讀方法與層次的深度探討。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=如何讀一本書" class="button">閱讀心得</a></li>
+                        <li><a href="note.html?lit=%E5%A6%82%E4%BD%95%E8%AE%80%E4%B8%80%E6%9C%AC%E6%9B%B8" class="button">閱讀心得</a></li>
                     </ul>
                 </article>
 
@@ -639,13 +572,13 @@
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=無窮盡的交響曲 閱讀心得">無窮盡的交響曲</a></h2>
+                        <h2><a href="note.html?lit=%E7%84%A1%E7%AA%AE%E7%9B%A1%E7%9A%84%E4%BA%A4%E9%9F%BF%E6%9B%B2%20%E9%96%B1%E8%AE%80%E5%BF%83%E5%BE%97">無窮盡的交響曲</a></h2>
                     </header>
-                    <a href="note.html?lit=無窮盡的交響曲 閱讀心得" class="image fit"><img loading="lazy" src="images/無窮盡的交響曲心得附圖.jpg"
+                    <a href="note.html?lit=%E7%84%A1%E7%AA%AE%E7%9B%A1%E7%9A%84%E4%BA%A4%E9%9F%BF%E6%9B%B2%20%E9%96%B1%E8%AE%80%E5%BF%83%E5%BE%97" class="image fit"><img loading="lazy" src="images/無窮盡的交響曲心得附圖.jpg"
                             alt="" /></a>
                     <p>閱讀心得與省思。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=無窮盡的交響曲 閱讀心得" class="button">閱讀心得</a></li>
+                        <li><a href="note.html?lit=%E7%84%A1%E7%AA%AE%E7%9B%A1%E7%9A%84%E4%BA%A4%E9%9F%BF%E6%9B%B2%20%E9%96%B1%E8%AE%80%E5%BF%83%E5%BE%97" class="button">閱讀心得</a></li>
                     </ul>
                 </article>
 
@@ -658,13 +591,13 @@
                             <span class="meta-up">上傳: 2025-09-12</span>
                             <span class="meta-ed">編輯: 2025-09-12</span>
                         </span>
-                        <h2><a href="note.html?lit=2026年3月 札記：Charlie Kirk 之死與民主社會的失溫">Charlie Kirk 之死與民主社會的失溫</a></h2>
+                        <h2><a href="note.html?lit=2026%E5%B9%B43%E6%9C%88%20%E6%9C%AD%E8%A8%98%EF%BC%9ACharlie%20Kirk%20%E4%B9%8B%E6%AD%BB%E8%88%87%E6%B0%91%E4%B8%BB%E7%A4%BE%E6%9C%83%E7%9A%84%E5%A4%B1%E6%BA%AB">Charlie Kirk 之死與民主社會的失溫</a></h2>
                     </header>
-                    <a href="note.html?lit=2026年3月 札記：Charlie Kirk 之死與民主社會的失溫" class="image fit"><img
+                    <a href="note.html?lit=2026%E5%B9%B43%E6%9C%88%20%E6%9C%AD%E8%A8%98%EF%BC%9ACharlie%20Kirk%20%E4%B9%8B%E6%AD%BB%E8%88%87%E6%B0%91%E4%B8%BB%E7%A4%BE%E6%9C%83%E7%9A%84%E5%A4%B1%E6%BA%AB" class="image fit"><img
                             src="images/charlie_kirk_附圖.jpg" alt="" /></a>
                     <p>針對近期時事之反思與隨筆。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=2026年3月 札記：Charlie Kirk 之死與民主社會的失溫" class="button">閱讀文章</a></li>
+                        <li><a href="note.html?lit=2026%E5%B9%B43%E6%9C%88%20%E6%9C%AD%E8%A8%98%EF%BC%9ACharlie%20Kirk%20%E4%B9%8B%E6%AD%BB%E8%88%87%E6%B0%91%E4%B8%BB%E7%A4%BE%E6%9C%83%E7%9A%84%E5%A4%B1%E6%BA%AB" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
@@ -677,22 +610,22 @@
                             <span class="meta-up">上傳: 2025-03-19</span>
                             <span class="meta-ed">編輯: 2025-03-19</span>
                         </span>
-                        <h2><a href="note.html?lit=嗜血的邂逅">嗜血的邂逅</a></h2>
+                        <h2><a href="note.html?lit=%E5%97%9C%E8%A1%80%E7%9A%84%E9%82%82%E9%80%85">嗜血的邂逅</a></h2>
                     </header>
                     <div class="card-carousel">
                         <div class="carousel-slide">
-                            <a href="note.html?lit=嗜血的邂逅" class="image fit">
+                            <a href="note.html?lit=%E5%97%9C%E8%A1%80%E7%9A%84%E9%82%82%E9%80%85" class="image fit">
                                 <img loading="lazy" src="images/spoiler.svg" alt="防雷警告" />
                             </a>
                         </div>
                         <div class="carousel-slide">
-                            <a href="note.html?lit=嗜血的邂逅" class="image fit">
+                            <a href="note.html?lit=%E5%97%9C%E8%A1%80%E7%9A%84%E9%82%82%E9%80%85" class="image fit">
                                 <img loading="lazy" src="images/邂逅(蚊子).jpg" alt="蚊子照片" />
                                 <span class="carousel-caption">第一幕：活生生的吸血鬼</span>
                             </a>
                         </div>
                         <div class="carousel-slide">
-                            <a href="note.html?lit=嗜血的邂逅" class="image fit">
+                            <a href="note.html?lit=%E5%97%9C%E8%A1%80%E7%9A%84%E9%82%82%E9%80%85" class="image fit">
                                 <img loading="lazy" src="images/邂逅(蚊子屍體).jpg" alt="蚊子屍體照片" />
                                 <span class="carousel-caption">第二幕：死於非命</span>
                             </a>
@@ -700,7 +633,7 @@
                     </div>
                     <p style="margin-top: 1.5rem;">一次充滿血腥味的夜半邂逅，以及蚊子們的死狀。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=嗜血的邂逅" class="button">閱讀文章</a></li>
+                        <li><a href="note.html?lit=%E5%97%9C%E8%A1%80%E7%9A%84%E9%82%82%E9%80%85" class="button">閱讀文章</a></li>
                     </ul>
                 </article>
 
@@ -713,11 +646,11 @@
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=四幕短詩：告白、分手、死亡、重逢">四幕短詩：告白、分手、死亡、重逢</a></h2>
+                        <h2><a href="note.html?lit=%E5%9B%9B%E5%B9%95%E7%9F%AD%E8%A9%A9%EF%BC%9A%E5%91%8A%E7%99%BD%E3%80%81%E5%88%86%E6%89%8B%E3%80%81%E6%AD%BB%E4%BA%A1%E3%80%81%E9%87%8D%E9%80%A2">四幕短詩：告白、分手、死亡、重逢</a></h2>
                     </header>
                     <p>文字挑戰：在不提及題目本身的前提下，以少許句子勾勒出告白、分手、死亡、重逢四個題目的輪廓與氛圍。四首現代詩，以時間為主軸，記錄無聲的情感流動。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=四幕短詩：告白、分手、死亡、重逢" class="button">閱讀詩集</a></li>
+                        <li><a href="note.html?lit=%E5%9B%9B%E5%B9%95%E7%9F%AD%E8%A9%A9%EF%BC%9A%E5%91%8A%E7%99%BD%E3%80%81%E5%88%86%E6%89%8B%E3%80%81%E6%AD%BB%E4%BA%A1%E3%80%81%E9%87%8D%E9%80%A2" class="button">閱讀詩集</a></li>
                     </ul>
                 </article>
 
@@ -730,11 +663,11 @@
                             <span class="meta-up">上傳: 2026-03-04</span>
                             <span class="meta-ed">編輯: 2026-03-04</span>
                         </span>
-                        <h2><a href="note.html?lit=該死的咖啡因">《該死的咖啡因》</a></h2>
+                        <h2><a href="note.html?lit=%E8%A9%B2%E6%AD%BB%E7%9A%84%E5%92%96%E5%95%A1%E5%9B%A0">《該死的咖啡因》</a></h2>
                     </header>
                     <p>凌晨四點的失眠，一個衝動的念頭，和在超商門口意外邂逅的神秘姊姊。一個乖寶寶的第一次叛逆，以及那餘溫猶存的咖啡因味道。</p>
                     <ul class="actions special">
-                        <li><a href="note.html?lit=該死的咖啡因" class="button">閱讀故事</a></li>
+                        <li><a href="note.html?lit=%E8%A9%B2%E6%AD%BB%E7%9A%84%E5%92%96%E5%95%A1%E5%9B%A0" class="button">閱讀故事</a></li>
                     </ul>
                 </article>
             </section>
@@ -856,208 +789,9 @@
         })();
     </script>
 
-    <!-- 🔍 動態檢查檔案是否存在 -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // 如果在本機端直接開啟 HTML (file://)，fetch 會因為 CORS 失敗，導致所有按鈕被誤刪，因此直接略過檢查
-            if (window.location.protocol === 'file:') {
-                console.warn("Local file:// protocol detected. Auto-hide file checks are disabled to prevent CORS blocking.");
-                return;
-            }
+    
 
-            const articles = document.querySelectorAll('article.note-item');
-            articles.forEach(article => {
-                const mdButton = article.querySelector('a[href*="?lit="].button');
-                const pdfButton = article.querySelector('a[href*="?pdf="].button');
-                const titleLink = article.querySelector('header h2 a');
-                const imageLink = article.querySelector('a.image');
-
-                let mdExists = true;
-                let pdfExists = true;
-                let promises = [];
-
-                if (mdButton) {
-                    const href = mdButton.getAttribute('href');
-                    const match = href.match(/\?lit=([^&]+)/);
-                    if (match) {
-                        promises.push(
-                            fetch(`literature/${match[1]}.md`, { method: 'HEAD' })
-                                .then(res => {
-                                    if (!res.ok) mdExists = false;
-                                }).catch(() => {
-                                    mdExists = false;
-                                })
-                        );
-                    }
-                }
-
-                if (pdfButton) {
-                    const href = pdfButton.getAttribute('href');
-                    const match = href.match(/\?pdf=([^&]+)/);
-                    if (match) {
-                        promises.push(
-                            fetch(`pdfs/${match[1]}.pdf`, { method: 'HEAD' })
-                                .then(res => {
-                                    if (!res.ok) pdfExists = false;
-                                }).catch(() => {
-                                    pdfExists = false;
-                                })
-                        );
-                    } else {
-                        pdfExists = false; // No PDF button = no PDF exists for this article
-                    }
-                } else {
-                    pdfExists = false;
-                }
-
-                // 當檢查完畢後執行顯示邏輯
-                Promise.all(promises).then(() => {
-                    // 若沒有 MD，但「有 PDF」，才把 MD 按鈕刪掉
-                    if (!mdExists && pdfExists) {
-                        if (mdButton) {
-                            if (mdButton.closest('li')) mdButton.closest('li').remove();
-                            else mdButton.remove();
-                        }
-                        // 並將卡片標題/圖片連結改為 PDF
-                        const pdfHref = pdfButton.getAttribute('href');
-                        if (titleLink) titleLink.setAttribute('href', pdfHref);
-                        if (imageLink) imageLink.setAttribute('href', pdfHref);
-                    }
-                    // 如果這張卡片有寫出 PDF 按鈕，但實際上找不到 PDF 文件，就把 PDF 按鈕刪掉
-                    if (!pdfExists && pdfButton) {
-                        if (pdfButton.closest('li')) pdfButton.closest('li').remove();
-                        else pdfButton.remove();
-                    }
-                });
-            });
-        });
-    </script>
-
-    <!-- 📂 文章排序與篩選邏輯 -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const filterCategory = document.getElementById('filter-category');
-            const sortBy = document.getElementById('sort-by');
-            const container = document.getElementById('posts-container');
-            const paginationControls = document.getElementById('pagination-controls');
-            const pageInfo = document.getElementById('page-info');
-            const allItems = Array.from(container.getElementsByClassName('note-item'));
-            const initialOrder = allItems.slice();
-            const ITEMS_PER_PAGE = 4;
-            let currentPage = 1;
-            let activeItems = []; // 當前篩選+排序後的所有項目
-
-            function getFilteredSorted() {
-                const category = filterCategory.value;
-                const sortType = sortBy.value;
-
-                let filtered = allItems.filter(item => {
-                    if (category === 'all') return true;
-                    return item.dataset.category === category;
-                });
-
-                if (sortType !== 'default' && sortType !== 'list') {
-                    filtered.sort((a, b) => {
-                        if (sortType === 'upload-desc') return new Date(b.dataset.upload) - new Date(a.dataset.upload);
-                        if (sortType === 'upload-asc') return new Date(a.dataset.upload) - new Date(b.dataset.upload);
-                        if (sortType === 'edit-desc') return new Date(b.dataset.edit) - new Date(a.dataset.edit);
-                        if (sortType === 'title-asc') return a.dataset.title.localeCompare(b.dataset.title, 'zh-TW');
-                        if (sortType === 'title-desc') return b.dataset.title.localeCompare(a.dataset.title, 'zh-TW');
-                        return 0;
-                    });
-                } else {
-                    filtered = initialOrder.filter(item => filtered.includes(item));
-                }
-                return filtered;
-            }
-
-            function renderPage() {
-                const totalPages = Math.max(1, Math.ceil(activeItems.length / ITEMS_PER_PAGE));
-                if (currentPage > totalPages) currentPage = totalPages;
-
-                const start = (currentPage - 1) * ITEMS_PER_PAGE;
-                const end = start + ITEMS_PER_PAGE;
-
-                // 隱藏所有項目，再顯示當頁項目，並保持 DOM 順序
-                allItems.forEach(item => item.style.display = 'none');
-
-                container.innerHTML = '';
-
-                activeItems.forEach((item, i) => {
-                    item.style.display = (i >= start && i < end) ? '' : 'none';
-                    if (item.style.display !== 'none') {
-                        let idx = item.querySelector('.list-index');
-                        if (!idx) {
-                            idx = document.createElement('span');
-                            idx.className = 'list-index';
-                            item.insertBefore(idx, item.firstChild);
-                        }
-                        idx.textContent = (i + 1) + ".";
-                    }
-                    container.appendChild(item);
-                });
-
-                // 更新頁碼資訊
-                pageInfo.textContent = activeItems.length > 0
-                    ? `第 ${currentPage} 頁，共 ${totalPages} 頁（${activeItems.length} 篇文章）`
-                    : '無符合條件的內容';
-
-                // 建立分頁按鈕
-                paginationControls.innerHTML = '';
-                if (totalPages <= 1) return;
-
-                function makeBtn(label, page, disabled, isActive) {
-                    const btn = document.createElement('button');
-                    btn.textContent = label;
-                    if (disabled) btn.disabled = true;
-                    if (isActive) btn.classList.add('active');
-                    btn.addEventListener('click', function () {
-                        currentPage = page;
-                        renderPage();
-                        const filterPanel = document.getElementById('sort-filter-controls');
-                        if (filterPanel) {
-                            const y = filterPanel.getBoundingClientRect().top + window.scrollY - 80;
-                            window.scrollTo({ top: y, behavior: 'smooth' });
-                        }
-                    });
-                    return btn;
-                }
-
-                paginationControls.appendChild(makeBtn('«', 1, currentPage === 1, false));
-                paginationControls.appendChild(makeBtn('‹', currentPage - 1, currentPage === 1, false));
-
-                // 顯示頁碼按鈕（最多展現 5 頁）
-                let startPage = Math.max(1, currentPage - 2);
-                let endPage = Math.min(totalPages, startPage + 4);
-                if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
-
-                for (let p = startPage; p <= endPage; p++) {
-                    paginationControls.appendChild(makeBtn(p, p, false, p === currentPage));
-                }
-
-                paginationControls.appendChild(makeBtn('›', currentPage + 1, currentPage === totalPages, false));
-                paginationControls.appendChild(makeBtn('»', totalPages, currentPage === totalPages, false));
-            }
-
-            function updateView() {
-                currentPage = 1;
-                const sortType = sortBy.value;
-                if (sortType === 'list') {
-                    container.classList.add('list-view');
-                } else {
-                    container.classList.remove('list-view');
-                }
-                activeItems = getFilteredSorted();
-                renderPage();
-            }
-
-            filterCategory.addEventListener('change', updateView);
-            sortBy.addEventListener('change', updateView);
-
-            // 初始化
-            updateView();
-        });
-    </script>
+    
 
 
 
@@ -1108,17 +842,8 @@
             });
         });
     </script>
-<script src="assets/js/spa.js"></script>
-    <script>
-        window.addEventListener('load', function() {
-            setTimeout(function() {
-                var v = document.getElementById('bg-video');
-                if (v && sessionStorage.getItem('mediaPaused') !== 'true') {
-                    v.play().catch(function(e){ console.log('Autoplay prevented:', e); });
-                }
-            }, 5000); // Small delay to ensure priority is given to rendering the page
-        });
-    </script>
+<script src="assets/js/common.js"></script>
+    <script src="assets/js/page-list.js"></script>
 </body>
 
 </html>
