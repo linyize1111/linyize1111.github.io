@@ -671,19 +671,7 @@ html[data-theme] table {
 
 /* ============================================================
    E. BACKGROUND SCROLL — Requirement 4
-   Background must be visible when scrolling on ALL pages.
-   Root cause: #wrapper uses parallax scroll which "moves" the
-   background, but on short pages the content block sits over
-   the bg and the user never sees lower portions.
-   Fix: Ensure #bg-video and the bg system span full page height,
-   and the body/html have min-height to allow scroll reveal.
    ============================================================ */
-
-/* The background video is position:fixed — that's correct.
-   The issue is that on sub-pages #main has a solid white background
-   that covers the full viewport.  With our glass dark panels,
-   content becomes translucent and background is revealed.
-   In LIGHT mode we preserve readability but allow partial bg show. */
 
 /* Ensure video covers full viewport always */
 #bg-video {
@@ -710,14 +698,6 @@ html[data-theme] table {
     margin-bottom: 3rem;
 }
 
-/* On content pages (not index) push the header down 
-   moderate amount to reveal the background like the index hero area,
-   avoiding any detached transparent spacers and preventing 
-   the logo from hitting the bottom video controls. */
-body:not(:has(#intro)) #header {
-    margin-top: 15vh;
-}
-
 /* ============================================================
    F. IMAGE BEAUTIFICATION
    ============================================================ */
@@ -725,9 +705,7 @@ body:not(:has(#intro)) #header {
 /* ── Markdown images — bigger, centred, quality ── */
 .markdown-body img {
     display: block;
-    /* Requirement 1: comfortable max-width 700–900px rather than tiny */
     max-width: min(100%, 860px);
-    /* Limit tall portrait images */
     max-height: 65vh;
     width: auto;
     height: auto;
@@ -736,7 +714,6 @@ body:not(:has(#intro)) #header {
     box-shadow: var(--shadow-img, 0 6px 28px rgba(0, 0, 0, 0.16));
     object-fit: contain;
     object-position: center;
-    /* Prevent layout shift */
     background: rgba(0, 0, 0, 0.04);
 }
 
@@ -745,18 +722,6 @@ body:not(:has(#intro)) #header {
     margin: 2.5rem auto;
     text-align: center;
     max-width: min(100%, 860px);
-}
-
-.markdown-body figure img {
-    margin: 0 auto 0.75rem;
-}
-
-.markdown-body figcaption {
-    font-size: 0.84rem;
-    color: var(--text-muted, #6b7280);
-    font-style: italic;
-    margin-top: 0.4rem;
-    line-height: 1.5;
 }
 
 /* Consistent gap between consecutive images */
@@ -800,65 +765,41 @@ article.post .image.main img {
 }
 
 /* ============================================================
-   H. HERO SPACER — Non-index pages background visibility
-   ============================================================
-   JS (common.js initHeroSpacer) injects:
-     <div id="page-hero-spacer"></div>
-   BEFORE #main on every page that lacks #intro (sub-pages).
-
-   This div is 100% transparent and creates vertical space so the
-   fixed background image/video is visible before content begins.
-
-   Target:  like index's #intro — user sees most of the bg first.
-   Spacer height:
-     Desktop: clamp(18rem, 70vh, 42rem)  ≈ 70% viewport
-     Mobile:  clamp(10rem, 52vh, 26rem)  ≈ 52% viewport
+   H. HERO SPACER — 非主頁背景可見度調整
    ============================================================ */
 
 #page-hero-spacer {
-    /* Purely a height holder — totally transparent */
     display: block;
     width: 100%;
-
-    /* Desktop: ~70vh of visible background above #main */
-    height: clamp(18rem, 70vh, 42rem);
-
-    /* Transparent — background image/video shows through */
+    /* 重置高度為 0，消除黑色空白斷層 */
+    height: 0;
     background: transparent;
     border: none;
     outline: none;
     padding: 0;
     margin: 0;
     pointer-events: none;
-
-    /* Must be ABOVE the bg layer but BELOW #main */
     position: relative;
     z-index: 1;
 }
 
-/* Mobile: smaller but still dramatic */
+/* RWD 模式下也將高度重置 */
 @media screen and (max-width: 736px) {
     #page-hero-spacer {
-        height: clamp(10rem, 52vh, 26rem);
+        height: 0;
     }
 }
 
-/* Tablet middle ground */
 @media screen and (max-width: 980px) and (min-width: 737px) {
     #page-hero-spacer {
-        height: clamp(14rem, 60vh, 32rem);
+        height: 0;
     }
 }
 
-/* Remove #main margin-top since the spacer now handles the gap.
-   Keep auto margins for centering. */
-#page-hero-spacer+#main {
-    margin-top: 0 !important;
-}
-
-/* Ensure sub-page #header (logo area) is tall and transparent */
+/* 移除分頁 Header 的強制邊距，使其與首頁排版一致 */
 body:not(:has(#intro)) #header {
-    height: clamp(16rem, 22vh, 20rem);
-    padding-bottom: clamp(3rem, 6vh, 5rem);
+    margin-top: 0 !important;
+    height: 20rem;
+    padding-bottom: 8rem;
     background: transparent;
 }
