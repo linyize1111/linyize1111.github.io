@@ -798,7 +798,7 @@ article.post .image.main img {
 
 /* 移除分頁 Header 的強制邊距，使其與首頁排版一致 */
 body:not(:has(#intro)) #header {
-    margin-top: 0 !important;
+    margin-top: 6rem !important;
     height: 20rem;
     padding-bottom: 8rem;
     background: transparent;
