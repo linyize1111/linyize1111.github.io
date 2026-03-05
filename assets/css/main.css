@@ -195,11 +195,8 @@ html {
 
 body {
 	background-color: #1e252d;
-	background-image: url('../images/bg.png');
-	background-size: cover;
-	background-position: center;
-	background-attachment: fixed;
-	background-repeat: no-repeat;
+	/* The background is rendered by #wrapper>.bg fixed-position divs + #bg-video.
+	   Setting background-image here would cover the video poster and parallax layer. */
 }
 
 body.is-preload *,

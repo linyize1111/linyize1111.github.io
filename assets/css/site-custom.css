@@ -61,8 +61,10 @@
 /* ============================================================
    2. Dark Mode Body & Containers
    ============================================================ */
+/* Dark mode body: Only set text/color. Do NOT set background-color or background-image here
+   because the page background is rendered by #wrapper>.bg fixed divs + #bg-video.
+   Overriding bg here would cover the video and parallax layer. */
 [data-theme="dark"] body {
-    background-color: #1a1f28;
     color: var(--color-text);
 }
 
