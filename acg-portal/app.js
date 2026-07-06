@@ -598,22 +598,22 @@
 
   function login() {
     openModal("auth-modal");
-    $("#email-login-input")?.focus();
+    $("#password-login-email")?.focus();
   }
 
   async function loginWithGoogle() {
     if (!config.googleProviderEnabled) {
-      $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用，所以我先不跳轉，避免再次出現 400 JSON 錯誤。請先用信箱魔法連結登入測試。";
-      return toast("Google 登入尚未啟用；請先用信箱魔法連結", "warning");
+      $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用，所以我先不跳轉，避免再次出現 400 JSON 錯誤。請先用 Gmail 信箱＋站內密碼登入。";
+      return toast("Google OAuth 尚未啟用；請先用 Gmail 信箱帳密登入", "warning");
     }
     const redirectTo = `${location.origin}${location.pathname}`;
     const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
     if (error) {
       const message = error.message || "";
       if (message.includes("Unsupported provider") || message.includes("provider is not enabled")) {
-        $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用。請先用信箱魔法連結；站長可到 Supabase Dashboard → Authentication → Providers → Google 啟用。";
+        $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用。請先用 Gmail 信箱帳密登入；之後可到 Supabase Dashboard → Authentication → Providers → Google 啟用 OAuth。";
       }
-      toast(`Google 登入尚未啟用或設定錯誤：${message}`, "error");
+      toast(`Google OAuth 尚未啟用或設定錯誤：${message}`, "error");
     }
   }
 
@@ -663,7 +663,7 @@
   }
 
   async function requireMember() {
-    if (!state.session) { toast("請先使用 Google 登入", "warning"); return false; }
+    if (!state.session) { toast("請先登入", "warning"); return false; }
     if (!isApproved()) { toast("帳號仍在等待管理員審核", "warning"); return false; }
     return true;
   }
@@ -766,7 +766,7 @@
     const container = $("#review-form-container");
     if (!container) return;
     if (!state.session) {
-      container.innerHTML = '<div class="review-form"><p class="muted">登入並通過審核後即可評分。</p><button class="button button-primary" data-login>Google 登入</button></div>';
+      container.innerHTML = '<div class="review-form"><p class="muted">登入並通過審核後即可評分。</p><button class="button button-primary" data-login>登入</button></div>';
       return;
     }
     if (!isApproved()) {

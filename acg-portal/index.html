@@ -196,25 +196,25 @@
     <div class="modal-card auth-card">
       <button class="modal-close" data-close-modal="auth-modal" aria-label="關閉">×</button>
       <h2 id="auth-title">登入夜鹿導師</h2>
-      <p class="muted">Google 登入需要先在 Supabase Auth Providers 啟用；目前先提供帳密登入與信箱魔法連結備援。</p>
+      <p class="muted">Google OAuth 尚未在 Supabase Auth Providers 啟用；目前請先用 Gmail 信箱＋站內密碼登入，或使用信箱魔法連結。</p>
       <div class="auth-options">
         <button id="google-login-button" class="button button-primary">使用 Google 登入</button>
         <label class="email-login">
           <span>信箱</span>
-          <input id="password-login-email" type="email" placeholder="portal.member.test@gmail.com" autocomplete="username">
+          <input id="password-login-email" type="email" placeholder="jay0975008815@gmail.com" autocomplete="username">
         </label>
         <label class="email-login">
           <span>密碼</span>
           <input id="password-login-password" type="password" placeholder="測試帳號密碼" autocomplete="current-password">
         </label>
-        <button id="password-login-button" class="button button-primary">使用帳密登入</button>
+        <button id="password-login-button" class="button button-primary">使用 Gmail 信箱帳密登入</button>
         <label class="email-login">
           <span>信箱魔法連結</span>
           <input id="email-login-input" type="email" placeholder="you@example.com" autocomplete="email">
         </label>
         <button id="email-login-button" class="button button-secondary">寄送登入連結</button>
       </div>
-      <p id="auth-help" class="muted small-note">如果 Google 顯示 provider 未啟用，需要到 Supabase Dashboard → Authentication → Providers → Google 填入 OAuth Client ID / Secret。</p>
+      <p id="auth-help" class="muted small-note">Google 按鈕目前會先停用，避免再次跳出 400 JSON。若要啟用 Google OAuth，需要到 Supabase Dashboard → Authentication → Providers → Google 填入 OAuth Client ID / Secret。</p>
     </div>
   </div>
 
