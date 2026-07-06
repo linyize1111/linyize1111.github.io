@@ -1129,13 +1129,26 @@
   async function loadJobs() {
     const list = $("#job-list"); if (!list) return;
     let rows;
+    let usedDatabaseFallback = false;
     try {
       rows = await fetchWorkerJson("/api/admin/jobs", { headers: { Authorization: `Bearer ${state.session.access_token}` } });
     } catch (error) {
-      list.innerHTML = `<div class="empty-state">${escapeHtml(workerErrorMessage(error))}<br>目前仍可用 GitHub Actions 或本地端執行同步；前端不會再把這誤顯示成登入失敗。</div>`;
-      return;
+      const { data, error: databaseError } = await supabase
+        .from("scrape_runs")
+        .select("job_name,status,started_at,finished_at,discovered_count,accepted_count,rejected_count,error_count,error_message,created_at")
+        .order("started_at", { ascending: false })
+        .limit(30);
+      if (databaseError) {
+        list.innerHTML = `<div class="empty-state">${escapeHtml(workerErrorMessage(error))}<br>${escapeHtml(databaseError.message)}</div>`;
+        return;
+      }
+      rows = data || [];
+      usedDatabaseFallback = true;
     }
-    list.innerHTML = rows.map(run => {
+    const fallbackNotice = usedDatabaseFallback
+      ? '<div class="empty-state warning">Render worker 目前不可用；以下執行紀錄直接讀自 Supabase，仍可使用上方 GitHub 手動同步。</div>'
+      : "";
+    list.innerHTML = fallbackNotice + rows.map(run => {
       const started = run.started_at || run.created_at;
       const finished = run.finished_at ? `完成：${new Date(run.finished_at).toLocaleString("zh-TW")}` : "尚未完成";
       return `<div class="admin-row"><div><h4>${escapeHtml(run.job_name)} <span class="job-badge ${escapeHtml(run.status)}">${escapeHtml(run.status)}</span></h4><p>開始：${started ? new Date(started).toLocaleString("zh-TW") : "未知"} · ${finished}</p><p>發現 ${run.discovered_count || 0} · 接受 ${run.accepted_count || 0} · 拒絕 ${run.rejected_count || 0} · 錯誤 ${run.error_count || 0}</p>${run.error_message ? `<p class="error-text">${escapeHtml(run.error_message)}</p>` : ""}</div></div>`;
