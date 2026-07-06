@@ -59,6 +59,23 @@
     setTimeout(() => node.remove(), 4200);
   }
 
+  function flashButton(button) {
+    if (!button) return;
+    button.classList.remove("is-pressing");
+    void button.offsetWidth;
+    button.classList.add("is-pressing");
+    setTimeout(() => button.classList.remove("is-pressing"), 520);
+  }
+
+  function flashDrawArea() {
+    const area = $("#platform-cards");
+    if (!area) return;
+    area.classList.remove("draw-pulse");
+    void area.offsetWidth;
+    area.classList.add("draw-pulse");
+    setTimeout(() => area.classList.remove("draw-pulse"), 620);
+  }
+
   function normalize(value) {
     return String(value ?? "").normalize("NFKC").toLocaleLowerCase("zh-TW").replace(/\s+/g, " ").trim();
   }
@@ -368,7 +385,10 @@
     if (work) state.shownByPlatform[platform].add(work.id);
   }
 
-  function drawAll() { config.platforms.forEach(platform => drawPlatform(platform)); }
+  function drawAll() {
+    config.platforms.forEach(platform => drawPlatform(platform));
+    flashDrawArea();
+  }
 
   function drawBatch(count) {
     const query = $("#home-search").value;
@@ -383,6 +403,7 @@
     }
     state.bulkWorks = diversifyByAuthor(selected, 2);
     renderBulkDraw();
+    $("#bulk-draw-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   function renderPlatformPlaceholders() {
@@ -575,10 +596,38 @@
     if (state.works.length) drawAll();
   }
 
-  async function login() {
+  function login() {
+    openModal("auth-modal");
+    $("#email-login-input")?.focus();
+  }
+
+  async function loginWithGoogle() {
+    if (!config.googleProviderEnabled) {
+      $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用，所以我先不跳轉，避免再次出現 400 JSON 錯誤。請先用信箱魔法連結登入測試。";
+      return toast("Google 登入尚未啟用；請先用信箱魔法連結", "warning");
+    }
     const redirectTo = `${location.origin}${location.pathname}`;
     const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
-    if (error) toast(`Google 登入尚未啟用或設定錯誤：${error.message}`, "error");
+    if (error) {
+      const message = error.message || "";
+      if (message.includes("Unsupported provider") || message.includes("provider is not enabled")) {
+        $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用。請先用信箱魔法連結；站長可到 Supabase Dashboard → Authentication → Providers → Google 啟用。";
+      }
+      toast(`Google 登入尚未啟用或設定錯誤：${message}`, "error");
+    }
+  }
+
+  async function loginWithEmail() {
+    const email = $("#email-login-input").value.trim();
+    if (!email || !email.includes("@")) return toast("請輸入有效信箱", "warning");
+    const redirectTo = `${location.origin}${location.pathname}`;
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo }
+    });
+    if (error) return toast(`信箱登入失敗：${error.message}`, "error");
+    $("#auth-help").textContent = "登入連結已寄出，請到信箱點擊連結後回到本站。";
+    toast("登入連結已寄出", "success");
   }
 
   async function logout() {
@@ -1037,6 +1086,14 @@
   function openModal(id) { $(`#${id}`).classList.add("open"); document.body.style.overflow = "hidden"; }
   function closeModal(id) { $(`#${id}`).classList.remove("open"); document.body.style.overflow = ""; }
 
+  function toggleMobileMenu(force = null) {
+    const nav = $("#main-nav");
+    const button = $("#mobile-menu-button");
+    const open = force === null ? !nav.classList.contains("open") : Boolean(force);
+    nav.classList.toggle("open", open);
+    button.setAttribute("aria-expanded", String(open));
+  }
+
   function switchView(view) {
     if (view === "admin" && !isAdmin()) view = "home";
     $$(".view").forEach(section => section.classList.toggle("active", section.id === `view-${view}`));
@@ -1059,7 +1116,10 @@
     $("#age-leave").addEventListener("click", () => { location.href = "https://www.google.com/"; });
     if (localStorage.getItem("acg_age_confirmed") === "1") closeModal("age-gate");
     $("#login-button").addEventListener("click", login); $("#logout-button").addEventListener("click", logout);
-    $("#mobile-menu-button").addEventListener("click", () => $("#main-nav").classList.toggle("open"));
+    $("#google-login-button").addEventListener("click", loginWithGoogle);
+    $("#email-login-button").addEventListener("click", loginWithEmail);
+    $("#email-login-input").addEventListener("keydown", event => { if (event.key === "Enter") loginWithEmail(); });
+    $("#mobile-menu-button").addEventListener("click", event => { event.stopPropagation(); toggleMobileMenu(); });
     $("#draw-all-button").addEventListener("click", drawAll);
     $("#draw-five-button").addEventListener("click", () => drawBatch(5));
     $("#draw-ten-button").addEventListener("click", () => drawBatch(10));
@@ -1090,7 +1150,9 @@
         closeModal(event.target.id);
         return;
       }
+      if (!event.target.closest("#main-nav") && !event.target.closest("#mobile-menu-button")) toggleMobileMenu(false);
       const target = event.target.closest("button,a,article"); if (!target) return;
+      if (target.tagName === "BUTTON") flashButton(target);
       if (target.dataset.closeModal) closeModal(target.dataset.closeModal);
       if (target.dataset.login !== undefined) login();
       if (target.dataset.refreshPlatform) drawPlatform(target.dataset.refreshPlatform);
