@@ -630,6 +630,17 @@
     toast("登入連結已寄出", "success");
   }
 
+  async function loginWithPassword() {
+    const email = $("#password-login-email").value.trim();
+    const password = $("#password-login-password").value;
+    if (!email || !email.includes("@") || !password) return toast("請輸入信箱與密碼", "warning");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return toast(`帳密登入失敗：${error.message}`, "error");
+    closeModal("auth-modal");
+    toast("已登入", "success");
+    await loadAuth();
+  }
+
   async function logout() {
     await supabase.auth.signOut();
     state.session = null; state.profile = null; state.favorites.clear(); state.preferenceTags.clear();
@@ -1117,6 +1128,8 @@
     if (localStorage.getItem("acg_age_confirmed") === "1") closeModal("age-gate");
     $("#login-button").addEventListener("click", login); $("#logout-button").addEventListener("click", logout);
     $("#google-login-button").addEventListener("click", loginWithGoogle);
+    $("#password-login-button").addEventListener("click", loginWithPassword);
+    $("#password-login-password").addEventListener("keydown", event => { if (event.key === "Enter") loginWithPassword(); });
     $("#email-login-button").addEventListener("click", loginWithEmail);
     $("#email-login-input").addEventListener("keydown", event => { if (event.key === "Enter") loginWithEmail(); });
     $("#mobile-menu-button").addEventListener("click", event => { event.stopPropagation(); toggleMobileMenu(); });

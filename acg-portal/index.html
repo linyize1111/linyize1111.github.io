@@ -196,9 +196,18 @@
     <div class="modal-card auth-card">
       <button class="modal-close" data-close-modal="auth-modal" aria-label="關閉">×</button>
       <h2 id="auth-title">登入夜鹿導師</h2>
-      <p class="muted">Google 登入需要先在 Supabase Auth Providers 啟用；目前先提供信箱魔法連結備援。</p>
+      <p class="muted">Google 登入需要先在 Supabase Auth Providers 啟用；目前先提供帳密登入與信箱魔法連結備援。</p>
       <div class="auth-options">
         <button id="google-login-button" class="button button-primary">使用 Google 登入</button>
+        <label class="email-login">
+          <span>信箱</span>
+          <input id="password-login-email" type="email" placeholder="portal.member.test@gmail.com" autocomplete="username">
+        </label>
+        <label class="email-login">
+          <span>密碼</span>
+          <input id="password-login-password" type="password" placeholder="測試帳號密碼" autocomplete="current-password">
+        </label>
+        <button id="password-login-button" class="button button-primary">使用帳密登入</button>
         <label class="email-login">
           <span>信箱魔法連結</span>
           <input id="email-login-input" type="email" placeholder="you@example.com" autocomplete="email">
