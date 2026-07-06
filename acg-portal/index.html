@@ -196,7 +196,7 @@
     <div class="modal-card auth-card">
       <button class="modal-close" data-close-modal="auth-modal" aria-label="關閉">×</button>
       <h2 id="auth-title">登入夜鹿導師</h2>
-      <p class="muted">Google OAuth 尚未在 Supabase Auth Providers 啟用；目前請先用 Gmail 信箱＋站內密碼登入，或使用信箱魔法連結。</p>
+      <p class="muted">公開瀏覽不需要登入；留言、評分與收藏才需要帳號。</p>
       <div class="auth-options">
         <button id="google-login-button" class="button button-primary">使用 Google 登入</button>
         <label class="email-login">
@@ -214,7 +214,7 @@
         </label>
         <button id="email-login-button" class="button button-secondary">寄送登入連結</button>
       </div>
-      <p id="auth-help" class="muted small-note">Google 按鈕目前會先停用，避免再次跳出 400 JSON。若要啟用 Google OAuth，需要到 Supabase Dashboard → Authentication → Providers → Google 填入 OAuth Client ID / Secret。</p>
+      <p id="auth-help" class="muted small-note">正在檢查 Google 登入狀態；若尚未啟用，仍可先用信箱與站內密碼登入。</p>
     </div>
   </div>
 

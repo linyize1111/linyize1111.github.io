@@ -31,7 +31,8 @@
     adminWorks: [],
     currentRating: 5,
     adminTab: "users",
-    workerStatus: { available: null, lastError: null }
+    workerStatus: { available: null, lastError: null },
+    googleProviderEnabled: null
   };
 
   const $ = selector => document.querySelector(selector);
@@ -631,8 +632,43 @@
     $("#password-login-email")?.focus();
   }
 
+  function updateGoogleProviderUi() {
+    const button = $("#google-login-button");
+    const help = $("#auth-help");
+    if (!button || !help) return;
+    const checking = state.googleProviderEnabled === null;
+    button.disabled = checking;
+    button.setAttribute("aria-busy", String(checking));
+    if (checking) {
+      help.textContent = "正在檢查 Google 登入狀態…";
+    } else if (state.googleProviderEnabled) {
+      help.textContent = "Google 登入已可使用；第一次登入後需等待管理員審核，才可留言、評分與收藏。";
+    } else {
+      help.textContent = "Google OAuth 尚未在 Supabase 啟用；目前請先使用信箱＋站內密碼或信箱魔法連結。";
+    }
+  }
+
+  async function detectGoogleProvider() {
+    state.googleProviderEnabled = null;
+    updateGoogleProviderUi();
+    try {
+      const response = await fetch(`${config.supabaseUrl}/auth/v1/settings`, {
+        headers: { apikey: config.supabaseAnonKey }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const settings = await response.json();
+      state.googleProviderEnabled = Boolean(settings?.external?.google);
+    } catch (error) {
+      console.warn("Unable to detect Google auth provider status", error);
+      state.googleProviderEnabled = config.googleProviderEnabled === true;
+    }
+    updateGoogleProviderUi();
+    return state.googleProviderEnabled;
+  }
+
   async function loginWithGoogle() {
-    if (!config.googleProviderEnabled) {
+    if (state.googleProviderEnabled === null) await detectGoogleProvider();
+    if (!state.googleProviderEnabled) {
       $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用，所以我先不跳轉，避免再次出現 400 JSON 錯誤。請先用 Gmail 信箱＋站內密碼登入。";
       return toast("Google OAuth 尚未啟用；請先用 Gmail 信箱帳密登入", "warning");
     }
@@ -1248,6 +1284,7 @@
 
   async function init() {
     bindEvents();
+    detectGoogleProvider();
     supabase.auth.onAuthStateChange((_event, session) => { state.session = session; setTimeout(loadAuth, 0); });
     try {
       await Promise.all([loadWorks(), loadLeaderboardData()]);
