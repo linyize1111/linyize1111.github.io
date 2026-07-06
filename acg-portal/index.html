@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <title>你的夜鹿導師 | ACG Portal</title>
+  <meta name="description" content="私人整理、公開瀏覽的 ACG 收藏與內容推薦入口。">
+  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=1.2.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=1.2.0">
+</head>
+<body>
+  <div class="video-backdrop" aria-hidden="true">
+    <iframe
+      src="https://www.youtube-nocookie.com/embed/t75qlQPXJGw?autoplay=1&mute=1&controls=0&loop=1&playlist=t75qlQPXJGw&playsinline=1&modestbranding=1&rel=0"
+      title="Yorushika background MV"
+      allow="autoplay; encrypted-media; picture-in-picture"
+      tabindex="-1"></iframe>
+  </div>
+  <div class="video-tint" aria-hidden="true"></div>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <header class="site-header">
+    <a class="brand" href="#home" aria-label="ACG Portal 首頁">
+      <span class="brand-mark"><img src="assets/yoru-icon.png?v=1.2.0" alt=""></span>
+      <span><strong>夜鹿導師</strong><small>ACG PORTAL</small></span>
+    </a>
+    <nav id="main-nav" class="main-nav" aria-label="主要導覽">
+      <a href="#home" data-view="home">🎲 隨機抽卡</a>
+      <a href="#library" data-view="library">📚 圖書館</a>
+      <a href="#leaderboard" data-view="leaderboard">🏆 排行榜</a>
+      <a href="#games" data-view="games">🎮 遊戲評鑑</a>
+      <a href="#feedback" data-view="feedback">✉ 意見反饋</a>
+      <a href="#admin" data-view="admin" class="admin-only hidden">⚙ 管理後台</a>
+    </nav>
+    <div class="auth-area">
+      <button id="login-button" class="button button-primary">Google 登入</button>
+      <div id="profile-menu" class="profile-menu hidden">
+        <img id="profile-avatar" alt="使用者頭像">
+        <div><strong id="profile-name"></strong><small id="profile-status"></small></div>
+        <button id="logout-button" class="icon-button" title="登出">↪</button>
+      </div>
+      <button id="mobile-menu-button" class="icon-button mobile-only" aria-label="開啟選單">☰</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="view-home" class="view active">
+      <div class="hero">
+        <div class="mentor-heading">
+          <div>
+            <p class="eyebrow">CURATED DISCOVERY</p>
+            <h1>你的夜鹿導師</h1>
+          </div>
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=1.2.0" alt="夜鹿導師">
+        </div>
+        <p class="site-note">本站不營利、不放廣告，只是方便整理、記錄與分享個人精選。內容幾乎都是站長自己的喜好，會盡量優先挑中文翻譯版本；如果癖好不太合，建議直接用搜尋或篩選。推薦清單已經清洗過，但仍可能有誤植或漏網之魚，看到不適合的作品可以負評或回報給我。也歡迎推薦作品，我會審核後再決定是否上架。最後拜託各位大佬低調使用：如果看得出來這是 GitHub/免費服務架的，也先別 star、別張揚，這裡只是小弟整理身心靈教材的倉庫。</p>
+        <div class="search-row">
+          <label class="search-box">
+            <span>⌕</span>
+            <input id="home-search" type="search" placeholder="精確車號、標題、作者或標籤…" autocomplete="off">
+          </label>
+          <button id="draw-all-button" class="button button-primary">🎲 全部更新</button>
+          <button id="draw-five-button" class="button button-secondary">一次 5 本</button>
+          <button id="draw-ten-button" class="button button-secondary">一次 10 本</button>
+        </div>
+        <p id="home-summary" class="muted">正在讀取作品資料…</p>
+        <div id="source-status-grid" class="source-status-grid" aria-live="polite"></div>
+      </div>
+      <div id="platform-cards" class="platform-grid" aria-live="polite"></div>
+      <div id="bulk-draw-panel" class="bulk-draw-panel hidden" aria-live="polite">
+        <div class="section-heading compact">
+          <div><p class="eyebrow">BATCH DRAW</p><h2>本輪加抽清單</h2></div>
+          <button id="clear-bulk-button" class="button button-secondary">清空</button>
+        </div>
+        <div id="bulk-draw-list" class="bulk-draw-list"></div>
+      </div>
+    </section>
+
+    <section id="view-library" class="view">
+      <div class="section-heading">
+        <div><p class="eyebrow">COLLECTION</p><h2>圖書館</h2><p>瀏覽所有有效內容；搜尋支援拼字容錯。</p></div>
+        <div class="filters">
+          <select id="library-platform" aria-label="平台篩選">
+            <option value="all">全部平台</option>
+            <option value="nhentai">Nhentai</option>
+            <option value="18comic">禁漫</option>
+            <option value="hanime">Hanime</option>
+            <option value="pixiv">Pixiv</option>
+          </select>
+          <select id="library-scope" aria-label="收藏篩選">
+            <option value="all">全部作品</option>
+            <option value="favorites">我的收藏</option>
+          </select>
+          <input id="library-search" type="search" placeholder="搜尋作品…">
+        </div>
+      </div>
+      <p id="library-summary" class="muted"></p>
+      <div id="library-grid" class="library-grid"></div>
+      <button id="library-more" class="button button-secondary centered hidden">載入更多</button>
+    </section>
+
+    <section id="view-leaderboard" class="view">
+      <div class="section-heading">
+        <div><p class="eyebrow">BAYESIAN RANKING</p><h2>排行榜</h2><p>綜合平均分與評論數，降低少量極端評分造成的偏差。</p></div>
+        <div class="filters">
+          <select id="ranking-platform" aria-label="排行榜平台">
+            <option value="all">全部平台</option>
+            <option value="nhentai">Nhentai</option>
+            <option value="18comic">禁漫</option>
+            <option value="hanime">Hanime</option>
+            <option value="pixiv">Pixiv</option>
+          </select>
+          <select id="ranking-order" aria-label="排行榜順序">
+            <option value="top">好評 Top 30</option>
+            <option value="bottom">避雷 Bottom 30</option>
+          </select>
+        </div>
+      </div>
+      <div id="ranking-list" class="ranking-list"></div>
+    </section>
+
+    <section id="view-games" class="view">
+      <div class="section-heading">
+        <div><p class="eyebrow">OWNER'S NOTES</p><h2>遊戲評鑑</h2><p>站長撰寫評鑑，登入會員可以留言交流。</p></div>
+        <button id="new-game-button" class="button button-primary admin-only hidden">＋ 新增評鑑</button>
+      </div>
+      <div id="games-grid" class="games-grid"></div>
+    </section>
+
+    <section id="view-feedback" class="view">
+      <div class="feedback-card">
+        <p class="eyebrow">CONTACT</p>
+        <h2>意見反饋</h2>
+        <p>只有通過審核的登入會員可以寄送。內容會直接寄至站長信箱，不公開保存。</p>
+        <textarea id="feedback-body" maxlength="2000" placeholder="請描述建議或問題…"></textarea>
+        <div class="form-footer"><span id="feedback-count">0 / 2000</span><button id="feedback-send" class="button button-primary">寄送意見</button></div>
+      </div>
+      <div class="feedback-card">
+        <p class="eyebrow">SUBMISSION</p>
+        <h2>推薦作品給站長</h2>
+        <p>貼上車號、作品網址、作者、標籤或你推薦的理由。我會先審核，能接受再更新到平台。</p>
+        <textarea id="recommendation-body" maxlength="2000" placeholder="例：nhentai #123456 / 禁漫連結 / Pixiv 作品網址，推薦理由…"></textarea>
+        <div class="form-footer"><span id="recommendation-count">0 / 2000</span><button id="recommendation-send" class="button button-primary">送出推薦</button></div>
+      </div>
+    </section>
+
+    <section id="view-admin" class="view">
+      <div class="section-heading">
+        <div><p class="eyebrow">ADMIN CONTROL</p><h2>管理後台</h2><p>會員審核、內容管理、檢舉與爬蟲喚醒。</p></div>
+      </div>
+      <div class="admin-tabs" role="tablist">
+        <button data-admin-tab="users" class="active">會員審核</button>
+        <button data-admin-tab="works">作品管理</button>
+        <button data-admin-tab="reports">檢舉</button>
+        <button data-admin-tab="jobs">爬蟲與紀錄</button>
+      </div>
+      <div id="admin-content" class="admin-content"></div>
+    </section>
+  </main>
+
+  <div id="age-gate" class="modal open" role="dialog" aria-modal="true" aria-labelledby="age-title">
+    <div class="modal-card age-card">
+      <span class="age-mark">18+</span>
+      <h2 id="age-title">成人內容確認</h2>
+      <p>本網站包含成人向 ACG 資訊與封面。繼續即表示你已達所在地法定成年年齡，並自願瀏覽。</p>
+      <div class="modal-actions">
+        <button id="age-leave" class="button button-secondary">離開</button>
+        <button id="age-enter" class="button button-primary">我已成年，進入</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="detail-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <div class="modal-card detail-card">
+      <button class="modal-close" data-close-modal="detail-modal" aria-label="關閉">×</button>
+      <div id="detail-content"></div>
+    </div>
+  </div>
+
+  <div id="editor-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+    <div class="modal-card editor-card">
+      <button class="modal-close" data-close-modal="editor-modal" aria-label="關閉">×</button>
+      <div id="editor-content"></div>
+    </div>
+  </div>
+
+  <div id="toast-region" class="toast-region" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"
+    integrity="sha384-z2hqtpr/vSDZ8zSjLOiNgnR/mpU799AD93s6rvkNJLI6Hl0YlKXEhDtREzNT749S" crossorigin="anonymous"></script>
+  <script src="config.js?v=1.2.0"></script>
+  <script src="app.js?v=1.2.0"></script>
+</body>
+</html>
