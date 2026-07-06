@@ -202,6 +202,7 @@ textarea { width: 100%; min-height: 150px; padding: 14px; resize: vertical; }
 .bulk-draw-item h3 { height: 38px; margin: 0 0 7px; overflow: hidden; font-size: 12px; line-height: 1.45; }
 .bulk-draw-item p { margin: 0; color: var(--muted); font-size: 10px; }
 .empty-state { grid-column: 1/-1; padding: 80px 20px; text-align: center; color: var(--muted); border: 1px dashed var(--border); border-radius: var(--radius); }
+.empty-state.warning { padding: 18px 20px; color: #ffe1a3; border-color: rgba(255,203,102,.45); background: rgba(255,203,102,.08); }
 
 .ranking-list { display: grid; gap: 9px; }
 .ranking-row { display: grid; grid-template-columns: 48px 58px 1fr auto; align-items: center; gap: 14px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); cursor: pointer; }

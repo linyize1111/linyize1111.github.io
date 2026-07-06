@@ -30,7 +30,8 @@
     currentGameId: null,
     adminWorks: [],
     currentRating: 5,
-    adminTab: "users"
+    adminTab: "users",
+    workerStatus: { available: null, lastError: null }
   };
 
   const $ = selector => document.querySelector(selector);
@@ -57,6 +58,36 @@
     node.textContent = message;
     $("#toast-region").append(node);
     setTimeout(() => node.remove(), 4200);
+  }
+
+  function workerErrorMessage(error) {
+    const detail = error?.detail || error?.message || String(error || "");
+    return detail ? `後端 worker 目前不可用：${detail}` : "後端 worker 目前不可用";
+  }
+
+  async function fetchWorkerJson(path, options = {}, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(`${config.workerUrl}${path}`, { ...options, signal: controller.signal });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(payload.detail || `HTTP ${response.status}`);
+        error.status = response.status;
+        error.detail = payload.detail || `HTTP ${response.status}`;
+        throw error;
+      }
+      state.workerStatus = { available: true, lastError: null };
+      return payload;
+    } catch (error) {
+      state.workerStatus = {
+        available: false,
+        lastError: error.name === "AbortError" ? "連線逾時" : (error.detail || error.message || String(error))
+      };
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   function flashButton(button) {
@@ -195,7 +226,8 @@
       state.sourceStats = summarizeSourceStats(state.works);
     }
     const readySources = config.platforms.filter(platform => platformStats(platform).active > 0).length;
-    $("#home-summary").textContent = `目前可抽選 ${state.works.length.toLocaleString()} 筆通過驗證的作品；${readySources} / ${config.platforms.length} 個來源已有 active 內容`;
+    const workerNote = state.workerStatus.available === false ? "（後端 worker 未連線，狀態改用作品庫估算）" : "";
+    $("#home-summary").textContent = `目前可抽選 ${state.works.length.toLocaleString()} 筆通過驗證的作品；${readySources} / ${config.platforms.length} 個來源已有 active 內容${workerNote}`;
     renderSourceStatus();
     renderPlatformPlaceholders();
     drawAll();
@@ -203,9 +235,7 @@
 
   async function loadSourceStatus() {
     try {
-      const response = await fetch(`${config.workerUrl}/api/source-status`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const rows = await response.json();
+      const rows = await fetchWorkerJson("/api/source-status", {}, 8000);
       return sourceStatsFromRows(Array.isArray(rows) ? rows : []);
     } catch (error) {
       console.warn("Source status unavailable; falling back to active works only", error);
@@ -997,12 +1027,14 @@
     const counter = isRecommendation ? $("#recommendation-count") : $("#feedback-count");
     const body = textarea.value.trim();
     if (!body || body.length > 2000) return toast("意見內容需為 1～2000 字", "warning");
-    const response = await fetch(`${config.workerUrl}/api/feedback`, {
-      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${state.session.access_token}` },
-      body: JSON.stringify({ body: `${isRecommendation ? "[作品推薦]" : "[意見反饋]"}\n${body}` })
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) return toast(result.detail || "寄送失敗", "error");
+    try {
+      await fetchWorkerJson("/api/feedback", {
+        method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${state.session.access_token}` },
+        body: JSON.stringify({ body: `${isRecommendation ? "[作品推薦]" : "[意見反饋]"}\n${body}` })
+      });
+    } catch (error) {
+      return toast(workerErrorMessage(error), "error");
+    }
     textarea.value = "";
     counter.textContent = "0 / 2000";
     toast(isRecommendation ? "推薦已送出，等待站長審核" : "意見已寄出", "success");
@@ -1015,14 +1047,25 @@
     const content = $("#admin-content");
     content.innerHTML = '<div class="empty-state">載入中…</div>';
     if (tab === "users") {
-      const response = await fetch(`${config.workerUrl}/api/admin/users`, { headers: { Authorization: `Bearer ${state.session.access_token}` } });
-      const result = await response.json().catch(() => ([]));
-      if (!response.ok) {
-        content.innerHTML = `<div class="empty-state">${escapeHtml(result.detail || "無法讀取會員資料")}</div>`;
-        return;
+      let result;
+      let isWorkerFallback = false;
+      try {
+        result = await fetchWorkerJson("/api/admin/users", { headers: { Authorization: `Bearer ${state.session.access_token}` } });
+      } catch (error) {
+        isWorkerFallback = true;
+        const { data, error: profileError } = await supabase
+          .from("profiles")
+          .select("id,display_name,role,status,approved_at,created_at,updated_at")
+          .order("created_at", { ascending: false });
+        if (profileError) {
+          content.innerHTML = `<div class="empty-state">${escapeHtml(workerErrorMessage(error))}<br>${escapeHtml(profileError.message)}</div>`;
+          return;
+        }
+        result = data || [];
       }
       const users = result.sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
-      content.innerHTML = users.map(profile => `<div class="admin-row"><div><h4>${escapeHtml(profile.display_name)}</h4><p>${escapeHtml(profile.email || "無信箱")} · ${escapeHtml(profile.role)} · ${escapeHtml(profile.status)}</p><small>最近登入：${profile.last_sign_in_at ? new Date(profile.last_sign_in_at).toLocaleString("zh-TW") : "尚未登入"}</small></div><div class="admin-actions">${profile.role === "admin" ? "" : `${profile.status === "pending" ? `<button class="button button-primary" data-approve-user="${profile.id}">通過</button>` : ""}<button class="button button-secondary" data-suspend-user="${profile.id}" data-suspend="${profile.status === "suspended" ? "false" : "true"}">${profile.status === "suspended" ? "解除停權" : "停權"}</button>`}</div></div>`).join("") || '<div class="empty-state">目前沒有會員</div>';
+      const fallbackNotice = isWorkerFallback ? '<div class="empty-state warning">Render worker 目前不可用，暫時只顯示 Supabase profiles；信箱與最近登入時間需等 worker 恢復。</div>' : "";
+      content.innerHTML = fallbackNotice + (users.map(profile => `<div class="admin-row"><div><h4>${escapeHtml(profile.display_name)}</h4><p>${escapeHtml(profile.email || "信箱需 worker 讀取")} · ${escapeHtml(profile.role)} · ${escapeHtml(profile.status)}</p><small>最近登入：${profile.last_sign_in_at ? new Date(profile.last_sign_in_at).toLocaleString("zh-TW") : (isWorkerFallback ? "需 worker 讀取" : "尚未登入")}</small></div><div class="admin-actions">${profile.role === "admin" ? "" : `${profile.status === "pending" ? `<button class="button button-primary" data-approve-user="${profile.id}">通過</button>` : ""}<button class="button button-secondary" data-suspend-user="${profile.id}" data-suspend="${profile.status === "suspended" ? "false" : "true"}">${profile.status === "suspended" ? "解除停權" : "停權"}</button>`}</div></div>`).join("") || '<div class="empty-state">目前沒有會員</div>');
     } else if (tab === "works") {
       state.adminWorks = await fetchAll("works", query => query.order("updated_at", { ascending: false }));
       content.innerHTML = `<div class="job-controls"><button class="button button-primary" data-new-work>＋ 手動新增</button><button class="button button-danger" data-purge-inactive>永久刪除所有失效作品</button><input id="admin-work-search" type="search" placeholder="搜尋車號、標題、作者或標籤…"></div><p id="admin-work-summary" class="muted"></p><div id="admin-work-list"></div>`;
@@ -1048,12 +1091,12 @@
   }
 
   async function loadJobs() {
-    const response = await fetch(`${config.workerUrl}/api/admin/jobs`, { headers: { Authorization: `Bearer ${state.session.access_token}` } });
-    const result = await response.json().catch(() => ([]));
-    const rows = response.ok ? result : [];
     const list = $("#job-list"); if (!list) return;
-    if (!response.ok) {
-      list.innerHTML = `<div class="empty-state">${escapeHtml(result.detail || "無法讀取爬蟲狀態")}</div>`;
+    let rows;
+    try {
+      rows = await fetchWorkerJson("/api/admin/jobs", { headers: { Authorization: `Bearer ${state.session.access_token}` } });
+    } catch (error) {
+      list.innerHTML = `<div class="empty-state">${escapeHtml(workerErrorMessage(error))}<br>目前仍可用 GitHub Actions 或本地端執行同步；前端不會再把這誤顯示成登入失敗。</div>`;
       return;
     }
     list.innerHTML = rows.map(run => {
@@ -1064,10 +1107,13 @@
   }
 
   async function runJob(source) {
-    const response = await fetch(`${config.workerUrl}/api/admin/jobs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${state.session.access_token}` }, body: JSON.stringify({ source }) });
-    const result = await response.json().catch(() => ({}));
-    toast(response.ok ? `已喚醒 ${source} 工作` : result.detail || "啟動失敗", response.ok ? "success" : "error");
-    if (response.ok) setTimeout(() => loadAdmin("jobs"), 1500);
+    try {
+      await fetchWorkerJson("/api/admin/jobs", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${state.session.access_token}` }, body: JSON.stringify({ source }) });
+      toast(`已喚醒 ${source} 工作`, "success");
+      setTimeout(() => loadAdmin("jobs"), 1500);
+    } catch (error) {
+      toast(workerErrorMessage(error), "error");
+    }
   }
 
   async function editWork(workId = null) {
