@@ -7,16 +7,16 @@
   <meta name="referrer" content="no-referrer">
   <title>你的夜鹿導師 | ACG Portal</title>
   <meta name="description" content="私人整理、公開瀏覽的 ACG 收藏與內容推薦入口。">
-  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=1.2.1">
+  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=1.2.2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=1.2.1">
+  <link rel="stylesheet" href="styles.css?v=1.2.2">
 </head>
 <body>
   <div class="video-backdrop" aria-hidden="true">
     <iframe
-      src="https://www.youtube-nocookie.com/embed/t75qlQPXJGw?autoplay=1&mute=1&controls=0&loop=1&playlist=t75qlQPXJGw&playsinline=1&modestbranding=1&rel=0"
+      src="https://www.youtube.com/embed/t75qlQPXJGw?autoplay=1&mute=1&loop=1&playlist=t75qlQPXJGw&controls=0&playsinline=1&modestbranding=1"
       title="Yorushika background MV"
       allow="autoplay; encrypted-media; picture-in-picture"
       tabindex="-1"></iframe>
@@ -27,7 +27,7 @@
 
   <header class="site-header">
     <a class="brand" href="#home" aria-label="ACG Portal 首頁">
-      <span class="brand-mark"><img src="assets/yoru-icon.png?v=1.2.1" alt=""></span>
+      <span class="brand-mark"><img src="assets/yoru-icon.png?v=1.2.2" alt=""></span>
       <span><strong>夜鹿導師</strong><small>ACG PORTAL</small></span>
     </a>
     <nav id="main-nav" class="main-nav" aria-label="主要導覽">
@@ -43,6 +43,7 @@
       <div id="profile-menu" class="profile-menu hidden">
         <img id="profile-avatar" alt="使用者頭像">
         <div><strong id="profile-name"></strong><small id="profile-status"></small></div>
+        <button id="profile-edit-button" class="icon-button" title="修改暱稱">✎</button>
         <button id="logout-button" class="icon-button" title="登出">↪</button>
       </div>
       <button id="mobile-menu-button" class="icon-button mobile-only" aria-label="開啟選單">☰</button>
@@ -57,7 +58,7 @@
             <p class="eyebrow">CURATED DISCOVERY</p>
             <h1>你的夜鹿導師</h1>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=1.2.1" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=1.2.2" alt="夜鹿導師">
         </div>
         <p class="site-note">本站不營利、不放廣告，只是方便整理、記錄與分享個人精選。內容幾乎都是站長自己的喜好，會盡量優先挑中文翻譯版本；如果癖好不太合，建議直接用搜尋或篩選。推薦清單已經清洗過，但仍可能有誤植或漏網之魚，看到不適合的作品可以負評或回報給我。也歡迎推薦作品，我會審核後再決定是否上架。最後拜託各位大佬低調使用：如果看得出來這是 GitHub/免費服務架的，也先別 star、別張揚，這裡只是小弟整理身心靈教材的倉庫。</p>
         <div class="search-row">
@@ -107,7 +108,7 @@
 
     <section id="view-leaderboard" class="view">
       <div class="section-heading">
-        <div><p class="eyebrow">BAYESIAN RANKING</p><h2>排行榜</h2><p>綜合平均分與評論數，降低少量極端評分造成的偏差。</p></div>
+        <div><p class="eyebrow">BAYESIAN RANKING</p><h2>排行榜 <button type="button" class="info-badge" data-tooltip="每筆評分範圍 -5 ~ +5（-5 最雷、0 普通、+5 神作）。排名採貝氏加權分數＝(v/(v+m))×R ＋ (m/(v+m))×C：R 是這部作品的平均分、v 是評分人數、C 是全站平均分、m=8。評分人數越少，分數會越靠近全站平均，避免只有一兩票就衝上榜或墊底。" aria-label="排行榜分數說明">?</button></h2><p>綜合平均分與評論數，降低少量極端評分造成的偏差。</p></div>
         <div class="filters">
           <select id="ranking-platform" aria-label="排行榜平台">
             <option value="all">全部平台</option>
@@ -121,6 +122,10 @@
             <option value="bottom">避雷 Bottom 30</option>
           </select>
         </div>
+      </div>
+      <div class="ranking-explainer">
+        <p><strong>評分怎麼看？</strong>每個人給的分數是 <b>-5 ~ +5</b>：<b>-5</b> 代表超級地雷、<b>0</b> 代表普普通通、<b>+5</b> 代表私心神作。分數只是個人主觀感受，僅供參考。</p>
+        <p><strong>排名怎麼算？</strong>不是單純比平均分，而是用<b>貝氏加權</b>：<code>分數 = (v÷(v+m))×R + (m÷(v+m))×C</code>。其中 <b>R</b> 是這部作品的平均分、<b>v</b> 是評分人數、<b>C</b> 是全站平均分、<b>m=8</b>。白話說：<b>評分的人越少，分數會被拉向全站平均</b>，這樣只有一兩票的作品不會輕易衝到最高或最低，票數夠多才會反映真實口碑。</p>
       </div>
       <div id="ranking-list" class="ranking-list"></div>
     </section>
@@ -222,7 +227,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"
     integrity="sha384-z2hqtpr/vSDZ8zSjLOiNgnR/mpU799AD93s6rvkNJLI6Hl0YlKXEhDtREzNT749S" crossorigin="anonymous"></script>
-  <script src="config.js?v=1.2.1"></script>
-  <script src="app.js?v=1.2.1"></script>
+  <script src="config.js?v=1.2.2"></script>
+  <script src="app.js?v=1.2.2"></script>
 </body>
 </html>

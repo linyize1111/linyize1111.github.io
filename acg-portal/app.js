@@ -202,6 +202,29 @@
   function isApproved() { return state.profile?.status === "active"; }
   function isAdmin() { return isApproved() && state.profile?.role === "admin"; }
 
+  // Some legacy rows stored a corrupted display name (e.g. "????") when the
+  // original CJK name was lost during import. Treat those as empty so we can
+  // fall back to auth metadata or a neutral label instead of showing "????".
+  function cleanName(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return "";
+    if (/^[?？]+$/.test(text)) return "";
+    return text;
+  }
+
+  function memberName(profile, fallback = "會員") {
+    return cleanName(profile?.display_name) || fallback;
+  }
+
+  function myDisplayName() {
+    const meta = state.session?.user?.user_metadata || {};
+    return cleanName(state.profile?.display_name)
+      || cleanName(meta.full_name)
+      || cleanName(meta.name)
+      || cleanName(state.session?.user?.email?.split("@")[0])
+      || "新會員";
+  }
+
   async function fetchAll(table, queryBuilder) {
     const rows = [];
     for (let offset = 0; ; offset += 1000) {
@@ -215,10 +238,10 @@
   }
 
   async function loadWorks() {
+    renderPlatformSkeletons();
     state.sourceStats = await loadSourceStatus();
     $("#home-summary").textContent = "同步狀態已更新，正在讀取可抽選作品…";
     renderSourceStatus();
-    renderPlatformPlaceholders();
 
     const activeWorks = await fetchAll("works", query => query.eq("status", "active"));
     state.works = activeWorks.filter(work => work.is_ai !== true);
@@ -230,8 +253,6 @@
     const workerNote = state.workerStatus.available === false ? "（後端 worker 未連線，狀態改用作品庫估算）" : "";
     $("#home-summary").textContent = `目前可抽選 ${state.works.length.toLocaleString()} 筆通過驗證的作品；${readySources} / ${config.platforms.length} 個來源已有 active 內容${workerNote}`;
     renderSourceStatus();
-    renderPlatformPlaceholders();
-    drawAll();
   }
 
   async function loadSourceStatus() {
@@ -444,6 +465,50 @@
       </div>`).join("");
   }
 
+  function renderPlatformSkeletons() {
+    const target = $("#platform-cards");
+    if (!target) return;
+    target.innerHTML = config.platforms.map(platform => `
+      <div class="card-placeholder skeleton" data-card="${platform}" aria-busy="true">
+        <div>
+          <span class="source-status-pill">載入中</span>
+          <strong>${escapeHtml(PLATFORM_LABELS[platform])}</strong>
+          <p class="muted">正在讀取作品資料，請稍候…</p>
+          <div class="skeleton-bar"></div>
+          <div class="skeleton-bar short"></div>
+        </div>
+      </div>`).join("");
+  }
+
+  function renderPlatformError() {
+    const target = $("#platform-cards");
+    if (!target) return;
+    target.innerHTML = `
+      <div class="card-placeholder error">
+        <div>
+          <span class="source-status-pill">載入失敗</span>
+          <strong>無法讀取作品資料</strong>
+          <p class="muted">可能是網路或 Supabase 連線暫時異常，請重新載入。</p>
+          <button class="button button-primary" data-retry-init>重新載入</button>
+        </div>
+      </div>`;
+  }
+
+  async function reloadHome() {
+    try {
+      renderPlatformSkeletons();
+      $("#home-summary").textContent = "正在重新讀取作品資料…";
+      await Promise.all([loadWorks(), loadLeaderboardData()]);
+      drawAll();
+      renderLeaderboard();
+    } catch (error) {
+      console.error(error);
+      $("#home-summary").textContent = "資料載入失敗，請稍後重試。";
+      renderPlatformError();
+      toast(`重新載入失敗：${error.message}`, "error");
+    }
+  }
+
   function emptyPlatformHtml(platform) {
     const status = sourceState(platform);
     const query = $("#home-search")?.value?.trim() || "";
@@ -475,6 +540,29 @@
     return `<button class="${label ? "button button-secondary" : "quick-favorite"} ${active ? "active" : ""}" data-favorite="${escapeHtml(workId)}" aria-label="${active ? "取消收藏" : "加入收藏"}" title="${active ? "取消收藏" : "加入收藏"}">${label ? `${favoriteIcon(workId)} ${active ? "已收藏" : "收藏"}` : favoriteIcon(workId)}</button>`;
   }
 
+  function adminDeleteButtonHtml(workId) {
+    if (!isAdmin()) return "";
+    return `<button class="card-admin-delete" data-purge-work="${escapeHtml(workId)}" aria-label="永久刪除此作品" title="永久刪除此作品">🗑</button>`;
+  }
+
+  async function purgeWork(workId) {
+    if (!isAdmin()) return;
+    const work = state.workById.get(workId) || state.adminWorks.find(item => item.id === workId);
+    const label = work ? `${PLATFORM_LABELS[work.platform] || work.platform} · ${work.work_id}` : "這筆作品";
+    if (!confirm(`確定永久刪除「${label}」？此動作無法復原，且會一併移除相關收藏與評論。`)) return;
+    const { error } = await supabase.from("works").delete().eq("id", workId);
+    if (error) return toast(`刪除失敗：${error.message}`, "error");
+    state.adminWorks = state.adminWorks.filter(item => item.id !== workId);
+    state.works = state.works.filter(item => item.id !== workId);
+    state.workById.delete(workId);
+    config.platforms.forEach(platform => {
+      if (state.currentByPlatform[platform]?.id === workId) drawPlatform(platform);
+    });
+    if ($("#view-admin")?.classList.contains("active")) renderAdminWorks();
+    if ($("#view-library")?.classList.contains("active")) renderLibrary();
+    toast("作品已永久刪除", "success");
+  }
+
   function workCardHtml(work) {
     if (state.cardSideByPlatform[work.platform] === "back") return workCardBackHtml(work.platform);
     const tags = (work.tags || []).slice(0, 4).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
@@ -485,6 +573,7 @@
           <a class="cover-link" href="${escapeHtml(work.source_url)}" target="_blank" rel="noopener noreferrer" data-source-open="${work.id}" aria-label="開啟 ${escapeHtml(work.title)} 來源">
             <img class="work-card-cover" src="${escapeHtml(imageUrl(work.cover_url))}" alt="${escapeHtml(work.title)}" loading="lazy">
           </a>
+          ${adminDeleteButtonHtml(work.id)}
           ${favoriteButtonHtml(work.id)}
         </div>
         <div class="work-card-shade"></div>
@@ -575,6 +664,7 @@
         <a class="cover-link" href="${escapeHtml(work.source_url)}" target="_blank" rel="noopener noreferrer" data-source-open="${work.id}" aria-label="開啟 ${escapeHtml(work.title)} 來源">
           <img src="${escapeHtml(imageUrl(work.cover_url))}" alt="${escapeHtml(work.title)}" loading="lazy">
         </a>
+        ${adminDeleteButtonHtml(work.id)}
         ${favoriteButtonHtml(work.id)}
         <div><h3>${escapeHtml(work.title)}</h3><p>${escapeHtml(PLATFORM_LABELS[work.platform])} · ${escapeHtml(work.author)}</p></div>
       </article>`).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
@@ -607,7 +697,7 @@
         <div class="ranking-number">#${index + 1}</div>
         <img src="${escapeHtml(imageUrl(item.cover_url))}" alt="" loading="lazy">
         <div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(PLATFORM_LABELS[item.platform])} · ${escapeHtml(item.author)} · ${item.review_count} 則評分</p></div>
-        <div class="score"><strong>${Number(item.weighted_score).toFixed(2)}</strong><small>原始 ${Number(item.raw_average).toFixed(2)}</small></div>
+        <div class="score" title="加權分數：貝氏公式 (v/(v+8))×R + (8/(v+8))×C 計算，票數越少越靠近全站平均。原始 = 這部作品目前的實際平均分。">${item.review_count > 0 ? "" : '<span class="info-badge" data-tooltip="這部作品還沒有人評分，分數暫時等於全站平均（m=8 的先驗）。">?</span>'}<strong>${Number(item.weighted_score).toFixed(2)}</strong><small>原始 ${Number(item.raw_average).toFixed(2)}</small></div>
       </article>`).join("") || '<div class="empty-state">目前還沒有足夠的評分資料</div>';
   }
 
@@ -714,12 +804,43 @@
     toast("已登出");
   }
 
+  function openProfileEditor() {
+    if (!state.session) { login(); return; }
+    const current = cleanName(state.profile?.display_name) || myDisplayName();
+    $("#editor-content").innerHTML = `
+      <h2 id="editor-title">修改暱稱</h2>
+      <form id="profile-editor-form" class="editor-form">
+        <label>顯示名稱（1～40 字）
+          <input id="profile-display-name" type="text" maxlength="40" required value="${escapeHtml(current)}" autocomplete="nickname">
+        </label>
+        <p class="muted small-note">這是留言、評分與後台顯示的名稱，隨時可以修改。</p>
+        <button class="button button-primary" type="submit">儲存暱稱</button>
+      </form>`;
+    openModal("editor-modal");
+    setTimeout(() => $("#profile-display-name")?.focus(), 40);
+  }
+
+  async function saveProfileName(event) {
+    event.preventDefault();
+    if (!state.session) return;
+    const name = $("#profile-display-name").value.trim();
+    if (name.length < 1 || name.length > 40) return toast("暱稱需為 1～40 字", "warning");
+    const { data, error } = await supabase.rpc("update_my_profile", { new_display_name: name });
+    if (error) return toast(`暱稱更新失敗：${error.message}`, "error");
+    if (data) state.profile = data;
+    else if (state.profile) state.profile.display_name = name;
+    updateAuthUi();
+    state.profiles.set(state.session.user.id, { ...(state.profiles.get(state.session.user.id) || {}), display_name: name });
+    closeModal("editor-modal");
+    toast("暱稱已更新", "success");
+  }
+
   function updateAuthUi() {
     const loggedIn = Boolean(state.session);
     $("#login-button").classList.toggle("hidden", loggedIn);
     $("#profile-menu").classList.toggle("hidden", !loggedIn);
     if (loggedIn) {
-      $("#profile-name").textContent = state.profile?.display_name || state.session.user.user_metadata?.full_name || "新會員";
+      $("#profile-name").textContent = myDisplayName();
       const labels = { pending: "等待管理員審核", active: isAdmin() ? "管理員" : "已通過審核", suspended: "帳號已停權" };
       $("#profile-status").textContent = labels[state.profile?.status] || "建立資料中";
       $("#profile-avatar").src = state.profile?.avatar_url || state.session.user.user_metadata?.avatar_url || imageUrl("");
@@ -842,7 +963,7 @@
     state.currentRating = Number(existing?.rating ?? 5);
     container.innerHTML = `
       <form id="review-form" class="review-form">
-        <div><strong>${existing ? "編輯你的評分" : "留下你的評分"}</strong><p class="muted">每件作品限一篇主評論，最多 500 字。</p></div>
+        <div><strong>${existing ? "編輯你的評分" : "留下你的評分"}</strong><p class="muted">每件作品限一篇主評論，最多 500 字。評分 -5 ~ +5：<b>-5</b> 超雷、<b>0</b> 普通、<b>+5</b> 私心神作。</p></div>
         <div class="rating-picker">${Array.from({ length: 11 }, (_, i) => i - 5).map(value => `<button type="button" data-rating="${value}" class="${value === state.currentRating ? "selected" : ""}">${value > 0 ? "+" : ""}${value}</button>`).join("")}</div>
         <textarea id="review-body" maxlength="500" required placeholder="分享你的心得…">${escapeHtml(existing?.body || "")}</textarea>
         <button class="button button-primary" type="submit">${existing ? "儲存修改" : "送出評論"}</button>
@@ -881,12 +1002,12 @@
     const mine = roots.find(review => review.user_id === state.session?.user?.id);
     renderReviewForm(mine);
     const reviewHtml = review => {
-      const profile = state.profiles.get(review.user_id) || { display_name: "會員" };
+      const profile = state.profiles.get(review.user_id) || null;
       const stats = voteStats.get(review.id) || { up: 0, down: 0, mine: 0 };
       const canDelete = isAdmin() || review.user_id === state.session?.user?.id;
       const canEdit = review.user_id === state.session?.user?.id;
       return `<article class="review" data-review="${review.id}">
-        <div class="review-header"><strong>${escapeHtml(profile.display_name)}${profile.role === "admin" ? " · ADMIN" : ""}</strong>${review.rating === null ? "" : `<span>${review.rating > 0 ? "+" : ""}${review.rating}</span>`}</div>
+        <div class="review-header"><strong>${escapeHtml(memberName(profile))}${profile?.role === "admin" ? " · ADMIN" : ""}</strong>${review.rating === null ? "" : `<span>${review.rating > 0 ? "+" : ""}${review.rating}</span>`}</div>
         <p>${escapeHtml(review.body)}</p>
         <div class="review-footer">
           <button data-vote="1" data-review-id="${review.id}">${stats.mine === 1 ? "●" : "▲"} ${stats.up}</button>
@@ -998,7 +1119,7 @@
       <div class="tag-row">${(game.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>
       ${isAdmin() ? `<button class="button button-secondary" data-edit-game="${game.id}">編輯評鑑</button><button class="button button-danger" data-delete-game="${game.id}">刪除評鑑</button>` : ""}
       <hr><h3>會員留言</h3>
-      <div>${(comments || []).map(comment => `<div class="review"><strong>${escapeHtml(state.profiles.get(comment.user_id)?.display_name || "會員")}</strong><p>${escapeHtml(comment.body)}</p>${isAdmin() || comment.user_id === state.session?.user?.id ? `<button data-delete-game-comment="${comment.id}" data-game-id="${game.id}">刪除</button>` : ""}</div>`).join("") || '<p class="muted">尚無留言</p>'}</div>
+      <div>${(comments || []).map(comment => `<div class="review"><strong>${escapeHtml(memberName(state.profiles.get(comment.user_id)))}</strong><p>${escapeHtml(comment.body)}</p>${isAdmin() || comment.user_id === state.session?.user?.id ? `<button data-delete-game-comment="${comment.id}" data-game-id="${game.id}">刪除</button>` : ""}</div>`).join("") || '<p class="muted">尚無留言</p>'}</div>
       ${isApproved() ? `<form id="game-comment-form" class="review-form" data-game-id="${game.id}"><textarea id="game-comment-body" maxlength="500" required placeholder="留言…"></textarea><button class="button button-primary">送出留言</button></form>` : ""}`;
     openModal("editor-modal");
   }
@@ -1123,7 +1244,7 @@
     const query = $("#admin-work-search")?.value || "";
     const rows = state.adminWorks.filter(work => workMatches(work, query));
     $("#admin-work-summary").textContent = `${rows.length.toLocaleString()} 筆；畫面顯示前 200 筆`;
-    list.innerHTML = rows.slice(0, 200).map(work => `<div class="admin-row"><div><h4>${escapeHtml(work.title)}</h4><p>${escapeHtml(work.platform)} · ${escapeHtml(work.work_id)} · ${escapeHtml(work.status)}</p></div><div class="admin-actions"><button class="button button-secondary" data-edit-work="${work.id}">編輯</button><button class="button button-danger" data-toggle-work="${work.id}" data-status="${work.status === "active" ? "inactive" : "active"}">${work.status === "active" ? "標記失效" : "恢復"}</button></div></div>`).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
+    list.innerHTML = rows.slice(0, 200).map(work => `<div class="admin-row"><div><h4>${escapeHtml(work.title)}</h4><p>${escapeHtml(work.platform)} · ${escapeHtml(work.work_id)} · ${escapeHtml(work.status)}</p></div><div class="admin-actions"><button class="button button-secondary" data-edit-work="${work.id}">編輯</button><button class="button button-secondary" data-toggle-work="${work.id}" data-status="${work.status === "active" ? "inactive" : "active"}">${work.status === "active" ? "標記失效" : "恢復"}</button><button class="button button-danger" data-purge-work="${work.id}">永久刪除</button></div></div>`).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
   }
 
   async function loadJobs() {
@@ -1222,6 +1343,7 @@
     $("#age-leave").addEventListener("click", () => { location.href = "https://www.google.com/"; });
     if (localStorage.getItem("acg_age_confirmed") === "1") closeModal("age-gate");
     $("#login-button").addEventListener("click", login); $("#logout-button").addEventListener("click", logout);
+    $("#profile-edit-button").addEventListener("click", openProfileEditor);
     $("#google-login-button").addEventListener("click", loginWithGoogle);
     $("#password-login-button").addEventListener("click", loginWithPassword);
     $("#password-login-password").addEventListener("keydown", event => { if (event.key === "Enter") loginWithPassword(); });
@@ -1247,6 +1369,7 @@
     window.addEventListener("hashchange", () => switchView(location.hash.slice(1) || "home"));
     document.addEventListener("keydown", event => { if (event.key === "Escape") $$(".modal.open:not(#age-gate)").forEach(modal => closeModal(modal.id)); });
     document.addEventListener("submit", async event => {
+      if (event.target.id === "profile-editor-form") return saveProfileName(event);
       if (event.target.id === "review-form") return submitReview(event);
       if (event.target.matches("[data-reply-form]")) { event.preventDefault(); return submitReply(event.target.dataset.replyForm); }
       if (event.target.id === "game-editor-form") return saveGame(event);
@@ -1263,6 +1386,7 @@
       if (target.tagName === "BUTTON") flashButton(target);
       if (target.dataset.closeModal) closeModal(target.dataset.closeModal);
       if (target.dataset.login !== undefined) login();
+      if (target.dataset.retryInit !== undefined) reloadHome();
       if (target.dataset.refreshPlatform) drawPlatform(target.dataset.refreshPlatform);
       if (target.dataset.flipCard) flipCard(target.dataset.flipCard);
       if (target.dataset.copyCardIds) copyCardIds(target.dataset.copyCardIds);
@@ -1288,6 +1412,7 @@
       if (target.dataset.newWork !== undefined) editWork();
       if (target.dataset.editWork) editWork(target.dataset.editWork);
       if (target.dataset.toggleWork) { const { error } = await supabase.from("works").update({ status: target.dataset.status }).eq("id", target.dataset.toggleWork); toast(error ? error.message : "作品狀態已更新", error ? "error" : "success"); if (!error) { await loadWorks(); loadAdmin("works"); } }
+      if (target.dataset.purgeWork) purgeWork(target.dataset.purgeWork);
       if (target.dataset.purgeInactive !== undefined) { const confirmation = prompt('永久刪除所有 inactive/rejected 作品。請輸入「PURGE INACTIVE WORKS」確認：'); if (confirmation) { const { data, error } = await supabase.rpc("purge_inactive_works", { confirmation }); toast(error ? error.message : `已永久刪除 ${data} 筆`, error ? "error" : "success"); if (!error) { await loadWorks(); loadAdmin("works"); } } }
       if (target.dataset.resolveReport) { const { error } = await supabase.from("content_reports").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveReport); toast(error ? error.message : "檢舉已完成", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
       if (target.dataset.hideReview) { const { error } = await supabase.rpc("moderate_review", { target_review: target.dataset.hideReview, new_status: "hidden" }); toast(error ? error.message : "內容已隱藏", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
@@ -1298,15 +1423,19 @@
   async function init() {
     bindEvents();
     detectGoogleProvider();
+    renderPlatformSkeletons();
+    $("#home-summary").textContent = "正在讀取作品資料…";
     supabase.auth.onAuthStateChange((_event, session) => { state.session = session; setTimeout(loadAuth, 0); });
     try {
       await Promise.all([loadWorks(), loadLeaderboardData()]);
       await loadAuth();
+      drawAll();
       renderLibrary(true); renderLeaderboard();
       switchView(location.hash.slice(1) || "home");
     } catch (error) {
       console.error(error);
       $("#home-summary").textContent = "資料載入失敗，請稍後重試。";
+      renderPlatformError();
       toast(`初始化失敗：${error.message}`, "error");
     }
   }
