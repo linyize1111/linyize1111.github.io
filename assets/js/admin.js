@@ -16,6 +16,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var client = null;
   var currentImages = []; // [{src,caption}]
+  var deleteInProgress = false;
 
   // ---------- 訊息 ----------
   function msg(container, text, kind) {
@@ -242,13 +243,111 @@
     loadArticles();
   }
 
-  async function deleteArticle() {
+  // ---------- 刪除文章（雙重確認 modal） ----------
+  function closeDeleteModal() {
+    var modal = $("delete-modal");
+    if (modal) modal.classList.add("hidden");
+    $("delete-step-1").classList.remove("hidden");
+    $("delete-step-2").classList.add("hidden");
+    $("delete-confirm-input").value = "";
+    $("delete-confirm").disabled = true;
+    if (!deleteInProgress) $("btn-delete").disabled = false;
+  }
+
+  function openDeleteModal() {
     var id = $("f-id").value;
-    if (!id) return;
-    if (!confirm("確定刪除這篇文章？此動作無法復原。")) return;
+    if (!id || deleteInProgress) return;
+    var title = ($("f-title").value || "").trim();
+    if (!title) {
+      msg("form-msg", "無法刪除：缺少文章標題", "err");
+      return;
+    }
+    $("delete-preview-title").textContent = "「" + title + "」";
+    $("delete-expected-title").textContent = title;
+    $("delete-confirm-input").value = "";
+    $("delete-confirm").disabled = true;
+    $("delete-step-1").classList.remove("hidden");
+    $("delete-step-2").classList.add("hidden");
+    $("delete-modal").classList.remove("hidden");
+    $("delete-cancel-1").focus();
+  }
+
+  function showDeleteStep2() {
+    $("delete-step-1").classList.add("hidden");
+    $("delete-step-2").classList.remove("hidden");
+    $("delete-confirm-input").focus();
+  }
+
+  function bindDeleteModal() {
+    var modal = $("delete-modal");
+    if (!modal) return;
+
+    $("delete-cancel-1").addEventListener("click", closeDeleteModal);
+    $("delete-back").addEventListener("click", function () {
+      $("delete-step-2").classList.add("hidden");
+      $("delete-step-1").classList.remove("hidden");
+      $("delete-confirm-input").value = "";
+      $("delete-confirm").disabled = true;
+    });
+    $("delete-continue").addEventListener("click", showDeleteStep2);
+
+    $("delete-confirm-input").addEventListener("input", function () {
+      var expected = ($("delete-expected-title").textContent || "").trim();
+      var typed = ($("delete-confirm-input").value || "").trim();
+      $("delete-confirm").disabled = typed !== expected;
+    });
+
+    $("delete-confirm").addEventListener("click", function () {
+      executeDeleteArticle();
+    });
+
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal && !deleteInProgress) closeDeleteModal();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !modal.classList.contains("hidden") && !deleteInProgress) {
+        closeDeleteModal();
+      }
+    });
+  }
+
+  async function executeDeleteArticle() {
+    var id = $("f-id").value;
+    if (!id || deleteInProgress) return;
+    var expected = ($("delete-expected-title").textContent || "").trim();
+    var typed = ($("delete-confirm-input").value || "").trim();
+    if (typed !== expected) {
+      msg("form-msg", "標題不符，請重新輸入以確認刪除", "err");
+      return;
+    }
+
+    deleteInProgress = true;
+    var btnDel = $("btn-delete");
+    var btnConfirm = $("delete-confirm");
+    var prevDelText = btnDel ? btnDel.textContent : "";
+    if (btnDel) { btnDel.disabled = true; btnDel.textContent = "刪除中…"; }
+    if (btnConfirm) { btnConfirm.disabled = true; btnConfirm.innerHTML = '<span class="spinner-inline"></span> 刪除中…'; }
+    ["delete-cancel-1", "delete-continue", "delete-back"].forEach(function (bid) {
+      var b = $(bid); if (b) b.disabled = true;
+    });
+
     var res = await client.from("articles").delete().eq("id", id);
-    if (res.error) { msg("form-msg", "刪除失敗：" + res.error.message, "err"); return; }
+
+    deleteInProgress = false;
+    if (btnDel) { btnDel.disabled = false; btnDel.textContent = prevDelText; }
+    if (btnConfirm) { btnConfirm.disabled = false; btnConfirm.textContent = "確認永久刪除"; }
+    ["delete-cancel-1", "delete-continue", "delete-back"].forEach(function (bid) {
+      var b = $(bid); if (b) b.disabled = false;
+    });
+
+    if (res.error) {
+      msg("form-msg", "刪除失敗：" + res.error.message, "err");
+      return;
+    }
+    closeDeleteModal();
     $("article-form").classList.add("hidden");
+    msg("global-msg", "文章已永久刪除", "ok");
+    setTimeout(function () { msg("global-msg", ""); }, 2500);
     loadArticles();
   }
 
@@ -330,7 +429,8 @@
     $("btn-new").addEventListener("click", function () { openForm(null); });
     $("btn-cancel").addEventListener("click", function () { $("article-form").classList.add("hidden"); });
     $("btn-save").addEventListener("click", saveArticle);
-    $("btn-delete").addEventListener("click", deleteArticle);
+    $("btn-delete").addEventListener("click", openDeleteModal);
+    bindDeleteModal();
     $("f-section").addEventListener("change", refreshCategoryList);
     $("f-cover").addEventListener("input", function () {
       var v = $("f-cover").value.trim();

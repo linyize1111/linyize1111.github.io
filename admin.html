@@ -192,6 +192,31 @@
         </div>
     </div>
 
+    <!-- 刪除文章：雙重確認 modal（避免誤刪） -->
+    <div id="delete-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+        <div class="modal-card">
+            <h3 id="delete-modal-title">刪除文章</h3>
+            <div id="delete-step-1">
+                <p class="modal-warn">確定要<strong>永久刪除</strong>這篇文章嗎？</p>
+                <p class="muted modal-article-name" id="delete-preview-title"></p>
+                <p class="muted" style="font-size:.85rem;">此操作無法復原，文章內容與設定將從資料庫移除。</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn" id="delete-cancel-1">取消</button>
+                    <button type="button" class="btn danger" id="delete-continue">繼續刪除</button>
+                </div>
+            </div>
+            <div id="delete-step-2" class="hidden">
+                <p class="muted">為確認此為高風險操作，請輸入文章標題以繼續：</p>
+                <p class="modal-expected" id="delete-expected-title"></p>
+                <input type="text" id="delete-confirm-input" placeholder="請輸入上方標題" autocomplete="off" />
+                <div class="modal-actions">
+                    <button type="button" class="btn" id="delete-back">返回</button>
+                    <button type="button" class="btn danger" id="delete-confirm" disabled>確認永久刪除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 依賴：supabase-js / marked / DOMPurify（皆來自 jsDelivr，受 CSP 限制） -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>

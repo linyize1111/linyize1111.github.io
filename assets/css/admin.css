@@ -79,3 +79,29 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .stack { display: flex; flex-direction: column; gap: .5rem; }
 .spinner-inline { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color: var(--a-accent); border-radius:50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* 刪除確認 modal */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.modal-card {
+  background: var(--a-panel); border: 1px solid var(--a-border);
+  border-radius: 14px; padding: 1.5rem 1.5rem 1.25rem;
+  max-width: 420px; width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+}
+.modal-card h3 { margin: 0 0 1rem; font-size: 1.15rem; }
+.modal-warn { margin: 0 0 .75rem; line-height: 1.5; }
+.modal-article-name { font-weight: 600; color: var(--a-text); margin: 0 0 .5rem; word-break: break-word; }
+.modal-expected {
+  font-size: .88rem; padding: .5rem .75rem; margin: .5rem 0 .75rem;
+  background: rgba(244, 112, 138, 0.1); border: 1px solid rgba(244, 112, 138, 0.35);
+  border-radius: 8px; word-break: break-word;
+}
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.25rem; flex-wrap: wrap;
+}
+#delete-confirm-input { margin-top: .25rem; }
