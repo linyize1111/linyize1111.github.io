@@ -32,7 +32,9 @@
     currentRating: 5,
     adminTab: "users",
     workerStatus: { available: null, lastError: null },
-    googleProviderEnabled: null
+    googleProviderEnabled: null,
+    reviewStatsByWork: new Map(),
+    favoriteCounts: new Map()
   };
 
   const $ = selector => document.querySelector(selector);
@@ -225,6 +227,69 @@
       || "新會員";
   }
 
+  function authRedirectUrl() {
+    const path = location.pathname.replace(/\/index\.html$/i, "");
+    const normalized = path.endsWith("/") ? path : `${path}/`;
+    return `${location.origin}${normalized}`;
+  }
+
+  function workReviewStats(workId) {
+    return state.reviewStatsByWork.get(workId) || null;
+  }
+
+  function formatAverageScore(stats) {
+    if (!stats || !stats.review_count) return "尚無評分";
+    return Number(stats.raw_average).toFixed(2);
+  }
+
+  function scoreBadgeHtml(workId, compact = false) {
+    const stats = workReviewStats(workId);
+    const label = formatAverageScore(stats);
+    const count = stats?.review_count || 0;
+    const cls = compact ? "score-badge compact" : "score-badge";
+    return `<span class="${cls}" title="${count ? `${count} 則評分 · 平均 ${label}` : "尚無評分"}">${label}${count ? `<small>${count} 則</small>` : ""}</span>`;
+  }
+
+  function platformFlipLabel(platform) {
+    return platform === "nhentai" ? "車號" : "資訊";
+  }
+
+  function platformCopyLabel(platform) {
+    return platform === "nhentai" ? "複製車號" : "複製標題/連結";
+  }
+
+  function copyLineForWork(work) {
+    if (work.platform === "nhentai") return String(work.work_id || "");
+    const title = String(work.title || "").trim();
+    const url = String(work.source_url || "").trim();
+    return title && url ? `${title}\n${url}` : (title || url);
+  }
+
+  function passesWorkFilters(work, prefix = "home") {
+    const ratingFilter = $(`#${prefix}-filter-rating`)?.value || "all";
+    const reviewFilter = $(`#${prefix}-filter-reviews`)?.value || "all";
+    const weekFilter = $(`#${prefix}-filter-week`)?.value || "all";
+    const favoriteFilter = $(`#${prefix}-filter-favorites`)?.value || "all";
+    const stats = workReviewStats(work.id);
+    const reviewCount = stats?.review_count || 0;
+    const average = Number(stats?.raw_average || 0);
+    const favoriteCount = state.favoriteCounts.get(work.id) || 0;
+    if (ratingFilter === "high" && (reviewCount === 0 || average < 2)) return false;
+    if (ratingFilter === "mid" && (reviewCount === 0 || average < -1 || average >= 2)) return false;
+    if (ratingFilter === "low" && (reviewCount === 0 || average >= -1)) return false;
+    if (ratingFilter === "none" && reviewCount > 0) return false;
+    if (reviewFilter === "1" && reviewCount < 1) return false;
+    if (reviewFilter === "5" && reviewCount < 5) return false;
+    if (reviewFilter === "10" && reviewCount < 10) return false;
+    if (weekFilter === "week") {
+      const seenAt = new Date(work.last_seen_at || work.created_at || 0).getTime();
+      if (Date.now() - seenAt > 7 * 86400000) return false;
+    }
+    if (favoriteFilter === "1" && favoriteCount < 1) return false;
+    if (favoriteFilter === "3" && favoriteCount < 3) return false;
+    return true;
+  }
+
   async function fetchAll(table, queryBuilder) {
     const rows = [];
     for (let offset = 0; ; offset += 1000) {
@@ -354,6 +419,23 @@
   async function loadLeaderboardData() {
     state.leaderboard = await fetchAll("leaderboard");
     state.scoreByWork = new Map(state.leaderboard.map(item => [item.work_id, Number(item.weighted_score || 0)]));
+    state.reviewStatsByWork = new Map(state.leaderboard.map(item => [item.work_id, {
+      review_count: Number(item.review_count || 0),
+      raw_average: Number(item.raw_average || 0),
+      weighted_score: Number(item.weighted_score || 0)
+    }]));
+  }
+
+  async function loadFavoriteCounts() {
+    try {
+      const rows = await fetchAll("favorites", query => query.select("work_id"));
+      const counts = new Map();
+      for (const row of rows) counts.set(row.work_id, (counts.get(row.work_id) || 0) + 1);
+      state.favoriteCounts = counts;
+    } catch (error) {
+      console.warn("Favorite counts unavailable", error);
+      state.favoriteCounts = new Map();
+    }
   }
 
   function randomUnit() {
@@ -418,7 +500,11 @@
   }
 
   function candidatesFor(platform, query = "") {
-    return state.works.filter(work => work.platform === platform && workMatches(work, query));
+    return state.works.filter(work =>
+      work.platform === platform &&
+      workMatches(work, query) &&
+      passesWorkFilters(work, "home")
+    );
   }
 
   function drawPlatform(platform, source = null) {
@@ -444,7 +530,7 @@
 
   function drawBatch(count) {
     const query = $("#home-search").value;
-    const pool = state.works.filter(work => workMatches(work, query));
+    const pool = state.works.filter(work => workMatches(work, query) && passesWorkFilters(work, "home"));
     const selected = [];
     const used = new Set();
     for (let index = 0; index < count && used.size < pool.length; index++) {
@@ -579,11 +665,12 @@
         <div class="work-card-shade"></div>
         <div class="work-card-body">
           <h3>${escapeHtml(work.title)}</h3>
+          ${scoreBadgeHtml(work.id)}
           <div class="work-card-meta">${escapeHtml(work.author)}<br>ID ${escapeHtml(work.work_id)}</div>
           <div class="tag-row">${tags}</div>
           <div class="card-actions">
             <button class="button button-secondary" data-open-work="${work.id}">查看與評分</button>
-            <button class="button button-secondary" data-flip-card="${escapeHtml(work.platform)}">車號</button>
+            <button class="button button-secondary" data-flip-card="${escapeHtml(work.platform)}">${escapeHtml(platformFlipLabel(work.platform))}</button>
             <button class="button button-primary" data-refresh-platform="${escapeHtml(work.platform)}" aria-label="更新 ${escapeHtml(PLATFORM_LABELS[work.platform])}">↻</button>
           </div>
         </div>
@@ -593,16 +680,17 @@
   function workCardBackHtml(platform) {
     const ids = state.recentByPlatform[platform] || [];
     const works = ids.map(id => state.workById.get(id)).filter(Boolean);
+    const isNhentai = platform === "nhentai";
     return `
       <article class="work-card card-back" data-card="${escapeHtml(platform)}">
         <span class="platform-badge">${escapeHtml(PLATFORM_LABELS[platform])}</span>
-        <h3>最近抽過的車號</h3>
-        <p class="muted">刷新卡片會自動記錄；點車號可開詳情，一鍵可複製本張卡片背面的全部車號。</p>
+        <h3>${isNhentai ? "最近抽過的車號" : "最近抽過的作品"}</h3>
+        <p class="muted">${isNhentai ? "刷新卡片會自動記錄；點車號可開詳情，一鍵可複製本張卡片背面的全部車號。" : "刷新卡片會自動記錄；點作品可開詳情，一鍵可複製標題與來源連結。"}</p>
         <div class="card-history-list">
-          ${works.map(work => `<button class="card-history-item" data-open-work="${work.id}"><strong>${escapeHtml(work.work_id)}</strong><small>${escapeHtml(work.title)}</small></button>`).join("") || '<p class="muted">這張卡片還沒有抽取紀錄。</p>'}
+          ${works.map(work => `<button class="card-history-item" data-open-work="${work.id}"><strong>${escapeHtml(isNhentai ? work.work_id : work.title)}</strong><small>${escapeHtml(isNhentai ? work.title : work.source_url || work.work_id)}</small></button>`).join("") || '<p class="muted">這張卡片還沒有抽取紀錄。</p>'}
         </div>
         <div class="card-actions">
-          <button class="button button-secondary" data-copy-card-ids="${escapeHtml(platform)}">複製全部</button>
+          <button class="button button-secondary" data-copy-card-ids="${escapeHtml(platform)}">${escapeHtml(platformCopyLabel(platform))}</button>
           <button class="button button-primary" data-flip-card="${escapeHtml(platform)}">回到封面</button>
         </div>
       </article>`;
@@ -624,12 +712,15 @@
   }
 
   async function copyCardIds(platform) {
-    const ids = (state.recentByPlatform[platform] || [])
-      .map(id => state.workById.get(id)?.work_id)
+    const works = (state.recentByPlatform[platform] || [])
+      .map(id => state.workById.get(id))
       .filter(Boolean);
-    if (!ids.length) return toast("這張卡片還沒有可複製的車號", "warning");
-    await navigator.clipboard.writeText(ids.join("\n"));
-    toast(`已複製 ${ids.length} 個車號`, "success");
+    if (!works.length) {
+      return toast(platform === "nhentai" ? "這張卡片還沒有可複製的車號" : "這張卡片還沒有可複製的作品", "warning");
+    }
+    const lines = works.map(copyLineForWork).filter(Boolean);
+    await navigator.clipboard.writeText(lines.join("\n\n"));
+    toast(platform === "nhentai" ? `已複製 ${lines.length} 個車號` : `已複製 ${lines.length} 筆標題/連結`, "success");
   }
 
   function filteredLibraryWorks() {
@@ -639,7 +730,8 @@
     let rows = state.works.filter(work =>
       (platform === "all" || work.platform === platform) &&
       (scope !== "favorites" || state.favorites.has(work.id)) &&
-      workMatches(work, query)
+      workMatches(work, query) &&
+      passesWorkFilters(work, "library")
     );
     if (scope === "favorites" && !state.session) {
       rows = [];
@@ -660,13 +752,18 @@
       ? "請先登入後查看你的收藏"
       : `${works.length.toLocaleString()} 筆符合條件；預設順序已打亂，搜尋時以相關性排序並盡量錯開同作者`;
     $("#library-grid").innerHTML = works.slice(0, state.libraryVisible).map(work => `
-      <article class="library-item" data-open-work="${work.id}" tabindex="0">
+      <article class="library-item">
         <a class="cover-link" href="${escapeHtml(work.source_url)}" target="_blank" rel="noopener noreferrer" data-source-open="${work.id}" aria-label="開啟 ${escapeHtml(work.title)} 來源">
           <img src="${escapeHtml(imageUrl(work.cover_url))}" alt="${escapeHtml(work.title)}" loading="lazy">
         </a>
         ${adminDeleteButtonHtml(work.id)}
         ${favoriteButtonHtml(work.id)}
-        <div><h3>${escapeHtml(work.title)}</h3><p>${escapeHtml(PLATFORM_LABELS[work.platform])} · ${escapeHtml(work.author)}</p></div>
+        <div class="library-item-body">
+          <h3>${escapeHtml(work.title)}</h3>
+          <p>${escapeHtml(PLATFORM_LABELS[work.platform])} · ${escapeHtml(work.author)}</p>
+          ${scoreBadgeHtml(work.id, true)}
+          <button class="button button-secondary library-review-button" data-open-work="${work.id}">看評論與分數</button>
+        </div>
       </article>`).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
     $("#library-more").classList.toggle("hidden", works.length <= state.libraryVisible);
   }
@@ -682,8 +779,32 @@
           <img src="${escapeHtml(imageUrl(work.cover_url))}" alt="${escapeHtml(work.title)}" loading="lazy">
         </a>
         ${favoriteButtonHtml(work.id)}
-        <div><h3>${escapeHtml(work.title)}</h3><p>${escapeHtml(PLATFORM_LABELS[work.platform])} · ID ${escapeHtml(work.work_id)}</p></div>
+        <div class="bulk-draw-body">
+          <h3>${escapeHtml(work.title)}</h3>
+          <p>${escapeHtml(PLATFORM_LABELS[work.platform])} · ID ${escapeHtml(work.work_id)}</p>
+          ${scoreBadgeHtml(work.id, true)}
+          <div class="card-actions compact">
+            <button class="button button-secondary" data-open-work="${work.id}">查看與評分</button>
+            <button class="button button-secondary" data-copy-single="${work.id}">${escapeHtml(platformCopyLabel(work.platform))}</button>
+          </div>
+        </div>
       </article>`).join("");
+  }
+
+  async function copySingleWork(workId) {
+    const work = state.workById.get(workId);
+    if (!work) return;
+    const text = copyLineForWork(work);
+    if (!text) return toast("沒有可複製的內容", "warning");
+    await navigator.clipboard.writeText(text);
+    toast(work.platform === "nhentai" ? "已複製車號" : "已複製標題/連結", "success");
+  }
+
+  function rankingScoreHtml(item) {
+    const tooltip = item.review_count > 0
+      ? `加權 ${Number(item.weighted_score).toFixed(2)}；原始平均 ${Number(item.raw_average).toFixed(2)}（${item.review_count} 則評分）`
+      : "這部作品還沒有人評分，分數暫時等於全站平均（m=8 的先驗）。";
+    return `<div class="score"><span class="info-badge" data-tooltip="${escapeHtml(tooltip)}" aria-label="分數說明">?</span><strong>${Number(item.weighted_score).toFixed(2)}</strong><small>原始 ${Number(item.raw_average).toFixed(2)}</small></div>`;
   }
 
   function renderLeaderboard() {
@@ -697,7 +818,7 @@
         <div class="ranking-number">#${index + 1}</div>
         <img src="${escapeHtml(imageUrl(item.cover_url))}" alt="" loading="lazy">
         <div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(PLATFORM_LABELS[item.platform])} · ${escapeHtml(item.author)} · ${item.review_count} 則評分</p></div>
-        <div class="score" title="加權分數：貝氏公式 (v/(v+8))×R + (8/(v+8))×C 計算，票數越少越靠近全站平均。原始 = 這部作品目前的實際平均分。">${item.review_count > 0 ? "" : '<span class="info-badge" data-tooltip="這部作品還沒有人評分，分數暫時等於全站平均（m=8 的先驗）。">?</span>'}<strong>${Number(item.weighted_score).toFixed(2)}</strong><small>原始 ${Number(item.raw_average).toFixed(2)}</small></div>
+        ${rankingScoreHtml(item)}
       </article>`).join("") || '<div class="empty-state">目前還沒有足夠的評分資料</div>';
   }
 
@@ -714,7 +835,6 @@
     updateAuthUi();
     renderBulkDraw();
     if ($("#view-library")?.classList.contains("active")) renderLibrary();
-    if (state.works.length) drawAll();
   }
 
   function login() {
@@ -750,7 +870,7 @@
       state.googleProviderEnabled = Boolean(settings?.external?.google);
     } catch (error) {
       console.warn("Unable to detect Google auth provider status", error);
-      state.googleProviderEnabled = config.googleProviderEnabled === true;
+      state.googleProviderEnabled = config.googleProviderEnabled === true || config.googleProviderEnabled === "auto";
     }
     updateGoogleProviderUi();
     return state.googleProviderEnabled;
@@ -762,7 +882,7 @@
       $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用，所以我先不跳轉，避免再次出現 400 JSON 錯誤。請先用 Gmail 信箱＋站內密碼登入。";
       return toast("Google OAuth 尚未啟用；請先用 Gmail 信箱帳密登入", "warning");
     }
-    const redirectTo = `${location.origin}${location.pathname}`;
+    const redirectTo = authRedirectUrl();
     const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
     if (error) {
       const message = error.message || "";
@@ -776,7 +896,7 @@
   async function loginWithEmail() {
     const email = $("#email-login-input").value.trim();
     if (!email || !email.includes("@")) return toast("請輸入有效信箱", "warning");
-    const redirectTo = `${location.origin}${location.pathname}`;
+    const redirectTo = authRedirectUrl();
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: redirectTo }
@@ -1382,10 +1502,12 @@
 
   function toggleMobileMenu(force = null) {
     const nav = $("#main-nav");
-    const button = $("#mobile-menu-button");
     const open = force === null ? !nav.classList.contains("open") : Boolean(force);
     nav.classList.toggle("open", open);
-    button.setAttribute("aria-expanded", String(open));
+    ["#mobile-menu-button", "#nav-menu-button"].forEach(selector => {
+      const button = $(selector);
+      if (button) button.setAttribute("aria-expanded", String(open));
+    });
   }
 
   function switchView(view) {
@@ -1399,6 +1521,26 @@
     if (view === "admin") loadAdmin();
   }
 
+  function bindClick(selector, handler) {
+    const node = $(selector);
+    if (node) node.addEventListener("click", handler);
+  }
+
+  function setupVideoFallback() {
+    const backdrop = $(".video-backdrop");
+    const iframe = backdrop?.querySelector("iframe");
+    if (!backdrop || !iframe) return;
+    const activateFallback = () => backdrop.classList.add("fallback-active");
+    iframe.addEventListener("error", activateFallback);
+    window.setTimeout(() => {
+      try {
+        if (!iframe.contentWindow) activateFallback();
+      } catch {
+        activateFallback();
+      }
+    }, 4500);
+  }
+
   function bindEvents() {
     document.addEventListener("error", event => {
       if (event.target instanceof HTMLImageElement && !event.target.dataset.fallbackApplied) {
@@ -1406,33 +1548,44 @@
         event.target.src = imageUrl("");
       }
     }, true);
-    $("#age-enter").addEventListener("click", () => { localStorage.setItem("acg_age_confirmed", "1"); closeModal("age-gate"); });
-    $("#age-leave").addEventListener("click", () => { location.href = "https://www.google.com/"; });
+    $("#age-enter")?.addEventListener("click", () => { localStorage.setItem("acg_age_confirmed", "1"); closeModal("age-gate"); });
+    $("#age-leave")?.addEventListener("click", () => { location.href = "https://www.google.com/"; });
     if (localStorage.getItem("acg_age_confirmed") === "1") closeModal("age-gate");
-    $("#login-button").addEventListener("click", login); $("#logout-button").addEventListener("click", logout);
-    $("#profile-edit-button").addEventListener("click", openProfileEditor);
-    $("#google-login-button").addEventListener("click", loginWithGoogle);
-    $("#password-login-button").addEventListener("click", loginWithPassword);
-    $("#password-login-password").addEventListener("keydown", event => { if (event.key === "Enter") loginWithPassword(); });
-    $("#email-login-button").addEventListener("click", loginWithEmail);
-    $("#email-login-input").addEventListener("keydown", event => { if (event.key === "Enter") loginWithEmail(); });
-    $("#mobile-menu-button").addEventListener("click", event => { event.stopPropagation(); toggleMobileMenu(); });
-    $("#draw-all-button").addEventListener("click", drawAll);
-    $("#draw-five-button").addEventListener("click", () => drawBatch(5));
-    $("#draw-ten-button").addEventListener("click", () => drawBatch(10));
-    $("#clear-bulk-button").addEventListener("click", () => { state.bulkWorks = []; renderBulkDraw(); });
-    $("#home-search").addEventListener("input", debounce(drawAll));
-    $("#library-platform").addEventListener("change", () => renderLibrary(true));
-    $("#library-scope").addEventListener("change", () => renderLibrary(true));
-    $("#library-search").addEventListener("input", debounce(() => renderLibrary(true)));
-    $("#library-more").addEventListener("click", () => { state.libraryVisible += 60; renderLibrary(); });
-    $("#ranking-platform").addEventListener("change", renderLeaderboard); $("#ranking-order").addEventListener("change", renderLeaderboard);
-    $("#new-game-button").addEventListener("click", () => gameEditor());
-    $("#feedback-body").addEventListener("input", event => $("#feedback-count").textContent = `${event.target.value.length} / 2000`);
-    $("#recommendation-body").addEventListener("input", event => $("#recommendation-count").textContent = `${event.target.value.length} / 2000`);
+    bindClick("#login-button", login);
+    bindClick("#logout-button", logout);
+    bindClick("#profile-edit-button", openProfileEditor);
+    bindClick("#google-login-button", loginWithGoogle);
+    bindClick("#password-login-button", loginWithPassword);
+    bindClick("#email-login-button", loginWithEmail);
+    $("#password-login-password")?.addEventListener("keydown", event => { if (event.key === "Enter") loginWithPassword(); });
+    $("#email-login-input")?.addEventListener("keydown", event => { if (event.key === "Enter") loginWithEmail(); });
+    bindClick("#mobile-menu-button", event => { event.stopPropagation(); toggleMobileMenu(); });
+    bindClick("#nav-menu-button", event => { event.stopPropagation(); toggleMobileMenu(); });
+    bindClick("#draw-all-button", drawAll);
+    bindClick("#draw-five-button", () => drawBatch(5));
+    bindClick("#draw-ten-button", () => drawBatch(10));
+    bindClick("#clear-bulk-button", () => { state.bulkWorks = []; renderBulkDraw(); });
+    $("#home-search")?.addEventListener("input", debounce(drawAll));
+    ["home", "library"].forEach(prefix => {
+      ["filter-rating", "filter-reviews", "filter-week", "filter-favorites"].forEach(name => {
+        $(`#${prefix}-${name}`)?.addEventListener("change", () => {
+          if (prefix === "home") drawAll();
+          else renderLibrary(true);
+        });
+      });
+    });
+    $("#library-platform")?.addEventListener("change", () => renderLibrary(true));
+    $("#library-scope")?.addEventListener("change", () => renderLibrary(true));
+    $("#library-search")?.addEventListener("input", debounce(() => renderLibrary(true)));
+    bindClick("#library-more", () => { state.libraryVisible += 60; renderLibrary(); });
+    $("#ranking-platform")?.addEventListener("change", renderLeaderboard);
+    $("#ranking-order")?.addEventListener("change", renderLeaderboard);
+    bindClick("#new-game-button", () => gameEditor());
+    $("#feedback-body")?.addEventListener("input", event => { if ($("#feedback-count")) $("#feedback-count").textContent = `${event.target.value.length} / 2000`; });
+    $("#recommendation-body")?.addEventListener("input", event => { if ($("#recommendation-count")) $("#recommendation-count").textContent = `${event.target.value.length} / 2000`; });
     document.addEventListener("input", event => { if (event.target.id === "admin-work-search") renderAdminWorks(); });
-    $("#feedback-send").addEventListener("click", () => sendFeedback("feedback"));
-    $("#recommendation-send").addEventListener("click", () => sendFeedback("recommendation"));
+    bindClick("#feedback-send", () => sendFeedback("feedback"));
+    bindClick("#recommendation-send", () => sendFeedback("recommendation"));
     window.addEventListener("hashchange", () => switchView(location.hash.slice(1) || "home"));
     document.addEventListener("keydown", event => { if (event.key === "Escape") $$(".modal.open:not(#age-gate)").forEach(modal => closeModal(modal.id)); });
     document.addEventListener("submit", async event => {
@@ -1449,7 +1602,7 @@
         closeModal(event.target.id);
         return;
       }
-      if (!event.target.closest("#main-nav") && !event.target.closest("#mobile-menu-button")) toggleMobileMenu(false);
+      if (!event.target.closest("#main-nav") && !event.target.closest("#mobile-menu-button") && !event.target.closest("#nav-menu-button")) toggleMobileMenu(false);
       const target = event.target.closest("button,a,article"); if (!target) return;
       if (target.tagName === "BUTTON") flashButton(target);
       if (target.dataset.closeModal) closeModal(target.dataset.closeModal);
@@ -1458,6 +1611,7 @@
       if (target.dataset.refreshPlatform) drawPlatform(target.dataset.refreshPlatform);
       if (target.dataset.flipCard) flipCard(target.dataset.flipCard);
       if (target.dataset.copyCardIds) copyCardIds(target.dataset.copyCardIds);
+      if (target.dataset.copySingle) copySingleWork(target.dataset.copySingle);
       if (target.dataset.sourceOpen) recordView(target.dataset.sourceOpen, "source");
       if (target.dataset.openWork) openWork(target.dataset.openWork);
       if (target.dataset.favorite) toggleFavorite(target.dataset.favorite);
@@ -1491,12 +1645,16 @@
 
   async function init() {
     bindEvents();
+    setupVideoFallback();
     detectGoogleProvider();
     renderPlatformSkeletons();
     $("#home-summary").textContent = "正在讀取作品資料…";
-    supabase.auth.onAuthStateChange((_event, session) => { state.session = session; setTimeout(loadAuth, 0); });
+    supabase.auth.onAuthStateChange((event, session) => {
+      state.session = session;
+      if (event !== "INITIAL_SESSION") setTimeout(loadAuth, 0);
+    });
     try {
-      await Promise.all([loadWorks(), loadLeaderboardData()]);
+      await Promise.all([loadWorks(), loadLeaderboardData(), loadFavoriteCounts()]);
       await loadAuth();
       drawAll();
       renderLibrary(true); renderLeaderboard();
