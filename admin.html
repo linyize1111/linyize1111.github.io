@@ -1,0 +1,206 @@
+<!DOCTYPE HTML>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="utf-8" />
+    <title>後台管理 · LYZ's website</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <!-- 內容安全政策（CSP）：限制可載入來源，降低 XSS / 注入風險 -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: blob: https:;
+        media-src 'self';
+        connect-src 'self' https://*.supabase.co wss://*.supabase.co;
+        frame-ancestors 'none';
+        base-uri 'self';
+        form-action 'self';
+        object-src 'none';
+    ">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;900&display=swap">
+    <link rel="stylesheet" href="assets/css/admin.css" />
+</head>
+
+<body class="admin">
+    <div class="admin-wrap">
+        <div class="admin-top">
+            <h1>後台管理 · CMS</h1>
+            <div class="stack" style="align-items:flex-end;">
+                <span class="who" id="who"></span>
+                <div>
+                    <a class="btn" href="index.html">← 回到網站</a>
+                    <button class="btn hidden" id="btn-logout">登出</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="global-msg"></div>
+
+        <!-- 未設定 Supabase -->
+        <div class="card hidden" id="view-unconfigured">
+            <h3>尚未設定 Supabase</h3>
+            <p class="muted">請先在 <code>assets/js/supabase-config.js</code> 填入新專案的
+                Project URL 與 anon key，並套用 <code>supabase/migrations</code> 內的 SQL。詳見交接文件。</p>
+        </div>
+
+        <!-- 登入 -->
+        <div class="card hidden center" id="view-login">
+            <h3>請以管理員 Google 帳號登入</h3>
+            <p class="muted">一般帳號登入後僅為訪客，沒有任何編輯權限。</p>
+            <p style="margin-top:1.2rem;">
+                <button class="btn google" id="btn-google">使用 Google 登入</button>
+            </p>
+        </div>
+
+        <!-- 非管理員 -->
+        <div class="card hidden center" id="view-guest">
+            <h3>你已登入，但不是管理員</h3>
+            <p class="muted">你的帳號不在管理員白名單，只有訪客權限。若這是誤判，請聯絡站長把你的信箱加入白名單。</p>
+        </div>
+
+        <!-- 管理員後台 -->
+        <div id="view-admin" class="hidden">
+            <div class="tabs">
+                <div class="tab active" data-tab="articles">文章管理</div>
+                <div class="tab" data-tab="sections">區塊文字</div>
+            </div>
+
+            <!-- 文章 -->
+            <div id="tab-articles">
+                <div class="card">
+                    <div class="row" style="align-items:flex-end;">
+                        <div class="field" style="max-width:220px;">
+                            <label>分區</label>
+                            <select id="list-section">
+                                <option value="literature">文學隨筆 (literature)</option>
+                                <option value="notes">學科筆記 (notes)</option>
+                            </select>
+                        </div>
+                        <div class="field" style="max-width:160px; flex:0;">
+                            <button class="btn primary" id="btn-new">+ 新增文章</button>
+                        </div>
+                    </div>
+                    <div id="article-list"></div>
+                </div>
+
+                <!-- 編輯表單 -->
+                <div class="card hidden" id="article-form">
+                    <h3 id="form-title">新增文章</h3>
+                    <div id="form-msg"></div>
+                    <input type="hidden" id="f-id" />
+                    <div class="row">
+                        <div class="field">
+                            <label>分區 *</label>
+                            <select id="f-section">
+                                <option value="literature">文學隨筆 (literature)</option>
+                                <option value="notes">學科筆記 (notes)</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>狀態</label>
+                            <select id="f-status">
+                                <option value="draft">草稿 (draft)</option>
+                                <option value="published">發佈 (published)</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>分類</label>
+                            <input id="f-category" list="category-list" placeholder="例：隨筆 / 心得 / 創作 或 資訊安全…" />
+                            <datalist id="category-list"></datalist>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="field">
+                            <label>標題 *</label>
+                            <input id="f-title" placeholder="文章標題" />
+                        </div>
+                        <div class="field">
+                            <label>slug（網址代稱，英數/連字號）*</label>
+                            <input id="f-slug" placeholder="my-article-slug" />
+                        </div>
+                    </div>
+                    <div class="field full">
+                        <label>摘要（卡片顯示）</label>
+                        <input id="f-summary" placeholder="一句話簡介" />
+                    </div>
+                    <div class="row">
+                        <div class="field">
+                            <label>標籤（逗號分隔）</label>
+                            <input id="f-tags" placeholder="tag1, tag2" />
+                        </div>
+                        <div class="field">
+                            <label>PDF 連結（選填）</label>
+                            <input id="f-pdf" placeholder="https://… 或留空" />
+                        </div>
+                        <div class="field" style="max-width:140px;">
+                            <label>排序權重</label>
+                            <input id="f-sort" type="number" value="0" />
+                        </div>
+                    </div>
+
+                    <div class="field full">
+                        <label>主圖（cover）</label>
+                        <div class="img-row">
+                            <img id="cover-thumb" class="thumb hidden" alt="" />
+                            <input id="f-cover" placeholder="圖片 URL（可直接貼，或用下方上傳）" />
+                            <label class="btn" style="margin:0;">
+                                上傳
+                                <input type="file" id="cover-file" accept="image/*" class="hidden" />
+                            </label>
+                        </div>
+                        <span class="muted" id="cover-status"></span>
+                    </div>
+
+                    <div class="field full">
+                        <label>更多圖片 / 輪播（選填）</label>
+                        <div id="images-editor" class="stack"></div>
+                        <div class="img-row" style="margin-top:.5rem;">
+                            <label class="btn" style="margin:0;">
+                                + 上傳圖片
+                                <input type="file" id="more-file" accept="image/*" multiple class="hidden" />
+                            </label>
+                            <span class="muted" id="more-status"></span>
+                        </div>
+                    </div>
+
+                    <div class="field full">
+                        <label>內文（Markdown）*</label>
+                        <textarea id="f-body" placeholder="# 標題&#10;內文支援 Markdown…"></textarea>
+                    </div>
+
+                    <div class="row" style="justify-content:flex-end; gap:.6rem;">
+                        <button class="btn" id="btn-cancel">取消</button>
+                        <button class="btn danger hidden" id="btn-delete">刪除</button>
+                        <button class="btn primary" id="btn-save">儲存</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 區塊文字 -->
+            <div id="tab-sections" class="hidden">
+                <div class="card">
+                    <p class="muted">編輯首頁 / 關於我等主要區塊文字。含 <code>\n</code> 會顯示為換行。</p>
+                    <div id="sections-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 依賴：supabase-js / marked / DOMPurify（皆來自 jsDelivr，受 CSP 限制） -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+
+    <script src="assets/js/supabase-config.js"></script>
+    <script src="assets/js/supabase-client.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/admin.js"></script>
+</body>
+
+</html>

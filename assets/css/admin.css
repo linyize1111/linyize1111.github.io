@@ -1,0 +1,81 @@
+/* admin.css — 主網站後台 CMS 樣式（獨立、簡潔、與主站色調一致） */
+:root {
+  --a-bg: #0e1420;
+  --a-panel: rgba(22, 30, 46, 0.92);
+  --a-panel-2: rgba(30, 40, 60, 0.7);
+  --a-border: rgba(255, 255, 255, 0.12);
+  --a-text: #e8eaf2;
+  --a-muted: #9aa3b5;
+  --a-accent: #56d0f8;
+  --a-danger: #f4708a;
+  --a-ok: #5ad19a;
+}
+* { box-sizing: border-box; }
+body.admin {
+  margin: 0;
+  font-family: "Source Sans Pro", "Merriweather", system-ui, "Noto Sans TC", sans-serif;
+  background: linear-gradient(160deg, #0b1018, #131c2c 60%, #0b1018);
+  color: var(--a-text);
+  min-height: 100vh;
+}
+.admin-wrap { max-width: 1080px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+.admin-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+}
+.admin-top h1 { font-size: 1.4rem; margin: 0; letter-spacing: .04em; }
+.admin-top .who { color: var(--a-muted); font-size: .9rem; }
+.card {
+  background: var(--a-panel); border: 1px solid var(--a-border);
+  border-radius: 12px; padding: 1.25rem 1.25rem; margin-bottom: 1.25rem;
+  backdrop-filter: blur(8px);
+}
+.btn {
+  display: inline-flex; align-items: center; gap: .4rem; cursor: pointer;
+  background: transparent; color: var(--a-text);
+  border: 1px solid var(--a-border); border-radius: 8px;
+  padding: .5rem .9rem; font-size: .9rem; transition: .15s;
+}
+.btn:hover { border-color: var(--a-accent); color: var(--a-accent); }
+.btn.primary { background: rgba(86, 208, 248, .14); border-color: var(--a-accent); color: var(--a-accent); }
+.btn.danger { border-color: var(--a-danger); color: var(--a-danger); }
+.btn.danger:hover { background: rgba(244, 112, 138, .14); }
+.btn.google { background: #fff; color: #202124; border: none; font-weight: 600; padding: .7rem 1.4rem; }
+.btn:disabled { opacity: .45; cursor: default; }
+.row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.field { margin-bottom: 1rem; flex: 1 1 220px; }
+.field.full { flex-basis: 100%; }
+label { display: block; font-size: .82rem; color: var(--a-muted); margin-bottom: .35rem; }
+input, select, textarea {
+  width: 100%; background: rgba(255,255,255,.06); color: var(--a-text);
+  border: 1px solid var(--a-border); border-radius: 8px; padding: .55rem .7rem;
+  font-size: .92rem; font-family: inherit;
+}
+textarea { resize: vertical; min-height: 320px; line-height: 1.6; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a-accent); }
+.tabs { display: flex; gap: .5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.tab { padding: .5rem 1rem; border-radius: 8px; cursor: pointer; border: 1px solid var(--a-border); color: var(--a-muted); }
+.tab.active { color: var(--a-accent); border-color: var(--a-accent); background: rgba(86,208,248,.1); }
+.list-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .8rem 1rem; border: 1px solid var(--a-border); border-radius: 8px; margin-bottom: .6rem;
+  background: var(--a-panel-2);
+}
+.list-item .meta { min-width: 0; }
+.list-item .meta h4 { margin: 0 0 .2rem; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list-item .meta small { color: var(--a-muted); }
+.badge { font-size: .72rem; padding: .12rem .5rem; border-radius: 99px; border: 1px solid var(--a-border); }
+.badge.published { color: var(--a-ok); border-color: var(--a-ok); }
+.badge.draft { color: var(--a-muted); }
+.hidden { display: none !important; }
+.msg { padding: .7rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: .9rem; }
+.msg.err { background: rgba(244,112,138,.14); border: 1px solid var(--a-danger); color: #ffd0da; }
+.msg.ok { background: rgba(90,209,154,.14); border: 1px solid var(--a-ok); color: #cdf5e4; }
+.thumb { width: 84px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--a-border); }
+.img-row { display: flex; align-items: center; gap: .6rem; margin-bottom: .5rem; }
+.img-row input { flex: 1; }
+.muted { color: var(--a-muted); font-size: .85rem; }
+.center { text-align: center; }
+.stack { display: flex; flex-direction: column; gap: .5rem; }
+.spinner-inline { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color: var(--a-accent); border-radius:50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
