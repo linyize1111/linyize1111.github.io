@@ -121,26 +121,37 @@
     return art;
   }
 
+  function initListWidgets() {
+    // 重新初始化 page-list.js 的排序 / 篩選 / 輪播
+    if (typeof window.initSortingAndFiltering === "function")
+      window.initSortingAndFiltering();
+    if (typeof window.initCarousel === "function") window.initCarousel();
+  }
+
   async function renderList(container) {
     var section = container.getAttribute("data-section");
     var client = window.SB.client();
-    container.innerHTML =
-      '<div style="text-align:center;padding:40px 0;opacity:.7;">載入中…</div>';
 
-    var res = await client
-      .from("articles")
-      .select(
-        "id,section,slug,title,summary,cover,images,category,tags,pdf_url,status,published_at,created_at,updated_at,sort_index"
-      )
-      .eq("section", section)
-      .eq("status", "published")
-      .order("sort_index", { ascending: false })
-      .order("published_at", { ascending: false });
+    // 注意：抓取成功前「不清空」既有靜態 HTML，避免資料庫尚未就緒時把內容清掉。
+    var res;
+    try {
+      res = await client
+        .from("articles")
+        .select(
+          "id,section,slug,title,summary,cover,images,category,tags,pdf_url,status,published_at,created_at,updated_at,sort_index"
+        )
+        .eq("section", section)
+        .eq("status", "published")
+        .order("sort_index", { ascending: false })
+        .order("published_at", { ascending: false });
+    } catch (e) {
+      res = { error: e };
+    }
 
     if (res.error) {
-      console.error("[cms] 讀取文章失敗：", res.error.message);
-      container.innerHTML =
-        '<div style="text-align:center;padding:40px 0;">內容載入失敗，請稍後再試。</div>';
+      // 讀取失敗（例如資料表尚未建立）→ 保留現有靜態內容，照常初始化排序/輪播。
+      console.warn("[cms] 讀取文章失敗，改用靜態內容：", res.error.message || res.error);
+      initListWidgets();
       return;
     }
 
@@ -154,11 +165,7 @@
         container.appendChild(buildCard(a));
       });
     }
-
-    // 重新初始化 page-list.js 的排序 / 篩選 / 輪播
-    if (typeof window.initSortingAndFiltering === "function")
-      window.initSortingAndFiltering();
-    if (typeof window.initCarousel === "function") window.initCarousel();
+    initListWidgets();
   }
 
   // ---- 2. 文章頁 ---------------------------------------------------
