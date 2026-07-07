@@ -1,0 +1,1834 @@
+-- =====================================================================
+-- APPLY_ALL_IN_SQL_EDITOR.sql
+-- 請整份貼到 Supabase Dashboard -> SQL Editor -> New query -> Run。
+-- 內含 0001(schema+RLS) + 0002(storage) + 0003(seed 15 articles)。
+-- 可安全重跑（if not exists / on conflict / drop policy if exists）。
+-- =====================================================================
+
+-- ####################### 0001_init.sql #######################
+-- =====================================================================
+-- linyize1111.github.io  個人主網站 CMS  —  初始 schema + RLS
+-- 目標 Supabase 專案：全新、獨立（與 ACG 專案完全隔離）
+-- 套用方式：Supabase Dashboard → SQL Editor → 貼上整份執行
+-- 安全模型：
+--   * 公開（anon）只能讀取 status='published' 的文章與所有區塊文字
+--   * 只有白名單 admins.email（= 登入者 Google 信箱）可寫入
+--   * admins 白名單一般人 / 前端都無法讀寫，只能由開發者用 SQL / service key 改
+-- =====================================================================
+
+-- gen_random_uuid()（Supabase 預設已安裝，這裡確保存在）
+create extension if not exists pgcrypto;
+
+-- ---------------------------------------------------------------------
+-- 1. 共用：updated_at 自動更新
+-- ---------------------------------------------------------------------
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- 2. admins 白名單
+-- ---------------------------------------------------------------------
+create table if not exists public.admins (
+  email      text primary key,
+  note       text,
+  created_at timestamptz not null default now()
+);
+
+comment on table public.admins is
+  '管理員白名單。僅能由開發者透過 SQL / service key 維護，前端無法新增。';
+
+-- ---------------------------------------------------------------------
+-- 3. is_admin()：比對登入者 JWT 的 email 是否在白名單
+--    SECURITY DEFINER：略過 admins 的 RLS，讓白名單本身可保持鎖定
+-- ---------------------------------------------------------------------
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.admins a
+    where lower(a.email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+  );
+$$;
+
+comment on function public.is_admin() is
+  '回傳目前登入者 email 是否在 admins 白名單。給前端與 RLS policy 使用。';
+
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_admin() to anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- 4. articles 文章（文學隨筆 + 學科筆記共用；用 section 區分）
+-- ---------------------------------------------------------------------
+create table if not exists public.articles (
+  id           uuid primary key default gen_random_uuid(),
+  section      text not null check (section in ('literature','notes')),
+  slug         text not null,
+  title        text not null,
+  summary      text not null default '',       -- 卡片摘要
+  body         text not null default '',        -- Markdown 內文
+  cover        text,                            -- 主圖 URL（Storage 或外部）
+  images       jsonb not null default '[]'::jsonb, -- 額外圖 / 輪播 [{src,caption}]
+  category     text,                            -- 分類（隨筆/心得/創作 或 資訊安全/機器學習/程式語言/人文）
+  tags         text[] not null default '{}',
+  pdf_url      text,                            -- 選擇性 PDF
+  status       text not null default 'draft' check (status in ('draft','published')),
+  sort_index   int  not null default 0,         -- 手動排序（可選）
+  published_at timestamptz,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  unique (section, slug)
+);
+
+create index if not exists articles_section_status_idx
+  on public.articles (section, status, published_at desc);
+create index if not exists articles_category_idx
+  on public.articles (category);
+
+drop trigger if exists trg_articles_updated_at on public.articles;
+create trigger trg_articles_updated_at
+  before update on public.articles
+  for each row execute function public.set_updated_at();
+
+-- 發佈時自動補 published_at
+create or replace function public.articles_set_published_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.status = 'published' and new.published_at is null then
+    new.published_at = now();
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_articles_published_at on public.articles;
+create trigger trg_articles_published_at
+  before insert or update on public.articles
+  for each row execute function public.articles_set_published_at();
+
+-- ---------------------------------------------------------------------
+-- 5. site_sections 主要區塊文字（key -> value）
+--    例：home.intro.title / home.intro.subtitle / about.body ...
+-- ---------------------------------------------------------------------
+create table if not exists public.site_sections (
+  key        text primary key,
+  value      text not null default '',
+  updated_at timestamptz not null default now()
+);
+
+drop trigger if exists trg_site_sections_updated_at on public.site_sections;
+create trigger trg_site_sections_updated_at
+  before update on public.site_sections
+  for each row execute function public.set_updated_at();
+
+-- ---------------------------------------------------------------------
+-- 6. RLS
+-- ---------------------------------------------------------------------
+alter table public.articles      enable row level security;
+alter table public.site_sections enable row level security;
+alter table public.admins        enable row level security;
+
+-- articles：公開讀 published；admin 讀全部 + 寫全部
+drop policy if exists articles_public_read on public.articles;
+create policy articles_public_read on public.articles
+  for select
+  to anon, authenticated
+  using (status = 'published' or public.is_admin());
+
+drop policy if exists articles_admin_insert on public.articles;
+create policy articles_admin_insert on public.articles
+  for insert to authenticated
+  with check (public.is_admin());
+
+drop policy if exists articles_admin_update on public.articles;
+create policy articles_admin_update on public.articles
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists articles_admin_delete on public.articles;
+create policy articles_admin_delete on public.articles
+  for delete to authenticated
+  using (public.is_admin());
+
+-- site_sections：公開讀；admin 寫
+drop policy if exists site_sections_public_read on public.site_sections;
+create policy site_sections_public_read on public.site_sections
+  for select to anon, authenticated
+  using (true);
+
+drop policy if exists site_sections_admin_write on public.site_sections;
+create policy site_sections_admin_write on public.site_sections
+  for all to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- admins：只有 admin 能讀（一般使用者連白名單都看不到）；不開放任何 API 寫入
+drop policy if exists admins_admin_read on public.admins;
+create policy admins_admin_read on public.admins
+  for select to authenticated
+  using (public.is_admin());
+
+-- ---------------------------------------------------------------------
+-- 7. Grants（RLS 之外還需要 table 權限）
+-- ---------------------------------------------------------------------
+grant usage on schema public to anon, authenticated;
+grant select on public.articles      to anon, authenticated;
+grant insert, update, delete on public.articles to authenticated;
+grant select on public.site_sections to anon, authenticated;
+grant insert, update, delete on public.site_sections to authenticated;
+grant select on public.admins        to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 8. 初始白名單（★ 必填 ★）
+--    請把下面的 email 換成你的「Google 登入信箱」（= ACG 管理員信箱）。
+--    未替換前，沒有人具備管理員權限（安全預設）。
+-- ---------------------------------------------------------------------
+insert into public.admins (email, note) values
+  ('jay0975008815@gmail.com', '主網站站長')
+on conflict (email) do nothing;
+
+-- ---------------------------------------------------------------------
+-- 9. 主要區塊文字種子（可先建立，之後在後台編輯）
+-- ---------------------------------------------------------------------
+-- 注意：以下 E'...' 字串中的 \n 代表換行（前端 text 模式會轉成 <br>）
+insert into public.site_sections (key, value) values
+  ('home.intro.title',    'WELCOME!!!'),
+  ('home.intro.subtitle', 'An average student from Taiwan'),
+  ('home.featured.title', '關於本站與我'),
+  ('home.featured.body',  E'我是林佾則，目前就讀於國立中山大學資訊工程學系二年級。\n\n本網站於 2020 年 12 月初試啼聲，那時十分感謝資訊社學長的指導，讓我得以搭建出這專屬於我的數位空間。雖然當時僅具雛形，卻也成為我記錄學習歷程的珍貴起點。\n\n升上大二後，我不僅在程式語言與資訊科學上持續精進，更重新拾起閱讀的習慣，廣泛涉獵文學、藝術、音樂與咖啡等多元領域。基於對美學與技術的雙重追求，我於近期著手將網站進行全方位的翻新與優化。未來，這裡將持續蛻變為我記錄技術筆記與生活思想的靜謐天地，歡迎您的駐足與閱覽。'),
+  ('about.heading',       E'月季花四季盛放\n說起來，落花時節就是花開時節呢。'),
+  ('about.body',          E'您好，我是林佾則。目前就讀於國立中山大學資訊工程學系。\n\n我熱愛撰寫程式、沉浸於文學，也喜歡在閒暇時享受一杯好咖啡與音樂。這個網站最初是我在 2020 年建置的雛形，隨著學習歷程逐漸豐富，我於近期對它進行了全面的翻修。希望能藉由這個空間，記錄並分享我在技術追求與生活思索間的各種火花。')
+on conflict (key) do nothing;
+
+
+-- ####################### 0002_storage.sql #######################
+-- =====================================================================
+-- Storage：文章圖片 bucket
+--   bucket 名稱：article-images
+--   公開讀取（public read）；只有 admin 白名單可上傳 / 覆蓋 / 刪除
+-- 套用方式：Supabase Dashboard → SQL Editor 執行本檔（在 0001 之後）
+-- 前端上傳時另外做「壓縮 + 大小/類型限制」（見 assets/js/admin.js）
+-- =====================================================================
+
+-- 建立 public bucket；限制單檔 5MB、僅允許常見圖片類型
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'article-images',
+  'article-images',
+  true,
+  5242880,  -- 5 MB
+  array['image/jpeg','image/png','image/webp','image/gif','image/avif']
+)
+on conflict (id) do update
+  set public             = excluded.public,
+      file_size_limit    = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+-- ---------------------------------------------------------------------
+-- Storage RLS policies（作用於 storage.objects）
+-- ---------------------------------------------------------------------
+
+-- 公開讀取此 bucket 的檔案
+drop policy if exists article_images_public_read on storage.objects;
+create policy article_images_public_read on storage.objects
+  for select to anon, authenticated
+  using (bucket_id = 'article-images');
+
+-- 只有 admin 可上傳
+drop policy if exists article_images_admin_insert on storage.objects;
+create policy article_images_admin_insert on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'article-images' and public.is_admin());
+
+-- 只有 admin 可更新（覆蓋）
+drop policy if exists article_images_admin_update on storage.objects;
+create policy article_images_admin_update on storage.objects
+  for update to authenticated
+  using (bucket_id = 'article-images' and public.is_admin())
+  with check (bucket_id = 'article-images' and public.is_admin());
+
+-- 只有 admin 可刪除
+drop policy if exists article_images_admin_delete on storage.objects;
+create policy article_images_admin_delete on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'article-images' and public.is_admin());
+
+
+-- ####################### 0003_seed_articles.sql #######################
+-- 0003_seed_articles.sql (generated by tools/gen_seed_sql.ps1)
+-- Imports existing literature/notes Markdown. Upserts on (section,slug); safe to re-run.
+-- Run in Supabase SQL Editor AFTER 0001/0002.
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$2024年9月13日 生活札記：中山大學入學日記$md$, $md$生活札記：中山大學入學日記$md$, $md$來了兩個禮拜的入學紀錄。依山傍海的環境、獼猴與蛇的生態、港口公園的夜風與 Yorushika，以及初次長大的不真實感。$md$,
+  $md$---
+title: 2024年9月13日 生活札記：中山大學入學日記
+tags: [生活札記, ' 大學日常', ' 西子灣', ' Yorushika']
+
+---
+
+---
+title: 2024年9月13日 生活札記：中山大學入學日記
+tags: 生活札記, 大學日常, 西子灣, Yorushika
+date: 2024-09-13
+---
+
+# 2024年9月13日 生活札記：中山大學入學日記
+
+來了兩個禮拜，小小紀錄一下。中山除了學術地位比較低以外，各方面是真的都挺好的。
+
+依山傍海的環境很美，人文也很豐富優良。校園在烈陽下雖然炙熱但紅磚也因此格外醒目，在藍天白雲之下就好似一幅畫般的存在。從宿舍的窗戶就能俯瞰到海和校園，黃昏時分的天際線讓人不禁感嘆，這裡比起學校更像是觀光勝地吧。海浪的白噪音淹沒了偶爾呼嘯而過的機車引擎聲與冷氣的運作聲，不管是讀書或是睡覺都很舒服。
+
+即使校園環境很好，但它並沒有犧牲太大的生活機能，騎車幾分鐘就能吹這海風抵達市區了，並不乏夜生活的精彩。除了環境外這裡更有多樣的生態，不只是聲名遠播的獼猴，只要往山內騎深一些還能看到各種生物，上個禮拜我甚至還撞見一條在路中央不小的蛇。
+
+然後這裡蠻重視各種文化交流的，除了校園內有一堆外生以外，學校還給了不少的出國交換管道和補助等資源，之後如果有能力我蠻想利用來拓展一下視野的。
+
+最後，我今天 11:30 跟室友騎車出去吃了宵夜，吃完很飽我就騎到港口公園散步了一個小時左右。邊吹著海風邊聽 Yorushika 的歌單，再配上幾首 Jazz，好不愜意。
+
+高雄有些悶熱，海風的鹹味與些許汗珠的鹽分混在一起，雖然有些不適但我的內心卻很是涼爽。看著高低起伏的海面，不知為何莫名療癒，音樂與海浪的白噪音交織成了一首首名為成長的歌單，雖然現在還很不成熟，但總算是有點「啊，我已經長大了」的不真實感。
+
+昨天加了系籃，課表也慢慢填滿，社團估計也會慢慢嘗試。這裡每天都很熱但我蠻開心的，從高中畢業之後，我總算是再次抓到了夏日的尾巴，期待未來的幾年能讓自己成為更好的人。
+
+> **P.S.** 那張猴子手上拿著的是我的午餐包子 ==
+> **P.P.S.** 學術地位那邊我是和我那些跟鬼一樣的大佬同學比的，請別介意
+
+![附圖](images/中山大學入學圖片1.jpg)$md$,
+  $md$images/中山大學入學圖片1.jpg$md$, $j$[]$j$::jsonb, $md$隨筆$md$, '{}'::text[], null, 'published', 0,
+  '2024-09-13T00:00:00Z'::timestamptz, '2024-09-13T00:00:00Z'::timestamptz, '2024-09-13T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證$md$, $md$生活札記：忠烈祠的貓與夜空下的見證$md$, $md$2025年11月23日 生活札記$md$,
+  $md$---
+title: 2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證
+tags: [生活札記, ' 散文', ' 攝影隨筆']
+
+---
+
+---
+title: 2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證
+tags: 生活札記, 散文, 攝影隨筆
+date: 2025-11-23
+---
+
+# 2025年11月23日 生活札記：忠烈祠的貓與夜空下的見證
+
+吃晚飯後莫名心情很差，我決定先放下手邊的書亂跑看看風景調適心情。一開始先在老地方看海，過了幾個小時之後還是沒好點，我決定改上來山上的忠烈祠看夜景，現在好多了。
+
+首先是看到這兩隻一模一樣而且在睡覺的貓貓肉球，很可愛很療癒，什麼都沒做單純看著他們心情就好了一大半。然後是夜景，這邊幾乎是至高點了吧？稍微走動就可以看到整個高雄市。我盯著遠方的霓虹燈發呆，放空腦袋拋開思緒，單純呼吸並感受自己的存在及情緒的渺小，過了不知道幾個紅綠燈週期之後就好多了。
+
+不過再來我持續往裡面走開始有點感慨，這裡是忠烈祠，但裡面幾乎沒人進去，只有我一個人摸黑往內走，如果換做是小時候的我一定會怕的要命吧？但現在的我只覺得有點悲傷，在百年前這些人也跟我們一樣都是活生生的人，只是因為想保衛腳下的土地及在乎的人而抗日，最後失去生命。
+
+「忠烈祠」這三個字在我看來突然變得好沈重，它背後是著無數的靈魂跟家庭，而現在牌坊甚至還被圍起來，除了我這腦袋撞到的怪人以外沒有人進到裡面。
+
+我默默雙手合十鞠躬致意，告訴祂們直到我死之前，至少會有一個人會記著這些事，這是我能做到的唯一一件事了，願世上所有曾經努力活著的靈魂可以安息。
+
+
+![附圖](images/忠烈祠的貓與夜空下的見證附圖2.jpg)
+![附圖](images/忠烈祠的貓與夜空下的見證附圖1.jpg)$md$,
+  $md$images/忠烈祠的貓與夜空下的見證附圖2.jpg$md$, $j$[{"src":"images/忠烈祠的貓與夜空下的見證附圖1.jpg","caption":""}]$j$::jsonb, $md$隨筆$md$, '{}'::text[], null, 'published', 0,
+  '2025-11-23T00:00:00Z'::timestamptz, '2025-11-23T00:00:00Z'::timestamptz, '2025-11-23T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$2025年6月15日 生活札記：與海對話$md$, $md$生活札記：與海對話$md$, $md$2025年6月15日 生活札記$md$,
+  $md$---
+title: 2025年6月15日 生活札記：與海對話
+tags: [生活札記, ' 散文', ' 自我對話', ' 海']
+
+---
+
+---
+title: 2025年6月15日 生活札記：與海對話
+tags: 生活札記, 散文, 自我對話, 海
+date: 2025-06-15
+---
+
+# 2025年6月15日 生活札記：與海對話
+
+一時興起買了早餐跑來海邊吃，很爽，我真的很愛看海。
+
+潮起潮落，海浪就像是世界的心跳，也像是母親溫柔朝我伸出的雙臂一般。
+
+我靜靜地坐在海堤上，看著海平面與延綿至天邊無盡的藍發愣。
+
+聽著繁亂卻規律的海浪拍打聲，有時像在哭泣有時卻又像是在嘶吼，但更多時候這只是平凡的心跳聲，來自這位願意無限接受我情緒與想法的聆聽者，屢屢撫慰我的心靈。
+
+海，是生命的起源、是地球的心臟、也是文明的母親，它平凡、單調卻又如此雄偉、繁美，包容著這世界許多事物，同時無私的為我們持續演奏一場無止境的生命交響曲。
+
+我好喜歡看海、聽海、感受海，好幾分鐘甚至幾小時我甚至都沒看一眼手機，這般心靈上的充實與滿足甚至是性高潮也比不上的舒適。
+
+這或許是這個大一生活最後一次這樣長時間看海了，這也讓我想起這一年的種種。我是個社恐、不認真的可悲學生，我沒有成就也沒有太多社交上的進展，但我很開心。
+
+一開始總會想：「如果我當初認真一點，我可能可以上頂大了吧？」但現在完全不會思考這無意義的問題。或許我真的能有更多成就吧？人生也能更美好吧？但我看不到昨日的夕陽、今天的海、以及明天西子灣的朝陽。
+
+人生是一個單向且不能反悔的選擇遊戲，不管路怎麼走，總是沒有對錯，有的只是自己靈魂的滿足與否。無論是什麼選擇，最終都只是人生的一小塊拼圖，而我現在很滿足，如同所有選擇一樣，我只會繼續往前走，不會往回看，就像浪潮總是只向人類擁抱一般。$md$,
+  null, $j$[]$j$::jsonb, $md$隨筆$md$, '{}'::text[], null, 'published', 0,
+  '2025-06-15T00:00:00Z'::timestamptz, '2025-06-15T00:00:00Z'::timestamptz, '2025-06-15T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$2026年1月14日 生活札記：凌晨三點半的荒謬與平凡$md$, $md$生活札記：凌晨三點半的荒謬與平凡$md$, $md$2026年1月14日 生活札記$md$,
+  $md$---
+title: 2026年1月14日 生活札記：凌晨三點半的荒謬與平凡
+tags: [生活札記, ' 散文']
+
+---
+
+---
+title: 2026年1月14日 生活札記：凌晨三點半的荒謬與平凡
+tags: 生活札記, 散文
+date: 2026-01-14
+---
+
+# 2026年1月14日 生活札記：凌晨三點半的荒謬與平凡
+
+不太知道甚麼是幸福，也不知道生命的意義是甚麼，也許都是虛無吧？
+
+但就是像這樣在凌晨三點半的夜裡，在十二度的寒冬中喝著剛泡好，甚至還頗為燙嘴的抹茶，配著奶焗香蔥口味樂事洋芋片，聽著朴樹的平凡之路，讀著20世紀面對黑死病的情緒與生活，思考何謂存在主義與荒謬，我就能一直活下去。
+
+> 「我曾經跨過山和大海 也穿過人山人海
+> 我曾經擁有著的一切 轉眼都飄散如煙
+> 我曾經失落失望 失掉所有方向
+> 直到看見平凡 才是唯一的答案」
+
+也許歌詞唱到這也是在替我解答吧，這些平凡就是我的幸福，也是我繼續活著的驅力。
+
+![附圖](images/中山大學入學圖片1.jpg)$md$,
+  $md$images/中山大學入學圖片1.jpg$md$, $j$[]$j$::jsonb, $md$隨筆$md$, '{}'::text[], null, 'published', 0,
+  '2026-01-14T00:00:00Z'::timestamptz, '2026-01-14T00:00:00Z'::timestamptz, '2026-01-14T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$2026年3月 札記：Charlie Kirk 之死與民主社會的失溫$md$, $md$Charlie Kirk 之死與民主社會的失溫$md$, $md$針對近期時事之反思與隨筆。$md$,
+  $md$---
+title: 2026年3月 札記：Charlie Kirk 之死與民主社會的失溫
+tags: [生活札記, ' 政治反思', ' 民主自由', ' 散文']
+
+---
+
+---
+title: 2026年3月 札記：Charlie Kirk 之死與民主社會的失溫
+tags: 生活札記, 政治反思, 民主自由, 散文
+---
+
+# Charlie Kirk 之死與民主社會的失溫
+
+Charlie Kirk 被狙殺是這幾個禮拜幾個月以來，最讓我震撼的事。
+
+可能有人會說這事跟我沒有關係，但其實是有的，姑且不論我常常看他的辯論影片反思，他對於民主自由的貢獻也真的很大，而我們又在享譽民主的台灣。
+
+先聲明，他不少論述我是不認同甚至討厭的，比如大學無用論及對川普一些錯誤政策的無腦認同，不過我認為他仍然是少數願意也有能力跟任何人交談辯論交換想法的政治家、思想家。他被槍殺不只是一個人死亡，而是代表美國、甚至是民主社會對於言論及政治立場的包容性並沒有我們想的這麼美好。
+
+縱使有人因為政治立場結束另一個人的生命，依然有很多人大肆慶祝，我由衷感到難過遺憾，這並不是偽善，我只是作為一個人類發自內心的同情、憐憫一個不幸之人及民主社會的缺陷。
+
+當有人與我們的意見不同，我們就可以用暴力行為去約束他，這絕對是錯誤的，這是如同法西斯一般的愚蠢行為。
+
+以自由為幟卻容不下其他人的聲音，荒謬至極。還是那句話，我們的社會平均水準或許並沒有足夠韌性與能力讓我們享受完全的民主自由。
+
+立場可以自由表述擁有，但當它走向極端，他將不再是民主與自由而是暴力與獨裁。不論極端左派用平等的口號享受特權，亦或是極端右派強加自己的想法在別人身上，這都是荒謬且顯然錯誤的。希冀人類社會有一天能真正互相尊重，等到那一天才會是真正的民主自由社會。
+
+R.I.P.
+
+![附圖](images/charlie_kirk_附圖.jpg)$md$,
+  $md$images/charlie_kirk_附圖.jpg$md$, $j$[]$j$::jsonb, $md$隨筆$md$, '{}'::text[], null, 'published', 0,
+  '2025-09-12T00:00:00Z'::timestamptz, '2025-09-12T00:00:00Z'::timestamptz, '2025-09-12T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$_抽離意義的性：一場人性自願的降格$md$, $md$抽離意義的性：一場人性自願的降格$md$, $md$對於人性現象的觀察與深度隨筆。$md$,
+  $md$---
+title: ' 抽離意義的性：一場人性自願的降格'
+
+---
+
+---
+title: 抽離意義的性：一場人性自願的降格
+tags: 閱讀心得, 哲學思辨, 散文
+---
+
+# 抽離意義的性：一場人性自願的降格
+
+抽離意義後的性，是一種人性自願的降格，那使我心存抗拒。
+
+每當閱讀書籍或接觸某些創作時，只要涉及淫亂或缺乏情感基礎的性描寫，我便會從內心深處感到強烈不適。無論是男性或女性角色，**只要那種性關係並非建立在雙方自願且相愛的前提之上，我都難以接受，甚至會產生近乎作嘔的感受。**
+
+令我意外的是，在閱讀過程中，我停下來休息最多、閱讀得最緩慢的部分，往往正是那些描寫人在惡劣環境下，退回最原始、本能生理需求的段落。那種赤裸裸呈現人類獸性的描寫，使我感到噁心與憤恨。儘管我曾接觸過許多成人題材的作品，也並不排斥討論性本身，但**當性被極端寫實地呈現為純粹且自然的動物生理需求實現，我往往難以承受。**
+
+這也解釋了我在各類作品欣賞選擇上的傾向。某些以女性情感關係為核心的創作，例如「百合」分類，往往將身體親密視為情感深化後的自然延伸，它是更純粹且完整的，而非脫離脈絡的生理行為。這種敘事方式更接近我對性的理解。
+
+---
+
+或許有人會認為這樣的觀點過於傳統或保守，但對我而言，**性理應與情感、承諾與愛緊密相連**。若將其中任何一項抽離，性便失去了其意義，只剩下形式。那就像一道失去味道與質地的食物，徒具外觀，卻令人難以下嚥，甚至讓人作嘔。
+
+我並非拒絕面對性，也不是無法討論相關議題。我真正排斥的，是那種被剝離了情感與尊重的性，是被還原為純粹生理機制的互動。當人被描寫為僅受本能驅使的存在時，我感到的並不只是違和，更是一種對人性脆弱的失望與厭惡。
+
+回到現實，面對當代部分人類的性觀念流變，我是有些鄙夷且厭煩的，或許已延伸為對某些性別敘事與文化氛圍的疏離，甚至對自身的反思。**我不甘心目睹自己或甚至人類這種自願降格的生命哲學，以動物性的滿足作為終極價值。**
+
+> 我所拒絕的，從來不是性或慾望本身，是物化、是剝離了尊嚴與尊重、是失去了意義的性，也是人類背叛了作為「人」應有的厚度與尊嚴。$md$,
+  null, $j$[]$j$::jsonb, $md$隨筆$md$, '{}'::text[], null, 'published', 0,
+  '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類$md$, $md$《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類$md$, $md$點擊圖片即前往對應篇章的閱讀筆記。$md$,
+  $md$---
+title: 《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類
+
+---
+
+# 《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類
+
+
+## 零、 前言:
+
+雖然這本書的字數不多，但我依然花了總共大約20小時才把他詳讀完，因為內容蘊含了非常多不同的議題跟哲學，同一個章節我也要反覆看好幾次才能理解。而既然這本書這麼複雜，我當然不可能一次把所有心得寫完，因此我打算分成複數篇文章，之後會依據每個層次分別寫一篇。
+
+首先我將會先寫一下故事大綱，第二部分將會弄一個人物表，方便讓讀者與未來的我複習一遍，再來我將會分類各個層次，最後再來細談各個主題。
+
+---
+
+
+## 壹、 故事大綱: 
+
+### 第一部：徵兆與爆發
+> 既然得親眼見到某人死亡，這個死去的人才有重量，那麼這散佈在歷史當中的一億具屍體，不過就是想像中的一縷煙罷了。
+
+- **背景設定**：敘事者介紹奧蘭城，一個平凡、乾燥、以商業為主的沿海城市。
+- **異象初現**：李厄醫生在診所前踢到一隻死老鼠。隨後幾天，城內死鼠數量激增，成千上萬隻老鼠爬出陰溝死在街頭，引發市民不安。
+- **首例死亡**：李厄所住公寓的門房米歇爾發燒，頸部淋巴腫大，在劇痛中死亡。
+- **疫情擴散**：類似病例開始出現。老同事卡斯特確認這是鼠疫。
+- **官方反應**：李厄向醫師公會與省政府預警。當局因擔心公眾恐慌，初期拒絕使用「瘟疫」一詞，僅採取有限的隔離措施。
+- **封城**：死亡人數直線上升，突破臨界點。政府宣布鼠疫流行，關閉城門。
+
+### 第二部：隔離與應對
+> 我不相信英雄主義，唯一令我感興趣的是為自己所愛而生、而死。
+- **封鎖狀態**：城門關閉，禁止進出。書信往來中斷，僅能發送電報。全城陷入與親人分離的痛苦。
+- **柯塔的轉變**：原本畏罪自殺未遂的柯塔，因警察忙於防疫而獲得安全感，開始從事黑市交易，性格變得活躍。
+- **藍柏的計畫**：記者藍柏認為自己不屬於這座城市，積極尋找非法管道試圖逃回巴黎見女友。
+- **帕尼路神父第一次佈道**：宣稱鼠疫是上帝對奧蘭人罪惡的懲罰，呼籲悔改。
+- **組織防疫**：塔盧觀察到官方措施不足，向李厄提議組織民間「衛生防疫隊」。
+- **關鍵轉折**：葛朗負責防疫隊的秘書統計工作。藍柏在即將逃脫的最後一刻改變主意，決定留下加入防疫隊，認為「獨自幸福是可恥的」。
+
+### 第三部：高峰與慣性
+> 瘟疫剝奪了每一個人愛的力量，甚至於友情的力量。因為愛需要有一點未來，而我們卻只剩下片段的時刻。
+- **疫情惡化**：夏季來臨，高溫助長疫情。因受害者過多，葬禮儀式被簡化、最後被取消。
+- **死者處理**：屍體先是集體土葬，後因墓地不足改為火化，甚至動用觀光電車運送屍體。
+- **集體麻木**：居民從初期的恐懼與反抗，轉變為沈悶的順從。人們失去對未來的想像，活在當下的慣性中，情感變得遲鈍。
+
+### 第四部：轉折與死別
+> 「或許是因為我也想為幸福做點甚麼吧。」
+- **歐東之子之死**：李厄與神父等人試用卡斯特研發的新血清，治療歐東法官的兒子。眾人目睹孩童在長時間痛苦掙扎後無效死亡。
+- **信仰的衝擊**：李厄對神父發出憤怒的質問。帕尼路神父深受震撼，發表第二次佈道，不再解釋鼠疫的原因，而是強調「全盤接受上帝的旨意」。
+- **神父之死**：帕尼路隨後病倒，拒絕醫生治療，最終手握十字架死亡。診斷卡上被標註為「可疑病例」。
+- **短暫的喘息**：李厄與塔盧在工作間隙，獲得通行證前往防波堤游泳，享受片刻的寧靜與友誼。
+- **葛朗發病與康復**：聖誕節前後，葛朗染病。他在病危時要求燒毀所有寫作手稿。然而隔天早晨，他的體溫奇蹟似地下降，宣告康復。
+- **疫情回落**：葛朗康復後，街頭重新出現活的老鼠。這被視為疫情消退的信號。
+
+### 第五部：解封與終章
+> 他們已經分不清瘡內延續著的痛苦與稍遠處街道上充斥著的歡笑。逐漸接近的解脫原來有一張攙雜著笑與淚的面孔。
+- **最後的犧牲者**：就在疫情大幅下降、城門即將開啟前夕，歐東法官死於鼠疫。
+- **塔盧之死**：塔盧隨後也染病。李厄親自照護，但塔盧仍在與病魔激烈搏鬥後死亡。李厄承受喪友之痛。
+- **開放城門**：二月，奧蘭城解除封鎖。火車進站，分隔兩地的親人與愛人重逢，全城狂歡。
+- **柯塔的結局**：隨著秩序恢復，柯塔陷入恐慌並發瘋，在街上開槍拒捕，最後被警方帶走。
+- **敘事者揭曉**：李厄醫生承認自己就是本書的敘事者。
+- **結局**：藍柏與愛人重逢。李厄獨自看著慶祝的人群，思念著死去的塔盧與遠方病逝的妻子。他在最後思考道：鼠疫桿菌永遠不會消亡，它只是潛伏著，隨時可能再次喚醒老鼠，給人類帶來災難與教訓。
+
+---
+
+## 貳、 人物表
+### 1. 柏納・李厄 (Dr. Bernard Rieux)
+> **「這一切裡面並不存在英雄主義。這只是誠實的問題。」**
+- **身分**：奧蘭城的醫生，本書的隱藏敘事者。
+- **哲學寓意**：形上學的反抗者。象徵在「上帝缺席」時，人類堅持反抗荒謬的尊嚴。
+- **分析**：代表「理性」的核心，拒絕宏大理論，在這荒謬的世界裡依然守我，是屹立不搖的強大靈魂。
+
+### 2. 讓・塔盧 (Jean Tarrou)
+> **「我想知道，一個人是否能不靠上帝而成為聖人。」**
+- **身分**：神祕外鄉人，衛生防疫隊組織者、常與李厄討論哲學之友。
+- **哲學寓意**：世俗的聖人。象徵對「絕對道德」與「非暴力」的追求。
+- **分析**：道德潔癖者，對抗體制暴力（死刑）。與李厄是靈魂伴侶，其死象徵理想主義的悲劇。是很有趣的靈魂，不過對於死刑的想法跟我閱讀當下相左，我認為這是一種偽善，但或許當我跟他經歷相同的童年或許會有不同的想法吧。
+
+### 3. 若瑟・葛朗 (Joseph Grand)
+> **「我刪掉了所有的形容詞。」**
+- **身分**：市政府基層僱員，執著於寫作的小人物。
+- **哲學寓意**：平庸的英雄主義。象徵良善是人類的本能，無須偉大理由。
+- **分析**：承擔最繁瑣的統計工作。他的「失語」反映了災難中語言的困境，其康復象徵生命力的回歸。也是本作裡我最喜歡的腳色，是一個平淡卻偉大的靈魂，在這荒謬的世界裡活出自我，雖然平庸且失語卻是描寫我們每個平凡人最貼切的人物。
+
+### 4. 雷蒙・藍柏 (Raymond Rambert)
+> **「如果只有我一個人幸福，那種幸福是可恥的。」**
+- **身分**：巴黎記者，滯留者。
+- **哲學寓意**：連帶感 (Solidarity)。象徵從「個人主義」走向「集體承擔」的過程。
+- **分析**：起初只想逃跑，後意識到個人命運與群體無法切割，選擇介入並轉化私人的愛，可以看到他的成長，也讓我對愛情的本質再更了解了一點。
+
+### 5. 帕尼路神父 (Father Paneloux)
+> **「我們必須接受一切，或者是拒絕一切，這當中沒有中間路線。」**
+- **身分**：耶穌會神父。
+- **哲學寓意**：理性神學的崩潰。象徵人類理性在面對荒謬（無辜者之死）時的極限衝撞。
+- **分析**：從傲慢的天譴論轉為絕望的信心之躍。拒絕治療而死，是為了維護信仰邏輯的殉道。第一次佈道在說鼠疫是人們罪過的彌補契機，第二次則開始質疑，神父開始懷疑信仰(或者放棄理解)，並且認為只有盲目的相信天主或是面對現實不相信天主，而他選了前者把一切都交給上帝。是卡繆在宗教上表達「全有或全無」哲學的靈魂角色。
+
+### 6. 柯塔 (Cottard)
+> **「以前我都是孤伶伶的一個人，現在這世界跟我可像極了。」**
+- **身分**：罪犯，黑市商人。
+- **哲學寓意**：異化與共犯。象徵無法適應正常秩序、只能在混亂中苟安的人性陰暗面。是全書唯一歡迎鼠疫的人。眾人受苦時他快樂，眾人解脫時他發瘋。
+
+### 7. 歐東法官 (M. Othon)
+- **身分**：預審法官，外號「貓頭鷹」。
+- **哲學寓意**：體制的轉化。象徵僵化律法在真實苦難面前的破碎與人性回歸。
+- **分析**：兒子死後回到隔離營服務，從冷酷的審判者變為有溫度的受難者。
+
+---
+
+## 肆、 次要人物與關係簡述 (Minor Characters)
+
+這些小人物雖然篇幅不多，但構成了奧蘭城立體的生命圖景：
+
+* **李厄的母親 (Mme. Rieux)**
+    * **關係**：李厄的母親，來奧蘭照顧兒子與孫子（如果有的話，書中主要照顧李厄與塔盧）。
+    * **描述**：象徵著 **「沈默的愛」**與**「平靜」**。她話不多，面對災難從不驚慌。她是李厄與塔盧在疲憊戰鬥後唯一的避風港。塔盧非常敬愛她，認為她代表了某種超越語言的溫柔。
+
+* **氣喘老人 (The Old Spaniard)**
+    * **關係**：李厄的長期病患，也是葛朗的鄰居。
+    * **描述**：象徵**「絕對的虛無」**與**「旁觀者」，認為人只要追求變化便會邁向死亡**。他整天臥床，用兩個鍋子倒換乾豌豆來計算時間。他嘲笑外面的世界，認為人類的掙扎是可笑的。他是書中少數在鼠疫結束後依然「不變」的人。
+
+* **米歇爾 (Michel)**
+    * **關係**：李厄所住公寓的門房。
+    * **描述**：全書的**第一位犧牲者**。起初以為死老鼠是惡作劇，最後因染病痛苦死去。他的死拉開了災難的序幕，標誌著「日常」的結束。
+
+* **卡斯特 (Castel)**
+    * **關係**：李厄的老同事，資深醫生。
+    * **描述**：他在資源匱乏的情況下，就在奧蘭城內利用倖存者的淋巴液研製血清。雖然第一批血清在歐東兒子身上失敗了，但他代表了科學與理性的不懈努力。
+
+* **理查 (Dr. Richard)**
+    * **關係**：奧蘭市醫師公會會長。
+    * **描述**：代表 **「官僚主義」**與**「猶豫」**。在疫情初期，他堅持要有正式公文才能行動，害怕承擔責任，與李厄的果斷形成強烈對比。
+
+* **朝貓吐口水的老人 (The Old Man Spitting on Cats)**
+    * **關係**：塔盧（Tarrou）住在旅館時，每天從對面陽台觀察的對象。
+    * **描述**：象徵 **「機械性的習慣」**與**「日常的崩解」**。
+
+---
+
+## 參、哲學層次分類: 
+
+首先來分類本書有帶到且我認為有思考必要的各種層次:
+
+1. **哲學根基**：存在主義與荒謬
+2. **死刑**（塔盧視角）：死刑、社會的隱性瘟疫
+3. **善惡與反英雄主義**：反英雄主義
+4. **宗教與信仰**（帕尼路視角）：神學解釋的崩潰
+5. **放逐與愛**（情感層面）：分離、習慣、母愛、男女之愛
+6. **犯罪與政治**（柯塔視角）：自由與混亂
+7. **從奧蘭到現代，語言的失語**（葛朗視角）：溝通的無能與文字的執著
+
+這個分類非常主觀，完全是我讀完自己的想法，只列出我有思考過、紀錄筆記的主題。未來也有可能再增加，預計每篇都用某個我特別有感觸的段落做為文章開端。
+
+
+
+![附圖](images/鼠疫附圖.jpg)
+![附圖](images/rat.jpg)$md$,
+  $md$images/鼠疫附圖.jpg$md$, $j$[{"src":"images/rat.jpg","caption":""}]$j$::jsonb, $md$心得$md$, '{}'::text[], null, 'published', 0,
+  '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$嗜血的邂逅$md$, $md$嗜血的邂逅$md$, $md$一次充滿血腥味的夜半邂逅，以及蚊子們的死狀。$md$,
+  $md$---
+title: 嗜血的邂逅
+tags: [怪誕文學, ' 驚悚', ' 短篇小說', ' 敘述性詭計']
+
+---
+
+---
+title: 嗜血的邂逅
+tags: 怪誕文學, 驚悚, 短篇小說, 敘述性詭計
+---
+
+# 嗜血的邂逅
+
+> **［警告 Warning］**
+> 閱讀本文前請注意：本紀錄包含獵奇、肢解、血腥與強烈的心理異常描述。如果你對此感到不適，請立即退出。
+>
+> 但請你相信，在寫下這些文字前我曾經掙扎過。我瘋了嗎？我不這麼認為。這些都是確切發生的事實，沒有一絲虛假。但我必須承認，經歷了昨晚，我確實不再是前天的那個我了。
+> 
+> 順帶一提，在讀完最後一個字之前，你絕對不會想去查看那些附圖。
+
+---
+
+**3/17**，是我們初次邂逅的日子，也是一切罪惡與救贖的濫觴。
+
+那晚，我敞開著房門去外頭淋浴。她便是在那時悄然潛入我的領地，匿蹤於暗處伺機而動。當我帶著一身水氣回到房間時，我尚未知曉，我的世界即將迎來一場不可逆的異變。
+
+穿妥衣物，吹乾頭髮。正當我拉開椅子準備沉入書本的那一刻，她來了。
+
+她毫無聲息地貼近，溫柔地順著我的指節、手背，一路沿著手臂吻了上來。那雙靈巧的唇在我的肌膚上留下了細微的紅印。她似乎深諳某種令人迷醉的技巧，那宛如麻醉般的觸碰，竟讓我全程感受不到一絲疼痛。我甚至沒有察覺異狀，依舊麻木地翻閱著書頁。當時，我分不清那是情人間的愛痕，還是某種更深的沉醉，只知那短暫的歡愉，讓我在爾後懊悔不已。
+
+約莫五分鐘後，焦躁感開始蔓延。我徹底跌出了心流狀態，無法再讀進任何一個字。直到這時我才猛然發覺，身旁竟佇立著一位身形極度纖細、膚色深暗的女人，正貪婪地品嚐著我身體的每一個角落。
+
+沒錯，一絲不掛，完全赤裸。
+
+0.2 秒——這是人類極限的反應時間。但我確信，那一刻我絕對突破了這層生理枷鎖。從驚駭跳起、抽手，到僵直站立，整個過程只能用「瞬移」來形容。
+但更令人毛骨悚然的是，在下一個瞬間，她竟在我眼前憑空消失了，只留下站在原地、冷汗直流的我。
+
+「去哪了？」我神經質地思索著。
+
+我撫過手臂上開始微微發腫的吻痕，那裡還殘留著一絲病態的溫熱。我很清楚，她絕對還潛伏在房間的某個死角。從上鋪、窗簾後、衣櫃縫隙再到桌底，我發誓我已經像個偏執狂般搜遍了每一寸空間，卻依然尋不著她的蹤跡。
+
+五分鐘後，那股被窺視的壓迫感散去了。或許，這只是一場過於逼真的春夢？室友似乎察覺了我略顯歇斯底里的舉動，他不耐煩地拍了拍床簾，提醒我該安靜休息了。
+
+我帶著一絲莫名的失落爬上床，強迫自己閉上雙眼。明日還有早十的課，我必須入睡，甚至……在心底隱隱期盼著能在夢中再次與她相遇。
+
+---
+
+**凌晨 02:30。**
+夜幕低垂，萬物死寂。我尚未入睡。
+
+**凌晨 03:30。**
+身體莫名地燥熱，但我感覺自己已游離在睡眠的邊緣。
+
+**凌晨 04:00。**
+我徹底失眠了。
+
+完了。我睜開因用力閉緊而乾澀的雙眼，大腦高速運轉著：該直接熬通宵嗎？還是乾脆翹掉早上的課？一想到上學期就因為差了那一點學分而錯失獎學金，我咬牙掐滅了這個念頭。就算睡不著，我也得躺著熬到天亮。
+
+**凌晨 04:30。**
+我感覺到……她來了。
+
+在這絕對靜謐的夜裡，任何細微的波動都被無限放大。我聽見了，那是她貼在我的耳畔，發出的極其尖銳、幾近氣音的急促喘息。
+
+原本以為會有所期待的我，此刻卻被原始的恐懼支配。我將身體死死裹在棉被裡，不受控制地發抖。我屏住呼吸，肌肉僵硬，恨不得將狂跳的心臟直接挖出來，深怕哪怕是一點點的心音，都會引來黑暗中那個未知的存在。
+
+又過了五分鐘。我大著膽子，在被窩裡點亮調至最暗的手機螢幕。
+
+「攝氏 13°C，和風。」
+
+我猛然吐出一口濁氣，一把掀開充滿二氧化碳的被子，在心底狠狠咒罵：「幹，睡不著就算了，氣溫還驟降。我居然被一陣風嚇成這樣，真他媽可悲。」
+
+我又一次神經質了嗎？
+不。
+
+就在我掀開被單的片刻後，我確確實實再次聽見了那個女人的低吟。這一次我無比清醒，這絕非幻覺。我感知到了她的軌跡。恐懼達到了臨界點，反倒催生出了一股病態的勇氣，我猛地伸手朝黑暗中抓去！
+
+抓空了。
+
+指尖只擦過一絲宛如她髮尾般的冰冷觸感。她再次隱匿了聲息，但我無比確信，她就停留在我的身上。
+
+一瞬間，男性的征服慾與人類的獵殺本能徹底壓過了理智。我決定在這片黑暗的床鋪上與她展開殊死搏鬥。視覺被剝奪後，觸覺與聽覺被放大到了極致。我循著空間中每一絲微小的氣流波動，發起盲目卻致命的衝擊。
+
+清脆的掌擊聲在黑夜中此起彼落。直到我再也聽不見她的一絲聲息，我才終於力竭，昏死過去。
+
+---
+
+**3/18，晚間 21:40。**
+
+我洗完澡，翻開書本，準備製作明日的課堂簡報。但我的思緒早已飄遠。
+
+距離昨晚的死鬥剛好過了 17 個小時，我整天都在反覆回味著雙手合擊時的扎實觸感。我確信我擊中了她幾次，卻始終找不到她的「遺體」。唯一能證明她存在過的，只有我身上兩處微微發燙的紅腫傷口。
+
+正當我準備收束心神時，她再次現身了。
+
+她如同昨晚一般，輕柔地在我身上落下一吻便想撤離，但這次，我早有防備。
+
+在刺眼的日光燈下，我終於看清了她的全貌。我不禁輕笑出聲——我昨晚居然在畏懼這樣一具脆弱得可憐的軀體？她依舊赤裸著，這一切顯得如此荒謬且可笑。
+
+我脫下剛換上的乾淨衣物。今晚，燈火通明，我勢必與她戰至一方徹底倒下。
+我提著短褲，如猛獸般朝她撲去。
+
+一次。兩次。
+
+僅僅是第二下，她便被我輕易地擊倒在地，徹底昏厥。我頗感意外。看著她癱軟在地的身軀，我抽出一張純白的衛生紙鋪在桌面上，將她移了上去。我可不希望她體內那混雜著我——甚至不知道還有多少陌生人——的體液，玷污了我的書桌。
+
+說來諷刺，前一秒我還在與她進行原始的肉搏，下一秒我竟用上了「玷污」這個詞。或許，這房間裡最骯髒、最扭曲的，其實是我自己。
+
+---
+
+**22:30。**
+她依然處於深度昏迷。我坐在桌前，死死盯著她那修長的四肢，不知過了多久，我的腦海中開始滋生出一些極度扭曲的渴望。
+
+「……」
+
+我拿起手機，冷靜地拍下她無防備的軀體。我甚至叫來了室友，向他展示我的戰利品，詢問該如何處置。
+
+室友只是冷漠地瞥了一眼，淡淡地說：「我之前好像也聽過這聲音，但沒找到。下次門記得關好。」隨即轉身離去。
+
+重新坐回桌前，無數的疑問與施虐的慾望在心底翻湧。她依然沒有甦醒的跡象。
+
+「這對手臂如此修長……如果生生折下來，她會有感覺嗎？」這是在漫長的等待中，我不經意間洩漏出的危險低語。
+
+試試看吧。反正她又死不了（至少不會立刻死）。說到底，是她先非法入侵我的私人領域，發生什麼事也不能怪我吧？
+
+我動手了。
+
+我捏住她的右臂，輕輕一扯。就在斷裂的那一瞬間，我驚訝地發現她的身軀劇烈地抽搐了一下。
+
+「……有點意思。」
+
+理智的防線徹底崩塌，我回不去了。
+
+繼右臂之後，是左手、雙腿。在肢解的過程中，劇痛早已讓她甦醒，但我冷酷地無視了她僅存肢體的微弱揮舞。直到她的四肢如同廢棄物般被我散落在冰冷的桌面上時，我才恍然發覺——我正在微笑。
+
+而且，我感受不到一絲一毫的罪惡感。
+
+最後的處刑。我打算扯下她背上那引以為傲的部位。但就在我用力拉扯時，一聲微小的撕裂聲傳來，她的頭部竟與軀幹幾近分離！
+
+我連忙停手，深怕連接頸部的最後一絲組織也跟著斷裂。我的「作品」還沒完成，怎能讓她就此失去知覺？
+
+我決定直接跳到最終章：擠爆她的腹部。
+
+你問我為什麼要做到這個地步？理由很簡單，也很冷酷：我不願負責。我絕不容許她帶著我的體液，在某個陰暗的角落孕育出成千上萬的後代。僅此而已。
+
+指尖施力。
+
+鮮血瞬間噴濺而出，在純白的衛生紙上暈染出兩塊絕美的、勻稱的殷紅圓斑。
+
+我下手了。前所未有的酣暢淋漓。
+我的內心平靜如水，沒有後悔，沒有罪惡。
+
+我走進浴室仔細洗淨了雙手。回到桌前時，發現報告的繳交期限已經過了一個小時。無所謂了，我轉而打開文檔，敲下了這篇紀錄。
+
+現在是凌晨 04:00。
+今晚，我終於可以安心入睡了。
+晚安。
+
+![防雷](images/spoiler.svg)
+![附圖](images/邂逅(蚊子).jpg)
+![附圖](images/邂逅(蚊子屍體).jpg)$md$,
+  $md$images/spoiler.svg$md$, $j$[{"src":"images/邂逅(蚊子).jpg","caption":""},{"src":"images/邂逅(蚊子屍體).jpg","caption":""}]$j$::jsonb, $md$隨筆$md$, '{}'::text[], null, 'published', 0,
+  '2025-03-19T00:00:00Z'::timestamptz, '2025-03-19T00:00:00Z'::timestamptz, '2025-03-19T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$四幕短詩：告白、分手、死亡、重逢$md$, $md$四幕短詩：告白、分手、死亡、重逢$md$, $md$文字挑戰：在不提及題目本身的前提下，以少許句子勾勒出告白、分手、死亡、重逢四個題目的輪廓與氛圍。四首現代詩，以時間為主軸，記錄無聲的情感流動。$md$,
+  $md$---
+title: 四幕短詩：告白、分手、死亡、重逢
+tags: [現代詩, ' 原創', ' 文字實驗']
+
+---
+
+---
+title: 四幕短詩：告白、分手、死亡、重逢
+tags: 現代詩, 原創, 文字實驗
+---
+
+# 四幕短詩：告白、分手、死亡、重逢
+
+> **文字挑戰：**
+> 在不提及題目本身及相關字眼的前提下，以少許句子精準勾勒出題目的輪廓與氛圍。
+
+---
+
+### 告白
+
+愛因斯坦堅稱時間已然完備，
+而我始終感到某處仍留存誤差；
+直到你出現，
+這才校正了我的相對論。
+
+---
+
+### 分手
+
+從前，
+我們常遺忘了時間；
+此後，
+時間常遺忘了我們。
+
+---
+
+### 死亡
+
+原來，
+你最靜謐的沉默，
+甚至聽不見心跳聲。
+
+---
+
+### 重逢
+
+幸虧上次的匆匆離別，
+我未曾遺落名為時間的鑰匙；
+今日才得以，
+轉動你門前的沉默。
+
+---$md$,
+  null, $j$[]$j$::jsonb, $md$創作$md$, '{}'::text[], null, 'published', 0,
+  '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$如何讀一本書$md$, $md$如何讀一本書$md$, $md$關於閱讀方法與層次的深度探討。$md$,
+  $md$---
+title: 如何讀一本書 閱讀心得
+
+---
+
+# 一、 閱讀的層次
+## 第一章 閱讀的活力與藝術
+
+閱讀的目標: 為獲得資訊以及為求得理解而讀。
+
+或許我們對這個世界的了解比以前的人多了，但為了理解一件事，我們並不需要知道和這件事相關的所有事情。太多的資訊就如同太少的資訊一樣，都是一種對理解力的阻礙。換句話說，現代的媒體正以壓倒性的氾濫資訊阻礙了我們的理解力。
+
+媒體經過太精心的設計，使得思想被包裝了起來。觀眾所面對的是一種複雜的組讓人不需要面對困難或努力，很容易就整理出「自己」的思緒。但是這些精美包裝的資訊效率實在太高了。資訊裝進自己的腦海中，就像錄影機願意接受錄影帶一樣自然。他只要按一個「倒帶」的鈕，就能找到他所需要的適當言論，他根本不用思考就能表現得宜。
+
+人們變得只透過媒體獲得資訊，但獲得資訊的理解力門檻並不高，理解力因此停滯不前甚至倒退。現今網路世代甚至加劇了這種腦腐化的過程，而讀優質的書具有啟發性，能讓人反覆咀嚼，透過這種不對等的理解力，我們才能在獲得資訊的同時也增進了理解力。
+
+## 第二章 閱讀的層次
+1. 基礎閱讀: 理解字句表面的意思。
+2. 檢視閱讀: 短時間內的系統化略讀。
+3. 分析閱讀: 全盤的閱讀並理解。
+4. 主題閱讀: 藉由書籍架構出主題分析的閱讀藝術。
+
+## 第三章 閱讀的第一個層次：基礎閱讀
+1. 學習閱讀的階段
+2. 閱讀的階段跟層次
+3. 更高層次的閱讀與高等教育
+4. 閱讀與民主教育的理念
+## 第四章 閱讀的第二個層次：檢視閱讀
+1. 有系統的略讀或粗讀:
+    * 先看書名、序。
+    * 研究目錄頁。
+    * 檢閱書中索引。
+    * 挑幾個與主題息息相關的篇章閱讀。
+    * 打開書隨意翻閱。
+2. 粗淺的閱讀:
+    不要停滯不前，先從頭到尾讀完一遍。
+    * 閱讀的速度
+        謹記: 要以不同的速度閱讀。每一本書、每一篇章、每一段落都有其最洽當的閱讀速度。
+    *  逗留與倒退
+        可以用手當閱讀指針，避免目光與思緒逗留而浪費。
+    *  理解的問題
+        推敲、玩味、沉思、理解。
+## 第五章 如何做一個自我要求的讀者
+主動的閱讀:
+1. 閱讀者要提出的四個基本問題:
+    * 整體來說，這本書到底在談甚麼?
+    * 作者細部說了甚麼? 怎麼說的?
+    * 這本書說得有道理嗎? 是全部有道理還是部份有道理?
+    * 這本書跟我有甚麼關係?
+2. 三種做筆記的方法:
+    * 結構筆記:
+        記錄作者發展觀點或陳述理解的整體架構。
+    * 概念筆記:
+        紀錄作者與自我思考後的觀點。
+    * 辯證筆記:
+        一場討論情境的筆記，針對同個主題以多個書籍內容探討並記載。
+3. 培養閱讀的習慣
+
+# 二、 閱讀的第三個層次: 分析閱讀
+ 
+### 分析閱讀的三個階段:
+1. 找出一本書談什麼：依照種類與主題來分類，用簡短文字摘要全書，確定作者想解決的問題。書籍的分類：實用型、文學、故事戲劇詩、歷史書、科學與數學、哲學書、社會科學。 目的是掌握結構大綱。
+2. 詮釋一本書的內容：詮釋關鍵字且達成共識，由最重要的句子抓住作者主旨，找到論述與相關句子，作者解決了哪些問題？哪些還沒解決？ 目的是詮釋作者的意圖。
+3. 評論一本書的規則：除非能詮釋透徹，否則不輕易批評，不爭強好辯，區分得出真正的知識與個人觀點。若想表示不同意見，試著證明作者知識不足、知識錯誤、不合邏輯、分析與理由是不完整的。 目的是與作者溝通。
+
+
+### 第一階段的四種規則:
+1. 根據書本的種類與主題做分類。
+
+2. 用最簡短的子句就能找出整本書要談論的部分。
+
+3. 按照順序與關係，列出全書的重澳部分。將全書的綱要擬出來後，再將各個部分的綱要也一一列出。
+
+4. 找出作者在問的問題，或作者想要解決的問題。
+
+### 第二階段的四種規則:
+5. 找出作者與讀者的共同詞義，達成共識。(Coming to Terms)
+6. 判斷作者的最重要的那些句子(主旨)，通常會是敘述句，可以是作者丟出的問題的解答。
+7. 從相關文句的關聯中，設法架構出一本書的基本論述，藉此明白作者的主張。
+8. 找出作者的解答，並且不是每個問題作者都有解決，在那些問題當中找出解答。- 懷疑是智慧的濫觴。閱讀的一部分本質就是被困惑，而且知道自己被困惑。
+
+### 第三階段的七種規則:
+#### A. 智慧禮節的一般規則:
+9. 除非已經完成大綱架構，也能詮釋整本書了，否則不要輕易批評。
+10. 不要爭強好勝，非辯到底不可。
+11. 再說出評論之前，你要能證明自己區別的出真正的知識與個人觀點的不同。
+#### B.批評觀點的特別標準:
+12. 證明作者的知識不足
+13. 證明作者的知識錯誤
+14. 證明作者不合邏輯
+15. 證明作者的分析與理由是不完整的
+
+## 第六章 一本書的分類:
+a. **實用型書籍（Practical Books）**
+   - 定義：提供解決問題的具體方法、技巧或實踐指南，幫助讀者提高效率、技能或解決實際問題。
+   - 範例：
+     - 《如何有效閱讀》 (Mortimer J. Adler)
+     - 《習慣的力量》 (Charles Duhigg)
+     - 《簡單的力量》 (Greg McKeown)
+
+b. **想像文學（Imaginative Literature）**
+   - 定義：主要是小說、戲劇、詩歌等，著重於創造與幻想的表達，涉及人類情感、經歷、故事、文化等。
+   - 範例：
+     - 《百年孤獨》 (Gabriel García Márquez)
+     - 《失落的詩篇》 (T.S. Eliot)
+     - 《哈姆雷特》 (William Shakespeare)
+
+c. **故事、戲劇與詩（Fiction, Drama, and Poetry）**
+   - 定義：創作性文學，主要包括小說、戲劇和詩歌，通過故事情節、角色發展及詩意的語言來表達情感、理念和人性。
+   - 範例：
+     - 《1984》 (George Orwell)
+     - 《俄克拉荷馬》 (Rodgers and Hammerstein)
+     - 《神曲》 (Dante Alighieri)
+
+d. **歷史書（Historical Books）**
+   - 定義：記錄和分析過去的事件、人物、時代或文化，探討歷史背景、發展過程、因果關係和影響。
+   - 範例：
+     - 《槍砲、病菌與鋼鐵》 (Jared Diamond)
+     - 《羅馬帝國衰亡史》 (Edward Gibbon)
+     - 《大英帝國的興起與衰落》 (John Darwin)
+
+e. **科學與數學書（Science and Mathematics Books）**
+   - 定義：關注自然科學、數學或工程領域的理論、實驗和應用，探索世界的規律、現象及其背後的數學模型。
+   - 範例：
+     - 《物種起源》 (Charles Darwin)
+     - 《數學的故事》 (Robert Kaplan)
+     - 《時間簡史》 (Stephen Hawking)
+
+f. **哲學書（Philosophy Books）**
+   - 定義：探討存在、知識、價值、倫理、邏輯等根本問題，幫助讀者深入理解人類存在的意義及其思維模式。
+   - 範例：
+     - 《尼各馬科倫理學》 (Aristotle)
+     - 《形而上學》 (Immanuel Kant)
+     - 《理想國》 (Plato)
+
+g. **社會科學書（Social Science Books）**
+   - 定義：涵蓋社會學、經濟學、心理學、人類學等領域，分析人類行為、社會結構、文化發展等。
+   - 範例：
+     - 《自殺論》 (Émile Durkheim)
+     - 《國富論》 (Adam Smith)
+     - 《自我與本我》 (Sigmund Freud)
+
+## 第七章 透視一本書
+- 使用一個單一的句子，獲最多幾句話(一小段文字)來敘述整本書的內容。
+- 將書中重要篇章列舉出來，說明他們如何按照順序組成一個整體的架構(大綱)。
+- 發現作者的意圖，找出作者要問的問題。
+
+## 第八章 與作者找出共通的詞義
+* 單字 vs. 詞義
+* 找出關鍵字
+* 專門用語及特殊字彙
+* 找出字義
+
+## 第九章 判斷作者的主旨
+### 前言是意圖的聲明，主旨是知識的聲明，論述是主張的聲明。
+## 第十章 公正的評斷一本書
+### 爭議是教導和受教的一個過程。
+#### A. 智慧禮節的一般規則:
+9. 除非已經完成大綱架構，也能詮釋整本書了，否則不要輕易批評。
+10. 不要爭強好勝，非辯到底不可。
+11. 再說出評論之前，你要能證明自己區別的出真正的知識與個人觀點的不同。
+#### B.批評觀點的特別標準:
+12. 證明作者的知識不足
+13. 證明作者的知識錯誤
+14. 證明作者不合邏輯
+15. 證明作者的分析與理由是不完整的
+
+## 第十一章 贊同或反對作者
+### 偏見與公正
+反對作者需要秉持三個理想原則:
+1. 避免爭論由於情緒化。
+2. 攤開自己的前提與假設，避免偏見與不公正。
+3. 立場本有不同，保持尊重、同理心去閱讀任何書。
+
+## 第十二章 輔助閱讀
+
+# 第三篇 閱讀不同讀物的方法
+## 第十三章 如何閱讀實用型的書
+兩種分類：
+1. 規則型：表示確切可行的規則
+2. 理論型：談規則背後的原理，能引導讀者根據原理實際應用
+
+### 要記得問自己兩個問題：
+1. 作者的目的是什麼？
+2. 他建議用什麼方法達成這個目的？
+
+### 特性：
+為了說服讀者，實用型的書通常會包含作者性格與情緒，在評判之前務必先了解作者背景並避免完全被隱藏式的雄辯誤導。
+
+### 贊同作者之後
+記得
+1. 找出作者想要你做什麼？
+2. 了解他要你這麼做的目的。
+
+## 如何閱讀想像文學
+否定與規則
+### 讀想像文學的「不要」
+想像文學是在闡述一個經驗本身，目的是為讀者創造經驗、體驗。
+1. 不要抗拒想像文學帶給你的影響力
+2. 不要去找共識、主旨或論述
+3. 不要用適用於傳遞知識的，與真理一致的標準評判一部小說
+4. 在完整感受作者為你創造的經驗之前，不要批評一本想像的作品
+
+## 第十五章 閱讀故事、詩、戲劇的一些建議
+## 第十六章 如何閱讀歷史書
+## 第十七章 如何閱讀科學與數學
+## 第十九章 如何閱讀社會科學作品
+
+以上省略，沒太多內容跟價值。
+
+## 第十八章 如何閱讀哲學書
+
+### 哲學的風格
+1. 哲學對話
+2. 哲學論文或散文
+3. 面對異議
+4. 哲學系統化
+5. 格言形式
+
+## 第二十章 閱讀的第四個層次：主題閱讀
+1. 檢視閱讀，找出適合閱讀的書單
+ * 對研究主題有個清晰的概念
+ * 簡化書目至一個合理的程度
+ 
+2. 找到相關的章節
+3. 帶引作者與你達成共識：由讀者使用自己的語言在作者之間建立共識
+4. 釐清問題：建立起一組不偏不倚的主旨
+5. 界定議題：將爭議、共同與不同觀點釐清並整理
+6. 分析討論
+
+### 客觀的必要性
+不預設立場客觀分析，因為很可能正反方都是錯的
+
+
+$md$,
+  null, $j$[]$j$::jsonb, $md$心得$md$, '{}'::text[], null, 'published', 0,
+  '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$無窮盡的交響曲 閱讀心得$md$, $md$無窮盡的交響曲 閱讀心得$md$, $md$閱讀心得與省思。$md$,
+  $md$---
+title: 無窮盡的交響曲 閱讀心得
+
+---
+
+# 無窮盡的交響曲 閱讀心得
+
+本文嘗試將物理與資工領域的技術概念映射至哲學命題，有其大膽且可取之處，然而其論證過程仍存在顯著的過度簡化、邏輯跳躍以及人文主義式的過度詮釋。
+
+## 作者嘗試將物理學、資訊科學與古典哲學進行強力的連結。
+這是本文最大的優點。作者將世界觀比擬為樂章，從倫理、解釋、形上學到美學，展現了極強的系統化構思能力。雖然許多觀點仍具有缺陷，但這種大膽的思考方式是極具創造力的。
+
+而這種批判性的定義科學、哲學是很值得我學習的，對於過度糾結於形而上學的我而言，想建構自我世界的哲學這是一個很好的切入點。
+
+## 以尺度視角消解語言悖論是有利的論點
+這點與我的價值觀接近，對於學習過機器學習的資工學生而言，人類對於世界的哲學不免與電腦連結思考在一起。我也認為大部分的悖論皆是出於尺度視角的不同，也因此世界無絕對的事實。
+
+但如此又可以回歸形而上學的本質問題了。宇宙的演算法存在嗎?誰是具有最高視角的存在?誰創造了下層演算法?這點我目前只能將其視為自然神的饋贈。
+
+## 美學是對自然世界規律的共鳴
+這一假說很優美，我很喜歡這個對美的定義，不過仍然有些疑問與疵漏，這點我將在後段闡述。但這段讓我開始思考何謂「美」，十分具有啟發性。
+
+## 過度標籤化的思想推砌
+文中大量引用柏拉圖、康德、羅爾斯、維根斯坦等人的論點，以及許多哲學家提出的例子、理論，並且以此為基石向上推砌自我的哲學世界觀。這並非謬誤，但儼然缺乏足夠的原創哲學支點，過度訴諸權威導致淪為哲學衣架。
+
+## 以真善美為主軸發展的自我哲學過於人文主義式的浪漫化
+以真善美這三個信仰哲學整合進一個統一的演算法框架確實是創新的做法。這賦予文章不錯的文學美感，但本質上這種賦予倫理、美感等歸於理性共鳴的作法，僅僅是是將科學術語進行人文主義式浪漫化的修補。
+
+## 經驗論與宿命論的誤讀
+作者引用 Wolfram 的「計算不可化約性」，宣稱因為宇宙無法被簡化預測，故否定了宿命論並確立了未來的不確定性。
+
+然而這是過度簡化的。
+
+一個系統是否具有「決定性」取決於其演算法結構，而非其「計算複雜度」。即便是不可化約的演算法，只要其狀態轉移函數是確定的，系統的路徑在邏輯上就是唯一且預設的。
+
+作者認為倫理、道德、善惡、甚至到大自然的運行法則，皆是因為人類觀察、相互佐證得到的當下共識，我想這和作者所否定的經驗論並無相左。作者以資訊科技的演算法、模型、建模等字眼，佐證其認為世界就是在部分事實下推論出的產物，那只是符合當前的經驗。
+
+如同機器學習裡就是靠dataset建模，並依照此模型決定之後的決策。顯然這是沒有問題的，但這也是經驗論，作者不過是將其增加了一點補丁，認為這個模型是一直變動的。
+
+作者雖然口頭上駁斥「歸納主義」、「經驗論」等，但其提出的「建模、實驗、修正模型」流程 ，在本質上與機器學習中的 Empirical Risk Minimization 並無二致。
+
+Dataset 的侷限性：作者認為知識是「目前還沒被駁倒的最好解釋」 ，這正是在有限樣本下擬合出的最優模型。作者只是承認了模型是動態的，但其判斷標準依然建立在經驗世界的觀測上，使本段落僅成為歸納主義的補丁，並未否定或提出新的哲學觀點。對於真善美的解釋也因此略顯不足。
+
+## 計算限制不等於形上自由：
+作者認為人類或宇宙無法提前算出結果，這僅代表觀察者受限於計算資源，並不代表「系統本身」具備自由意志或隨機性。作者將「預測難度」轉化為否定宿命論的理由，本質上是將計算限制人文主義浪漫化的謬誤。
+
+將宇宙類比為演算法，卻未討論演算的載體為何。如果宇宙是運算，那運算發生在什麼物理基礎之上？誰決定了這個演算法?
+
+## 形上學推論的輕率與遺漏
+文章在探討形上學時，過度聚焦於系統的運行規則（演算法），卻忽略了形上學最基本的兩個問題：存在的本質與第一因。
+
+形上學的本質並非定義世界的框架，應該是要嘗試定義世界存在或不存在的本質及理由，而本文僅提及了些許湧現論的論述，這是談論形上學本質上的遺漏。
+
+
+## 美學的理想化與生物性的抹除
+作者將美定義為「理性對自然規律的共鳴」 ，這種定義在生物學與社會學上過於龐統且缺乏解釋力。
+
+忽視生理機制：美感在生理上涉及神經遞質對視覺、聽覺刺激的本能反應。作者將美感完全歸因於對自然世界抽象規律的理解，無法解釋為何未受教育的個體仍具備強烈的審美偏好。
+
+無法解釋主觀歧異：若美源於對自然模型的一致共鳴 ，則無法解釋同一社會背景下巨大的審美個體差異。作者試圖用康德的「優美」與「崇高」來修補理論 ，卻依然無法迴避其模型在處理「感官快樂」與「個體權重」時的無力感。
+
+
+
+![附圖](images/無窮盡的交響曲心得附圖.jpg)$md$,
+  $md$images/無窮盡的交響曲心得附圖.jpg$md$, $j$[]$j$::jsonb, $md$心得$md$, '{}'::text[], null, 'published', 0,
+  '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$literature$md$, $md$該死的咖啡因$md$, $md$該死的咖啡因$md$, $md$凌晨四點的失眠，一個衝動的念頭，和在超商門口意外邂逅的神秘姊姊。一個乖寶寶的第一次叛逆，以及那餘溫猶存的咖啡因味道。$md$,
+  $md$---
+title: 該死的咖啡因
+
+---
+
+---
+title: 《該死的咖啡因》
+tags: 短篇小說, 創作, 故事
+---
+
+# 《該死的咖啡因》
+
+
+---
+
+「該死的咖啡因！」
+
+興許是今日的熱美式在作祟，總之我失眠了。
+凌晨四點，這是一個剛好介在夜幕仍然垂降著、難以抉擇起床與否的尷尬時刻。我早已在床上瞪著黑壓壓的宿舍天花板，質數也早已數過又忘記，重複無數個輪迴。這寒冬的夜裡，全身依然諷刺地燥熱難耐，我決定起床走走。
+
+「好，現在要去哪呢？這鬼時間還能去哪？」
+
+我在去騎機車的路上一邊咒罵、一邊思索著目的地。
+
+「去抽根菸好了！」
+
+總得做點什麼讓自己從這股煩躁裡逃脫，但不知道是哪來的荒唐念頭，我這個從不碰菸酒的乖寶寶竟莫名想叛逆一回。
+
+---
+
+走進超商後，店員擺著厭世的臉問道：「有什麼需要的嗎？」
+
+「我要買菸，中間那排第一種，謝謝。」
+
+店員愣了一下後便拿了給我並結帳。
+
+「噗哧。」
+
+外頭傳來一個短而急促且有些低沉的輕笑聲，很顯然那人看出來我是第一次，真他媽的令人莫名不爽。
+不想理會他，我默默走出超商，打開那寫滿各種警示字句的包裝盒，這才想起我連打火機也沒有。
+
+我不情願地看向一旁剛剛發出噪音的人。讓人頗意外的是，那低沉的嗓音居然出自一位約莫正值花信的姐姐。她頭髮很長，烏黑的細絲幾乎一路垂至腰部；身材高挑且勻稱，搭上高跟鞋後甚至比我高約十公分。
+
+然而這些都遠不及那如畫般的臉龐來得令人震撼，那雙唇裡叼著的菸更是讓這風景增添了一抹難以忘懷的美感。
+
+「不好意思，請問妳能借我打火機嗎？」
+
+「嗯。」
+
+她輕聲應了一句，左手從外套口袋掏出一個最廉價的打火機，頭完全沒有轉向我一點，真令人好奇她眼裡的夜晚是什麼景色。
+
+---
+
+我取出一根菸，試圖照著印象裡父親點菸時的模糊記憶，有樣學樣地將它放進口中並試圖點燃。
+
+一次、兩次、三次……
+
+我嘗試了五次後仍舊點不起這根細小的菸草捲，但我知道自己肯定哪個部分做錯了。
+
+「姊姊，可以教我抽菸嗎？這是我第一次買菸。」
+
+我的聲音小得連自己都幾乎聽不見。一開始被訕笑的氣焰早已被她的美艷壓了過去，只剩下一個害羞不已的男孩。
+
+「你在點燃的同時要記得吸氣，這樣空氣才會讓火星燃燒下去。」
+
+這次她終於願意轉過頭來看著我。此時我才發現姊姊的雙眼美得不像話，我趕緊撇開眼神看向一旁，深怕靈魂被勾入那深淵之中。
+
+「靠過來一點，姊姊教你。」
+
+在著迷於她眼神的那幾毫秒內，我沒發現她已經熄滅了嘴裡那根菸，並從我手中抽走另一支放入自己口中。
+
+「像這樣，點火的同時吸一口氣。」
+
+姊姊沒有沒有真的點火，只做了示範動作。
+
+「嗚嘔！」
+
+我完全沒想到，她會就這樣把剛剛含在嘴裡的菸直接塞進我的口中，並拿起打火機打算直接幫我點燃。
+
+我花了人生中最漫長的幾秒鐘停止抗拒，接受這不像話的現實。
+但此時右耳傳來一陣沒有怒氣的謾罵聲。
+
+「媽的，怎麼還是點不起來？照著我說的那樣吸氣，你是白癡嗎？」
+
+姊姊冷冷地瞥了我一眼，皺著眉頭卻沒有真正生氣。
+我傻傻地看著姊姊。她似乎覺得我腦子真有問題，於是再問道：
+
+「你為什麼不吸氣？你不會呼吸嗎？」
+
+「我忘了……你的眼睛害我忘了怎麼呼吸……」
+
+我不知道我是怎麼有勇氣說出這種話，她真要當我是智障了。這是我今晚第二次懷疑自己腦袋壞掉。
+此時我不敢看向她的表情，但我猜此刻她很憤怒，或許正在思考要怎麼將我這荒唐的行徑訴諸大眾。
+
+---
+
+「好冷……」
+
+「……姊姊教你。」
+
+與我的想像全然不同，她將雙手搭在我的肩上；原本白皙透亮的雙頰此時染上了一點紅。她念著最髒的語助詞，但此刻的聲音溫柔得不像話。
+
+我不敢相信剛剛發出厚重菸嗓的聲帶，可以共鳴出如此細膩的天籟。只是這短短幾個字裡的顫抖，大抵是因為寒冷，但也似乎摻雜著一絲孤獨。
+
+她吻了上來，沒有任何前搖。
+
+縱使這是我的初吻，縱使這時間會在這裡的姊姊多半是特殊行業，縱使我不知道她有沒有疾病——但管他的。
+現在的我只願意遵守野獸本能，放棄思考，與姊姊的唇舌盡情纏鬥。
+
+……
+
+不知過了多久，我們緩緩分開。我害臊地低下頭，映入眼簾的是熄滅了的菸蒂——這是我此生看過燒到最短的菸蒂。
+
+我呆呆站在原地感受雙唇的餘溫。這是我的第一次，附著淡淡的咖啡因味道，一股讓人明知不可卻又仰賴的味道。
+我們兩個在路燈下沉默著。夜晚依舊寒冷，此時卻沒有一開始的刺骨了。
+
+---
+
+「你喝咖啡嗎？」姊姊問。
+
+「嗯。」
+
+「熱美式嗎？」
+
+問完後，她轉身再次走進超商。
+
+「嗯……謝謝。」
+
+此時腦袋一片空白，這已經是我所能擠出最長的句子。
+
+過了半晌，姊姊手裡提著兩杯熱美式，遞給我其中一杯後要我喝下去。
+我喝了幾口，很溫暖。姊姊順勢把我打開杯蓋並放下的左手握了起來。
+嗯……這也好溫暖。
+
+我看著遠方閃爍的霓虹燈，有點模糊。難道我根本沒起床，在作夢？
+但冰冷的空氣馬上迎面而來，刺痛著我的臉頰，似是在提醒我這是現實。
+
+「嘖！果然還是有點苦。」
+
+「走吧！」
+
+姊姊牽起我的手往前走。我心裡滴咕著：
+
+「又失眠了……這該死的咖啡因。」$md$,
+  null, $j$[]$j$::jsonb, $md$創作$md$, '{}'::text[], null, 'published', 0,
+  '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$notes$md$, $md$machine_learning$md$, $md$機器學習進階理論$md$, $md$台大林軒田教授課程「機器學習基石」的學習筆記與重點整理。$md$,
+  $md$# Machine Learning
+---
+[TOC]
+
+## ML Introduction: 
+---
+### - Output space
+1. classification
+
+3. regression
+
+4. clustering
+
+### - Learning with Different Protocol
+1. batch: duck feeding
+2. online: passive sequential
+3. active: 'question asking'(sequentially)
+
+...and more
+
+### - Input space
+1. conctrete
+2. row 
+3. abstract
+
+### - Training Methods:
+1. Supervised Learning 
+-To learn a function that, given a sample of data and desired outputs, best approximates the relationship between input and output observable in the data
+
+- Classification
+- Regression
+
+>-Ex:Decision Tree、Random Forest、KNN、Logistic/Logit/Linear Regression、SVM
+
+2. Unsupervised Learning
+-It does not have labeled outputs, so its goal is to infer the natural structure present within a set of data points.we wish to learn the inherent structure of our data without using explicitly-provided labels.
+
+- Clustering
+>-EX:K-means、Hierarchical Clustering
+- Association
+>-EX:Apriori
+
+3. Semi-surpervised Learning
+-Leverage unlabeled data to avoid  'expensive' labeling
+
+4. Reinforcement Learning
+-Reward shaping
+>-EX:Markov Decision Process、Q Learning 
+
+## Machine Learning、Data Mining and Statistics
+---
+| Maching learning | Data Mining |Statistics|
+| :----------- | :------------- | :---------- |
+|use data to compute hypothesis g that approximate target | use (huge) data to find property that is interesting|use data to make inference about an unknown process|
+- if 'interesting property' same as 'hypothesis that approximate target'
+-- ML = DM
+- if 'interesting property' related to 'hypothesis that approximate target'
+-- ML&DM can help each oher(often,but not always)
+- traditional DM also focuses on efficient computation in large database
+- statistics can be used to achieve ML
+-- focus on math provable results with math assumptions,and care less about computation
+
+## Key Essence of ML
+---
+machine learning:
+ improving some performance measure with experience computed from data.
+
+1. exists some 'underlying pattern' to be learn
+    --- so 'performance measure' can be improved
+2. but no programmable(easy) definition
+    --- so 'ML' is needed
+3. somehow there is data about the pattern 
+    --- so 'ML' has some 'inputs' to learn from
+
+## Feasibility of learning
+---
+### - Hoeffding's inequality
+$$P(\midμ-\nu\mid>\epsilon)≤2exp(-2\epsilon^2N)$$
+> $\mu$:probability
+> $\nu$:fraction(known)
+> $\epsilon$:tolerance
+
+- valid for all N and $\epsilon$
+- does not depend on $\mu$,no need to 'know' $\mu$
+- larger size N or looser gap $\epsilon$
+=> higher probability for '$\nu\approx \mu$'
+
+if in larger N,can infer unknown $\mu$ by known $\nu$
+### - Bound of BAD Data
+BAD data for many $h$
+><=> no 'freedom of choise' by $A$
+><=> there exists some $h$ such that $E_{out}$($h$) and $E_{in}$($h$) far away
+
+![](https://i.imgur.com/8bCYJhB.png)
+### - The Statistical Learning Flow 
+(in-sample and out-sample data in the same distribution)
+- if $\mid H\mid$=$M$ finite,$N$ large enough, for whatever $g$ picked by $A$, $E_{out}$($g$) $\approx$ $E_{in}$($g$)
+  - if $A$ finds one g with $E_{in}$($g$) $\approx 0$
+  PAC guarantee for $E_{out}$($g$) $\approx 0$ => learning possible
+
+
+|           | can we make sure that $E_{out}$($g$) is close enough to $E_{in}$($g$)? | can we make $E_{in}$($g$) small enough? |
+|:---------:| :-------- | :-------- |
+| small M   | Yes! P[BAD]$\le2M\cdot$exp(...) | No!,too few choises | 
+| big M     | NO!,P[BAD]$\le2M\cdot$exp(...) | Yes!,many choices     |
+
+- if $\mid H\mid$=$M$ infinite
+![](https://i.imgur.com/pUQAYzL.png)
+
+(1)using growth function $m_H$ to replace $M$
+![](https://i.imgur.com/MielXvs.png)
+if all the situations can be separated,we named the situations 'Shatter',on the other hand we call them 'Shatter fail',and the start point is 'Break point'
+
+by using the break points and Hoeffding's inequality, we can derive the inquality:
+
+$$P[∃h∈H_{s.t.} |E_{in}(h)−E_{out}(h)|>ε]≤4m_H(2N)exp(−ε^2N/8)$$
+
+And the 'Growth Function' $m_H$(2N) is related to N of Data 
+
+(2)
+a.More on Growth function
+![](https://i.imgur.com/4QL7NPV.png)
+
+b.using VC bound
+![](https://i.imgur.com/Ukk7F4e.jpg)
+
+=>learning possible
+
+### - VC Dimension：$d_{VC}=BreakPoint−1$
+$d_{VC}$ has special meaning in math,$d_{VC} \approx$ number of adjustable variables
+
+![](https://i.imgur.com/R9w46D6.png)
+
+![](https://i.imgur.com/KV9FK6S.png)
+
+**$N \approx 10d_{vc}$ often enough!!**
+## Noise and Error
+---
+>Error -> affect 'ideal' target
+### - Algorithm Error measure
+![](https://i.imgur.com/zIEbOCk.png)
+user-dependent => plausible of friendly
+
+### - Weighted Classification
+
+|          |          |   h(x)   |          |
+| -------- | :------: | :------: | :------: |
+|          |          | **+1**   | **-1**   |
+|    y     | **+1**   | 0        | ==1==    |
+|          | **-1**   | ==1000== | 0        |
+
+->copy the data which have lower weigth(X1000)
+
+
+
+## The Learning Problem
+---
+### - Basic Notations
+>- input: x ∈ *X*(customer application)
+>- output: y ∈ *Y*(good/bad after approving credit card)
+>- unknown pattern to be learned <=> target function:
+>-- f: *X$\rightarrow$Y* (ideal credit approval formla)
+>- data<=>training examples:
+>-- *D* (historical record of bank)={($x_1,y_1$),($x_2,y_2$),($x_3,y_3$),...,($x_n,y_n$)}
+>- hypothesis<=>skill with hopefully good performance:
+>-- g: *X$\rightarrow$Y* ('learned' formula to be used)
+
+
+### - The Learning Model:
+![](https://i.imgur.com/204T5Ny.png)
+
+## A simple hypothesis set: the 'Perceptron'(answer yes/no
+### - What is a Perceptron?
+For x=($x_1,x_2,...,x_d$)'features of customer',compute a weighted 'score' and
+> - approve credit if $\sum\limits_{i=1}^dw_ix_i>$threshold
+> - deny credit if $\sum\limits_{i=1}^dw_ix_i<$threshold
+
+*y*:{+1(good),-1(bad)},0 ignored-linear formla h$\in H$ are
+> - h(x)=sign(($\sum\limits_{i=1}^dw_ix_i$)-threshold)
+### - Vector Form of Perceptron Hypothesis
+> h(x)
+> =sign(($\sum\limits_{i=1}^dw_ix_i$)-threshold)
+> =sign(($\sum\limits_{i=1}^dw_ix_i$)+(-threshold)$\cdot$(+1)) => threshold$\rightarrow w_0$ , (+1)$\rightarrow x_0$
+> =sign(($\sum\limits_{i=0}^dw_ix_i$)) => i=0
+> =sign($w^Tx$) - **inner product of two vectors**
+### - Perceptrons in $\mathbb{R}^2$
+> h(x)=sign($w_0+w_1x_1+w_2x_2$) $\rightarrow$ 'a line'
+![](https://i.imgur.com/TTeavAj.png)
+**perceptrons <=> linear(binary)classifiers**
+### - Select g from $H$
+$H$=all possible perceptrons,g=?
+> - want:g$\approx$f(hard when f unknown)
+> - almost necessary:g$\approx$f on $D$,ideally g($x_n$)=f($x_n$)=$y_n$
+> - difficult:$H$ is of infinite size
+> - idea:start from some $g_0$,and 'correct'its mistakes on $D$
+###### will represent $g_0$ by its weight vector $w_0$
+
+### - Perceptron Learning Algorithm(PLA)
+###### Start from some $w_0$ (say,0),and 'correct' its mistakes on $D$
+![](https://i.imgur.com/8kJe0sK.png)
+###### Inner product increasing $\rightarrow$ angle decreasing
+![](https://i.imgur.com/ciH2G41.png)
+###### Limited length growthing
+![](https://i.imgur.com/Yzftz9b.png)
+
+### - More about PLA
+Guarantee:
+> as long as liner separable and correct by mistake
+> - inner product of &w_f& and $w_t$ grows fast;length of $w_t$ grows slowly
+> - PLA 'lines' are more and more aligned with $w_f$ => halts
+
+Pros:
+> simple to implement,fast,works in any dimension *d*
+
+Cons:
+> - 'assumes' linear separable $D$ to halt
+    > --property unknown in advance(no need PLA if we know $w_f$)
+> - not fully sure how long halting takes($\rho$ depends on $w_f$)
+    >--though pratically fast
+
+###### $\rightarrow$ what if $D$ not linear separable?(How to make $g \approx f$ while noise data exist?)
+
+### - Pocket Algorithm
+![](https://i.imgur.com/PrLtyEd.png)
+
+## Linear Regression Problem
+### - What is Linear Regression?
+- For **x**=($x_0,x_1,x_2,...,x_d$)'features of customer',approximate the desired credit limit with a weighted sum : $y\approx\sum\limits_{i=0}^d w_ix_i$
+- linear regression hypothesis: h(x)=$w^Tx$
+
+h(x):like perceptron,but without 'sign'
+
+### - The Error Measure
+popular error measure: 'square error'
+|in-sample |out-sample|
+| :------: | :------: |
+|$E_{in}(w)=\frac{1}{N}\sum\limits_{n=1}^N(\underbrace{h(x_n)}_{w^TX_n}-y_n)^2$|$E_{out}(w)=\epsilon(w^Tx-y)^2$|
+
+### - Minimize the $E_{in}(w)$
+1. Matrix Form of $E_{in}(w)$
+
+![](https://i.imgur.com/cNmR6cg.png)
+
+=> all vectors can express as a single vector
+
+2. Gradient descent
+
+![](https://i.imgur.com/JiRoXw4.png)
+
+![](https://i.imgur.com/kzJn3rE.png)
+
+![](https://i.imgur.com/n3iHxKe.jpg)
+
+### - Is it a Learning Algorithm?
+
+![](https://i.imgur.com/b98YJuh.png)
+
+![](https://i.imgur.com/JDvDX7A.png)
+
+![](https://i.imgur.com/SL8LWdh.png)
+
+![](https://i.imgur.com/28QW9IS.png)
+
+### - Linear classification
+
+{-1,+1} $\subset \mathbb{R}$ : liner regression for classification
+1. run LinReg on binary classification data *D* (efficient)
+2. return g(x)=sign($w_{LIN}^T x$)
+
+![](https://i.imgur.com/tmIRcQM.png)
+$err_{0/1}\leq err_{sqr}$
+
+=>classification $E_{out}(w) \leq$classification $E_{in}(w)+\sqrt{......} \leq$regression $E_{in}(w)+\sqrt{......}$
+
+- (loose) upper bound $err_{sqr}$ as $\hat{err}$ to approximate $err_{0/1}$
+- trade bound tightness for efficiency
+
+
+**$w_{LIN}$:useful baseline classifer, or as initial PLA/pocket vector**
+
+## Logistic Regression
+### - What is Logistic Regression?
+'soft' binary classification:
+$$f(x)=P(+1|x)\in[0,1]$$
+
+Different from classic binary classification,the 'soft binary classification' wants to know the probabilities of *y*([0,1]),not 'yes/no'.
+
+- For $x=(x_0,x_1,x_2,...,x_n)$'features of patient',calculate a weighted 'risk score':
+$$s=\sum\limits_{i=0}^d w_ix_i$$
+- convert the score to estimated probability by logistic function $\theta(s)$
+
+Logistic hypothesis:$$h(x)=\theta(w^Tx)$$
+
+### - Logistic Function
+$$\theta(s)=\frac{e^s}{1+e^s}=\frac{1}{1+e^{-s}}$$
+---smooth,monotonic,sigmoid function of s
+![](https://i.imgur.com/JE2dYl9.png)
+Logistic Regression: use
+$$h(x)=\frac{1}{1+exp(-w^Tx)}$$
+to approximate target function $f(x)=P(y|x)$
+
+### - Error measure
+Likelihood:
+![](https://i.imgur.com/lVnUmH1.png)
+
+![](https://i.imgur.com/mJHrjji.png)
+
+Cross-Entropy Error:
+
+$max\quad likelihood(logistic\quad h)\propto\prod_{n=1}^N h(y_nx_n)\\=>max\quad likelihood(w)\propto\prod_{n=1}^N \theta(y_nw^Tx_n)\\=> max\quad ln\prod_{n=1}^N \theta(y_nw^Tx_n)\quad[product->sum]\\=>min \quad \frac{1}{N} \sum\limits_{n=1}^N -ln \theta(y_nw^Tx_n)$
+\
+$\theta(s)=\frac{1}{1+exp(-s)}\quad:\quad min\quad \frac{1}{N} \sum\limits_{n=1}^N -ln \left(1+exp(-y_nw^Tx_n)\right) \\ =>min \quad\underbrace{\frac{1}{N} \sum\limits_{n=1}^Nerr(w,x_n,y_n)}_{E_{in}(w)}$
+
+> **$err(w,x,y)=ln(1+exp(-y wx)):$cross-entropy error**
+
+### - Gradient descent of Logistic Regression Error
+1. the gradient if $E_{in}(w)$
+
+![](https://i.imgur.com/5L3PkuI.png)
+2. Minimizing $E_{in}(w)$
+
+![](https://i.imgur.com/6SbAkPX.png)
+3. iterative optimization approach
+
+![](https://i.imgur.com/FO0PY5l.png)
+
+![](https://i.imgur.com/cZOzjQZ.png)
+
+![](https://i.imgur.com/P3cGYT4.png)
+
+4.chose of $\eta$
+
+![](https://i.imgur.com/fCONAKu.png)
+
+![](https://i.imgur.com/RlemgIA.png)
+
+### - Summary of logistic regression algorithm
+![](https://i.imgur.com/BwNDP6L.png)
+
+### - Binary classification
+
+![](https://i.imgur.com/wZ4VdqI.jpg)
+
+![](https://i.imgur.com/LnzEL9i.png)
+
+![](https://i.imgur.com/JE4bFkm.png)
+
+![](https://i.imgur.com/AkQ3mW4.jpg)
+
+![](https://i.imgur.com/ifhIQeD.png)
+
+### - Multiclass Classification
+1. OVA(one versus all at a time)
+
+![](https://i.imgur.com/WTzJzBk.png)
+
+2. OVO(one versus one at a time)
+
+![](https://i.imgur.com/aeUNsmy.png)
+
+![](https://i.imgur.com/dsTAlc0.png)
+
+### - Nonelinear Transformation
+#### quadratic hypothesis
+
+![](https://i.imgur.com/tx5VvXd.png)
+
+![](https://i.imgur.com/brYFgUN.png)
+
+![](https://i.imgur.com/Aedv8sh.png)
+
+![](https://i.imgur.com/YAonOUi.png)
+
+## How to make learning better
+### Feature Transformation、Overfitting、Validation:
+https://www.ycc.idv.tw/ml-course-foundations_4.html
+### Regularization:
+https://medium.com/chung-yi/ml%E5%85%A5%E9%96%80-%E5%8D%81%E4%BA%94-regularization-solving-overfitting-9d000e3dd561
+
+
+### Solving methods of overfitting
+some data are with big error,then we have some solutions below:
+- correct the label(**data cleaning**)
+- remove the example(**data pruning**)
+- add virtual examples by shifting/rotating the given data(**data hinting**)
+- add some constrait(**data regularization**)
+
+
+## Noun definition 
+---
+1. hypothesis: 假設出的函式
+2. statistics: 統計學
+3. perceptron: 感測器(神經網絡)
+4. threshold: 臨界 
+5. Supervised Learning:
+> 監督式學習(Supervised)(分類、迴歸)
+> 非監督式學習(Unsupervised)(分群)
+> 半監督式學習(Semi-supervised)
+> 強化學習(Reinforcement)(分類)
+6. i.i.d.: 指一組隨機變數中每個變數的機率分布都相同，且這些隨機變數互相獨立
+7. PAC: probably approximately correct
+8. shatter: 成長函數
+9. dichotomy: 可分類的狀況數量
+10. growth function: $max|\mathcal{H}(x_1,x_2,…,x_N)|$ -> 可得到dichotomies
+11. Gradient descent: 梯度下降
+12. pseudo-inverse: 擬反矩陣 
+13. w.r.t.: 關於
+14. analytic solution: An analytical solution involves framing the problem in a well-understood form and calculating the exact solution.
+15. monotonic,sigmoid function:單調、S型函數
+16. Maximum Likelihood Estimation (MLE）最大概似估計 也稱極大概似估計
+17. ratio: 比值
+$md$,
+  $md$images/pic_note2.jpg$md$, $j$[]$j$::jsonb, $md$機器學習$md$, '{}'::text[], null, 'published', 0,
+  '2023-09-15T00:00:00Z'::timestamptz, '2023-09-15T00:00:00Z'::timestamptz, '2023-10-25T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$notes$md$, $md$python_learning$md$, $md$Python 學習紀錄$md$, $md$自學 Python 程式語言的基礎語法與專案實作紀錄。$md$,
+  $md$# Python 學習紀錄
+
+> 此筆記記錄自學 Python 的過程與重點整理。
+
+## 主題大綱
+
+- Python 基礎語法（變數、型別、控制流程）
+- 函數與模組
+- 物件導向程式設計（OOP）
+- 常用標準函式庫（os, sys, re, json）
+- 第三方套件（requests, numpy, pandas）
+- 專案實作紀錄
+$md$,
+  $md$images/pic_note3.jpg$md$, $j$[]$j$::jsonb, $md$程式語言$md$, '{}'::text[], $md$pdfs/Python.pdf$md$, 'published', 0,
+  '2023-08-10T00:00:00Z'::timestamptz, '2023-08-10T00:00:00Z'::timestamptz, '2023-12-05T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
+  $md$notes$md$, $md$security_basics$md$, $md$資訊安全基礎知識$md$, $md$參加資訊安全課程及其他資訊領域的自行探索紀錄。$md$,
+  $md$# 資訊安全基礎知識
+
+> 此筆記正在撰寫中，請稍後再來查看！
+
+## 主題大綱
+
+- CIA 三元素（機密性、完整性、可用性）
+- 常見攻擊類型（SQL Injection、XSS、CSRF 等）
+- 密碼學基礎（對稱加密、非對稱加密、雜湊函數）
+- 網路安全（防火牆、VPN、SSL/TLS）
+- 資訊安全管理
+$md$,
+  $md$images/pic_note1.jpg$md$, $j$[]$j$::jsonb, $md$資訊安全$md$, '{}'::text[], $md$pdfs/資安.pdf$md$, 'published', 0,
+  '2023-10-01T00:00:00Z'::timestamptz, '2023-10-01T00:00:00Z'::timestamptz, '2023-11-20T00:00:00Z'::timestamptz
+) on conflict (section, slug) do update set
+  title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
+  images=excluded.images, category=excluded.category, pdf_url=excluded.pdf_url,
+  status=excluded.status, updated_at=excluded.updated_at;
+
+
+

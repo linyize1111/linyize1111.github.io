@@ -189,9 +189,9 @@ grant select on public.admins        to authenticated;
 --    請把下面的 email 換成你的「Google 登入信箱」（= ACG 管理員信箱）。
 --    未替換前，沒有人具備管理員權限（安全預設）。
 -- ---------------------------------------------------------------------
--- insert into public.admins (email, note) values
---   ('YOUR_ADMIN_EMAIL@gmail.com', '主網站站長')
--- on conflict (email) do nothing;
+insert into public.admins (email, note) values
+  ('jay0975008815@gmail.com', '主網站站長')
+on conflict (email) do nothing;
 
 -- ---------------------------------------------------------------------
 -- 9. 主要區塊文字種子（可先建立，之後在後台編輯）
