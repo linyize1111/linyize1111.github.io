@@ -199,6 +199,149 @@
       .replace(/\s+/g, "-").replace(/[^\w\u4e00-\u9fff-]/g, "").slice(0, 120);
   }
 
+  // ---------- 貼文解析（本地啟發式，不送第三方） ----------
+  function parseMetaLine(key, value, out) {
+    var k = String(key || "").trim().toLowerCase();
+    var v = String(value || "").trim();
+    if (!v) return;
+    if (k === "title" || k === "標題") out.title = v;
+    else if (k === "slug") out.slug = slugify(v);
+    else if (k === "summary" || k === "摘要" || k === "description") out.summary = v;
+    else if (k === "category" || k === "分類") out.category = v;
+    else if (k === "tags" || k === "標籤") {
+      out.tags = v.split(/[,，、\s]+/).map(function (t) { return t.trim(); }).filter(Boolean);
+    } else if (k === "cover" || k === "主圖") out.cover = v;
+    else if (k === "pdf" || k === "pdf_url") out.pdf = v;
+    else if (k === "status" || k === "狀態") {
+      if (/publish|發佈|发布/i.test(v)) out.status = "published";
+      else if (/draft|草稿/i.test(v)) out.status = "draft";
+    } else if (k === "section" || k === "分區") {
+      if (/note|筆記|學科/i.test(v)) out.section = "notes";
+      else if (/liter|文學|隨筆/i.test(v)) out.section = "literature";
+    }
+  }
+
+  function parseArticleBlob(raw) {
+    var text = String(raw || "").replace(/\r\n/g, "\n").trim();
+    var out = {
+      title: "", slug: "", summary: "", body: "", category: "",
+      tags: [], cover: "", pdf: "", status: "", section: "",
+      images: [],
+    };
+    if (!text) return out;
+
+    if (text.indexOf("---") === 0) {
+      var end = text.indexOf("\n---", 3);
+      if (end !== -1) {
+        text.slice(3, end).split("\n").forEach(function (line) {
+          var m = line.match(/^([^\s:#]+)\s*[:：]\s*(.+)$/);
+          if (m) parseMetaLine(m[1], m[2].replace(/^["']|["']$/g, ""), out);
+        });
+        text = text.slice(end + 4).trim();
+      }
+    }
+
+    var lines = text.split("\n");
+    var bodyStart = 0;
+    var urlRe = /(https?:\/\/[^\s)]+)/gi;
+    var allUrls = text.match(urlRe) || [];
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) continue;
+      var meta = line.match(/^(title|slug|summary|category|tags|cover|pdf|status|section|標題|摘要|分類|標籤|主圖|狀態|分區)\s*[:：]\s*(.+)$/i);
+      if (meta) {
+        parseMetaLine(meta[1], meta[2], out);
+        bodyStart = i + 1;
+        continue;
+      }
+      var h1 = line.match(/^#\s+(.+)$/);
+      if (h1 && !out.title) {
+        out.title = h1[1].trim();
+        bodyStart = i + 1;
+        break;
+      }
+      if (!out.title && line.length < 120) {
+        out.title = line.replace(/^["']|["']$/g, "");
+        bodyStart = i + 1;
+        break;
+      }
+      break;
+    }
+
+    var bodyLines = lines.slice(bodyStart);
+    while (bodyLines.length && !bodyLines[0].trim()) bodyLines.shift();
+
+    if (!out.summary && bodyLines.length) {
+      var para = [];
+      for (var j = 0; j < bodyLines.length; j++) {
+        var bl = bodyLines[j].trim();
+        if (!bl) break;
+        if (/^#+\s/.test(bl) || /^[-*]\s/.test(bl)) break;
+        para.push(bl);
+        if (para.join(" ").length > 40) break;
+      }
+      out.summary = para.join(" ").replace(/^>\s*/, "").slice(0, 280);
+    }
+
+    if (!out.tags.length) {
+      var hashTags = text.match(/#[\w\u4e00-\u9fff-]+/g);
+      if (hashTags) {
+        out.tags = hashTags.map(function (t) { return t.replace(/^#/, ""); }).slice(0, 12);
+      }
+    }
+
+    if (!out.category) {
+      var section = $("f-section") ? $("f-section").value : "literature";
+      var pool = CATEGORIES[section] || [];
+      pool.some(function (c) {
+        if (text.indexOf(c) !== -1) { out.category = c; return true; }
+        return false;
+      });
+    }
+
+    allUrls.forEach(function (u) {
+      var clean = u.replace(/[),.]+$/, "");
+      if (!out.pdf && /\.pdf(\?|$)/i.test(clean)) out.pdf = clean;
+      if (!out.cover && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(clean)) out.cover = clean;
+      else if (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(clean)) {
+        if (!out.images.some(function (im) { return im.src === clean; })) {
+          out.images.push({ src: clean, caption: "" });
+        }
+      }
+    });
+
+    out.body = bodyLines.join("\n").trim();
+    if (!out.slug && out.title) out.slug = slugify(out.title);
+    return out;
+  }
+
+  function applyParsedArticle(parsed) {
+    if (parsed.section) $("f-section").value = parsed.section;
+    if (parsed.status) $("f-status").value = parsed.status;
+    if (parsed.category) $("f-category").value = parsed.category;
+    if (parsed.title) $("f-title").value = parsed.title;
+    if (parsed.slug) $("f-slug").value = parsed.slug;
+    if (parsed.summary) $("f-summary").value = parsed.summary;
+    if (parsed.tags && parsed.tags.length) $("f-tags").value = parsed.tags.join(", ");
+    if (parsed.pdf) $("f-pdf").value = parsed.pdf;
+    if (parsed.cover) {
+      $("f-cover").value = parsed.cover;
+      $("cover-thumb").src = parsed.cover;
+      $("cover-thumb").classList.remove("hidden");
+    }
+    if (parsed.body) $("f-body").value = parsed.body;
+    if (parsed.images && parsed.images.length) {
+      parsed.images.forEach(function (im) {
+        if (!currentImages.some(function (x) { return x.src === im.src; })) {
+          currentImages.push(im);
+        }
+      });
+      renderImagesEditor();
+    }
+    refreshCategoryList();
+  }
+
   async function saveArticle() {
     var id = $("f-id").value;
     var title = $("f-title").value.trim();
@@ -431,6 +574,39 @@
     $("btn-save").addEventListener("click", saveArticle);
     $("btn-delete").addEventListener("click", openDeleteModal);
     bindDeleteModal();
+
+    var parseBtn = $("btn-parse-paste");
+    if (parseBtn) {
+      parseBtn.addEventListener("click", function () {
+        var raw = ($("paste-blob").value || "").trim();
+        if (!raw) {
+          $("paste-status").textContent = "請先貼上內容";
+          return;
+        }
+        var parsed = parseArticleBlob(raw);
+        if (!parsed.title && !parsed.body) {
+          $("paste-status").textContent = "無法辨識標題或內文";
+          return;
+        }
+        applyParsedArticle(parsed);
+        $("paste-status").textContent = "已填入：" + (parsed.title || "（無標題）");
+        var panel = $("import-panel");
+        if (panel) panel.open = false;
+      });
+    }
+    var clearPaste = $("btn-clear-paste");
+    if (clearPaste) {
+      clearPaste.addEventListener("click", function () {
+        $("paste-blob").value = "";
+        $("paste-status").textContent = "";
+      });
+    }
+
+    $("f-title").addEventListener("blur", function () {
+      if (!$("f-slug").value.trim() && $("f-title").value.trim()) {
+        $("f-slug").value = slugify($("f-title").value);
+      }
+    });
     $("f-section").addEventListener("change", refreshCategoryList);
     $("f-cover").addEventListener("input", function () {
       var v = $("f-cover").value.trim();

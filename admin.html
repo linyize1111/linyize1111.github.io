@@ -93,6 +93,18 @@
                 <div class="card hidden" id="article-form">
                     <h3 id="form-title">新增文章</h3>
                     <div id="form-msg"></div>
+
+                    <details class="import-panel" id="import-panel">
+                        <summary>快速匯入 — 貼上一坨文字自動填欄位</summary>
+                        <p class="muted">支援 YAML frontmatter、Markdown 標題、<code>分類：</code> / <code>tags:</code> 行、圖片與 PDF 連結。純本地解析，不送第三方 AI。</p>
+                        <textarea id="paste-blob" rows="8" placeholder="# 標題&#10;分類：隨筆&#10;tags: 閱讀, 反思&#10;&#10;摘要段落…&#10;&#10;## 內文…"></textarea>
+                        <div class="import-actions">
+                            <button type="button" class="btn primary" id="btn-parse-paste">解析並填入欄位</button>
+                            <button type="button" class="btn" id="btn-clear-paste">清除</button>
+                            <span class="muted" id="paste-status"></span>
+                        </div>
+                    </details>
+
                     <input type="hidden" id="f-id" />
                     <div class="row">
                         <div class="field">
@@ -199,7 +211,7 @@
             <div id="delete-step-1">
                 <p class="modal-warn">確定要<strong>永久刪除</strong>這篇文章嗎？</p>
                 <p class="muted modal-article-name" id="delete-preview-title"></p>
-                <p class="muted" style="font-size:.85rem;">此操作無法復原，文章內容與設定將從資料庫移除。</p>
+                <p class="muted modal-irreversible"><strong>永久刪除後無法復原</strong>，文章內容、圖片設定與瀏覽紀錄關聯將從資料庫移除。</p>
                 <div class="modal-actions">
                     <button type="button" class="btn" id="delete-cancel-1">取消</button>
                     <button type="button" class="btn danger" id="delete-continue">繼續刪除</button>

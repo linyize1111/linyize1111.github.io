@@ -1,246 +1,307 @@
 /**
- * Zdog Cat Paw Cursor Effect (Vanilla JS - Vertical Strike Version)
- * 垂直重擊版：維持懸停傾角，拍下時強制垂直(0度)，印章回歸正向與米白色
+ * Cat Paw Cursor — 互動游標特效（效能優化 + 開關 + 無障礙）
+ * 依賴 Zdog（頁面需先載入 zdog.dist.min.js）
  */
-class CatPawEffect {
-    constructor(options = {}) {
-        this.size = options.size || 50;
+(function () {
+  "use strict";
 
-        // 殘留的 3D 腳印改回米白色
-        this.padPrintColor = options.padPrintColor || '#F5F5EC';
-        // UI 的肉球維持粉嫩色
-        this.cursorPadColor = options.cursorPadColor || '#FFA1B8';
-        this.pawBaseColor = options.pawBaseColor || '#404040';
+  var STORAGE_KEY = "catPawEnabled";
+  var MAX_PRINTS = 28;
+  var COARSE = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+  var REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-        this.maxPrintLifeTime = options.maxPrintLifeTime || 2000;
-        this.padList = [];
-        this.DEFAULT_SHAPE_SIZE = 80;
+  function readEnabled() {
+    try {
+      var saved = localStorage.getItem(STORAGE_KEY);
+      if (saved === "0" || saved === "false") return false;
+      if (saved === "1" || saved === "true") return true;
+    } catch (e) { /* ignore */ }
+    return !REDUCED && !COARSE;
+  }
 
-        this.pos = { x: -100, y: -100 };
-        this.target = { x: -100, y: -100 };
-        this.vel = { x: 0, y: 0 };
+  function writeEnabled(on) {
+    try { localStorage.setItem(STORAGE_KEY, on ? "1" : "0"); } catch (e) { /* ignore */ }
+  }
 
-        // 全域基礎角度：懸停時保持逆時針 34 度 (-9 - 25 = -34)
-        this.angle = -34;
-        this.isPressed = false;
-
-        this.initCursorHider();
-        this.initCanvas();
-        this.initZdog();
-        this.initAccurateCursor();
-        this.bindEvents();
-        this.animate();
+  class CatPawEffect {
+    constructor(options) {
+      options = options || {};
+      this.enabled = options.enabled !== false;
+      this.size = options.size || 36;
+      this.padPrintColor = options.padPrintColor || "#F5F5EC";
+      this.cursorPadColor = options.cursorPadColor || "#FFA1B8";
+      this.pawBaseColor = options.pawBaseColor || "#404040";
+      this.maxPrintLifeTime = options.maxPrintLifeTime || 2200;
+      this.padList = [];
+      this.DEFAULT_SHAPE_SIZE = 80;
+      this.pos = { x: -120, y: -120 };
+      this.target = { x: -120, y: -120 };
+      this.vel = { x: 0, y: 0 };
+      this.angle = -34;
+      this.isPressed = false;
+      this.running = false;
+      this.visible = !document.hidden;
+      this._onMove = this._onMove.bind(this);
+      this._onDown = this._onDown.bind(this);
+      this._onUp = this._onUp.bind(this);
+      this._onScroll = this._onScroll.bind(this);
+      this._onVis = this._onVis.bind(this);
+      this._onResize = this._onResize.bind(this);
+      if (this.enabled) this.mount();
     }
 
-    initCursorHider() {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            * { cursor: none !important; }
-            html, body { cursor: none !important; }
-        `;
-        document.head.appendChild(style);
+    mount() {
+      if (this.mounted || typeof window.Zdog === "undefined") return;
+      this.mounted = true;
+      document.documentElement.classList.add("paw-cursor-active");
+      this.initCanvas();
+      this.initZdog();
+      this.initArm();
+      this.bindEvents();
+      this.start();
+    }
+
+    unmount() {
+      this.stop();
+      document.documentElement.classList.remove("paw-cursor-active");
+      window.removeEventListener("mousemove", this._onMove);
+      window.removeEventListener("mousedown", this._onDown);
+      window.removeEventListener("mouseup", this._onUp);
+      window.removeEventListener("scroll", this._onScroll, { passive: true });
+      document.removeEventListener("visibilitychange", this._onVis);
+      window.removeEventListener("resize", this._onResize);
+      if (this.canvas && this.canvas.parentNode) this.canvas.parentNode.removeChild(this.canvas);
+      if (this.catArm && this.catArm.parentNode) this.catArm.parentNode.removeChild(this.catArm);
+      this.canvas = null;
+      this.catArm = null;
+      this.illo = null;
+      this.padList = [];
+      this.mounted = false;
+    }
+
+    setEnabled(on) {
+      this.enabled = !!on;
+      writeEnabled(this.enabled);
+      if (this.enabled) this.mount();
+      else this.unmount();
+      return this.enabled;
     }
 
     initCanvas() {
-        this.canvas = document.createElement('canvas');
-        Object.assign(this.canvas.style, {
-            position: 'fixed', top: '0', left: '0',
-            width: '100vw', height: '100vh',
-            pointerEvents: 'none', zIndex: '9999'
-        });
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-        document.body.appendChild(this.canvas);
-
-        window.addEventListener('resize', () => {
-            this.canvas.width = window.innerWidth;
-            this.canvas.height = window.innerHeight;
-            this.illo.updateRenderGraph();
-        });
+      this.canvas = document.createElement("canvas");
+      this.canvas.setAttribute("aria-hidden", "true");
+      Object.assign(this.canvas.style, {
+        position: "fixed", top: "0", left: "0",
+        width: "100vw", height: "100vh",
+        pointerEvents: "none", zIndex: "9998",
+      });
+      this.canvas.width = window.innerWidth;
+      this.canvas.height = window.innerHeight;
+      document.body.appendChild(this.canvas);
     }
 
     initZdog() {
-        this.illo = new Zdog.Illustration({
-            element: this.canvas,
-            dragRotate: false,
-        });
+      this.illo = new Zdog.Illustration({
+        element: this.canvas,
+        dragRotate: false,
+      });
     }
 
-    initAccurateCursor() {
-        this.redDot = document.createElement('div');
-        Object.assign(this.redDot.style, {
-            position: 'fixed', pointerEvents: 'none',
-            zIndex: '10001',
-            width: '5px', height: '5px',
-            backgroundColor: '#ff0000', borderRadius: '50%',
-            boxShadow: '0 0 7px 3px rgba(255, 0, 0, 0.7)',
-            transform: 'translate(-50%, -50%)',
-            top: '0px', left: '0px'
-        });
-        document.body.appendChild(this.redDot);
-
-        const ratio = this.size / 80;
-
-        // 灰色手臂容器
-        this.catArm = document.createElement('div');
-        Object.assign(this.catArm.style, {
-            position: 'fixed', pointerEvents: 'none',
-            zIndex: '10005',
-            width: `${68 * ratio}px`,
-            height: `${136 * ratio}px`,
-            backgroundColor: this.pawBaseColor,
-            borderRadius: `${34 * ratio}px`,
-            transformStyle: 'preserve-3d',
-            perspective: '500px',
-            top: '0px', left: '0px',
-            transform: 'translate(-100px, -100px)'
-        });
-
-        // 內部肉墊座標
-        this.catArm.innerHTML = `
-            <div id="paw-pads" style="width: 100%; height: 100%; transition: opacity 0.05s;">
-                <div style="position:absolute; width: ${45 * ratio}px; height: ${40 * ratio}px; background: ${this.cursorPadColor}; border-radius: 50%; top: ${38 * ratio}px; left: ${11.5 * ratio}px;"></div>
-                <div style="position:absolute; width: ${35 * ratio}px; height: ${40 * ratio}px; background: ${this.cursorPadColor}; border-radius: 50%; top: ${35 * ratio}px; left: ${16.5 * ratio}px;"></div>
-
-                <div style="position:absolute; width: ${10 * ratio}px; height: ${20 * ratio}px; background: ${this.cursorPadColor}; border-radius: 50%; top: ${18 * ratio}px; left: ${49 * ratio}px;"></div>
-                <div style="position:absolute; width: ${10 * ratio}px; height: ${20 * ratio}px; background: ${this.cursorPadColor}; border-radius: 50%; top: ${8 * ratio}px; left: ${37 * ratio}px;"></div>
-                <div style="position:absolute; width: ${10 * ratio}px; height: ${20 * ratio}px; background: ${this.cursorPadColor}; border-radius: 50%; top: ${8 * ratio}px; left: ${21 * ratio}px;"></div>
-                <div style="position:absolute; width: ${10 * ratio}px; height: ${20 * ratio}px; background: ${this.cursorPadColor}; border-radius: 50%; top: ${18 * ratio}px; left: ${9 * ratio}px;"></div>
-            </div>
-        `;
-        document.body.appendChild(this.catArm);
+    initArm() {
+      var ratio = this.size / 80;
+      this.catArm = document.createElement("div");
+      this.catArm.setAttribute("aria-hidden", "true");
+      Object.assign(this.catArm.style, {
+        position: "fixed", pointerEvents: "none", zIndex: "10000",
+        width: (68 * ratio) + "px", height: (136 * ratio) + "px",
+        backgroundColor: this.pawBaseColor, borderRadius: (34 * ratio) + "px",
+        transformStyle: "preserve-3d", perspective: "500px",
+        top: "0", left: "0", transform: "translate(-120px,-120px)",
+        willChange: "transform",
+      });
+      this.catArm.innerHTML =
+        '<div id="paw-pads" style="width:100%;height:100%;transition:opacity .06s;">' +
+        '<div style="position:absolute;width:' + (45 * ratio) + 'px;height:' + (40 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (38 * ratio) + 'px;left:' + (11.5 * ratio) + 'px;"></div>' +
+        '<div style="position:absolute;width:' + (35 * ratio) + 'px;height:' + (40 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (35 * ratio) + 'px;left:' + (16.5 * ratio) + 'px;"></div>' +
+        '<div style="position:absolute;width:' + (10 * ratio) + 'px;height:' + (20 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (18 * ratio) + 'px;left:' + (49 * ratio) + 'px;"></div>' +
+        '<div style="position:absolute;width:' + (10 * ratio) + 'px;height:' + (20 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (8 * ratio) + 'px;left:' + (37 * ratio) + 'px;"></div>' +
+        '<div style="position:absolute;width:' + (10 * ratio) + 'px;height:' + (20 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (8 * ratio) + 'px;left:' + (21 * ratio) + 'px;"></div>' +
+        '<div style="position:absolute;width:' + (10 * ratio) + 'px;height:' + (20 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (18 * ratio) + 'px;left:' + (9 * ratio) + 'px;"></div>' +
+        "</div>";
+      document.body.appendChild(this.catArm);
+      this.padsEl = this.catArm.querySelector("#paw-pads");
     }
 
     getValue(baseValue) {
-        return baseValue * (this.size / this.DEFAULT_SHAPE_SIZE);
+      return baseValue * (this.size / this.DEFAULT_SHAPE_SIZE);
     }
 
-    createPaw(absoluteX, absoluteY) {
-        const group = new Zdog.Group({
-            addTo: this.illo,
-            translate: {
-                x: absoluteX - window.innerWidth / 2,
-                y: absoluteY - window.innerHeight / 2 + this.getValue(20),
-            },
-            // 【修正點 1】印章完全垂直 (0度)
-            rotate: { z: 0 },
-        });
-
-        // 使用 padPrintColor (米白色) 繪製 3D 印章
-        new Zdog.Hemisphere({ addTo: group, translate: { y: this.getValue(-10), z: this.getValue(38) }, color: this.padPrintColor, stroke: 0, width: this.getValue(45), height: this.getValue(40) });
-        new Zdog.Hemisphere({ addTo: group, translate: { y: this.getValue(-13), z: this.getValue(38) }, color: this.padPrintColor, stroke: 0, width: this.getValue(35), height: this.getValue(40) });
-
-        const toes = [[20, -40], [8, -50], [-8, -50], [-20, -40]];
-        toes.forEach(([tx, ty]) => {
-            new Zdog.Hemisphere({ addTo: group, translate: { x: this.getValue(tx), y: this.getValue(ty), z: this.getValue(38) }, color: this.padPrintColor, width: this.getValue(10), height: this.getValue(20) });
-        });
-
-        return {
-            id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(),
-            group: group,
-            createdAt: performance.now()
-        };
+    createPaw(x, y) {
+      var group = new Zdog.Group({
+        addTo: this.illo,
+        translate: {
+          x: x - window.innerWidth / 2,
+          y: y - window.innerHeight / 2 + this.getValue(20),
+        },
+        rotate: { z: 0 },
+      });
+      new Zdog.Hemisphere({ addTo: group, translate: { y: this.getValue(-10), z: this.getValue(38) }, color: this.padPrintColor, stroke: 0, width: this.getValue(45), height: this.getValue(40) });
+      new Zdog.Hemisphere({ addTo: group, translate: { y: this.getValue(-13), z: this.getValue(38) }, color: this.padPrintColor, stroke: 0, width: this.getValue(35), height: this.getValue(40) });
+      [[20, -40], [8, -50], [-8, -50], [-20, -40]].forEach(function (t) {
+        new Zdog.Hemisphere({ addTo: group, translate: { x: this.getValue(t[0]), y: this.getValue(t[1]), z: this.getValue(38) }, color: this.padPrintColor, width: this.getValue(10), height: this.getValue(20) });
+      }, this);
+      return { group: group, createdAt: performance.now() };
     }
 
-    hexToRgba(hex, alpha = 1) {
-        hex = hex.replace('#', '');
-        if (hex.length === 3) hex = hex.split('').map(x => x + x).join('');
-        const hexNumber = parseInt(hex, 16);
-        return `rgba(${(hexNumber >> 16) & 255},${(hexNumber >> 8) & 255},${hexNumber & 255},${alpha})`;
+    hexToRgba(hex, alpha) {
+      hex = String(hex).replace("#", "");
+      if (hex.length === 3) hex = hex.split("").map(function (x) { return x + x; }).join("");
+      var n = parseInt(hex, 16);
+      return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + alpha + ")";
     }
 
     bindEvents() {
-        window.addEventListener('mousemove', (e) => {
-            this.target.x = e.clientX;
-            this.target.y = e.clientY;
-
-            this.redDot.style.left = `${this.target.x}px`;
-            this.redDot.style.top = `${this.target.y}px`;
-        });
-
-        window.addEventListener('mousedown', (e) => {
-            this.isPressed = true;
-            const pad = this.createPaw(e.clientX + window.scrollX, e.clientY + window.scrollY);
-            this.padList.push(pad);
-            this.illo.updateRenderGraph();
-        });
-
-        window.addEventListener('mouseup', () => {
-            this.isPressed = false;
-        });
-
-        window.addEventListener('scroll', () => {
-            this.illo.translate.x = window.scrollX;
-            this.illo.translate.y = -window.scrollY;
-            this.illo.updateRenderGraph();
-        });
+      window.addEventListener("mousemove", this._onMove, { passive: true });
+      window.addEventListener("mousedown", this._onDown);
+      window.addEventListener("mouseup", this._onUp);
+      window.addEventListener("scroll", this._onScroll, { passive: true });
+      document.addEventListener("visibilitychange", this._onVis);
+      window.addEventListener("resize", this._onResize);
     }
 
-    animate() {
-        const now = performance.now();
-        const ratio = this.size / 80;
-
-        if (!this.isPressed) {
-            // [懸停狀態] 保持自然的傾斜角度
-            const dx = this.target.x - this.pos.x;
-            const dy = this.target.y - this.pos.y;
-
-            this.vel.x = dx * 0.3;
-            this.vel.y = dy * 0.3;
-
-            this.pos.x += this.vel.x;
-            this.pos.y += this.vel.y;
-
-            let targetAngle = -34 + (this.vel.x * -0.5);
-            targetAngle = Math.max(-50, Math.min(-15, targetAngle));
-            this.angle += (targetAngle - this.angle) * 0.3;
-
-            this.catArm.style.transform = `translate(${this.pos.x + 25}px, ${this.pos.y + 25}px) rotateY(0deg) rotateZ(${this.angle}deg) scale(1)`;
-            this.catArm.querySelector('#paw-pads').style.opacity = '1';
-
-        } else {
-            // [打擊狀態]
-            this.pos.x = this.target.x;
-            this.pos.y = this.target.y;
-
-            // 【修正點 2】因為旋轉角度變回 0 度，重新計算偏移量以確保肉球正中心壓在紅點上
-            const offsetX = 34 * ratio; // 容器寬度(68)的一半
-            const offsetY = 58 * ratio; // 肉墊幾何中心 (38 + 半高20 = 58)
-
-            // 【修正點 3】強制 rotateZ(0deg) 使其垂直拍下
-            this.catArm.style.transform = `translate(${this.pos.x - offsetX}px, ${this.pos.y - offsetY}px) rotateY(-180deg) rotateZ(0deg) scale(1)`;
-            this.catArm.querySelector('#paw-pads').style.opacity = '0';
-        }
-
-        // Zdog 掌印衰減邏輯
-        for (let i = this.padList.length - 1; i >= 0; i--) {
-            const pad = this.padList[i];
-            const deltaTime = now - pad.createdAt;
-
-            if (deltaTime > this.maxPrintLifeTime - 1000) {
-                const opacity = Math.max(0, 1 - (deltaTime - (this.maxPrintLifeTime - 1000)) / 1000);
-                pad.group.children.forEach(child => {
-                    if (child instanceof Zdog.Hemisphere) child.color = this.hexToRgba(this.padPrintColor, opacity);
-                });
-            }
-
-            if (deltaTime > this.maxPrintLifeTime) {
-                pad.group.remove();
-                this.padList.splice(i, 1);
-            }
-        }
-
-        this.illo.updateRenderGraph();
-        requestAnimationFrame(() => this.animate());
+    _onMove(e) {
+      this.target.x = e.clientX;
+      this.target.y = e.clientY;
     }
-}
 
-document.addEventListener("DOMContentLoaded", () => {
-    new CatPawEffect({
-        size: 33,
-        padPrintColor: '#F5F5EC',  // 殘留的印章改為米白色
-        cursorPadColor: '#FFA1B8', // 游標的肉墊保持粉紅色
-        pawBaseColor: '#404040',
-        maxPrintLifeTime: 2500
+    _onDown(e) {
+      if (e.button !== 0) return;
+      this.isPressed = true;
+      this.padList.push(this.createPaw(e.clientX + window.scrollX, e.clientY + window.scrollY));
+      while (this.padList.length > MAX_PRINTS) {
+        var old = this.padList.shift();
+        if (old && old.group) old.group.remove();
+      }
+      if (this.illo) this.illo.updateRenderGraph();
+    }
+
+    _onUp() { this.isPressed = false; }
+
+    _onScroll() {
+      if (!this.illo) return;
+      this.illo.translate.x = window.scrollX;
+      this.illo.translate.y = -window.scrollY;
+      this.illo.updateRenderGraph();
+    }
+
+    _onVis() {
+      this.visible = !document.hidden;
+      if (this.visible) this.start();
+      else this.stop();
+    }
+
+    _onResize() {
+      if (!this.canvas) return;
+      this.canvas.width = window.innerWidth;
+      this.canvas.height = window.innerHeight;
+      if (this.illo) this.illo.updateRenderGraph();
+    }
+
+    start() {
+      if (this.running || !this.mounted) return;
+      this.running = true;
+      this._tick();
+    }
+
+    stop() {
+      this.running = false;
+      if (this._raf) cancelAnimationFrame(this._raf);
+      this._raf = null;
+    }
+
+    _tick() {
+      if (!this.running) return;
+      this._raf = requestAnimationFrame(this._tick.bind(this));
+      if (!this.visible || !this.catArm) return;
+
+      var now = performance.now();
+      var ratio = this.size / 80;
+
+      if (!this.isPressed) {
+        var dx = this.target.x - this.pos.x;
+        var dy = this.target.y - this.pos.y;
+        this.vel.x = dx * 0.28;
+        this.vel.y = dy * 0.28;
+        this.pos.x += this.vel.x;
+        this.pos.y += this.vel.y;
+        var targetAngle = -34 + (this.vel.x * -0.45);
+        targetAngle = Math.max(-50, Math.min(-15, targetAngle));
+        this.angle += (targetAngle - this.angle) * 0.28;
+        this.catArm.style.transform = "translate(" + (this.pos.x + 25) + "px," + (this.pos.y + 25) + "px) rotateY(0deg) rotateZ(" + this.angle + "deg) scale(1)";
+        if (this.padsEl) this.padsEl.style.opacity = "1";
+      } else {
+        this.pos.x = this.target.x;
+        this.pos.y = this.target.y;
+        var offsetX = 34 * ratio;
+        var offsetY = 58 * ratio;
+        this.catArm.style.transform = "translate(" + (this.pos.x - offsetX) + "px," + (this.pos.y - offsetY) + "px) rotateY(-180deg) rotateZ(0deg) scale(1)";
+        if (this.padsEl) this.padsEl.style.opacity = "0";
+      }
+
+      for (var i = this.padList.length - 1; i >= 0; i--) {
+        var pad = this.padList[i];
+        var delta = now - pad.createdAt;
+        if (delta > this.maxPrintLifeTime - 900) {
+          var opacity = Math.max(0, 1 - (delta - (this.maxPrintLifeTime - 900)) / 900);
+          pad.group.children.forEach(function (child) {
+            if (child instanceof Zdog.Hemisphere) child.color = this.hexToRgba(this.padPrintColor, opacity);
+          }, this);
+        }
+        if (delta > this.maxPrintLifeTime) {
+          pad.group.remove();
+          this.padList.splice(i, 1);
+        }
+      }
+
+      if (this.illo) this.illo.updateRenderGraph();
+    }
+  }
+
+  function initPawToggle(effect) {
+    document.addEventListener("DOMContentLoaded", function () {
+      var controls = document.getElementById("video-controls");
+      if (!controls) return;
+      var btn = document.createElement("button");
+      btn.id = "btn-paw";
+      btn.type = "button";
+      function sync() {
+        var on = effect.enabled;
+        btn.innerHTML = on ? '<i class="fas fa-paw"></i>' : '<i class="fas fa-ban"></i>';
+        btn.title = on ? "關閉貓掌游標" : "開啟貓掌游標";
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+        btn.classList.toggle("is-off", !on);
+      }
+      sync();
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        effect.setEnabled(!effect.enabled);
+        sync();
+      });
+      controls.insertBefore(btn, controls.firstChild);
     });
-});
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    if (COARSE) return;
+    var effect = new CatPawEffect({
+      enabled: readEnabled(),
+      size: 34,
+      padPrintColor: "#F5F5EC",
+      cursorPadColor: "#FFA1B8",
+      pawBaseColor: "#404040",
+      maxPrintLifeTime: 2400,
+    });
+    window.CatPawEffect = effect;
+    initPawToggle(effect);
+  });
+})();

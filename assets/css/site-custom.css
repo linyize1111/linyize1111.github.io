@@ -803,3 +803,131 @@ body:not(:has(#intro)) #header {
     padding-bottom: 8rem;
     background: transparent;
 }
+
+/* ============================================================
+   I. GLOBAL NAV + FLOATING CONTROLS (design polish)
+   ============================================================ */
+#global-nav {
+    position: fixed !important;
+    top: 18px !important;
+    right: 18px !important;
+    z-index: 10002 !important;
+    display: flex !important;
+    gap: 6px !important;
+    padding: 6px 8px !important;
+    border-radius: 999px !important;
+    background: rgba(8, 12, 22, 0.42) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28) !important;
+}
+
+#global-nav a {
+    color: rgba(255, 255, 255, 0.92) !important;
+    text-decoration: none !important;
+    border: none !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em;
+    padding: 0.35rem 0.7rem !important;
+    border-radius: 999px !important;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+#global-nav a:hover {
+    background: rgba(125, 232, 255, 0.16) !important;
+    color: #b8f4ff !important;
+    transform: translateY(-1px);
+}
+
+#video-controls {
+    border-radius: 14px !important;
+    background: rgba(8, 12, 22, 0.48) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32) !important;
+    padding: 6px !important;
+}
+
+#video-controls button,
+#video-controls #btn-theme,
+#video-controls #btn-paw {
+    border-radius: 10px !important;
+    transition: background 0.2s ease, transform 0.12s ease, border-color 0.2s ease !important;
+}
+
+#video-controls button:hover,
+#video-controls #btn-theme:hover,
+#video-controls #btn-paw:hover {
+    background: rgba(125, 232, 255, 0.14) !important;
+    transform: translateY(-1px);
+}
+
+#video-controls #btn-paw.is-off {
+    opacity: 0.55;
+}
+
+html.paw-cursor-active,
+html.paw-cursor-active * {
+    cursor: none !important;
+}
+
+.posts article,
+article.note-item,
+article.post {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.posts article:hover,
+article.note-item:hover {
+    transform: translateY(-2px);
+}
+
+#site-stats,
+.site-stats-wrap {
+    display: inline-flex;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+    align-items: center;
+    font-size: 0.82rem;
+    opacity: 0.82;
+}
+
+.site-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+}
+
+#copyright .site-stats-li {
+    list-style: none;
+    margin-left: 0.5rem;
+}
+
+#loading-screen {
+    background: radial-gradient(circle at 30% 20%, rgba(86, 208, 248, 0.12), transparent 45%),
+        linear-gradient(160deg, #0b1018, #121a28 55%, #0b1018) !important;
+}
+
+@media screen and (max-width: 736px) {
+    #global-nav {
+        top: 10px !important;
+        right: 10px !important;
+        gap: 2px !important;
+        padding: 4px 6px !important;
+    }
+
+    #global-nav a {
+        font-size: 0.72rem !important;
+        padding: 0.28rem 0.5rem !important;
+    }
+
+    #site-stats,
+    .site-stats-wrap {
+        gap: 0.5rem;
+        font-size: 0.75rem;
+    }
+}

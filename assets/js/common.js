@@ -273,12 +273,38 @@ function initHeroSpacer() {
 }
 
 /* ─── Init ───────────────────────────────────────────────────── */
+function injectFooterStatsHost() {
+    document.addEventListener('DOMContentLoaded', function () {
+        if (document.getElementById('site-stats')) return;
+        var cr = document.getElementById('copyright');
+        if (!cr) return;
+        var ul = cr.querySelector('ul');
+        if (!ul) return;
+        var li = document.createElement('li');
+        li.className = 'site-stats-li';
+        li.innerHTML = '<span id="site-stats" class="site-stats-wrap" aria-label="網站瀏覽統計"></span>';
+        ul.appendChild(li);
+    });
+}
+
+function initAnalytics() {
+    if (!window.SB || !window.SB.isConfigured || !window.SB.isConfigured()) return;
+    injectFooterStatsHost();
+    if (document.querySelector('script[data-site-analytics]')) return;
+    var s = document.createElement('script');
+    s.src = 'assets/js/analytics.js';
+    s.defer = true;
+    s.setAttribute('data-site-analytics', '1');
+    document.body.appendChild(s);
+}
+
 function initCommon() {
     initTheme();           // Must be first — applies theme before paint
     initHeroSpacer();      // Inject hero spacer before #main on sub-pages
     initLoadingScreen();
     initMediaControls();
     initSakuraIfPresent();
+    initAnalytics();
 }
 
 initCommon();
