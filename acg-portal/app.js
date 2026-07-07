@@ -1051,7 +1051,10 @@
   async function voteReview(reviewId, vote) {
     if (!await requireMember()) return;
     const { error } = await supabase.from("review_votes").upsert({ review_id: reviewId, user_id: state.session.user.id, vote }, { onConflict: "review_id,user_id" });
-    if (error) return toast(error.message, "error");
+    if (error) {
+      const rls = /permission denied|row-level security|policy/i.test(error.message);
+      return toast(rls ? "無法按讚：通常是帳號尚未通過審核。若你已通過審核仍失敗，請回報站長重新套用權限。" : error.message, "error");
+    }
     await renderReviews(state.currentWork.id);
   }
 
@@ -1081,10 +1084,31 @@
 
   async function reportReview(reviewId) {
     if (!await requireMember()) return;
-    const reason = prompt("請說明檢舉原因（3～500 字）：")?.trim();
-    if (!reason) return;
+    $("#editor-content").innerHTML = `
+      <h2 id="editor-title">檢舉內容</h2>
+      <form id="report-form" class="editor-form" data-review-id="${escapeHtml(reviewId)}">
+        <label>檢舉原因（3～500 字）
+          <textarea id="report-reason" maxlength="500" required placeholder="請描述問題，例如：違規內容、錯誤資訊、廣告或洗版…"></textarea>
+        </label>
+        <button class="button button-primary" type="submit">送出檢舉</button>
+      </form>`;
+    openModal("editor-modal");
+    setTimeout(() => $("#report-reason")?.focus(), 40);
+  }
+
+  async function submitReport(event) {
+    event.preventDefault();
+    if (!await requireMember()) return;
+    const reviewId = event.currentTarget.dataset.reviewId;
+    const reason = $("#report-reason").value.trim();
+    if (reason.length < 3 || reason.length > 500) return toast("檢舉原因需為 3～500 字", "warning");
     const { error } = await supabase.from("content_reports").insert({ reporter_id: state.session.user.id, review_id: reviewId, reason });
-    toast(error ? error.message : "檢舉已送交管理員", error ? "error" : "success");
+    if (error) {
+      const dup = /duplicate key|unique/i.test(error.message);
+      return toast(dup ? "你已經檢舉過這則內容了" : error.message, "error");
+    }
+    closeModal("editor-modal");
+    toast("檢舉已送交管理員", "success");
   }
 
   function recommendSimilar(workId) {
@@ -1129,7 +1153,9 @@
     $("#editor-content").innerHTML = `<h2 id="editor-title">${game ? "編輯" : "新增"}遊戲評鑑</h2>
       <form id="game-editor-form" class="editor-form" data-game-id="${game?.id || ""}">
         <label>名稱<input id="game-name" type="text" maxlength="300" required value="${escapeHtml(game?.name || "")}"></label>
-        <label>封面網址<input id="game-cover" type="url" value="${escapeHtml(game?.cover_url || "")}"></label>
+        <label>上傳封面圖片（≤ 5MB，PNG/JPG/WEBP/GIF）<input id="game-cover-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
+        <label>或直接填封面網址<input id="game-cover" type="url" value="${escapeHtml(game?.cover_url || "")}"></label>
+        ${game?.cover_url ? `<img class="editor-cover-preview" src="${escapeHtml(imageUrl(game.cover_url))}" alt="目前封面">` : ""}
         <label>評分（-5～+5）<input id="game-rating" type="number" min="-5" max="5" required value="${game?.rating ?? 0}"></label>
         <label>標籤（逗號分隔）<input id="game-tags" type="text" value="${escapeHtml((game?.tags || []).join(", "))}"></label>
         <label>心得<textarea id="game-review" maxlength="5000" required>${escapeHtml(game?.review_body || "")}</textarea></label>
@@ -1138,19 +1164,46 @@
     openModal("editor-modal");
   }
 
+  async function uploadGameCover(file) {
+    if (file.size > 5 * 1024 * 1024) { toast("圖片需小於 5MB", "warning"); return null; }
+    if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) { toast("僅支援 PNG / JPG / WEBP / GIF", "warning"); return null; }
+    const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+    const path = `${crypto.randomUUID?.() || Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("game-covers").upload(path, file, { contentType: file.type, upsert: false });
+    if (error) {
+      const missingBucket = /bucket.*not found|not found/i.test(error.message);
+      toast(missingBucket ? "圖片儲存桶尚未建立（需先套用 0005 migration）" : `圖片上傳失敗：${error.message}`, "error");
+      return null;
+    }
+    return supabase.storage.from("game-covers").getPublicUrl(path).data.publicUrl;
+  }
+
   async function saveGame(event) {
     event.preventDefault();
     if (!isAdmin()) return;
     const id = event.currentTarget.dataset.gameId;
+    const name = $("#game-name").value.trim();
+    const reviewBody = $("#game-review").value.trim();
+    const rating = Number($("#game-rating").value);
+    if (!name) return toast("請輸入名稱", "warning");
+    if (!reviewBody) return toast("請輸入心得內容", "warning");
+    if (!Number.isFinite(rating) || rating < -5 || rating > 5) return toast("評分需介於 -5 ~ +5", "warning");
+    let coverUrl = $("#game-cover").value.trim();
+    const fileInput = $("#game-cover-file");
+    if (fileInput?.files?.length) {
+      const uploaded = await uploadGameCover(fileInput.files[0]);
+      if (uploaded === null) return;
+      coverUrl = uploaded;
+    }
     const payload = {
-      name: $("#game-name").value.trim(), cover_url: $("#game-cover").value.trim(),
-      rating: Number($("#game-rating").value), review_body: $("#game-review").value.trim(),
+      name, cover_url: coverUrl,
+      rating, review_body: reviewBody,
       tags: $("#game-tags").value.split(/[,，]/).map(value => value.trim()).filter(Boolean),
       created_by: state.session.user.id
     };
     const request = id ? supabase.from("games").update(payload).eq("id", id) : supabase.from("games").insert(payload);
     const { error } = await request;
-    if (error) return toast(error.message, "error");
+    if (error) return toast(`儲存失敗：${error.message}`, "error");
     closeModal("editor-modal"); await loadGames(); toast("遊戲評鑑已儲存", "success");
   }
 
@@ -1184,17 +1237,18 @@
     const counter = isRecommendation ? $("#recommendation-count") : $("#feedback-count");
     const body = textarea.value.trim();
     if (!body || body.length > 2000) return toast("意見內容需為 1～2000 字", "warning");
-    try {
-      await fetchWorkerJson("/api/feedback", {
-        method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${state.session.access_token}` },
-        body: JSON.stringify({ body: `${isRecommendation ? "[作品推薦]" : "[意見反饋]"}\n${body}` })
-      });
-    } catch (error) {
-      return toast(workerErrorMessage(error), "error");
+    const { error } = await supabase.from("feedback").insert({
+      user_id: state.session.user.id,
+      kind: isRecommendation ? "recommendation" : "feedback",
+      body
+    });
+    if (error) {
+      const missingTable = /feedback.*does not exist|relation .*feedback/i.test(error.message);
+      return toast(missingTable ? "意見系統尚未啟用（需先套用 0005 migration）" : `送出失敗：${error.message}`, "error");
     }
     textarea.value = "";
     counter.textContent = "0 / 2000";
-    toast(isRecommendation ? "推薦已送出，等待站長審核" : "意見已寄出", "success");
+    toast(isRecommendation ? "推薦已送出，等待站長審核" : "意見已送出", "success");
   }
 
   async function loadAdmin(tab = state.adminTab) {
@@ -1204,25 +1258,30 @@
     const content = $("#admin-content");
     content.innerHTML = '<div class="empty-state">載入中…</div>';
     if (tab === "users") {
-      let result;
-      let isWorkerFallback = false;
-      try {
-        result = await fetchWorkerJson("/api/admin/users", { headers: { Authorization: `Bearer ${state.session.access_token}` } });
-      } catch (error) {
-        isWorkerFallback = true;
-        const { data, error: profileError } = await supabase
+      let users;
+      let degraded = false;
+      const { data, error } = await supabase.rpc("admin_list_users");
+      if (error) {
+        degraded = true;
+        const { data: profiles, error: profileError } = await supabase
           .from("profiles")
           .select("id,display_name,role,status,approved_at,created_at,updated_at")
           .order("created_at", { ascending: false });
         if (profileError) {
-          content.innerHTML = `<div class="empty-state">${escapeHtml(workerErrorMessage(error))}<br>${escapeHtml(profileError.message)}</div>`;
+          content.innerHTML = `<div class="empty-state">讀取會員清單失敗：${escapeHtml(error.message)}<br>${escapeHtml(profileError.message)}</div>`;
           return;
         }
-        result = data || [];
+        users = profiles || [];
+      } else {
+        users = data || [];
       }
-      const users = result.sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
-      const fallbackNotice = isWorkerFallback ? '<div class="empty-state warning">Render worker 目前不可用，暫時只顯示 Supabase profiles；信箱與最近登入時間需等 worker 恢復。</div>' : "";
-      content.innerHTML = fallbackNotice + (users.map(profile => `<div class="admin-row"><div><h4>${escapeHtml(profile.display_name)}</h4><p>${escapeHtml(profile.email || "信箱需 worker 讀取")} · ${escapeHtml(profile.role)} · ${escapeHtml(profile.status)}</p><small>最近登入：${profile.last_sign_in_at ? new Date(profile.last_sign_in_at).toLocaleString("zh-TW") : (isWorkerFallback ? "需 worker 讀取" : "尚未登入")}</small></div><div class="admin-actions">${profile.role === "admin" ? "" : `${profile.status === "pending" ? `<button class="button button-primary" data-approve-user="${profile.id}">通過</button>` : ""}<button class="button button-secondary" data-suspend-user="${profile.id}" data-suspend="${profile.status === "suspended" ? "false" : "true"}">${profile.status === "suspended" ? "解除停權" : "停權"}</button>`}</div></div>`).join("") || '<div class="empty-state">目前沒有會員</div>');
+      users = users.slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+      const degradedNotice = degraded ? '<div class="empty-state warning">尚未套用 0005 migration（admin_list_users），暫時只顯示 profiles；套用後即可看到信箱與最近登入時間。</div>' : "";
+      content.innerHTML = degradedNotice + (users.map(profile => {
+        const email = cleanName(profile.email) || (degraded ? "需套用 migration" : "（無信箱）");
+        const lastSignIn = profile.last_sign_in_at ? new Date(profile.last_sign_in_at).toLocaleString("zh-TW") : (degraded ? "需套用 migration" : "尚未登入");
+        return `<div class="admin-row"><div><h4>${escapeHtml(memberName(profile))}</h4><p>${escapeHtml(email)} · ${escapeHtml(profile.role)} · ${escapeHtml(profile.status)}</p><small>最近登入：${escapeHtml(lastSignIn)}</small></div><div class="admin-actions">${profile.role === "admin" ? "" : `${profile.status === "pending" ? `<button class="button button-primary" data-approve-user="${profile.id}">通過</button>` : ""}<button class="button button-secondary" data-suspend-user="${profile.id}" data-suspend="${profile.status === "suspended" ? "false" : "true"}">${profile.status === "suspended" ? "解除停權" : "停權"}</button>`}</div></div>`;
+      }).join("") || '<div class="empty-state">目前沒有會員</div>');
     } else if (tab === "works") {
       state.adminWorks = await fetchAll("works", query => query.order("updated_at", { ascending: false }));
       content.innerHTML = `<div class="job-controls"><button class="button button-primary" data-new-work>＋ 手動新增</button><button class="button button-danger" data-purge-inactive>永久刪除所有失效作品</button><input id="admin-work-search" type="search" placeholder="搜尋車號、標題、作者或標籤…"></div><p id="admin-work-summary" class="muted"></p><div id="admin-work-list"></div>`;
@@ -1230,6 +1289,24 @@
     } else if (tab === "reports") {
       const { data } = await supabase.from("content_reports").select("*").order("created_at", { ascending: false });
       content.innerHTML = (data || []).map(report => `<div class="admin-row"><div><h4>${escapeHtml(report.reason)}</h4><p>${escapeHtml(report.review_id || "內容已移除")} · ${escapeHtml(report.status)}</p></div><div class="admin-actions">${report.review_id ? `<button class="button button-secondary" data-hide-review="${report.review_id}">隱藏內容</button><button class="button button-danger" data-admin-delete-review="${report.review_id}">刪除內容</button>` : ""}<button class="button button-primary" data-resolve-report="${report.id}">標記完成</button></div></div>`).join("") || '<div class="empty-state">沒有待處理檢舉</div>';
+    } else if (tab === "feedback") {
+      const { data, error } = await supabase
+        .from("feedback")
+        .select("id,kind,body,status,created_at,user_id")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) {
+        const missingTable = /feedback.*does not exist|relation .*feedback/i.test(error.message);
+        content.innerHTML = `<div class="empty-state">${missingTable ? "意見系統尚未啟用（需先套用 0005 migration）" : escapeHtml(error.message)}</div>`;
+        return;
+      }
+      const rows = data || [];
+      await loadProfilesForReviews(rows.map(row => ({ user_id: row.user_id })));
+      content.innerHTML = rows.map(item => {
+        const author = memberName(state.profiles.get(item.user_id));
+        const kindLabel = item.kind === "recommendation" ? "作品推薦" : "意見反饋";
+        return `<div class="admin-row"><div><h4>${escapeHtml(kindLabel)} · ${escapeHtml(author)}</h4><p>${escapeHtml(item.body)}</p><small>${new Date(item.created_at).toLocaleString("zh-TW")} · ${escapeHtml(item.status)}</small></div><div class="admin-actions">${item.status === "open" ? `<button class="button button-primary" data-resolve-feedback="${item.id}">標記完成</button>` : ""}</div></div>`;
+      }).join("") || '<div class="empty-state">目前沒有意見或推薦</div>';
     } else if (tab === "jobs") {
       state.sourceStats = await loadSourceStatus();
       content.innerHTML = `<div class="admin-source-status"><div id="admin-source-status-grid" class="source-status-grid"></div></div><div class="job-controls">${["all","discord","hanime","18comic","pixiv"].map(source => `<button class="button ${source === "all" ? "button-primary" : "button-secondary"}" data-run-job="${source}">執行 ${source}</button>`).join("")}<button class="button button-secondary" data-refresh-jobs>更新狀態</button><a class="button button-secondary" href="https://github.com/linyize1111/acg-portal/actions/workflows/scheduled-sync.yml" target="_blank" rel="noopener noreferrer">GitHub 手動同步 ↗</a></div><div id="job-list"></div>`;
@@ -1249,27 +1326,17 @@
 
   async function loadJobs() {
     const list = $("#job-list"); if (!list) return;
-    let rows;
-    let usedDatabaseFallback = false;
-    try {
-      rows = await fetchWorkerJson("/api/admin/jobs", { headers: { Authorization: `Bearer ${state.session.access_token}` } });
-    } catch (error) {
-      const { data, error: databaseError } = await supabase
-        .from("scrape_runs")
-        .select("job_name,status,started_at,finished_at,discovered_count,accepted_count,rejected_count,error_count,error_message,created_at")
-        .order("started_at", { ascending: false })
-        .limit(30);
-      if (databaseError) {
-        list.innerHTML = `<div class="empty-state">${escapeHtml(workerErrorMessage(error))}<br>${escapeHtml(databaseError.message)}</div>`;
-        return;
-      }
-      rows = data || [];
-      usedDatabaseFallback = true;
+    const { data, error } = await supabase
+      .from("scrape_runs")
+      .select("job_name,status,started_at,finished_at,discovered_count,accepted_count,rejected_count,error_count,error_message,created_at")
+      .order("started_at", { ascending: false, nullsFirst: false })
+      .limit(30);
+    if (error) {
+      list.innerHTML = `<div class="empty-state">讀取爬蟲紀錄失敗：${escapeHtml(error.message)}</div>`;
+      return;
     }
-    const fallbackNotice = usedDatabaseFallback
-      ? '<div class="empty-state warning">Render worker 目前不可用；以下執行紀錄直接讀自 Supabase，仍可使用上方 GitHub 手動同步。</div>'
-      : "";
-    list.innerHTML = fallbackNotice + rows.map(run => {
+    const rows = data || [];
+    list.innerHTML = rows.map(run => {
       const started = run.started_at || run.created_at;
       const finished = run.finished_at ? `完成：${new Date(run.finished_at).toLocaleString("zh-TW")}` : "尚未完成";
       return `<div class="admin-row"><div><h4>${escapeHtml(run.job_name)} <span class="job-badge ${escapeHtml(run.status)}">${escapeHtml(run.status)}</span></h4><p>開始：${started ? new Date(started).toLocaleString("zh-TW") : "未知"} · ${finished}</p><p>發現 ${run.discovered_count || 0} · 接受 ${run.accepted_count || 0} · 拒絕 ${run.rejected_count || 0} · 錯誤 ${run.error_count || 0}</p>${run.error_message ? `<p class="error-text">${escapeHtml(run.error_message)}</p>` : ""}</div></div>`;
@@ -1370,6 +1437,7 @@
     document.addEventListener("keydown", event => { if (event.key === "Escape") $$(".modal.open:not(#age-gate)").forEach(modal => closeModal(modal.id)); });
     document.addEventListener("submit", async event => {
       if (event.target.id === "profile-editor-form") return saveProfileName(event);
+      if (event.target.id === "report-form") return submitReport(event);
       if (event.target.id === "review-form") return submitReview(event);
       if (event.target.matches("[data-reply-form]")) { event.preventDefault(); return submitReply(event.target.dataset.replyForm); }
       if (event.target.id === "game-editor-form") return saveGame(event);
@@ -1414,6 +1482,7 @@
       if (target.dataset.toggleWork) { const { error } = await supabase.from("works").update({ status: target.dataset.status }).eq("id", target.dataset.toggleWork); toast(error ? error.message : "作品狀態已更新", error ? "error" : "success"); if (!error) { await loadWorks(); loadAdmin("works"); } }
       if (target.dataset.purgeWork) purgeWork(target.dataset.purgeWork);
       if (target.dataset.purgeInactive !== undefined) { const confirmation = prompt('永久刪除所有 inactive/rejected 作品。請輸入「PURGE INACTIVE WORKS」確認：'); if (confirmation) { const { data, error } = await supabase.rpc("purge_inactive_works", { confirmation }); toast(error ? error.message : `已永久刪除 ${data} 筆`, error ? "error" : "success"); if (!error) { await loadWorks(); loadAdmin("works"); } } }
+      if (target.dataset.resolveFeedback) { const { error } = await supabase.from("feedback").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveFeedback); toast(error ? error.message : "已標記完成", error ? "error" : "success"); if (!error) loadAdmin("feedback"); }
       if (target.dataset.resolveReport) { const { error } = await supabase.from("content_reports").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveReport); toast(error ? error.message : "檢舉已完成", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
       if (target.dataset.hideReview) { const { error } = await supabase.rpc("moderate_review", { target_review: target.dataset.hideReview, new_status: "hidden" }); toast(error ? error.message : "內容已隱藏", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
       if (target.dataset.adminDeleteReview && confirm("確定永久刪除被檢舉的內容？")) { const { error } = await supabase.from("reviews").delete().eq("id", target.dataset.adminDeleteReview); toast(error ? error.message : "內容已刪除", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
