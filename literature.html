@@ -333,7 +333,7 @@
     <div id="loading-screen"></div>
 
     <!--  影片與音樂背景 -->
-    <video id="bg-video" muted loop playsinline poster="images/bg.png" preload="none">
+    <video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="none">
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
     <audio id="bg-music" loop preload="none">
@@ -432,7 +432,7 @@
                 </div>
             </div>
 
-            <section class="posts" id="posts-container">
+            <section class="posts" id="posts-container" data-section="literature">
                 <!-- Removed duplicate plague.md --> <!-- 2024年9月13日 生活札記：中山大學入學日記.md -->
                 <article class="note-item" data-category="隨筆" data-upload="2024-09-13" data-edit="2024-09-13"
                     data-title="生活札記：中山大學入學日記">
@@ -808,6 +808,15 @@
         });
     </script>
     <script src="assets/js/common.js"></script>
+
+    <!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+    <script src="assets/js/supabase-config.js"></script>
+    <script src="assets/js/supabase-client.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/cms-public.js"></script>
+
     <script src="assets/js/page-list.js"></script>
 </body>
 

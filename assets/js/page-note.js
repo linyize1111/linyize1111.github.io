@@ -10,6 +10,8 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     const urlParams = new URLSearchParams(window.location.search);
+    // 若帶有 ?id=（Supabase 動態文章），交給 cms-public.js 處理
+    if (urlParams.get('id')) return;
     const fileName = urlParams.get('file');
     const pdfName = urlParams.get('pdf');
     const litName = urlParams.get('lit');

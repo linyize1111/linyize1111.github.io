@@ -33,7 +33,7 @@
     <div id="loading-screen"></div>
 
 	<!--  影片與音樂背景 -->
-	<video id="bg-video" muted loop playsinline poster="images/bg.png" preload="none">
+	<video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="none">
 		<source src="images/bg-video.mp4" type="video/mp4">
 	</video>
 	<audio id="bg-music" loop preload="none">
@@ -105,12 +105,12 @@
 							style="width: 100%; height: 100%; object-fit: cover; object-position: center; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);" />
 					</span>
 
-					<h3 style="text-align: left;">
+					<h3 style="text-align: left;" data-section-key="about.heading">
 						月季花四季盛放<br>
 						說起來，落花時節就是花開時節呢。
 					</h3>
 
-					<p style="text-align: left; margin-top: 2em; line-height: 2;">
+					<p style="text-align: left; margin-top: 2em; line-height: 2;" data-section-key="about.body">
 						<strong>您好，我是林佾則。</strong>目前就讀於國立中山大學資訊工程學系。<br /><br />
 						我熱愛撰寫程式、沉浸於文學，也喜歡在閒暇時享受一杯好咖啡與音樂。這個網站最初是我在 2020
 						年建置的雛形，隨著學習歷程逐漸豐富，我於近期對它進行了全面的翻修。希望能藉由這個空間，記錄並分享我在技術追求與生活思索間的各種火花。
@@ -243,6 +243,12 @@
 
 
 
+
+<!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/supabase-config.js"></script>
+<script src="assets/js/supabase-client.js"></script>
+<script src="assets/js/cms-public.js"></script>
 
 <script src="assets/js/common.js"></script>
 </body>

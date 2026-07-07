@@ -269,6 +269,8 @@ function initCarousel() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    // 若 Supabase CMS 已啟用，改由 cms-public.js 動態渲染後再自行初始化，這裡讓路
+    if (window.__CMS_DYNAMIC__) return;
     checkFilesExistAndRender();
     initSortingAndFiltering();
     initCarousel();

@@ -71,7 +71,7 @@
     <div id="loading-screen"></div>
 
     <!--  影片與音樂背景 -->
-    <video id="bg-video" muted loop playsinline poster="images/bg.png" preload="none">
+    <video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="none">
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
     <audio id="bg-music" loop preload="none">
@@ -107,8 +107,8 @@
 
     <div id="wrapper" class="fade-in">
         <div id="intro">
-            <h1>WELCOME!!!</h1>
-            <p>An average student from Taiwan</p>
+            <h1 data-section-key="home.intro.title">WELCOME!!!</h1>
+            <p data-section-key="home.intro.subtitle">An average student from Taiwan</p>
             <ul class="actions">
                 <li><a href="#header" class="button icon solid solo fa-arrow-down scrolly">Continue</a></li>
             </ul>
@@ -141,8 +141,8 @@
             <article class="post featured">
                 <header class="major">
                     <span class="date">HELLO WORLD</span>
-                    <h2><a href="about.html">關於本站與我</a></h2>
-                    <p>我是林佾則，目前就讀於國立中山大學資訊工程學系二年級。<br /><br />
+                    <h2><a href="about.html" data-section-key="home.featured.title">關於本站與我</a></h2>
+                    <p data-section-key="home.featured.body">我是林佾則，目前就讀於國立中山大學資訊工程學系二年級。<br /><br />
                         本網站於 2020 年 12 月初試啼聲，那時十分感謝資訊社學長的指導，讓我得以搭建出這專屬於我的數位空間。雖然當時僅具雛形，卻也成為我記錄學習歷程的珍貴起點。<br /><br />
                         升上大二後，我不僅在程式語言與資訊科學上持續精進，更重新拾起閱讀的習慣，廣泛涉獵文學、藝術、音樂與咖啡等多元領域。基於對美學與技術的雙重追求，我於近期著手將網站進行全方位的翻新與優化。未來，這裡將持續蛻變為我記錄技術筆記與生活思想的靜謐天地，歡迎您的駐足與閱覽。
                     </p>
@@ -298,6 +298,12 @@
 
 
 
+
+<!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/supabase-config.js"></script>
+<script src="assets/js/supabase-client.js"></script>
+<script src="assets/js/cms-public.js"></script>
 
 <script src="assets/js/common.js"></script>
 </body>

@@ -101,7 +101,7 @@
     <div id="loading-screen"></div>
 
     <!--  影片與音樂背景 -->
-    <video id="bg-video" muted loop playsinline poster="images/bg.png" preload="none">
+    <video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="none">
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
     <audio id="bg-music" loop preload="none">
@@ -303,6 +303,15 @@
         })();
     </script>
 <script src="assets/js/common.js"></script>
+
+    <!-- Supabase CMS：?id= 動態文章由 cms-public.js 安全渲染（marked + DOMPurify） -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+    <script src="assets/js/supabase-config.js"></script>
+    <script src="assets/js/supabase-client.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/cms-public.js"></script>
+
     <script src="assets/js/page-note.js"></script>
 </body>
 
