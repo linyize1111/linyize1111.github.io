@@ -1232,3 +1232,191 @@ html.paw-cursor-active * {
         top: 0 !important;
     }
 }
+
+/* ============================================================
+   N. ARTICLE CARD MEDIA (list pages + carousel isolation)
+   統一策略：媒體區 (.card-media-zone) 與文字區 (.card-body) 分離，
+   避免摘要、按鈕與封面/輪播重疊。未來可擴充 per-article cover_display。
+   ============================================================ */
+
+#posts-container.posts > article.note-item {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#posts-container.posts > article.note-item > .card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    position: relative;
+    z-index: 2;
+    margin-top: var(--space-md);
+}
+
+#posts-container.posts > article.note-item > .card-body > ul.actions {
+    margin-top: auto;
+}
+
+/* 無 card-body 包裝的舊卡片：摘要與按鈕仍保持在媒體下方 */
+#posts-container.posts > article.note-item > p,
+#posts-container.posts > article.note-item > ul.actions {
+    position: relative;
+    z-index: 2;
+}
+
+#posts-container.posts > article.note-item > .card-media-zone,
+#posts-container.posts > article.note-item > a.image.fit,
+#posts-container.posts > article.note-item > .card-carousel {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.card-media-zone {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    margin-bottom: 0;
+}
+
+.card-carousel {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    min-height: 200px;
+    max-height: 420px;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.2)),
+        rgba(0, 0, 0, 0.08);
+    isolation: isolate;
+}
+
+.card-carousel .carousel-slide {
+    display: none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.card-carousel .carousel-slide.active {
+    display: block;
+    animation: carousel-fade 0.45s ease;
+}
+
+.card-carousel .carousel-slide .image.fit {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: unset !important;
+    margin-bottom: 0 !important;
+    padding: 0.55rem;
+    border-radius: 0;
+    color: transparent;
+    font-size: 0;
+    line-height: 0;
+}
+
+.card-carousel .carousel-slide .image.fit img {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center center;
+}
+
+.card-carousel .carousel-caption {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    right: 12px;
+    max-width: calc(100% - 24px);
+    background-color: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    pointer-events: none;
+    z-index: 3;
+    text-align: center;
+}
+
+.card-carousel .carousel-prev,
+.card-carousel .carousel-next {
+    cursor: pointer;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 10px 14px;
+    color: #fff !important;
+    font-weight: bold;
+    font-size: 18px;
+    user-select: none;
+    background-color: rgba(0, 0, 0, 0.45);
+    text-decoration: none;
+    border: none;
+    z-index: 4;
+}
+
+.card-carousel .carousel-prev { left: 0; border-radius: 0 4px 4px 0; }
+.card-carousel .carousel-next { right: 0; border-radius: 4px 0 0 4px; }
+
+.card-carousel .carousel-prev:hover,
+.card-carousel .carousel-next:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+@keyframes carousel-fade {
+    from { opacity: 0.45; }
+    to { opacity: 1; }
+}
+
+/* 文章頁：有封面時 hero 疊字（標題在 header.major，封面在 hero 區） */
+.article-hero {
+    position: relative;
+    width: min(100%, 920px);
+    margin: 0 auto var(--space-lg);
+    aspect-ratio: 16 / 9;
+    max-height: min(52vh, 480px);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-img);
+}
+
+.article-hero img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center center;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    max-height: none !important;
+}
+
+.article-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 40%, rgba(0, 0, 0, 0.35) 100%);
+    pointer-events: none;
+}
+
+/* 列表模式：隱藏媒體區 */
+#posts-container.list-view > article.note-item .card-media-zone,
+#posts-container.list-view > article.note-item .card-carousel,
+#posts-container.list-view > article.note-item > a.image.fit {
+    display: none;
+}
+
+#posts-container.list-view > article.note-item .card-body > p {
+    display: none;
+}

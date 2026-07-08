@@ -16,8 +16,9 @@
   "use strict";
 
   var CONFIGURED = window.SB && window.SB.isConfigured && window.SB.isConfigured();
-  // 讓 page-list.js / page-note.js 知道要不要讓路
   if (CONFIGURED) window.__CMS_DYNAMIC__ = true;
+
+  var CAROUSEL_HINT = /^點擊圖片即前往/;
 
   function fmtDate(ts) {
     if (!ts) return "";
@@ -41,16 +42,36 @@
     );
   }
 
-  // ---- 1. 清單頁 ---------------------------------------------------
-  function safeHttpsUrl(url) {
-    if (!url) return "";
-    try {
-      var u = new URL(String(url), window.location.origin);
-      if (u.protocol !== "https:") return "";
-      return u.href;
-    } catch (e) {
-      return "";
+  function coverDisplayStyle(a) {
+    var fit = "contain";
+    var position = "center center";
+    if (a && a.cover_display && typeof a.cover_display === "object") {
+      if (a.cover_display.fit) fit = a.cover_display.fit;
+      if (a.cover_display.position) position = a.cover_display.position;
     }
+    return (
+      "object-fit:" +
+      esc(fit) +
+      ";object-position:" +
+      esc(position) +
+      ";"
+    );
+  }
+
+  function collectSlides(a) {
+    var seen = new Set();
+    var slides = [];
+    function push(src, caption) {
+      if (!src || seen.has(src)) return;
+      seen.add(src);
+      slides.push({ src: src, caption: caption || "" });
+    }
+    if (a.cover) push(a.cover, "");
+    var imgs = Array.isArray(a.images) ? a.images : [];
+    imgs.forEach(function (im) {
+      if (im && im.src) push(im.src, im.caption || "");
+    });
+    return slides;
   }
 
   function buildCard(a) {
@@ -58,39 +79,45 @@
     var upload = fmtDate(a.published_at || a.created_at);
     var edit = fmtDate(a.updated_at);
     var cat = a.category || "";
-
-    var imgs = Array.isArray(a.images) ? a.images.slice() : [];
-    // cover 當作第一張
-    var slides = [];
-    if (a.cover) slides.push({ src: a.cover, caption: "" });
-    imgs.forEach(function (im) {
-      if (im && im.src) slides.push({ src: im.src, caption: im.caption || "" });
-    });
+    var slides = collectSlides(a);
+    var imgStyle = coverDisplayStyle(a);
 
     var mediaHtml = "";
     if (slides.length === 1) {
       mediaHtml =
-        '<a href="' +
+        '<div class="card-media-zone"><a href="' +
         url +
         '" class="image fit"><img loading="lazy" src="' +
         esc(slides[0].src) +
-        '" alt="" /></a>';
+        '" alt="" style="' +
+        imgStyle +
+        '" /></a></div>';
     } else if (slides.length > 1) {
-      mediaHtml = '<div class="card-carousel">';
+      mediaHtml = '<div class="card-media-zone"><div class="card-carousel">';
       slides.forEach(function (s) {
         mediaHtml +=
           '<div class="carousel-slide"><a href="' +
           url +
-          '" class="image fit" style="margin-bottom:0;"><img loading="lazy" src="' +
+          '" class="image fit"><img loading="lazy" src="' +
           esc(s.src) +
-          '" alt="" />' +
+          '" alt="" style="' +
+          imgStyle +
+          '" />' +
           (s.caption
             ? '<span class="carousel-caption">' + esc(s.caption) + "</span>"
             : "") +
           "</a></div>";
       });
-      mediaHtml += "</div>";
+      mediaHtml += "</div></div>";
     }
+
+    var summary = String(a.summary || "").trim();
+    if (CAROUSEL_HINT.test(summary) && slides.length > 1) {
+      summary = "系列閱讀筆記，共 " + slides.length + " 張預覽圖。";
+    }
+    var summaryHtml = summary
+      ? "<p>" + esc(summary) + "</p>"
+      : "";
 
     var pdfBtn = "";
     var safePdf = safeHttpsUrl(a.pdf_url);
@@ -124,19 +151,28 @@
       esc(a.title) +
       "</a></h2></header>" +
       mediaHtml +
-      "<p>" +
-      esc(a.summary) +
-      "</p>" +
+      '<div class="card-body">' +
+      summaryHtml +
       '<ul class="actions special"><li><a href="' +
       url +
       '" class="button">閱讀文章</a></li>' +
       pdfBtn +
-      "</ul>";
+      "</ul></div>";
     return art;
   }
 
+  function safeHttpsUrl(url) {
+    if (!url) return "";
+    try {
+      var u = new URL(String(url), window.location.origin);
+      if (u.protocol !== "https:") return "";
+      return u.href;
+    } catch (e) {
+      return "";
+    }
+  }
+
   function initListWidgets() {
-    // 重新初始化 page-list.js 的排序 / 篩選 / 輪播
     if (typeof window.initSortingAndFiltering === "function")
       window.initSortingAndFiltering();
     if (typeof window.initCarousel === "function") window.initCarousel();
@@ -146,7 +182,6 @@
     var section = container.getAttribute("data-section");
     var client = window.SB.client();
 
-    // 注意：抓取成功前「不清空」既有靜態 HTML，避免資料庫尚未就緒時把內容清掉。
     var res;
     try {
       res = await client
@@ -163,7 +198,6 @@
     }
 
     if (res.error) {
-      // 讀取失敗（例如資料表尚未建立）→ 保留現有靜態內容，照常初始化排序/輪播。
       console.warn("[cms] 讀取文章失敗，改用靜態內容：", res.error.message || res.error);
       initListWidgets();
       return;
@@ -182,7 +216,6 @@
     initListWidgets();
   }
 
-  // ---- 2. 文章頁 ---------------------------------------------------
   async function renderArticle() {
     var params = new URLSearchParams(window.location.search);
     var slug = params.get("id");
@@ -192,6 +225,7 @@
     var titleEl = document.getElementById("note-title");
     var statusEl = document.getElementById("note-status");
     var contentEl = document.getElementById("markdown-container");
+    var postSection = document.querySelector("#main > section.post");
     if (!contentEl) return false;
 
     var client = window.SB.client();
@@ -219,18 +253,32 @@
         "更新於 " +
         fmtDate(a.updated_at || a.published_at);
 
-    var html = "";
-    if (a.cover) {
-      html +=
-        '<img src="' + esc(a.cover) + '" alt="" style="margin:0 auto 2rem;" />';
+    if (postSection && a.cover) {
+      postSection.classList.add("has-article-hero");
+      var existingHero = postSection.querySelector(".article-hero");
+      if (existingHero) existingHero.remove();
+      var hero = document.createElement("div");
+      hero.className = "article-hero";
+      hero.innerHTML =
+        '<img src="' +
+        esc(a.cover) +
+        '" alt="" style="' +
+        coverDisplayStyle(a) +
+        '" />';
+      var header = postSection.querySelector("header.major");
+      if (header && header.nextSibling) {
+        postSection.insertBefore(hero, header.nextSibling);
+      } else {
+        postSection.appendChild(hero);
+      }
     }
-    html += window.SB.renderMarkdown(a.body || "");
+
+    var html = window.SB.renderMarkdown(a.body || "");
     contentEl.innerHTML =
       '<div class="markdown-body" style="background:transparent;color:inherit;padding:2em;">' +
       html +
       "</div>";
 
-    // 內文的第一個 h1 若與標題重複則移除
     var firstH1 = contentEl.querySelector("h1");
     if (firstH1 && titleEl && !a.title) {
       titleEl.innerText = firstH1.textContent;
@@ -251,7 +299,6 @@
     return true;
   }
 
-  // ---- 3. 區塊文字 --------------------------------------------------
   async function applySections() {
     var nodes = document.querySelectorAll("[data-section-key]");
     if (!nodes.length) return;
@@ -269,15 +316,13 @@
       if (mode === "markdown") {
         el.innerHTML = window.SB.renderMarkdown(map[key]);
       } else {
-        // 保留換行
         el.innerHTML = esc(map[key]).replace(/\n/g, "<br />");
       }
     });
   }
 
-  // ---- 入口 --------------------------------------------------------
   document.addEventListener("DOMContentLoaded", function () {
-    if (!CONFIGURED) return; // 未設定：維持靜態 HTML
+    if (!CONFIGURED) return;
     var container = document.getElementById("posts-container");
     if (container && container.getAttribute("data-section")) {
       renderList(container);

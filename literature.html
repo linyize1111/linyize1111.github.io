@@ -8,36 +8,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;" />
     <link rel="stylesheet" href="assets/css/main.css" />
     <style>
-        /* 文章卡片等高：按鈕固定在底部 */
-        #posts-container.posts>article.note-item {
-            display: flex;
-            flex-direction: column;
-        }
-
-        #posts-container.posts>article.note-item>ul.actions {
-            margin-top: auto;
-        }
-
-        /* 統一卡片圖片的尺寸並裁切 */
-        .note-item .image.fit {
-            height: 250px;
-            display: flex;
-            margin-bottom: 1.5rem;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.2);
-        }
-
-        .note-item .image.fit img {
-            max-width: 100%;
-            max-height: 100%;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: center;
-        }
-
-        /* 分頁按鈕區域 */
+        /* 分頁與列表模式：媒體/輪播樣式見 site-custom.css §N */
         #pagination-controls {
             display: flex;
             justify-content: center;
@@ -82,107 +53,6 @@
             text-align: center;
         }
 
-        .card-carousel {
-            position: relative;
-            width: 100%;
-            height: 250px;
-            /* 明確固定高度，與單張圖一致，裡面的 img 才能正確計算高度 */
-            border-radius: 4px;
-            flex-shrink: 0;
-            /* overflow: hidden 對子元素表示有影響，改用 carousel-slide 中 overflow: hidden */
-        }
-
-        .carousel-slide {
-            display: none;
-            position: absolute;
-            /* 綕對定位，展開時不會然推擠其他內容 */
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        .carousel-slide.active {
-            display: block;
-            animation: carousel-fade 0.5s;
-        }
-
-        .carousel-slide .image.fit {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            /* 圖片裁切限制在 slide 層決不在 carousel 層 */
-        }
-
-        .carousel-slide .image.fit img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: center;
-        }
-
-        @keyframes carousel-fade {
-            from {
-                opacity: 0.4;
-            }
-
-            to {
-                opacity: 1;
-            }
-        }
-
-        .carousel-prev,
-        .carousel-next {
-            cursor: pointer;
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: auto;
-            padding: 10px 14px;
-            color: white !important;
-            font-weight: bold;
-            font-size: 18px;
-            transition: 0.3s ease;
-            user-select: none;
-            background-color: rgba(0, 0, 0, 0.45);
-            text-decoration: none;
-            border: none;
-            z-index: 20;
-            /* 高於 slide，確保简頭一定在最上面 */
-        }
-
-        .carousel-prev:hover,
-        .carousel-next:hover {
-            background-color: rgba(0, 0, 0, 0.8);
-        }
-
-        .carousel-prev {
-            left: 0;
-            border-radius: 0 4px 4px 0;
-        }
-
-        .carousel-next {
-            right: 0;
-            border-radius: 4px 0 0 4px;
-        }
-
-        .carousel-caption {
-            position: absolute;
-            bottom: 8px;
-            left: 16px;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: #fff;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 0.9em;
-            pointer-events: none;
-            z-index: 5;
-        }
-
         /* 列表模式檢視 */
         #posts-container.list-view {
             display: flex;
@@ -208,8 +78,10 @@
         }
 
         #posts-container.list-view>article.note-item .image,
+        #posts-container.list-view>article.note-item .card-media-zone,
         #posts-container.list-view>article.note-item .card-carousel,
-        #posts-container.list-view>article.note-item p {
+        #posts-container.list-view>article.note-item .card-body > p,
+        #posts-container.list-view>article.note-item > p {
             display: none;
         }
 
@@ -469,25 +341,29 @@
                                 href="note.html?lit=2025%E5%B9%B411%E6%9C%8823%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E5%BF%A0%E7%83%88%E7%A5%A0%E7%9A%84%E8%B2%93%E8%88%87%E5%A4%9C%E7%A9%BA%E4%B8%8B%E7%9A%84%E8%A6%8B%E8%AD%89">忠烈祠的貓與夜空下的見證</a>
                         </h2>
                     </header>
+                    <div class="card-media-zone">
                     <div class="card-carousel">
                         <div class="carousel-slide">
                             <a href="note.html?lit=2025%E5%B9%B411%E6%9C%8823%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E5%BF%A0%E7%83%88%E7%A5%A0%E7%9A%84%E8%B2%93%E8%88%87%E5%A4%9C%E7%A9%BA%E4%B8%8B%E7%9A%84%E8%A6%8B%E8%AD%89"
-                                class="image fit" style="margin-bottom:0;">
+                                class="image fit">
                                 <img loading="lazy" src="images/忠烈祠的貓與夜空下的見證附圖2.jpg" alt="" />
                             </a>
                         </div>
                         <div class="carousel-slide">
                             <a href="note.html?lit=2025%E5%B9%B411%E6%9C%8823%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E5%BF%A0%E7%83%88%E7%A5%A0%E7%9A%84%E8%B2%93%E8%88%87%E5%A4%9C%E7%A9%BA%E4%B8%8B%E7%9A%84%E8%A6%8B%E8%AD%89"
-                                class="image fit" style="margin-bottom:0;">
+                                class="image fit">
                                 <img loading="lazy" src="images/忠烈祠的貓與夜空下的見證附圖1.jpg" alt="" />
                             </a>
                         </div>
                     </div>
-                    <p style="margin-top: 1.5rem;">2025年11月23日 生活札記</p>
+                    </div>
+                    <div class="card-body">
+                    <p>2025年11月23日 生活札記</p>
                     <ul class="actions special">
                         <li><a href="note.html?lit=2025%E5%B9%B411%E6%9C%8823%E6%97%A5%20%E7%94%9F%E6%B4%BB%E6%9C%AD%E8%A8%98%EF%BC%9A%E5%BF%A0%E7%83%88%E7%A5%A0%E7%9A%84%E8%B2%93%E8%88%87%E5%A4%9C%E7%A9%BA%E4%B8%8B%E7%9A%84%E8%A6%8B%E8%AD%89"
                                 class="button">閱讀文章</a></li>
                     </ul>
+                    </div>
                 </article>
 
                 <!-- 2025年6月15日 生活札記：與海對話.md -->
@@ -566,29 +442,17 @@
                         </h2>
                     </header>
 
-                    <div class="card-carousel">
-                        <div class="carousel-slide">
-                            <a href="note.html?lit=%E3%80%8A%E9%BC%A0%E7%96%AB%E3%80%8B%E9%96%B1%E8%AE%80%E7%AD%86%E8%A8%98%20(%E4%B8%80)%EF%BC%9A%E5%8A%87%E6%83%85%E5%A4%A7%E7%B6%B1%E8%88%87%E5%93%B2%E5%AD%B8%E5%B1%A4%E6%AC%A1%E5%88%86%E9%A1%9E"
-                                class="image fit">
-                                <img loading="lazy" src="images/鼠疫附圖.jpg" alt="" />
-                                <span class="carousel-caption">第一部：大綱與哲學層次</span>
-                            </a>
-                        </div>
-                        <div class="carousel-slide">
-                            <a href="note.html?lit=%E3%80%8A%E9%BC%A0%E7%96%AB%E3%80%8B%E9%96%B1%E8%AE%80%E7%AD%86%E8%A8%98%20(%E4%B8%80)%EF%BC%9A%E5%8A%87%E6%83%85%E5%A4%A7%E7%B6%B1%E8%88%87%E5%93%B2%E5%AD%B8%E5%B1%A4%E6%AC%A1%E5%88%86%E9%A1%9E"
-                                class="image fit">
-                                <img loading="lazy" src="images/rat.jpg" alt="第二部：人物與荒謬解構"
-                                    onerror="this.src='images/pic1.jpg'" />
-                                <span class="carousel-caption">第二部：人物與荒謬解構</span>
-                            </a>
-                        </div>
+                    <div class="card-media-zone">
+                        <a href="note.html?lit=%E3%80%8A%E9%BC%A0%E7%96%AB%E3%80%8B%E9%96%B1%E8%AE%80%E7%AD%86%E8%A8%98%20(%E4%B8%80)%EF%BC%9A%E5%8A%87%E6%83%85%E5%A4%A7%E7%B6%B1%E8%88%87%E5%93%B2%E5%AD%B8%E5%B1%A4%E6%AC%A1%E5%88%86%E9%A1%9E"
+                            class="image fit"><img loading="lazy" src="images/鼠疫附圖.jpg" alt="《鼠疫》閱讀筆記封面" /></a>
                     </div>
-
-                    <p style="margin-top: 1.5rem;">點擊圖片即前往對應篇章的閱讀筆記。</p>
-                    <ul class="actions special">
-                        <li><a href="note.html?lit=%E3%80%8A%E9%BC%A0%E7%96%AB%E3%80%8B%E9%96%B1%E8%AE%80%E7%AD%86%E8%A8%98%20(%E4%B8%80)%EF%BC%9A%E5%8A%87%E6%83%85%E5%A4%A7%E7%B6%B1%E8%88%87%E5%93%B2%E5%AD%B8%E5%B1%A4%E6%AC%A1%E5%88%86%E9%A1%9E"
-                                class="button">閱讀心得</a></li>
-                    </ul>
+                    <div class="card-body">
+                        <p>劇情大綱、人物表與哲學層次分類的系列閱讀筆記。</p>
+                        <ul class="actions special">
+                            <li><a href="note.html?lit=%E3%80%8A%E9%BC%A0%E7%96%AB%E3%80%8B%E9%96%B1%E8%AE%80%E7%AD%86%E8%A8%98%20(%E4%B8%80)%EF%BC%9A%E5%8A%87%E6%83%85%E5%A4%A7%E7%B6%B1%E8%88%87%E5%93%B2%E5%AD%B8%E5%B1%A4%E6%AC%A1%E5%88%86%E9%A1%9E"
+                                    class="button">閱讀心得</a></li>
+                        </ul>
+                    </div>
                 </article>
 
                 <!-- 如何讀一本書.md -->
@@ -762,52 +626,6 @@
 
 
 
-    <!-- 🖼️ 幻燈片輪播 (Carousel) 控制邏輯 -->
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // 初始化輪播圖
-            document.querySelectorAll('.card-carousel').forEach(carousel => {
-                const slides = carousel.querySelectorAll('.carousel-slide');
-                if (slides.length <= 1) return; // 單張圖片不需要輪播控制
-
-                // 插入按鈕
-                const prevBtn = document.createElement('a');
-                prevBtn.className = 'carousel-prev';
-                prevBtn.innerHTML = '&#10094;';
-
-                const nextBtn = document.createElement('a');
-                nextBtn.className = 'carousel-next';
-                nextBtn.innerHTML = '&#10095;';
-
-                carousel.appendChild(prevBtn);
-                carousel.appendChild(nextBtn);
-
-                let slideIndex = 0;
-                slides[slideIndex].classList.add('active');
-
-                function showSlide(index) {
-                    slides.forEach(s => s.classList.remove('active'));
-                    if (index >= slides.length) slideIndex = 0;
-                    if (index < 0) slideIndex = slides.length - 1;
-                    slides[slideIndex].classList.add('active');
-                }
-
-                prevBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    slideIndex--;
-                    showSlide(slideIndex);
-                });
-
-                nextBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    slideIndex++;
-                    showSlide(slideIndex);
-                });
-            });
-        });
-    </script>
     <script src="assets/js/common.js"></script>
 
     <!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->

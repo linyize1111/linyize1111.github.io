@@ -8,34 +8,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;" />
     <link rel="stylesheet" href="assets/css/main.css" />
     <style>
-        /* 文章卡片等高：按鈕固定在底部 */
-        #posts-container.posts>article.note-item {
-            display: flex;
-            flex-direction: column;
-        }
-
-        #posts-container.posts>article.note-item>ul.actions {
-            margin-top: auto;
-        }
-
-        /* 統一卡片圖片的尺寸 */
-        .note-item .image.fit {
-            height: 250px;
-            display: flex;
-            margin-bottom: 1.5rem;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
-
-        .note-item .image.fit img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: center;
-        }
-
-        /* 分頁按鈕區域 */
+        /* 媒體/卡片排版見 site-custom.css §N；此處僅保留分頁與列表模式 */
         #pagination-controls {
             display: flex;
             justify-content: center;

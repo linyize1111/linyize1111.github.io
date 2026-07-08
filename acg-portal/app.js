@@ -585,6 +585,38 @@
     return true;
   }
 
+  function dedupeWorks(works) {
+    const byKey = new Map();
+    for (const work of works) {
+      const key = workDedupeKey(work);
+      const prev = byKey.get(key);
+      if (!prev || String(work.updated_at || "") > String(prev.updated_at || "")) {
+        byKey.set(key, work);
+      }
+    }
+    return [...byKey.values()];
+  }
+
+  function workDedupeKey(work) {
+    if (work.platform) {
+      if (work.external_id) return `${work.platform}:${work.external_id}`;
+      if (work.work_id && !/^[0-9a-f-]{36}$/i.test(String(work.work_id))) {
+        return `${work.platform}:${work.work_id}`;
+      }
+    }
+    return String(work.id || work.work_id || "");
+  }
+
+  function dedupeLeaderboard(rows) {
+    const byId = new Map();
+    for (const row of rows) {
+      const key = String(row.work_id || "");
+      if (!key || byId.has(key)) continue;
+      byId.set(key, row);
+    }
+    return [...byId.values()];
+  }
+
   async function fetchAll(table, queryBuilder) {
     const rows = [];
     for (let offset = 0; ; offset += 1000) {
@@ -604,7 +636,7 @@
     renderSourceStatus();
 
     const activeWorks = await fetchAll("works", query => query.eq("status", "active"));
-    state.works = activeWorks.filter(work => work.is_ai !== true);
+    state.works = dedupeWorks(activeWorks.filter(work => work.is_ai !== true));
     state.workById = new Map(state.works.map(work => [work.id, work]));
     if (!Object.values(state.sourceStats).some(stats => stats.total > 0 || stats.active > 0)) {
       state.sourceStats = summarizeSourceStats(state.works);
@@ -718,7 +750,7 @@
   }
 
   async function loadLeaderboardData() {
-    state.leaderboard = await fetchAll("leaderboard");
+    state.leaderboard = dedupeLeaderboard(await fetchAll("leaderboard"));
     state.scoreByWork = new Map(state.leaderboard.map(item => [item.work_id, Number(item.weighted_score || 0)]));
     state.reviewStatsByWork = new Map(state.leaderboard.map(item => [item.work_id, {
       review_count: Number(item.review_count || 0),
@@ -924,7 +956,7 @@
     const query = $("#home-search").value;
     const mode = activeHomeSortMode();
     const pool = sortWorksByMode(
-      state.works.filter(work => workMatches(work, query) && passesWorkFilters(work, "home")),
+      dedupeWorks(state.works.filter(work => workMatches(work, query) && passesWorkFilters(work, "home"))),
       mode,
       query
     );
@@ -1165,7 +1197,7 @@
       rows = [];
     }
     rows = sortLibraryRows(rows, query);
-    return diversifyByAuthor(rows, query.trim() ? 4 : 3);
+    return diversifyByAuthor(dedupeWorks(rows), query.trim() ? 4 : 3);
   }
 
   function renderLibrary(reset = false) {
@@ -1934,38 +1966,47 @@
     }
     const tags = $("#game-tags").value.split(/[,，]/).map(value => value.trim()).filter(Boolean);
     await withBusyButton(submitButton, "儲存中…", async () => {
-      let error = null;
       const { error: rpcError, data: rpcData } = await supabase.rpc("admin_upsert_game_review", {
         target_game: id || null,
         game_name: name,
-        game_cover_url: coverUrl,
-        game_rating: rating,
+        game_cover_url: coverUrl || "",
+        game_rating: Math.round(rating),
         game_tags: tags,
         game_review_body: reviewBody
       });
-      error = rpcError;
-      if (error && !/function .*admin_upsert_game_review|could not find/i.test(error.message || "")) {
-        return toast(`儲存失敗：${error.message}`, "error");
+      if (!rpcError && rpcData) {
+        closeModal("editor-modal");
+        await loadGames();
+        return toast(id ? "遊戲評鑑已儲存" : "遊戲評鑑已新增", "success");
       }
-      if (error) {
-        const payload = {
-          name,
-          cover_url: coverUrl,
-          rating,
-          review_body: reviewBody,
-          tags,
-          status: "published",
-          created_by: state.session.user.id
-        };
-        const request = id ? supabase.from("games").update(payload).eq("id", id) : supabase.from("games").insert(payload);
-        const fallback = await request;
-        if (fallback.error) {
-          return toast(`儲存失敗：${fallback.error.message}`, "error");
-        }
+      const rpcMsg = rpcError?.message || "";
+      const rpcMissing = /function .*admin_upsert_game_review|could not find/i.test(rpcMsg);
+      if (!rpcMissing) {
+        const adminHint = /admin required|authentication required/i.test(rpcMsg)
+          ? "（請確認已以管理員身分登入）"
+          : "";
+        return toast(`儲存失敗：${rpcMsg}${adminHint}`, "error");
+      }
+      const payload = {
+        name,
+        cover_url: coverUrl || "",
+        rating: Math.round(rating),
+        review_body: reviewBody,
+        tags,
+        status: "published",
+        created_by: state.session.user.id
+      };
+      const request = id ? supabase.from("games").update(payload).eq("id", id) : supabase.from("games").insert(payload);
+      const fallback = await request.select("id").single();
+      if (fallback.error) {
+        const hint = /admin required|row-level security|permission/i.test(fallback.error.message)
+          ? "（需管理員權限；若剛升級請重新整理後再試）"
+          : "";
+        return toast(`儲存失敗：${fallback.error.message}${hint}`, "error");
       }
       closeModal("editor-modal");
       await loadGames();
-      toast(rpcData && !id ? "遊戲評鑑已新增" : "遊戲評鑑已儲存", "success");
+      toast(id ? "遊戲評鑑已儲存" : "遊戲評鑑已新增", "success");
     });
   }
 
@@ -2102,16 +2143,19 @@
       renderAdminWorks();
     } else if (tab === "reports") {
       let reports = [];
+      let loadNote = "";
       const { data, error } = await supabase.rpc("admin_list_reports");
       if (error) {
         const { data: fallback, error: fallbackError } = await supabase
           .from("content_reports")
-          .select("*")
-          .order("created_at", { ascending: false });
+          .select("id,reason,status,created_at,review_id,reporter_id")
+          .order("created_at", { ascending: false })
+          .limit(200);
         if (fallbackError) {
           content.innerHTML = `<div class="empty-state">讀取檢舉失敗：${escapeHtml(error.message)}<br>${escapeHtml(fallbackError.message)}</div>`;
           return;
         }
+        loadNote = '<p class="muted">RPC 不可用，已改用直接查詢 content_reports。</p>';
         reports = (fallback || []).map(report => ({
           ...report,
           review_body: "",
@@ -2121,12 +2165,12 @@
       } else {
         reports = data || [];
       }
-      content.innerHTML = reports.map(report => {
+      content.innerHTML = loadNote + (reports.map(report => {
         const snippet = report.review_body
           ? `<p>${escapeHtml(String(report.review_body).slice(0, 180))}</p>`
           : `<p class="muted">${report.review_id ? "（無留言內容／僅評分）" : "內容已刪除"}</p>`;
         return `<div class="admin-row"><div><h4>${escapeHtml(report.reason)}</h4>${snippet}<p><small>檢舉人：${escapeHtml(report.reporter_name || "會員")} · 狀態：${escapeHtml(report.status)} · ${new Date(report.created_at).toLocaleString("zh-TW")}</small></p><p><small>內容狀態：${escapeHtml(report.review_status || "—")} · review ${escapeHtml(report.review_id || "無")}</small></p></div><div class="admin-actions">${report.review_id ? `<button class="button button-secondary" data-hide-review="${report.review_id}">隱藏內容</button><button class="button button-danger" data-admin-delete-review="${report.review_id}">刪除內容</button>` : ""}<button class="button button-primary" data-resolve-report="${report.id}">標記完成</button></div></div>`;
-      }).join("") || '<div class="empty-state">沒有檢舉紀錄。若會員有送出卻看不到，請先確認已套用 0007 migration。</div>';
+      }).join("") || '<div class="empty-state">沒有檢舉紀錄。若會員有送出卻看不到，請確認已套用 0007 migration，且檢舉 insert 未遭 RLS 擋下。</div>');
     } else if (tab === "feedback") {
       const { data, error } = await supabase
         .from("feedback")

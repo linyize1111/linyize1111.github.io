@@ -232,7 +232,7 @@ tags: 閱讀心得, 哲學思辨, 散文
   status=excluded.status, updated_at=excluded.updated_at;
 
 insert into public.articles (section, slug, title, summary, body, cover, images, category, tags, pdf_url, status, sort_index, published_at, created_at, updated_at) values (
-  $md$literature$md$, $md$《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類$md$, $md$《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類$md$, $md$點擊圖片即前往對應篇章的閱讀筆記。$md$,
+  $md$literature$md$, $md$《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類$md$, $md$《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類$md$, $md$劇情大綱、人物表與哲學層次分類的系列閱讀筆記。$md$,
   $md$---
 title: 《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類
 
@@ -386,9 +386,8 @@ title: 《鼠疫》閱讀筆記 (一)：劇情大綱與哲學層次分類
 
 
 
-![附圖](images/鼠疫附圖.jpg)
-![附圖](images/rat.jpg)$md$,
-  $md$images/鼠疫附圖.jpg$md$, $j$[{"src":"images/rat.jpg","caption":""}]$j$::jsonb, $md$心得$md$, '{}'::text[], null, 'published', 0,
+![附圖](images/鼠疫附圖.jpg)$md$,
+  $md$images/鼠疫附圖.jpg$md$, $j$[]$j$::jsonb, $md$心得$md$, '{}'::text[], null, 'published', 0,
   '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz, '2026-03-04T00:00:00Z'::timestamptz
 ) on conflict (section, slug) do update set
   title=excluded.title, summary=excluded.summary, body=excluded.body, cover=excluded.cover,
