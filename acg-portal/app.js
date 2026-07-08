@@ -263,6 +263,32 @@
   function isApproved() { return state.profile?.status === "active"; }
   function isAdmin() { return isApproved() && state.profile?.role === "admin"; }
 
+  async function ensureProfile() {
+    if (!state.session) return null;
+    if (state.profile?.id === state.session.user.id) return state.profile;
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", state.session.user.id).maybeSingle();
+    if (error) {
+      toast(`讀取會員資料失敗：${error.message}`, "error");
+      return null;
+    }
+    if (data) state.profile = data;
+    return state.profile;
+  }
+
+  async function ensureAdmin(actionLabel = "此操作") {
+    await ensureProfile();
+    if (!isAdmin()) {
+      toast(`${actionLabel}需要管理員權限（請確認已登入且帳號為 active admin）`, "warning");
+      return false;
+    }
+    return true;
+  }
+
+  function normalizeGameId(value) {
+    const raw = String(value || "").trim();
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw) ? raw : null;
+  }
+
   function reviewEditable(review) {
     if (!review || !state.session) return false;
     if (isAdmin()) return review.user_id === state.session.user.id;
@@ -1870,10 +1896,27 @@
     const reviewId = event.currentTarget.dataset.reviewId;
     const reason = $("#report-reason").value.trim();
     if (reason.length < 3 || reason.length > 500) return toast("檢舉原因需為 3～500 字", "warning");
-    const { error } = await supabase.from("content_reports").insert({ reporter_id: state.session.user.id, review_id: reviewId, reason });
+    let error = null;
+    const { error: rpcError } = await supabase.rpc("submit_content_report", {
+      target_review: reviewId,
+      report_reason: reason
+    });
+    if (rpcError) {
+      const rpcMissing = /function .*submit_content_report|could not find/i.test(rpcError.message || "");
+      if (!rpcMissing) {
+        error = rpcError;
+      } else {
+        const fallback = await supabase.from("content_reports").insert({
+          reporter_id: state.session.user.id,
+          review_id: reviewId,
+          reason
+        });
+        error = fallback.error;
+      }
+    }
     if (error) {
       const dup = /duplicate key|unique/i.test(error.message);
-      return toast(dup ? "你已經檢舉過這則內容了" : error.message, "error");
+      return toast(dup ? "你已經檢舉過這則內容了" : `檢舉失敗：${error.message}`, "error");
     }
     closeModal("editor-modal");
     toast("檢舉已送交管理員", "success");
@@ -1917,8 +1960,10 @@
   }
 
   function gameEditor(game = null) {
-    if (!isAdmin()) return;
-    $("#editor-content").innerHTML = `<h2 id="editor-title">${game ? "編輯" : "新增"}遊戲評鑑</h2>
+    if (!state.session) { login(); return; }
+    ensureAdmin("新增／編輯遊戲評鑑").then(ok => {
+      if (!ok) return;
+      $("#editor-content").innerHTML = `<h2 id="editor-title">${game ? "編輯" : "新增"}遊戲評鑑</h2>
       <form id="game-editor-form" class="editor-form" data-game-id="${game?.id || ""}">
         <label>名稱<input id="game-name" type="text" maxlength="300" required value="${escapeHtml(game?.name || "")}"></label>
         <label>上傳封面圖片（≤ 5MB，PNG/JPG/WEBP/GIF）<input id="game-cover-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
@@ -1927,9 +1972,10 @@
         <label>評分（-5～+5）<input id="game-rating" type="number" min="-5" max="5" required value="${game?.rating ?? 0}"></label>
         <label>標籤（逗號分隔）<input id="game-tags" type="text" value="${escapeHtml((game?.tags || []).join(", "))}"></label>
         <label>心得<textarea id="game-review" maxlength="5000" required>${escapeHtml(game?.review_body || "")}</textarea></label>
-        <button class="button button-primary">儲存評鑑</button>
+        <button class="button button-primary" type="submit">儲存評鑑</button>
       </form>`;
-    openModal("editor-modal");
+      openModal("editor-modal");
+    });
   }
 
   async function uploadGameCover(file) {
@@ -1948,9 +1994,9 @@
 
   async function saveGame(event) {
     event.preventDefault();
-    if (!isAdmin()) return;
+    if (!await ensureAdmin("儲存遊戲評鑑")) return;
     const submitButton = event.currentTarget.querySelector('button[type="submit"], .button.button-primary');
-    const id = event.currentTarget.dataset.gameId;
+    const id = normalizeGameId(event.currentTarget.dataset.gameId);
     const name = $("#game-name").value.trim();
     const reviewBody = $("#game-review").value.trim();
     const rating = Number($("#game-rating").value);
@@ -1967,19 +2013,20 @@
     const tags = $("#game-tags").value.split(/[,，]/).map(value => value.trim()).filter(Boolean);
     await withBusyButton(submitButton, "儲存中…", async () => {
       const { error: rpcError, data: rpcData } = await supabase.rpc("admin_upsert_game_review", {
-        target_game: id || null,
+        target_game: id,
         game_name: name,
         game_cover_url: coverUrl || "",
         game_rating: Math.round(rating),
         game_tags: tags,
         game_review_body: reviewBody
       });
-      if (!rpcError && rpcData) {
+      authDebug("saveGame rpc", { rpcError, rpcData, id });
+      if (!rpcError) {
         closeModal("editor-modal");
         await loadGames();
         return toast(id ? "遊戲評鑑已儲存" : "遊戲評鑑已新增", "success");
       }
-      const rpcMsg = rpcError?.message || "";
+      const rpcMsg = rpcError?.message || String(rpcError);
       const rpcMissing = /function .*admin_upsert_game_review|could not find/i.test(rpcMsg);
       if (!rpcMissing) {
         const adminHint = /admin required|authentication required/i.test(rpcMsg)
@@ -2107,7 +2154,7 @@
   }
 
   async function loadAdmin(tab = state.adminTab) {
-    if (!isAdmin()) return;
+    if (!await ensureAdmin("管理後台")) return;
     state.adminTab = tab;
     $$("[data-admin-tab]").forEach(button => button.classList.toggle("active", button.dataset.adminTab === tab));
     const content = $("#admin-content");
@@ -2517,12 +2564,7 @@
     supabase.auth.onAuthStateChange((event, session) => {
       authDebug("auth state", { event, hasSession: Boolean(session) });
       state.session = session;
-      if (event === "SIGNED_IN") {
-        closeModal("auth-modal");
-        updateAuthUi();
-        setTimeout(() => loadAuth(), 0);
-        return;
-      }
+      if (event === "SIGNED_IN") closeModal("auth-modal");
       if (event === "SIGNED_OUT") {
         state.profile = null;
         state.favorites.clear();
@@ -2530,7 +2572,9 @@
         updateAuthUi();
         return;
       }
-      if (event === "INITIAL_SESSION" && session) updateAuthUi();
+      if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED")) {
+        setTimeout(() => loadAuth(), 0);
+      }
     });
     await handleAuthCallback();
     renderPlatformSkeletons();
