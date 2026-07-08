@@ -3373,6 +3373,18 @@ table.alt tbody tr td {
 	z-index: -1;
 }
 
+/* 影片背景 */
+#bg-video {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	z-index: -2;
+	pointer-events: none;
+}
+
 /* 右下角控制按鈕 */
 #video-controls {
 	position: fixed;

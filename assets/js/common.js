@@ -18,6 +18,10 @@ function initLoadingScreen() {
             loader.classList.add('fade-out');
             setTimeout(function () {
                 loader.style.display = 'none';
+                var video = document.getElementById('bg-video');
+                if (video) {
+                    video.play().catch(function () { });
+                }
             }, 700);
         }, 400);
     });
@@ -26,12 +30,17 @@ function initLoadingScreen() {
 /* ─── 2. Music Controls ─────────────────────────────────────── */
 function initMediaControls() {
     document.addEventListener('DOMContentLoaded', function () {
+        var video = document.getElementById('bg-video');
         var music = document.getElementById('bg-music');
         var btnMute = document.getElementById('btn-mute');
         var btnPlay = document.getElementById('btn-play');
 
         if (!music || !btnMute || !btnPlay) return;
 
+        if (video) {
+            video.muted = true;
+            video.defaultMuted = true;
+        }
         var isMuted = (sessionStorage.getItem('mediaMuted') === 'true');
         music.muted = isMuted;
 
@@ -68,6 +77,9 @@ function initMediaControls() {
 
         btnPlay.addEventListener('click', function () {
             if (music.paused) {
+                if (video && video.paused) {
+                    video.play().catch(function () { });
+                }
                 music.play().catch(function () { });
                 btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
                 sessionStorage.setItem('musicPaused', 'false');

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co https://acg-portal.onrender.com; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co; upgrade-insecure-requests">
   <title>你的夜鹿導師 | ACG Portal</title>
   <meta name="description" content="私人整理、公開瀏覽的 ACG 收藏與內容推薦入口。">
   <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=1.3.1">
@@ -69,16 +69,15 @@
           <button id="draw-ten-button" class="button button-secondary">一次 10 本</button>
         </div>
         <div class="filter-row">
-          <select id="home-filter-reviews" aria-label="評分數篩選">
-            <option value="all">評分數：全部</option>
-            <option value="1">評分數：≥ 1</option>
-            <option value="5">評分數：≥ 5</option>
-            <option value="10">評分數：≥ 10</option>
+          <select id="home-filter-reviews" aria-label="評分數排序">
+            <option value="default">評分數：預設</option>
+            <option value="reviews-desc">評分數：多 → 少</option>
+            <option value="reviews-asc">評分數：少 → 多</option>
           </select>
-          <select id="home-filter-favorites" aria-label="收藏數篩選">
-            <option value="all">收藏數：全部</option>
-            <option value="1">收藏數：≥ 1</option>
-            <option value="3">收藏數：≥ 3</option>
+          <select id="home-filter-favorites" aria-label="收藏數排序">
+            <option value="default">收藏數：預設</option>
+            <option value="favorites-desc">收藏數：多 → 少</option>
+            <option value="favorites-asc">收藏數：少 → 多</option>
           </select>
           <select id="home-filter-week" aria-label="收錄時間篩選">
             <option value="all">收錄：全部</option>
@@ -117,23 +116,24 @@
         </div>
       </div>
       <div class="filter-row library-filters">
-        <select id="library-filter-reviews" aria-label="評分數篩選">
-          <option value="all">評分數：全部</option>
-          <option value="1">評分數：≥ 1</option>
-          <option value="5">評分數：≥ 5</option>
-          <option value="10">評分數：≥ 10</option>
+        <select id="library-filter-reviews" aria-label="評分數排序">
+          <option value="default">評分數：預設</option>
+          <option value="reviews-desc">評分數：多 → 少</option>
+          <option value="reviews-asc">評分數：少 → 多</option>
         </select>
-        <select id="library-filter-favorites" aria-label="收藏數篩選">
-          <option value="all">收藏數：全部</option>
-          <option value="1">收藏數：≥ 1</option>
-          <option value="3">收藏數：≥ 3</option>
+        <select id="library-filter-favorites" aria-label="收藏數排序">
+          <option value="default">收藏數：預設</option>
+          <option value="favorites-desc">收藏數：多 → 少</option>
+          <option value="favorites-asc">收藏數：少 → 多</option>
         </select>
         <select id="library-sort" aria-label="排序方式">
           <option value="default">排序：預設</option>
           <option value="score-desc">排序：平均分 高→低</option>
           <option value="score-asc">排序：平均分 低→高</option>
           <option value="reviews-desc">排序：評分數 多→少</option>
+          <option value="reviews-asc">排序：評分數 少→多</option>
           <option value="favorites-desc">排序：收藏數 多→少</option>
+          <option value="favorites-asc">排序：收藏數 少→多</option>
         </select>
       </div>
       <p id="library-summary" class="muted"></p>
@@ -265,6 +265,7 @@
           <input id="password-login-password" type="password" placeholder="站內密碼" autocomplete="current-password">
         </label>
         <button id="password-login-button" class="button button-primary" type="button">登入</button>
+        <button id="auth-clear-storage-button" class="button button-secondary" type="button">清除本站登入資料</button>
       </div>
       <p id="auth-help" class="muted small-note auth-help">若 Google 登入失敗，請確認 Supabase Site URL 為 /acg-portal/，或改用信箱＋密碼。</p>
     </div>

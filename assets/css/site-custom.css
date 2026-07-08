@@ -673,7 +673,18 @@ html[data-theme] table {
    E. BACKGROUND SCROLL — Requirement 4
    ============================================================ */
 
-/* Ensure video covers full viewport always — removed: background video deleted */
+/* Ensure video covers full viewport always */
+#bg-video {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    object-fit: cover;
+    object-position: center center;
+    z-index: -1;
+    pointer-events: none;
+}
 
 /* The #wrapper parallax bg divs */
 #wrapper>.bg {

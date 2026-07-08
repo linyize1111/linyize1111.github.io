@@ -77,15 +77,21 @@
 
   function workerErrorMessage(error) {
     const detail = error?.detail || error?.message || String(error || "");
-    if (error?.status === 404 || /\b404\b/.test(detail)) {
-      return "後端 worker 未部署或已休眠（Render 免費方案常見）。請至 Render Dashboard 喚醒，或改用 GitHub Actions 手動同步。";
+    if (!config.workerUrl) {
+      return "本站目前不再依賴常駐 worker。請改從 GitHub Actions 手動同步，紀錄則直接以 Supabase 內的同步結果為準。";
     }
-    return detail ? `後端 worker 目前不可用：${detail}` : "後端 worker 目前不可用";
+    if (error?.status === 404 || /\b404\b/.test(detail)) {
+      return "背景同步 API 目前不可用；請改從 GitHub Actions 手動同步，稍後再回來看 Supabase 同步紀錄。";
+    }
+    return detail ? `背景同步 API 目前不可用：${detail}` : "背景同步 API 目前不可用";
   }
 
   function workerDownBanner() {
-    if (state.workerStatus.available !== false) return "";
-    return '<div class="empty-state warning">後端 worker 未連線。爬蟲喚醒與手動入庫暫時不可用；可改用 GitHub Actions 手動同步。</div>';
+    if (config.workerUrl) {
+      if (state.workerStatus.available !== false) return "";
+      return '<div class="empty-state warning">背景同步 API 暫時無法連線；作品清單與同步紀錄仍以 Supabase 現況顯示。若要立即同步，請改用 GitHub Actions 手動觸發。</div>';
+    }
+    return '<div class="empty-state warning">本站目前使用 GitHub Actions + Supabase，同步紀錄直接讀取資料庫；若要手動同步，請開啟 GitHub Actions 工作流程。</div>';
   }
 
   async function fetchWorkerJson(path, options = {}, timeoutMs = 15000) {
@@ -468,21 +474,11 @@
   }
 
   function passesWorkFilters(work, prefix = "home") {
-    const reviewFilter = $(`#${prefix}-filter-reviews`)?.value || "all";
     const weekFilter = $(`#${prefix}-filter-week`)?.value || "all";
-    const favoriteFilter = $(`#${prefix}-filter-favorites`)?.value || "all";
-    const stats = workReviewStats(work.id);
-    const reviewCount = stats?.review_count || 0;
-    const favoriteCount = state.favoriteCounts.get(work.id) || 0;
-    if (reviewFilter === "1" && reviewCount < 1) return false;
-    if (reviewFilter === "5" && reviewCount < 5) return false;
-    if (reviewFilter === "10" && reviewCount < 10) return false;
     if (weekFilter === "week") {
       const seenAt = new Date(work.last_seen_at || work.created_at || 0).getTime();
       if (Date.now() - seenAt > 7 * 86400000) return false;
     }
-    if (favoriteFilter === "1" && favoriteCount < 1) return false;
-    if (favoriteFilter === "3" && favoriteCount < 3) return false;
     return true;
   }
 
@@ -511,12 +507,18 @@
       state.sourceStats = summarizeSourceStats(state.works);
     }
     const readySources = config.platforms.filter(platform => platformStats(platform).active > 0).length;
-    const workerNote = state.workerStatus.available === false ? "（後端 worker 未連線，狀態改用作品庫估算）" : "";
+    const workerNote = config.workerUrl
+      ? (state.workerStatus.available === false ? "（背景同步 API 暫時不可用，狀態改用作品庫估算）" : "")
+      : "（同步狀態依 Supabase 作品庫與紀錄顯示）";
     $("#home-summary").textContent = `目前可抽選 ${state.works.length.toLocaleString()} 筆通過驗證的作品；${readySources} / ${config.platforms.length} 個來源已有 active 內容${workerNote}`;
     renderSourceStatus();
   }
 
   async function loadSourceStatus() {
+    if (!config.workerUrl) {
+      state.workerStatus = { available: null, lastError: null };
+      return summarizeSourceStats(state.works);
+    }
     try {
       const rows = await fetchWorkerJson("/api/source-status", {}, 8000);
       return sourceStatsFromRows(Array.isArray(rows) ? rows : []);
@@ -566,7 +568,7 @@
         className: "running",
         label: "RUNNING",
         count: stats.active > 0 ? `${stats.active.toLocaleString()} active` : `${stats.total.toLocaleString()} pending`,
-        description: "正在同步；完成後作品數會自動更新"
+        description: "背景同步進行中；完成後作品數會自動更新"
       };
     }
     if (stats.active > 0) {
@@ -576,7 +578,7 @@
         count: `${stats.active.toLocaleString()} active`,
         description: stats.inactive || stats.rejected
           ? `${(stats.inactive + stats.rejected).toLocaleString()} 筆非 active 保留`
-          : "可抽卡、搜尋與評分"
+          : "可抽卡、搜尋、收藏與評分"
       };
     }
     if (stats.total > 0) {
@@ -584,14 +586,14 @@
         className: "pending",
         label: "SYNCING",
         count: `${stats.total.toLocaleString()} pending`,
-        description: "已建立資料槽，等待匯入或啟用"
+        description: "已建立資料槽，等待 GitHub Actions 或手動同步匯入"
       };
     }
     return {
       className: "empty",
       label: "EMPTY",
       count: "尚未匯入",
-      description: "尚未建立此來源資料"
+      description: "此來源尚未有可用作品"
     };
   }
 
@@ -751,23 +753,59 @@
     state.recentByPlatform[work.platform] = [work.id, ...list.filter(id => id !== work.id)].slice(0, 20);
   }
 
+  function activeHomeSortMode() {
+    const reviewMode = $("#home-filter-reviews")?.value || "default";
+    if (reviewMode !== "default") return reviewMode;
+    return $("#home-filter-favorites")?.value || "default";
+  }
+
+  function sortWorksByMode(rows, mode, query = "") {
+    const hasQuery = Boolean(normalize(query));
+    if (mode === "default" && hasQuery) {
+      return rows.sort((a, b) => {
+        const scoreDiff = workSearchScore(b, query) - workSearchScore(a, query);
+        if (Math.abs(scoreDiff) > .0001) return scoreDiff;
+        return stableRandom(a.id) - stableRandom(b.id);
+      });
+    }
+    if (mode === "default") {
+      return rows.sort((a, b) => stableRandom(a.id) - stableRandom(b.id));
+    }
+    const stat = workId => workReviewStats(workId);
+    return rows.sort((a, b) => {
+      const aStats = stat(a.id);
+      const bStats = stat(b.id);
+      const aFav = state.favoriteCounts.get(a.id) || 0;
+      const bFav = state.favoriteCounts.get(b.id) || 0;
+      if (mode === "score-desc") return Number(bStats?.raw_average || 0) - Number(aStats?.raw_average || 0);
+      if (mode === "score-asc") return Number(aStats?.raw_average || 0) - Number(bStats?.raw_average || 0);
+      if (mode === "reviews-desc") return Number(bStats?.review_count || 0) - Number(aStats?.review_count || 0);
+      if (mode === "reviews-asc") return Number(aStats?.review_count || 0) - Number(bStats?.review_count || 0);
+      if (mode === "favorites-desc") return bFav - aFav;
+      if (mode === "favorites-asc") return aFav - bFav;
+      return stableRandom(a.id) - stableRandom(b.id);
+    });
+  }
+
   function candidatesFor(platform, query = "") {
-    return state.works.filter(work =>
+    const rows = state.works.filter(work =>
       work.platform === platform &&
       workMatches(work, query) &&
       passesWorkFilters(work, "home")
     );
+    return sortWorksByMode(rows, activeHomeSortMode(), query);
   }
 
   function drawPlatform(platform, source = null) {
     const query = $("#home-search").value;
+    const mode = activeHomeSortMode();
     let candidates = candidatesFor(platform, query).filter(work => !state.shownByPlatform[platform].has(work.id));
     if (!candidates.length) {
       state.shownByPlatform[platform].clear();
       candidates = candidatesFor(platform, query);
     }
     if (source) candidates = candidates.filter(work => work.id !== source.id);
-    const work = weightedPick(candidates, source);
+    const work = mode === "default" ? weightedPick(candidates, source) : candidates[0] || null;
     state.currentByPlatform[platform] = work;
     state.cardSideByPlatform[platform] = "front";
     rememberDraw(work);
@@ -782,11 +820,17 @@
 
   function drawBatch(count) {
     const query = $("#home-search").value;
-    const pool = state.works.filter(work => workMatches(work, query) && passesWorkFilters(work, "home"));
+    const mode = activeHomeSortMode();
+    const pool = sortWorksByMode(
+      state.works.filter(work => workMatches(work, query) && passesWorkFilters(work, "home")),
+      mode,
+      query
+    );
     const selected = [];
     const used = new Set();
     for (let index = 0; index < count && used.size < pool.length; index++) {
-      const pick = weightedPick(pool.filter(work => !used.has(work.id)));
+      const candidates = pool.filter(work => !used.has(work.id));
+      const pick = mode === "default" ? weightedPick(candidates) : candidates[0];
       if (!pick) break;
       used.add(pick.id);
       selected.push(pick);
@@ -980,30 +1024,7 @@
   }
 
   function sortLibraryRows(rows, query) {
-    const mode = librarySortMode();
-    const hasQuery = Boolean(normalize(query));
-    if (mode === "default" && hasQuery) {
-      return rows.sort((a, b) => {
-        const scoreDiff = workSearchScore(b, query) - workSearchScore(a, query);
-        if (Math.abs(scoreDiff) > .0001) return scoreDiff;
-        return stableRandom(a.id) - stableRandom(b.id);
-      });
-    }
-    if (mode === "default") {
-      return rows.sort((a, b) => stableRandom(a.id) - stableRandom(b.id));
-    }
-    const stat = workId => workReviewStats(workId);
-    return rows.sort((a, b) => {
-      const aStats = stat(a.id);
-      const bStats = stat(b.id);
-      const aFav = state.favoriteCounts.get(a.id) || 0;
-      const bFav = state.favoriteCounts.get(b.id) || 0;
-      if (mode === "score-desc") return Number(bStats?.raw_average || 0) - Number(aStats?.raw_average || 0);
-      if (mode === "score-asc") return Number(aStats?.raw_average || 0) - Number(bStats?.raw_average || 0);
-      if (mode === "reviews-desc") return Number(bStats?.review_count || 0) - Number(aStats?.review_count || 0);
-      if (mode === "favorites-desc") return bFav - aFav;
-      return stableRandom(a.id) - stableRandom(b.id);
-    });
+    return sortWorksByMode(rows, librarySortMode(), query);
   }
 
   function librarySummaryText(works, query) {
@@ -1013,7 +1034,9 @@
       "score-desc": "平均分（高→低）",
       "score-asc": "平均分（低→高）",
       "reviews-desc": "評分數量（多→少）",
-      "favorites-desc": "收藏數（多→少）"
+      "reviews-asc": "評分數量（少→多）",
+      "favorites-desc": "收藏數（多→少）",
+      "favorites-asc": "收藏數（少→多）"
     };
     return `${works.length.toLocaleString()} 筆符合條件；排序：${sortLabels[mode] || sortLabels.default}`;
   }
@@ -1093,9 +1116,10 @@
   }
 
   function rankingScoreHtml(item) {
-    const tooltip = item.review_count > 0
-      ? `加權 ${Number(item.weighted_score).toFixed(2)}；原始平均 ${Number(item.raw_average).toFixed(2)}（${item.review_count} 則評分）`
-      : "這部作品還沒有人評分，分數暫時等於全站平均（m=8 的先驗）。";
+    if (!item.review_count) {
+      return `<div class="score"><span class="info-badge" data-tooltip="尚無主評論，因此不列入排行榜。" aria-label="分數說明">?</span><strong>--</strong><small>尚無評分</small></div>`;
+    }
+    const tooltip = `加權 ${Number(item.weighted_score).toFixed(2)}；原始平均 ${Number(item.raw_average).toFixed(2)}（${item.review_count} 則評分）`;
     return `<div class="score"><span class="info-badge" data-tooltip="${escapeHtml(tooltip)}" aria-label="分數說明">?</span><strong>${Number(item.weighted_score).toFixed(2)}</strong><small>原始 ${Number(item.raw_average).toFixed(2)}</small></div>`;
   }
 
@@ -1104,7 +1128,7 @@
     if (tab === "weekly") return renderWeeklyLeaderboard();
     const platform = $("#ranking-platform").value;
     const order = $("#ranking-order").value;
-    let rows = state.leaderboard.filter(item => platform === "all" || item.platform === platform);
+    let rows = state.leaderboard.filter(item => (platform === "all" || item.platform === platform) && Number(item.review_count || 0) > 0);
     rows.sort((a, b) => (order === "top" ? 1 : -1) * (Number(b.weighted_score) - Number(a.weighted_score)));
     rows = rows.slice(0, 30);
     $("#ranking-list").innerHTML = rows.map((item, index) => `
@@ -1233,7 +1257,8 @@
   }
 
   async function loginWithEmail() {
-    const email = $("#email-login-input").value.trim();
+    const field = $("#email-login-input") || $("#password-login-email");
+    const email = field?.value.trim() || "";
     if (!email || !email.includes("@")) return toast("請輸入有效信箱", "warning");
     const redirectTo = authRedirectUrl();
     const { error } = await supabase.auth.signInWithOtp({
@@ -1574,7 +1599,6 @@
 
   async function reportReview(reviewId) {
     if (!await requireMember()) return;
-    closeModal("detail-modal");
     $("#editor-content").innerHTML = `
       <h2 id="editor-title">檢舉內容</h2>
       <form id="report-form" class="editor-form" data-review-id="${escapeHtml(reviewId)}">
@@ -1777,9 +1801,10 @@
       const items = (rows || []).filter(row => row.kind === kind);
       node.innerHTML = items.map(item => {
         const author = memberName(state.profiles.get(item.user_id));
-        const replyHtml = (replyMap.get(item.id) || []).map(reply => `<div class="feedback-replies"><div><strong>${escapeHtml(memberName(state.profiles.get(reply.user_id)))}</strong><p>${escapeHtml(reply.body)}</p><small>${new Date(reply.created_at).toLocaleString("zh-TW")}</small></div></div>`).join("");
+        const statusLabel = item.status === "resolved" ? "已處理" : "處理中";
+        const replyHtml = (replyMap.get(item.id) || []).map(reply => `<div class="feedback-reply"><strong>${escapeHtml(memberName(state.profiles.get(reply.user_id)))}</strong><p>${escapeHtml(reply.body)}</p><small>${new Date(reply.created_at).toLocaleString("zh-TW")}</small></div>`).join("");
         const adminActions = isAdmin() ? `<div class="admin-actions"><button class="button button-secondary" data-edit-feedback="${item.id}">編輯</button><button class="button button-danger" data-delete-feedback="${item.id}">刪除</button>${item.status === "open" ? `<button class="button button-primary" data-resolve-feedback="${item.id}">完成</button>` : ""}</div>` : "";
-        return `<article class="feedback-thread" data-feedback="${item.id}"><h4>${escapeHtml(author)} · ${escapeHtml(item.status)}</h4><p>${escapeHtml(item.body)}</p><small>${new Date(item.created_at).toLocaleString("zh-TW")}</small>${replyHtml}${adminActions}<form data-feedback-reply="${item.id}" class="review-form"><textarea maxlength="2000" required placeholder="回覆…"></textarea><button class="button button-primary">送出回覆</button></form></article>`;
+        return `<article class="feedback-thread" data-feedback="${item.id}"><div class="feedback-thread-header"><h4>${escapeHtml(author)}</h4><span class="feedback-status ${item.status === "resolved" ? "resolved" : "open"}">${escapeHtml(statusLabel)}</span></div><p>${escapeHtml(item.body)}</p><small>${new Date(item.created_at).toLocaleString("zh-TW")}</small>${replyHtml ? `<div class="feedback-replies">${replyHtml}</div>` : ""}${adminActions}<form data-feedback-reply="${item.id}" class="review-form feedback-reply-form"><textarea maxlength="2000" required placeholder="${kind === "recommendation" ? "回覆這則推薦…" : "回覆這則意見…"}"></textarea><button class="button button-primary">送出回覆</button></form></article>`;
       }).join("") || '<p class="muted">尚無紀錄</p>';
     });
   }
@@ -1853,11 +1878,12 @@
       content.innerHTML = rows.map(item => {
         const author = memberName(state.profiles.get(item.user_id));
         const kindLabel = item.kind === "recommendation" ? "作品推薦" : "意見反饋";
-        return `<div class="admin-row"><div><h4>${escapeHtml(kindLabel)} · ${escapeHtml(author)}</h4><p>${escapeHtml(item.body)}</p><small>${new Date(item.created_at).toLocaleString("zh-TW")} · ${escapeHtml(item.status)}</small></div><div class="admin-actions">${item.status === "open" ? `<button class="button button-primary" data-resolve-feedback="${item.id}">標記完成</button>` : ""}</div></div>`;
+        const statusText = item.status === "resolved" ? "已完成" : "待處理";
+        return `<div class="admin-row"><div><h4>${escapeHtml(kindLabel)} · ${escapeHtml(author)}</h4><p>${escapeHtml(item.body)}</p><small>${new Date(item.created_at).toLocaleString("zh-TW")} · ${escapeHtml(statusText)}</small></div><div class="admin-actions">${item.status === "open" ? `<button class="button button-primary" data-resolve-feedback="${item.id}">標記完成</button>` : ""}</div></div>`;
       }).join("") || '<div class="empty-state">目前沒有意見或推薦</div>';
     } else if (tab === "jobs") {
       state.sourceStats = await loadSourceStatus();
-      content.innerHTML = `${workerDownBanner()}<div class="admin-source-status"><div id="admin-source-status-grid" class="source-status-grid"></div></div><div class="job-controls">${["all","discord","hanime","18comic","pixiv"].map(source => `<button class="button ${source === "all" ? "button-primary" : "button-secondary"}" data-run-job="${source}">執行 ${source}</button>`).join("")}<button class="button button-secondary" data-refresh-jobs>更新狀態</button><a class="button button-secondary" href="https://github.com/linyize1111/acg-portal/actions/workflows/scheduled-sync.yml" target="_blank" rel="noopener noreferrer">GitHub 手動同步 ↗</a></div><div id="job-list"></div>`;
+      content.innerHTML = `${workerDownBanner()}<div class="admin-source-status"><div id="admin-source-status-grid" class="source-status-grid"></div></div><div class="job-controls"><button class="button button-primary" data-run-job="all">前往手動同步</button><button class="button button-secondary" data-refresh-jobs>更新紀錄</button><a class="button button-secondary" href="${escapeHtml(config.manualSyncUrl)}" target="_blank" rel="noopener noreferrer">GitHub Actions ↗</a></div><div id="job-list"></div>`;
       renderSourceStatus("#admin-source-status-grid");
       await loadJobs();
     }
@@ -1888,10 +1914,15 @@
       const started = run.started_at || run.created_at;
       const finished = run.finished_at ? `完成：${new Date(run.finished_at).toLocaleString("zh-TW")}` : "尚未完成";
       return `<div class="admin-row"><div><h4>${escapeHtml(run.job_name)} <span class="job-badge ${escapeHtml(run.status)}">${escapeHtml(run.status)}</span></h4><p>開始：${started ? new Date(started).toLocaleString("zh-TW") : "未知"} · ${finished}</p><p>發現 ${run.discovered_count || 0} · 接受 ${run.accepted_count || 0} · 拒絕 ${run.rejected_count || 0} · 錯誤 ${run.error_count || 0}</p>${run.error_message ? `<p class="error-text">${escapeHtml(run.error_message)}</p>` : ""}</div></div>`;
-    }).join("") || '<div class="empty-state">尚無執行紀錄</div>';
+    }).join("") || `<div class="empty-state">尚無執行紀錄。<br><a href="${escapeHtml(config.manualSyncUrl)}" target="_blank" rel="noopener noreferrer">到 GitHub Actions 手動同步 ↗</a></div>`;
   }
 
   async function runJob(source) {
+    if (!config.workerUrl) {
+      window.open(config.manualSyncUrl, "_blank", "noopener");
+      toast(source === "all" ? "已開啟 GitHub Actions 手動同步頁面" : `目前請改由 GitHub Actions 手動執行 ${source} 同步`, "success");
+      return;
+    }
     try {
       await fetchWorkerJson("/api/admin/jobs", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${state.session.access_token}` }, body: JSON.stringify({ source }) });
       toast(`已喚醒 ${source} 工作`, "success");
@@ -1954,8 +1985,19 @@
     closeModal("editor-modal"); await loadWorks(); await loadAdmin("works"); toast("作品已儲存", "success");
   }
 
-  function openModal(id) { $(`#${id}`).classList.add("open"); document.body.style.overflow = "hidden"; }
-  function closeModal(id) { $(`#${id}`).classList.remove("open"); document.body.style.overflow = ""; }
+  function syncBodyScrollLock() {
+    document.body.style.overflow = document.querySelector(".modal.open") ? "hidden" : "";
+  }
+
+  function openModal(id) {
+    $(`#${id}`).classList.add("open");
+    syncBodyScrollLock();
+  }
+
+  function closeModal(id) {
+    $(`#${id}`).classList.remove("open");
+    syncBodyScrollLock();
+  }
 
   function toggleMobileMenu(force = null) {
     const nav = $("#main-nav");
@@ -1997,10 +2039,12 @@
     bindClick("#login-button", login);
     bindClick("#logout-button", logout);
     bindClick("#clear-auth-button", clearAuthStorage);
+    bindClick("#auth-clear-storage-button", clearAuthStorage);
     bindClick("#profile-edit-button", openProfileEditor);
     bindClick("#google-login-button", loginWithGoogle);
     bindClick("#password-login-button", loginWithPassword);
     bindClick("#email-login-button", loginWithEmail);
+    $("#password-login-email")?.addEventListener("keydown", event => { if (event.key === "Enter") loginWithPassword(); });
     $("#password-login-password")?.addEventListener("keydown", event => { if (event.key === "Enter") loginWithPassword(); });
     $("#email-login-input")?.addEventListener("keydown", event => { if (event.key === "Enter") loginWithEmail(); });
     bindClick("#mobile-menu-button", event => { event.stopPropagation(); toggleMobileMenu(); });
@@ -2107,7 +2151,7 @@
         toast(error ? error.message : "已刪除", error ? "error" : "success");
         if (!error) { loadFeedbackThreads(); loadAdmin("feedback"); }
       }
-      if (target.dataset.resolveFeedback) { const { error } = await supabase.from("feedback").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveFeedback); toast(error ? error.message : "已標記完成", error ? "error" : "success"); if (!error) loadAdmin("feedback"); }
+      if (target.dataset.resolveFeedback) { const { error } = await supabase.from("feedback").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveFeedback); toast(error ? error.message : "已標記完成", error ? "error" : "success"); if (!error) { loadFeedbackThreads(); loadAdmin("feedback"); } }
       if (target.dataset.resolveReport) { const { error } = await supabase.from("content_reports").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveReport); toast(error ? error.message : "檢舉已完成", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
       if (target.dataset.hideReview) { const { error } = await supabase.rpc("moderate_review", { target_review: target.dataset.hideReview, new_status: "hidden" }); toast(error ? error.message : "內容已隱藏", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
       if (target.dataset.adminDeleteReview && confirm("確定永久刪除被檢舉的內容？")) { const { error } = await supabase.from("reviews").delete().eq("id", target.dataset.adminDeleteReview); toast(error ? error.message : "內容已刪除", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
