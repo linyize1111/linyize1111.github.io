@@ -8,11 +8,11 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co; upgrade-insecure-requests">
   <title>你的夜鹿導師 | ACG Portal</title>
   <meta name="description" content="私人整理、公開瀏覽的 ACG 收藏與內容推薦入口。">
-  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=1.3.1">
+  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=1.3.2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=1.3.1">
+  <link rel="stylesheet" href="styles.css?v=1.3.2">
 </head>
 <body>
   <div class="ambient ambient-one"></div>
@@ -20,7 +20,7 @@
 
   <header class="site-header">
     <a class="brand" href="#home" aria-label="ACG Portal 首頁">
-      <span class="brand-mark"><img src="assets/yoru-icon.png?v=1.3.1" alt=""></span>
+      <span class="brand-mark"><img src="assets/yoru-icon.png?v=1.3.2" alt=""></span>
       <span><strong>夜鹿導師</strong><small>ACG PORTAL</small></span>
     </a>
     <nav id="main-nav" class="main-nav" aria-label="主要導覽">
@@ -52,7 +52,7 @@
             <p class="eyebrow">CURATED DISCOVERY</p>
             <h1>你的夜鹿導師</h1>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=1.3.1" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=1.3.2" alt="夜鹿導師">
         </div>
         <div class="site-note">
           <p>本站永遠不營利、不放廣告，單純為了方便整理、記錄與分享個人精選。</p>
@@ -67,17 +67,12 @@
           <button id="draw-all-button" class="button button-primary">🎲 全部更新</button>
           <button id="draw-five-button" class="button button-secondary">一次 5 本</button>
           <button id="draw-ten-button" class="button button-secondary">一次 10 本</button>
+          <button id="reset-draw-history-button" class="button button-secondary" title="清除各平台卡片背面與加抽清單的本機抽取紀錄">🗑️ 重置抽取紀錄</button>
         </div>
         <div class="filter-row">
-          <select id="home-filter-reviews" aria-label="評分數排序">
-            <option value="default">評分數：預設</option>
-            <option value="reviews-desc">評分數：多 → 少</option>
-            <option value="reviews-asc">評分數：少 → 多</option>
-          </select>
-          <select id="home-filter-favorites" aria-label="收藏數排序">
-            <option value="default">收藏數：預設</option>
-            <option value="favorites-desc">收藏數：多 → 少</option>
-            <option value="favorites-asc">收藏數：少 → 多</option>
+          <select id="home-filter-scope" aria-label="抽卡範圍">
+            <option value="all">範圍：全部作品</option>
+            <option value="favorites">範圍：我的收藏</option>
           </select>
           <select id="home-filter-week" aria-label="收錄時間篩選">
             <option value="all">收錄：全部</option>
@@ -116,24 +111,14 @@
         </div>
       </div>
       <div class="filter-row library-filters">
-        <select id="library-filter-reviews" aria-label="評分數排序">
-          <option value="default">評分數：預設</option>
-          <option value="reviews-desc">評分數：多 → 少</option>
-          <option value="reviews-asc">評分數：少 → 多</option>
-        </select>
-        <select id="library-filter-favorites" aria-label="收藏數排序">
-          <option value="default">收藏數：預設</option>
-          <option value="favorites-desc">收藏數：多 → 少</option>
-          <option value="favorites-asc">收藏數：少 → 多</option>
-        </select>
         <select id="library-sort" aria-label="排序方式">
-          <option value="default">排序：預設</option>
+          <option value="default">排序：預設（隨機）</option>
           <option value="score-desc">排序：平均分 高→低</option>
           <option value="score-asc">排序：平均分 低→高</option>
           <option value="reviews-desc">排序：評分數 多→少</option>
           <option value="reviews-asc">排序：評分數 少→多</option>
-          <option value="favorites-desc">排序：收藏數 多→少</option>
-          <option value="favorites-asc">排序：收藏數 少→多</option>
+          <option value="favorites-desc">排序：全站收藏 多→少</option>
+          <option value="favorites-asc">排序：全站收藏 少→多</option>
         </select>
       </div>
       <p id="library-summary" class="muted"></p>
@@ -188,7 +173,7 @@
         <div class="feedback-card">
           <p class="eyebrow">CONTACT</p>
           <h2>意見反饋</h2>
-          <p>登入會員可寄送；內容保存在意見箱，站長與會員皆可查看與回覆。</p>
+          <p>登入並通過審核後可寄送。內容公開給已審核會員看；站長會在後台處理，此處不再做回覆串。</p>
           <textarea id="feedback-body" maxlength="2000" placeholder="請描述建議或問題…"></textarea>
           <div class="form-footer"><span id="feedback-count">0 / 2000</span><button id="feedback-send" class="button button-primary">寄送意見</button></div>
           <div id="feedback-thread-list" class="feedback-thread-list"><p class="muted">載入中…</p></div>
@@ -196,7 +181,7 @@
         <div class="feedback-card">
           <p class="eyebrow">SUBMISSION</p>
           <h2>推薦作品給站長</h2>
-          <p>貼上車號、作品網址或推薦理由。站長審核後才會上架。</p>
+          <p>貼上車號、作品網址或推薦理由。站長審核後才會上架，此處只寄送不聊天。</p>
           <textarea id="recommendation-body" maxlength="2000" placeholder="例：nhentai #123456 / 禁漫連結 / Pixiv 作品網址…"></textarea>
           <div class="form-footer"><span id="recommendation-count">0 / 2000</span><button id="recommendation-send" class="button button-primary">送出推薦</button></div>
           <div id="recommendation-thread-list" class="feedback-thread-list"><p class="muted">載入中…</p></div>
@@ -251,7 +236,7 @@
       <div class="auth-header">
         <span class="auth-mark" aria-hidden="true">🦌</span>
         <h2 id="auth-title">登入夜鹿導師</h2>
-        <p class="muted">公開瀏覽不需要登入；留言、評分與收藏才需要帳號。</p>
+        <p class="muted">公開瀏覽不用登入。留言、評分、收藏與送意見才需要帳號；第一次登入後請等站長審核。</p>
       </div>
       <div class="auth-options">
         <button id="google-login-button" class="button button-primary auth-google" type="button">使用 Google 登入</button>
@@ -261,13 +246,14 @@
           <input id="password-login-email" type="email" placeholder="you@gmail.com" autocomplete="username" inputmode="email">
         </label>
         <label class="email-login">
-          <span>密碼</span>
+          <span>密碼（至少 6 碼）</span>
           <input id="password-login-password" type="password" placeholder="站內密碼" autocomplete="current-password">
         </label>
         <button id="password-login-button" class="button button-primary" type="button">登入</button>
+        <button id="password-signup-button" class="button button-secondary" type="button">第一次來：建立帳號</button>
         <button id="auth-clear-storage-button" class="button button-secondary" type="button">清除本站登入資料</button>
       </div>
-      <p id="auth-help" class="muted small-note auth-help">若 Google 登入失敗，請確認 Supabase Site URL 為 /acg-portal/，或改用信箱＋密碼。</p>
+      <p id="auth-help" class="muted small-note auth-help">沒有帳號就按「建立帳號」；會寄確認信，點完再回來登入。Google 與信箱登入後都要等站長審核才能評分收藏。</p>
     </div>
   </div>
 
@@ -275,7 +261,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"
     integrity="sha384-z2hqtpr/vSDZ8zSjLOiNgnR/mpU799AD93s6rvkNJLI6Hl0YlKXEhDtREzNT749S" crossorigin="anonymous"></script>
-  <script src="config.js?v=1.3.1"></script>
-  <script src="app.js?v=1.3.1"></script>
+  <script src="config.js?v=1.3.2"></script>
+  <script src="app.js?v=1.3.2"></script>
 </body>
 </html>

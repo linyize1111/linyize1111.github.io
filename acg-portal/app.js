@@ -16,8 +16,10 @@
 
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
   const EDIT_WINDOW_MS = 30 * 60 * 1000;
+  const DRAW_HISTORY_KEY = "acg_draw_history_v1";
 
   const PLATFORM_LABELS = { nhentai: "Nhentai", "18comic": "禁漫", hanime: "Hanime", pixiv: "Pixiv" };
+  const emptyRecentByPlatform = () => Object.fromEntries(config.platforms.map(platform => [platform, []]));
   const state = {
     works: [],
     sourceStats: Object.fromEntries(config.platforms.map(platform => [platform, { total: 0, active: 0, inactive: 0, rejected: 0, running: false, lastRun: null }])),
@@ -27,7 +29,7 @@
     scoreByWork: new Map(),
     shownByPlatform: Object.fromEntries(config.platforms.map(platform => [platform, new Set()])),
     currentByPlatform: Object.fromEntries(config.platforms.map(platform => [platform, null])),
-    recentByPlatform: Object.fromEntries(config.platforms.map(platform => [platform, []])),
+    recentByPlatform: emptyRecentByPlatform(),
     cardSideByPlatform: Object.fromEntries(config.platforms.map(platform => [platform, "front"])),
     session: null,
     profile: null,
@@ -235,6 +237,53 @@
     if (isAdmin()) return review.user_id === state.session.user.id;
     if (review.user_id !== state.session.user.id) return false;
     return Date.now() - new Date(review.created_at).getTime() <= EDIT_WINDOW_MS;
+  }
+
+  function reviewDeletable(review) {
+    if (!review || !state.session) return false;
+    if (isAdmin()) return true;
+    if (review.user_id !== state.session.user.id) return false;
+    return Date.now() - new Date(review.created_at).getTime() <= EDIT_WINDOW_MS;
+  }
+
+  function loadDrawHistory() {
+    try {
+      const raw = localStorage.getItem(DRAW_HISTORY_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const next = emptyRecentByPlatform();
+      for (const platform of config.platforms) {
+        const ids = Array.isArray(parsed?.[platform]) ? parsed[platform] : [];
+        next[platform] = ids.filter(id => typeof id === "string").slice(0, 20);
+      }
+      state.recentByPlatform = next;
+    } catch (error) {
+      console.warn("Draw history load failed", error);
+    }
+  }
+
+  function saveDrawHistory() {
+    try {
+      localStorage.setItem(DRAW_HISTORY_KEY, JSON.stringify(state.recentByPlatform));
+    } catch (error) {
+      console.warn("Draw history save failed", error);
+    }
+  }
+
+  function resetDrawHistory({ confirmPrompt = true } = {}) {
+    if (confirmPrompt && !confirm("清除各平台卡片背面與本輪加抽清單的本機抽取紀錄？")) return;
+    state.recentByPlatform = emptyRecentByPlatform();
+    state.bulkWorks = [];
+    config.platforms.forEach(platform => {
+      state.shownByPlatform[platform] = new Set();
+      state.cardSideByPlatform[platform] = "front";
+    });
+    saveDrawHistory();
+    renderBulkDraw();
+    config.platforms.forEach(platform => {
+      if (state.currentByPlatform[platform]) renderPlatformCard(platform, state.currentByPlatform[platform]);
+    });
+    toast("已重置抽取紀錄", "success");
   }
 
   function adminVoteHint(reviewId, voteStats) {
@@ -478,6 +527,13 @@
     if (weekFilter === "week") {
       const seenAt = new Date(work.last_seen_at || work.created_at || 0).getTime();
       if (Date.now() - seenAt > 7 * 86400000) return false;
+    }
+    if (prefix === "home") {
+      const scope = $("#home-filter-scope")?.value || "all";
+      if (scope === "favorites") {
+        if (!state.session) return false;
+        if (!state.favorites.has(work.id)) return false;
+      }
     }
     return true;
   }
@@ -751,12 +807,11 @@
     if (!work) return;
     const list = state.recentByPlatform[work.platform] || [];
     state.recentByPlatform[work.platform] = [work.id, ...list.filter(id => id !== work.id)].slice(0, 20);
+    saveDrawHistory();
   }
 
   function activeHomeSortMode() {
-    const reviewMode = $("#home-filter-reviews")?.value || "default";
-    if (reviewMode !== "default") return reviewMode;
-    return $("#home-filter-favorites")?.value || "default";
+    return "default";
   }
 
   function sortWorksByMode(rows, mode, query = "") {
@@ -894,9 +949,16 @@
   function emptyPlatformHtml(platform) {
     const status = sourceState(platform);
     const query = $("#home-search")?.value?.trim() || "";
+    const scope = $("#home-filter-scope")?.value || "all";
     let title = PLATFORM_LABELS[platform];
     let description = "此來源尚無通過驗證的 active 內容。";
-    if (query && platformStats(platform).active > 0) {
+    if (scope === "favorites" && !state.session) {
+      title = "需要登入";
+      description = "登入後才能只從「我的收藏」抽卡。";
+    } else if (scope === "favorites") {
+      title = "收藏裡沒有這來源";
+      description = "先到圖書館收藏幾本，或把範圍改回「全部作品」。";
+    } else if (query && platformStats(platform).active > 0) {
       title = "搜尋沒有結果";
       description = "換個車號、作者、標籤或清空搜尋後再抽。";
     } else if (status.className === "running") {
@@ -987,6 +1049,7 @@
         </div>
         <div class="card-actions">
           <button class="button button-secondary" data-copy-card-ids="${escapeHtml(platform)}">${escapeHtml(platformCopyLabel(platform))}</button>
+          <button class="button button-secondary" data-reset-card-history="${escapeHtml(platform)}">清除這張紀錄</button>
           <button class="button button-primary" data-flip-card="${escapeHtml(platform)}">回到封面</button>
         </div>
       </article>`;
@@ -1131,13 +1194,16 @@
     let rows = state.leaderboard.filter(item => (platform === "all" || item.platform === platform) && Number(item.review_count || 0) > 0);
     rows.sort((a, b) => (order === "top" ? 1 : -1) * (Number(b.weighted_score) - Number(a.weighted_score)));
     rows = rows.slice(0, 30);
+    const emptyHint = state.leaderboard.some(item => Number(item.review_count || 0) > 0)
+      ? "這個平台目前還沒有足夠的評分資料"
+      : "目前全站評分還很少，有人評分後才會出現在排行榜（不會顯示假的 5.0）。";
     $("#ranking-list").innerHTML = rows.map((item, index) => `
       <article class="ranking-row" data-open-work="${item.work_id}">
         <div class="ranking-number">#${index + 1}</div>
         <img src="${escapeHtml(imageUrl(item.cover_url))}" alt="" loading="lazy">
         <div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(PLATFORM_LABELS[item.platform])} · ${escapeHtml(item.author)} · ${item.review_count} 則評分</p></div>
         ${rankingScoreHtml(item)}
-      </article>`).join("") || '<div class="empty-state">目前還沒有足夠的評分資料</div>';
+      </article>`).join("") || `<div class="empty-state">${emptyHint}</div>`;
   }
 
   function renderWeeklyLeaderboard() {
@@ -1274,11 +1340,53 @@
     const email = $("#password-login-email").value.trim();
     const password = $("#password-login-password").value;
     if (!email || !email.includes("@") || !password) return toast("請輸入信箱與密碼", "warning");
+    if (password.length < 6) return toast("密碼至少 6 碼", "warning");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return toast(`帳密登入失敗：${error.message}`, "error");
+    if (error) {
+      const help = $("#auth-help");
+      const msg = error.message || "";
+      if (/invalid login credentials|invalid.*email.*password/i.test(msg)) {
+        if (help) help.textContent = "帳密不對。若第一次來，請先按「建立帳號」並到信箱點確認連結後再登入。";
+        return toast("帳密錯誤：沒帳號請先「建立帳號」", "error");
+      }
+      if (/email not confirmed/i.test(msg)) {
+        if (help) help.textContent = "信箱尚未確認。請打開註冊信裡的連結後，再回來用同一組帳密登入。";
+        return toast("請先點擊確認信，再登入", "error");
+      }
+      return toast(`帳密登入失敗：${msg}`, "error");
+    }
     closeModal("auth-modal");
     toast("已登入", "success");
     await loadAuth();
+  }
+
+  async function signupWithPassword() {
+    const email = $("#password-login-email").value.trim();
+    const password = $("#password-login-password").value;
+    if (!email || !email.includes("@") || !password) return toast("請輸入信箱與密碼後再建立帳號", "warning");
+    if (password.length < 6) return toast("密碼至少 6 碼", "warning");
+    const redirectTo = authRedirectUrl();
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: redirectTo }
+    });
+    if (error) {
+      const msg = error.message || "";
+      if (/already registered|user already/i.test(msg)) {
+        $("#auth-help").textContent = "這個信箱已註冊過，請直接按「登入」。若忘記密碼，請到 Supabase 由站長協助重設。";
+        return toast("帳號已存在，請直接登入", "warning");
+      }
+      return toast(`建立帳號失敗：${msg}`, "error");
+    }
+    if (data?.session) {
+      closeModal("auth-modal");
+      toast("帳號已建立並登入；請等站長審核後才能評分收藏", "success");
+      await loadAuth();
+      return;
+    }
+    $("#auth-help").textContent = "確認信已寄出。請到信箱點連結完成驗證後，再用同一組密碼回來登入；登入後仍需等站長審核。";
+    toast("請先到信箱確認，再回來登入", "success");
   }
 
   async function logout() {
@@ -1513,7 +1621,7 @@
     const reviewHtml = review => {
       const profile = state.profiles.get(review.user_id) || null;
       const stats = voteStats.get(review.id) || { up: 0, down: 0, mine: 0 };
-      const canDelete = isAdmin() || review.user_id === state.session?.user?.id;
+      const canDelete = reviewDeletable(review);
       const canEdit = reviewEditable(review);
       const bodyHtml = review.body ? `<p>${escapeHtml(review.body)}</p>` : '<p class="muted">（僅評分，無文字評論）</p>';
       return `<article class="review" data-review="${review.id}">
@@ -1564,18 +1672,35 @@
 
   async function voteReview(reviewId, vote) {
     if (!await requireMember()) return;
-    const { error } = await supabase.from("review_votes").upsert({ review_id: reviewId, user_id: state.session.user.id, vote }, { onConflict: "review_id,user_id" });
+    const { error } = await supabase.rpc("cast_review_vote", { target_review: reviewId, desired_vote: vote });
     if (error) {
-      const rls = /permission denied|row-level security|policy/i.test(error.message);
-      return toast(rls ? "無法按讚：通常是帳號尚未通過審核。若你已通過審核仍失敗，請回報站長重新套用權限。" : error.message, "error");
+      const missing = /function .*cast_review_vote|could not find/i.test(error.message);
+      if (missing) {
+        const fallback = await supabase.from("review_votes").upsert(
+          { review_id: reviewId, user_id: state.session.user.id, vote },
+          { onConflict: "review_id,user_id" }
+        );
+        if (fallback.error) {
+          const rls = /permission denied|row-level security|policy/i.test(fallback.error.message);
+          return toast(rls ? "無法按讚：通常是帳號尚未通過審核，或尚未套用 0007 migration。" : fallback.error.message, "error");
+        }
+      } else {
+        const rls = /permission denied|row-level security|policy|approval required/i.test(error.message);
+        return toast(rls ? "無法按讚：請確認帳號已通過審核。" : error.message, "error");
+      }
     }
     await renderReviews(state.currentWork.id);
   }
 
   async function deleteReview(reviewId) {
     if (!state.session || !confirm("確定刪除這則內容？")) return;
+    const review = state.currentReviews.get(reviewId);
+    if (review && !reviewDeletable(review)) return toast("超過 30 分鐘，無法再刪除", "warning");
     const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
-    if (error) return toast(error.message, "error");
+    if (error) {
+      const expired = /delete window expired|Edit window expired|30 minutes/i.test(error.message);
+      return toast(expired ? "超過 30 分鐘，無法再刪除" : error.message, "error");
+    }
     await renderReviews(state.currentWork.id);
   }
 
@@ -1775,7 +1900,7 @@
     ];
     if (!lists.some(item => item.node)) return;
     if (!state.session || !isApproved()) {
-      lists.forEach(({ node }) => { if (node) node.innerHTML = '<p class="muted">登入並通過審核後可查看與回覆。</p>'; });
+      lists.forEach(({ node }) => { if (node) node.innerHTML = '<p class="muted">登入並通過審核後可查看寄出紀錄。</p>'; });
       return;
     }
     const { data: rows, error } = await supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(40);
@@ -1786,42 +1911,22 @@
       });
       return;
     }
-    const ids = (rows || []).map(row => row.id);
-    const { data: replies } = ids.length
-      ? await supabase.from("feedback_replies").select("*").in("feedback_id", ids).order("created_at")
-      : { data: [] };
-    await loadProfilesForReviews((rows || []).map(row => ({ user_id: row.user_id })).concat((replies || []).map(row => ({ user_id: row.user_id }))));
-    const replyMap = new Map();
-    (replies || []).forEach(reply => {
-      if (!replyMap.has(reply.feedback_id)) replyMap.set(reply.feedback_id, []);
-      replyMap.get(reply.feedback_id).push(reply);
-    });
+    await loadProfilesForReviews((rows || []).map(row => ({ user_id: row.user_id })));
     lists.forEach(({ kind, node }) => {
       if (!node) return;
       const items = (rows || []).filter(row => row.kind === kind);
       node.innerHTML = items.map(item => {
         const author = memberName(state.profiles.get(item.user_id));
         const statusLabel = item.status === "resolved" ? "已處理" : "處理中";
-        const replyHtml = (replyMap.get(item.id) || []).map(reply => `<div class="feedback-reply"><strong>${escapeHtml(memberName(state.profiles.get(reply.user_id)))}</strong><p>${escapeHtml(reply.body)}</p><small>${new Date(reply.created_at).toLocaleString("zh-TW")}</small></div>`).join("");
         const adminActions = isAdmin() ? `<div class="admin-actions"><button class="button button-secondary" data-edit-feedback="${item.id}">編輯</button><button class="button button-danger" data-delete-feedback="${item.id}">刪除</button>${item.status === "open" ? `<button class="button button-primary" data-resolve-feedback="${item.id}">完成</button>` : ""}</div>` : "";
-        return `<article class="feedback-thread" data-feedback="${item.id}"><div class="feedback-thread-header"><h4>${escapeHtml(author)}</h4><span class="feedback-status ${item.status === "resolved" ? "resolved" : "open"}">${escapeHtml(statusLabel)}</span></div><p>${escapeHtml(item.body)}</p><small>${new Date(item.created_at).toLocaleString("zh-TW")}</small>${replyHtml ? `<div class="feedback-replies">${replyHtml}</div>` : ""}${adminActions}<form data-feedback-reply="${item.id}" class="review-form feedback-reply-form"><textarea maxlength="2000" required placeholder="${kind === "recommendation" ? "回覆這則推薦…" : "回覆這則意見…"}"></textarea><button class="button button-primary">送出回覆</button></form></article>`;
+        return `<article class="feedback-thread" data-feedback="${item.id}"><div class="feedback-thread-header"><h4>${escapeHtml(author)}</h4><span class="feedback-status ${item.status === "resolved" ? "resolved" : "open"}">${escapeHtml(statusLabel)}</span></div><p>${escapeHtml(item.body)}</p><small>${new Date(item.created_at).toLocaleString("zh-TW")}</small>${adminActions}</article>`;
       }).join("") || '<p class="muted">尚無紀錄</p>';
     });
   }
 
   async function saveFeedbackReply(event) {
     event.preventDefault();
-    if (!await requireMember()) return;
-    const feedbackId = event.currentTarget.dataset.feedbackReply;
-    const body = event.currentTarget.querySelector("textarea")?.value.trim();
-    if (!body) return;
-    const { error } = await supabase.from("feedback_replies").insert({ feedback_id: feedbackId, user_id: state.session.user.id, body });
-    if (error) {
-      const missing = /feedback_replies.*does not exist|relation .*feedback_replies/i.test(error.message);
-      return toast(missing ? "需套用 0006 migration 後才可回覆" : error.message, "error");
-    }
-    await loadFeedbackThreads();
-    toast("回覆已送出", "success");
+    toast("回覆串已關閉；請直接再寄一則意見，或由站長在後台處理。", "warning");
   }
 
   async function loadAdmin(tab = state.adminTab) {
@@ -1860,8 +1965,32 @@
       content.innerHTML = `<div class="job-controls"><button class="button button-primary" data-new-work>＋ 手動新增（車號）</button><input id="admin-work-search" type="search" placeholder="搜尋車號、標題、作者或標籤…"></div><p id="admin-work-summary" class="muted"></p><div id="admin-work-list"></div>`;
       renderAdminWorks();
     } else if (tab === "reports") {
-      const { data } = await supabase.from("content_reports").select("*").order("created_at", { ascending: false });
-      content.innerHTML = (data || []).map(report => `<div class="admin-row"><div><h4>${escapeHtml(report.reason)}</h4><p>${escapeHtml(report.review_id || "內容已移除")} · ${escapeHtml(report.status)}</p></div><div class="admin-actions">${report.review_id ? `<button class="button button-secondary" data-hide-review="${report.review_id}">隱藏內容</button><button class="button button-danger" data-admin-delete-review="${report.review_id}">刪除內容</button>` : ""}<button class="button button-primary" data-resolve-report="${report.id}">標記完成</button></div></div>`).join("") || '<div class="empty-state">沒有待處理檢舉</div>';
+      let reports = [];
+      const { data, error } = await supabase.rpc("admin_list_reports");
+      if (error) {
+        const { data: fallback, error: fallbackError } = await supabase
+          .from("content_reports")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (fallbackError) {
+          content.innerHTML = `<div class="empty-state">讀取檢舉失敗：${escapeHtml(error.message)}<br>${escapeHtml(fallbackError.message)}</div>`;
+          return;
+        }
+        reports = (fallback || []).map(report => ({
+          ...report,
+          review_body: "",
+          review_status: report.review_id ? "未知" : "已刪除",
+          reporter_name: "會員"
+        }));
+      } else {
+        reports = data || [];
+      }
+      content.innerHTML = reports.map(report => {
+        const snippet = report.review_body
+          ? `<p>${escapeHtml(String(report.review_body).slice(0, 180))}</p>`
+          : `<p class="muted">${report.review_id ? "（無留言內容／僅評分）" : "內容已刪除"}</p>`;
+        return `<div class="admin-row"><div><h4>${escapeHtml(report.reason)}</h4>${snippet}<p><small>檢舉人：${escapeHtml(report.reporter_name || "會員")} · 狀態：${escapeHtml(report.status)} · ${new Date(report.created_at).toLocaleString("zh-TW")}</small></p><p><small>內容狀態：${escapeHtml(report.review_status || "—")} · review ${escapeHtml(report.review_id || "無")}</small></p></div><div class="admin-actions">${report.review_id ? `<button class="button button-secondary" data-hide-review="${report.review_id}">隱藏內容</button><button class="button button-danger" data-admin-delete-review="${report.review_id}">刪除內容</button>` : ""}<button class="button button-primary" data-resolve-report="${report.id}">標記完成</button></div></div>`;
+      }).join("") || '<div class="empty-state">沒有檢舉紀錄。若會員有送出卻看不到，請先確認已套用 0007 migration。</div>';
     } else if (tab === "feedback") {
       const { data, error } = await supabase
         .from("feedback")
@@ -2043,6 +2172,7 @@
     bindClick("#profile-edit-button", openProfileEditor);
     bindClick("#google-login-button", loginWithGoogle);
     bindClick("#password-login-button", loginWithPassword);
+    bindClick("#password-signup-button", signupWithPassword);
     bindClick("#email-login-button", loginWithEmail);
     $("#password-login-email")?.addEventListener("keydown", event => { if (event.key === "Enter") loginWithPassword(); });
     $("#password-login-password")?.addEventListener("keydown", event => { if (event.key === "Enter") loginWithPassword(); });
@@ -2058,15 +2188,15 @@
     bindClick("#draw-all-button", drawAll);
     bindClick("#draw-five-button", () => drawBatch(5));
     bindClick("#draw-ten-button", () => drawBatch(10));
+    bindClick("#reset-draw-history-button", () => resetDrawHistory());
     bindClick("#clear-bulk-button", () => { state.bulkWorks = []; renderBulkDraw(); });
     $("#home-search")?.addEventListener("input", debounce(drawAll));
-    ["home", "library"].forEach(prefix => {
-      ["filter-reviews", "filter-favorites"].forEach(name => {
-        $(`#${prefix}-${name}`)?.addEventListener("change", () => {
-          if (prefix === "home") drawAll();
-          else renderLibrary(true);
-        });
-      });
+    $("#home-filter-scope")?.addEventListener("change", () => {
+      if ($("#home-filter-scope").value === "favorites" && !state.session) {
+        toast("請先登入後才可抽「我的收藏」", "warning");
+        login();
+      }
+      drawAll();
     });
     $("#home-filter-week")?.addEventListener("change", drawAll);
     $("#library-platform")?.addEventListener("change", () => renderLibrary(true));
@@ -2110,6 +2240,13 @@
       if (target.dataset.refreshPlatform) drawPlatform(target.dataset.refreshPlatform);
       if (target.dataset.flipCard) flipCard(target.dataset.flipCard);
       if (target.dataset.copyCardIds) copyCardIds(target.dataset.copyCardIds);
+      if (target.dataset.resetCardHistory) {
+        const platform = target.dataset.resetCardHistory;
+        state.recentByPlatform[platform] = [];
+        saveDrawHistory();
+        renderPlatformCard(platform, state.currentByPlatform[platform]);
+        toast("已清除這張卡片的抽取紀錄", "success");
+      }
       if (target.dataset.copySingle) copySingleWork(target.dataset.copySingle);
       if (target.dataset.sourceOpen) recordView(target.dataset.sourceOpen, "source");
       if (target.dataset.openWork) openWork(target.dataset.openWork);
@@ -2160,6 +2297,7 @@
 
   async function init() {
     bindEvents();
+    loadDrawHistory();
     detectGoogleProvider();
     supabase.auth.onAuthStateChange((event, session) => {
       authDebug("auth state", { event, hasSession: Boolean(session) });

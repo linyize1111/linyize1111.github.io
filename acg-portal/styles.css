@@ -256,24 +256,20 @@ textarea { width: 100%; min-height: 150px; padding: 14px; resize: vertical; }
 .game-card { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 .game-card img { width: 100%; aspect-ratio: 3/4; object-fit: cover; }.game-card div { padding: 15px; }.game-card h3 { margin: 0 0 7px; }.game-rating { color: var(--warning); font-weight: 900; }
 .feedback-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
-.feedback-card { display: flex; flex-direction: column; min-height: 100%; margin: 30px 0; padding: clamp(24px,4vw,44px); border: 1px solid var(--border); border-radius: 28px; background: var(--surface); box-shadow: var(--shadow); }
-.feedback-card > p { color: var(--muted); line-height: 1.7; }.feedback-card textarea { margin-top: 18px; }
-.feedback-card textarea { flex: 1; min-height: 220px; }
+.feedback-card { display: flex; flex-direction: column; min-height: 100%; margin: 30px 0; padding: clamp(24px,4vw,36px); border: 1px solid var(--border); border-radius: 28px; background: var(--surface); box-shadow: var(--shadow); }
+.feedback-card > p { color: var(--muted); line-height: 1.7; margin: 0 0 12px; }
+.feedback-card textarea { margin-top: 8px; flex: 1; min-height: 160px; }
 .form-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; color: var(--muted); font-size: 11px; }
-.feedback-thread-list { margin-top: 22px; display: grid; gap: 10px; max-height: 420px; overflow: auto; padding-right: 4px; }
+.feedback-thread-list { margin-top: 18px; display: grid; gap: 10px; max-height: 360px; overflow: auto; padding-right: 4px; }
 .feedback-thread { padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: rgba(255,255,255,.04); }
 .feedback-thread-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
-.feedback-thread h4 { margin: 0 0 6px; font-size: 13px; }
+.feedback-thread h4 { margin: 0; font-size: 13px; }
 .feedback-thread p { margin: 0; line-height: 1.65; font-size: 13px; white-space: pre-wrap; }
 .feedback-thread small { color: var(--muted); font-size: 10px; }
 .feedback-status { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .feedback-status.open { color: #ffe1a3; background: rgba(255,203,102,.12); border: 1px solid rgba(255,203,102,.18); }
 .feedback-status.resolved { color: #9ff0c4; background: rgba(57,217,138,.12); border: 1px solid rgba(57,217,138,.18); }
-.feedback-replies { margin-top: 12px; padding-left: 12px; border-left: 2px solid rgba(115,87,255,.35); display: grid; gap: 8px; }
-.feedback-reply { padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.045); }
-.feedback-reply p { margin-top: 4px; font-size: 12px; }
-.feedback-reply-form { margin-top: 12px; padding: 12px; }
-.feedback-reply-form textarea { min-height: 96px; }
+.feedback-thread .admin-actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
 .admin-work-thumb { width: 52px; height: 68px; object-fit: cover; border-radius: 8px; background: #14192a; border: 1px solid var(--border); }
 .admin-row.with-thumb { grid-template-columns: auto 1fr auto; }
 
