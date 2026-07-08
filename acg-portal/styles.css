@@ -322,6 +322,28 @@ textarea { width: 100%; min-height: 150px; padding: 14px; resize: vertical; }
 .toast.success { border-color: rgba(57,217,138,.45); background: rgba(18,34,28,.96); }
 .toast.error { border-color: rgba(255,101,119,.55); background: rgba(34,16,22,.96); }
 .toast.warning { border-color: rgba(255,203,102,.5); background: rgba(34,28,14,.96); }
+.form-error, .empty-state.form-error {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255,101,119,.55);
+  border-radius: 14px;
+  background: rgba(34,16,22,.96);
+  color: #ffb8c4;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+}
+.form-error.hidden { display: none !important; }
+.admin-status-bar {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  background: rgba(7,9,18,.55);
+  font-size: 12px;
+  line-height: 1.65;
+  word-break: break-word;
+}
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 @keyframes button-spin { to { transform: rotate(360deg); } }
 

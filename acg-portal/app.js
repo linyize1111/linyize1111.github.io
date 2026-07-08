@@ -16,6 +16,9 @@
     }
   });
 
+  const APP_VERSION = "1.3.9";
+  const PROFILE_WAIT_MS = 5000;
+  const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
   const EDIT_WINDOW_MS = 30 * 60 * 1000;
   const DRAW_HISTORY_KEY = "acg_draw_history_v1";
@@ -35,6 +38,8 @@
     cardSideByPlatform: Object.fromEntries(config.platforms.map(platform => [platform, "front"])),
     session: null,
     profile: null,
+    authLoading: false,
+    profileReady: false,
     profiles: new Map(),
     favorites: new Set(),
     preferenceTags: new Map(),
@@ -53,6 +58,8 @@
     reviewStatsByWork: new Map(),
     favoriteCounts: new Map()
   };
+  let loadAuthRun = 0;
+  let loadAuthPromise = null;
 
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
@@ -77,7 +84,49 @@
     node.className = `toast ${type}`;
     node.textContent = message;
     $("#toast-region").append(node);
-    setTimeout(() => node.remove(), 4200);
+    setTimeout(() => node.remove(), type === "error" ? 9000 : 4200);
+  }
+
+  function formatApiError(error) {
+    if (!error) return "未知錯誤";
+    const parts = [error.message, error.details, error.hint].map(value => String(value || "").trim()).filter(Boolean);
+    const code = error.code ? `（${error.code}）` : "";
+    return (parts.join(" · ") || String(error)) + code;
+  }
+
+  function showFormError(form, message) {
+    if (!form) return;
+    let box = form.querySelector(".form-error");
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "form-error";
+      box.setAttribute("role", "alert");
+      form.insertBefore(box, form.firstChild);
+    }
+    box.textContent = message;
+    box.hidden = false;
+  }
+
+  function clearFormError(form) {
+    form?.querySelector(".form-error")?.remove();
+  }
+
+  function showFormErrorById(id, message) {
+    const box = $(id);
+    if (box) {
+      box.textContent = message;
+      box.hidden = false;
+      box.classList.remove("hidden");
+    }
+    toast(message, "error");
+  }
+
+  function clearFormErrorById(id) {
+    const box = $(id);
+    if (!box) return;
+    box.textContent = "";
+    box.hidden = true;
+    box.classList.add("hidden");
   }
 
   async function withBusyButton(button, busyText, task) {
@@ -263,25 +312,100 @@
   function isApproved() { return state.profile?.status === "active"; }
   function isAdmin() { return isApproved() && state.profile?.role === "admin"; }
 
-  async function ensureProfile() {
+  async function fetchProfileOnce() {
+    if (!state.session) return null;
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", state.session.user.id).maybeSingle();
+    if (error) throw new Error(formatApiError(error));
+    if (data) {
+      state.profile = data;
+      state.profileReady = true;
+    }
+    return data;
+  }
+
+  async function waitForProfile(timeoutMs = PROFILE_WAIT_MS) {
     if (!state.session) return null;
     if (state.profile?.id === state.session.user.id) return state.profile;
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", state.session.user.id).maybeSingle();
-    if (error) {
+    if (loadAuthPromise) {
+      try {
+        await Promise.race([loadAuthPromise, sleep(timeoutMs)]);
+      } catch (_) { /* ignore */ }
+      if (state.profile?.id === state.session.user.id) return state.profile;
+    }
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      try {
+        const data = await fetchProfileOnce();
+        if (data) return data;
+      } catch (error) {
+        toast(`讀取會員資料失敗：${error.message}`, "error");
+        return null;
+      }
+      await sleep(PROFILE_POLL_MS);
+    }
+    try {
+      return await fetchProfileOnce();
+    } catch (error) {
       toast(`讀取會員資料失敗：${error.message}`, "error");
       return null;
     }
-    if (data) state.profile = data;
-    return state.profile;
+  }
+
+  async function ensureProfile() {
+    return waitForProfile(PROFILE_WAIT_MS);
   }
 
   async function ensureAdmin(actionLabel = "此操作") {
-    await ensureProfile();
-    if (!isAdmin()) {
-      toast(`${actionLabel}需要管理員權限（請確認已登入且帳號為 active admin）`, "warning");
-      return false;
+    if (!state.session) {
+      const message = "尚未登入，請先登入";
+      toast(message, "warning");
+      return { ok: false, message };
     }
-    return true;
+    if (state.authLoading || !state.profileReady) {
+      toast("管理員權限載入中，請稍候再試", "warning");
+    }
+    const profile = await waitForProfile();
+    if (!profile) {
+      const message = "無法讀取會員資料（逾時或失敗），請重新整理後再試";
+      toast(message, "error");
+      return { ok: false, message };
+    }
+    updateAuthUi();
+    if (profile.status === "pending") {
+      const message = "帳號審核中，無法使用管理功能";
+      toast(message, "warning");
+      return { ok: false, message };
+    }
+    if (profile.status === "suspended") {
+      const message = "帳號已停權，無法使用管理功能";
+      toast(message, "error");
+      return { ok: false, message };
+    }
+    if (profile.role !== "admin") {
+      const message = `你不是管理員（目前角色：${profile.role || "member"}）`;
+      toast(message, "warning");
+      return { ok: false, message };
+    }
+    if (profile.status !== "active") {
+      const message = `帳號狀態為 ${profile.status}，無法${actionLabel}`;
+      toast(message, "warning");
+      return { ok: false, message };
+    }
+    return { ok: true, message: "" };
+  }
+
+  function updateAdminStatusBar() {
+    const bar = $("#admin-status-bar");
+    if (!bar) return;
+    if (!state.session) {
+      bar.textContent = `尚未登入 · v${APP_VERSION}`;
+      return;
+    }
+    const email = state.session.user.email || "（無信箱）";
+    const role = state.profile?.role || (state.authLoading || !state.profileReady ? "載入中…" : "未知");
+    const status = state.profile?.status || (state.authLoading || !state.profileReady ? "載入中…" : "未知");
+    const adminResult = state.authLoading || !state.profileReady ? "載入中…" : (isAdmin() ? "是" : "否");
+    bar.textContent = `已登入：${email} / 角色：${role} / 審核：${status} / 管理員：${adminResult} · v${APP_VERSION}`;
   }
 
   function normalizeGameId(value) {
@@ -1360,41 +1484,57 @@
   }
 
   async function loadAuth() {
-    try {
-      await refreshAutoApproveStatus();
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        toast(`讀取登入狀態失敗：${sessionError.message}`, "error");
-        state.session = null;
-        state.profile = null;
-        updateAuthUi();
-        return;
-      }
-      state.session = session;
-      state.profile = null;
-      if (session) {
+    if (loadAuthPromise) return loadAuthPromise;
+    const runId = ++loadAuthRun;
+    state.authLoading = true;
+    state.profileReady = false;
+    updateAuthUi();
+    loadAuthPromise = (async () => {
+      try {
+        await refreshAutoApproveStatus();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (runId !== loadAuthRun) return;
+        if (sessionError) {
+          toast(`讀取登入狀態失敗：${sessionError.message}`, "error");
+          state.session = null;
+          state.profile = null;
+          return;
+        }
+        state.session = session;
+        if (!session) {
+          state.profile = null;
+          state.favorites.clear();
+          state.preferenceTags.clear();
+          return;
+        }
         let { data, error: profileError } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+        if (runId !== loadAuthRun) return;
         if (profileError) {
-          toast(`讀取會員資料失敗：${profileError.message}`, "error");
+          toast(`讀取會員資料失敗：${formatApiError(profileError)}`, "error");
         } else {
           if (data?.status === "pending") data = await claimAutoApprovalIfNeeded(data);
           state.profile = data;
+          state.profileReady = Boolean(data);
           if (!data) toast("正在建立會員資料，部分功能可能暫時不可用", "warning");
         }
         const favoritesOk = await loadFavorites();
         if (favoritesOk) await loadPreferences();
-        updateAuthUi();
-      } else {
-        state.favorites.clear();
-        state.preferenceTags.clear();
+      } catch (error) {
+        console.error("loadAuth failed", error);
+        toast(`登入狀態更新失敗：${error.message || error}`, "error");
+      } finally {
+        if (runId === loadAuthRun) {
+          state.authLoading = false;
+          state.profileReady = Boolean(state.session && state.profile);
+          updateAuthUi();
+          updateAdminStatusBar();
+          loadAuthPromise = null;
+        }
+        renderBulkDraw();
+        if ($("#view-library")?.classList.contains("active")) renderLibrary();
       }
-      updateAuthUi();
-      renderBulkDraw();
-      if ($("#view-library")?.classList.contains("active")) renderLibrary();
-    } catch (error) {
-      console.error("loadAuth failed", error);
-      toast(`登入狀態更新失敗：${error.message || error}`, "error");
-    }
+    })();
+    return loadAuthPromise;
   }
 
   function login() {
@@ -1539,7 +1679,12 @@
 
   async function logout() {
     await supabase.auth.signOut();
-    state.session = null; state.profile = null; state.favorites.clear(); state.preferenceTags.clear();
+    state.session = null;
+    state.profile = null;
+    state.profileReady = false;
+    state.authLoading = false;
+    state.favorites.clear();
+    state.preferenceTags.clear();
     updateAuthUi();
     toast("已登出");
   }
@@ -1582,19 +1727,64 @@
     $("#clear-auth-button")?.classList.toggle("hidden", !loggedIn);
     if (loggedIn) {
       $("#profile-name").textContent = myDisplayName();
-      const labels = { pending: "等待管理員審核", active: isAdmin() ? "管理員" : "已通過審核", suspended: "帳號已停權" };
-      $("#profile-status").textContent = labels[state.profile?.status] || "建立資料中";
+      let statusLabel;
+      if (state.authLoading || !state.profileReady) {
+        statusLabel = "載入中…";
+      } else {
+        const labels = { pending: "等待管理員審核", active: isAdmin() ? "管理員" : "已通過審核", suspended: "帳號已停權" };
+        statusLabel = labels[state.profile?.status] || "建立資料中";
+      }
+      $("#profile-status").textContent = statusLabel;
       $("#profile-avatar").src = state.profile?.avatar_url || state.session.user.user_metadata?.avatar_url || imageUrl("");
     }
-    $$(".admin-only").forEach(node => node.classList.toggle("hidden", !isAdmin()));
-    if (!isAdmin() && location.hash === "#admin") location.hash = "#home";
+    const gameBtn = $("#new-game-button");
+    const adminNav = $('a[data-view="admin"]');
+    if (loggedIn && (state.authLoading || !state.profileReady)) {
+      gameBtn?.classList.remove("hidden");
+      if (gameBtn) {
+        gameBtn.disabled = true;
+        gameBtn.textContent = "載入中…";
+      }
+      adminNav?.classList.remove("hidden");
+      if (adminNav) adminNav.textContent = "⚙ 載入中…";
+    } else {
+      if (gameBtn) {
+        gameBtn.disabled = false;
+        gameBtn.textContent = "＋ 新增評鑑";
+      }
+      if (adminNav) adminNav.textContent = "⚙ 管理後台";
+      $$(".admin-only").forEach(node => node.classList.toggle("hidden", !isAdmin()));
+    }
+    if (!isAdmin() && state.profileReady && !state.authLoading && location.hash === "#admin") {
+      location.hash = "#home";
+    }
     updateGoogleProviderUi();
+    updateAdminStatusBar();
   }
 
-  async function requireMember() {
-    if (!state.session) { toast("請先登入", "warning"); return false; }
-    if (!isApproved()) {
+  async function requireMember(actionLabel = "此功能") {
+    if (!state.session) {
+      toast("尚未登入", "warning");
+      return false;
+    }
+    if (!state.profileReady) {
+      toast("會員資料載入中，請稍候…", "warning");
+      const profile = await waitForProfile();
+      if (!profile) {
+        toast("無法讀取會員資料，請重新整理後再試", "error");
+        return false;
+      }
+    }
+    if (state.profile?.status === "pending") {
       toast(state.autoApproveOpen ? "帳號資料尚未就緒，請稍候再試或重新整理" : "帳號仍在等待管理員審核", "warning");
+      return false;
+    }
+    if (state.profile?.status === "suspended") {
+      toast("帳號已停權", "error");
+      return false;
+    }
+    if (!isApproved()) {
+      toast(`帳號狀態為 ${state.profile?.status || "未知"}，無法使用${actionLabel}`, "warning");
       return false;
     }
     return true;
@@ -1877,9 +2067,10 @@
   }
 
   async function reportReview(reviewId) {
-    if (!await requireMember()) return;
+    toast("正在開啟檢舉表單…", "info");
     $("#editor-content").innerHTML = `
       <h2 id="editor-title">檢舉內容</h2>
+      <div id="report-error" class="form-error hidden" role="alert"></div>
       <form id="report-form" class="editor-form" data-review-id="${escapeHtml(reviewId)}">
         <label>檢舉原因（3～500 字）
           <textarea id="report-reason" maxlength="500" required placeholder="請描述問題，例如：違規內容、錯誤資訊、廣告或洗版…"></textarea>
@@ -1887,39 +2078,59 @@
         <button class="button button-primary" type="submit">送出檢舉</button>
       </form>`;
     openModal("editor-modal");
+    if (!await requireMember("檢舉")) {
+      showFormErrorById("#report-error", $("#report-error")?.textContent || "無法檢舉：請先登入並通過審核");
+      return;
+    }
     setTimeout(() => $("#report-reason")?.focus(), 40);
   }
 
   async function submitReport(event) {
     event.preventDefault();
-    if (!await requireMember()) return;
-    const reviewId = event.currentTarget.dataset.reviewId;
+    clearFormErrorById("#report-error");
+    const form = event.currentTarget;
+    if (!await requireMember("檢舉")) {
+      showFormErrorById("#report-error", "無法檢舉：請先登入並通過審核");
+      return;
+    }
+    const reviewId = form.dataset.reviewId;
     const reason = $("#report-reason").value.trim();
-    if (reason.length < 3 || reason.length > 500) return toast("檢舉原因需為 3～500 字", "warning");
-    let error = null;
-    const { error: rpcError } = await supabase.rpc("submit_content_report", {
-      target_review: reviewId,
-      report_reason: reason
-    });
-    if (rpcError) {
-      const rpcMissing = /function .*submit_content_report|could not find/i.test(rpcError.message || "");
-      if (!rpcMissing) {
-        error = rpcError;
-      } else {
-        const fallback = await supabase.from("content_reports").insert({
-          reporter_id: state.session.user.id,
-          review_id: reviewId,
-          reason
-        });
-        error = fallback.error;
+    if (reason.length < 3 || reason.length > 500) {
+      const message = "檢舉原因需為 3～500 字";
+      showFormErrorById("#report-error", message);
+      toast(message, "warning");
+      return;
+    }
+    const submitButton = form.querySelector('button[type="submit"]');
+    await withBusyButton(submitButton, "送出中…", async () => {
+      let error = null;
+      const { error: rpcError } = await supabase.rpc("submit_content_report", {
+        target_review: reviewId,
+        report_reason: reason
+      });
+      if (rpcError) {
+        const rpcMissing = /function .*submit_content_report|could not find/i.test(rpcError.message || "");
+        if (!rpcMissing) {
+          error = rpcError;
+        } else {
+          const fallback = await supabase.from("content_reports").insert({
+            reporter_id: state.session.user.id,
+            review_id: reviewId,
+            reason
+          });
+          error = fallback.error;
+        }
       }
-    }
-    if (error) {
-      const dup = /duplicate key|unique/i.test(error.message);
-      return toast(dup ? "你已經檢舉過這則內容了" : `檢舉失敗：${error.message}`, "error");
-    }
-    closeModal("editor-modal");
-    toast("檢舉已送交管理員", "success");
+      if (error) {
+        const dup = /duplicate key|unique/i.test(error.message);
+        const message = dup ? "你已經檢舉過這則內容了" : `檢舉失敗：${formatApiError(error)}`;
+        showFormErrorById("#report-error", message);
+        toast(message, "error");
+        return;
+      }
+      closeModal("editor-modal");
+      toast("檢舉已送交管理員", "success");
+    });
   }
 
   function recommendSimilar(workId) {
@@ -1959,11 +2170,23 @@
     openModal("editor-modal");
   }
 
-  function gameEditor(game = null) {
-    if (!state.session) { login(); return; }
-    ensureAdmin("新增／編輯遊戲評鑑").then(ok => {
-      if (!ok) return;
-      $("#editor-content").innerHTML = `<h2 id="editor-title">${game ? "編輯" : "新增"}遊戲評鑑</h2>
+  async function gameEditor(game = null) {
+    toast("正在開啟遊戲評鑑編輯器…", "info");
+    $("#editor-content").innerHTML = `<h2 id="editor-title">${game ? "編輯" : "新增"}遊戲評鑑</h2><div class="empty-state">正在確認管理員權限…</div><div id="game-save-error" class="form-error hidden" role="alert"></div>`;
+    openModal("editor-modal");
+    if (!state.session) {
+      const message = "尚未登入，請先登入";
+      showFormErrorById("#game-save-error", message);
+      login();
+      return;
+    }
+    const gate = await ensureAdmin("新增／編輯遊戲評鑑");
+    if (!gate.ok) {
+      showFormErrorById("#game-save-error", gate.message);
+      return;
+    }
+    $("#editor-content").innerHTML = `<h2 id="editor-title">${game ? "編輯" : "新增"}遊戲評鑑</h2>
+      <div id="game-save-error" class="form-error hidden" role="alert"></div>
       <form id="game-editor-form" class="editor-form" data-game-id="${game?.id || ""}">
         <label>名稱<input id="game-name" type="text" maxlength="300" required value="${escapeHtml(game?.name || "")}"></label>
         <label>上傳封面圖片（≤ 5MB，PNG/JPG/WEBP/GIF）<input id="game-cover-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
@@ -1974,8 +2197,7 @@
         <label>心得<textarea id="game-review" maxlength="5000" required>${escapeHtml(game?.review_body || "")}</textarea></label>
         <button class="button button-primary" type="submit">儲存評鑑</button>
       </form>`;
-      openModal("editor-modal");
-    });
+    setTimeout(() => $("#game-name")?.focus(), 40);
   }
 
   async function uploadGameCover(file) {
@@ -1994,15 +2216,33 @@
 
   async function saveGame(event) {
     event.preventDefault();
-    if (!await ensureAdmin("儲存遊戲評鑑")) return;
-    const submitButton = event.currentTarget.querySelector('button[type="submit"], .button.button-primary');
-    const id = normalizeGameId(event.currentTarget.dataset.gameId);
+    clearFormErrorById("#game-save-error");
+    const form = event.currentTarget;
+    const gate = await ensureAdmin("儲存遊戲評鑑");
+    if (!gate.ok) {
+      showFormErrorById("#game-save-error", gate.message);
+      return;
+    }
+    const submitButton = form.querySelector('button[type="submit"], .button.button-primary');
+    const id = normalizeGameId(form.dataset.gameId);
     const name = $("#game-name").value.trim();
     const reviewBody = $("#game-review").value.trim();
     const rating = Number($("#game-rating").value);
-    if (!name) return toast("請輸入名稱", "warning");
-    if (!reviewBody) return toast("請輸入心得內容", "warning");
-    if (!Number.isFinite(rating) || rating < -5 || rating > 5) return toast("評分需介於 -5 ~ +5", "warning");
+    if (!name) {
+      const message = "請輸入名稱";
+      showFormErrorById("#game-save-error", message);
+      return toast(message, "warning");
+    }
+    if (!reviewBody) {
+      const message = "請輸入心得內容";
+      showFormErrorById("#game-save-error", message);
+      return toast(message, "warning");
+    }
+    if (!Number.isFinite(rating) || rating < -5 || rating > 5) {
+      const message = "評分需介於 -5 ~ +5";
+      showFormErrorById("#game-save-error", message);
+      return toast(message, "warning");
+    }
     let coverUrl = $("#game-cover").value.trim();
     const fileInput = $("#game-cover-file");
     if (fileInput?.files?.length) {
@@ -2026,13 +2266,15 @@
         await loadGames();
         return toast(id ? "遊戲評鑑已儲存" : "遊戲評鑑已新增", "success");
       }
-      const rpcMsg = rpcError?.message || String(rpcError);
+      const rpcMsg = formatApiError(rpcError);
       const rpcMissing = /function .*admin_upsert_game_review|could not find/i.test(rpcMsg);
       if (!rpcMissing) {
         const adminHint = /admin required|authentication required/i.test(rpcMsg)
           ? "（請確認已以管理員身分登入）"
           : "";
-        return toast(`儲存失敗：${rpcMsg}${adminHint}`, "error");
+        const message = `儲存失敗：${rpcMsg}${adminHint}`;
+        showFormErrorById("#game-save-error", message);
+        return toast(message, "error");
       }
       const payload = {
         name,
@@ -2049,7 +2291,9 @@
         const hint = /admin required|row-level security|permission/i.test(fallback.error.message)
           ? "（需管理員權限；若剛升級請重新整理後再試）"
           : "";
-        return toast(`儲存失敗：${fallback.error.message}${hint}`, "error");
+        const message = `儲存失敗：${formatApiError(fallback.error)}${hint}`;
+        showFormErrorById("#game-save-error", message);
+        return toast(message, "error");
       }
       closeModal("editor-modal");
       await loadGames();
@@ -2154,7 +2398,12 @@
   }
 
   async function loadAdmin(tab = state.adminTab) {
-    if (!await ensureAdmin("管理後台")) return;
+    updateAdminStatusBar();
+    const gate = await ensureAdmin("管理後台");
+    if (!gate.ok) {
+      $("#admin-content").innerHTML = `<div class="empty-state form-error">載入失敗：${escapeHtml(gate.message)}</div>`;
+      return;
+    }
     state.adminTab = tab;
     $$("[data-admin-tab]").forEach(button => button.classList.toggle("active", button.dataset.adminTab === tab));
     const content = $("#admin-content");
@@ -2199,7 +2448,7 @@
           .order("created_at", { ascending: false })
           .limit(200);
         if (fallbackError) {
-          content.innerHTML = `<div class="empty-state">讀取檢舉失敗：${escapeHtml(error.message)}<br>${escapeHtml(fallbackError.message)}</div>`;
+          content.innerHTML = `<div class="empty-state form-error">載入失敗：${escapeHtml(formatApiError(error))}<br>${escapeHtml(formatApiError(fallbackError))}</div>`;
           return;
         }
         loadNote = '<p class="muted">RPC 不可用，已改用直接查詢 content_reports。</p>';
@@ -2400,7 +2649,18 @@
   function switchView(view) {
     const allowed = new Set(["home", "library", "leaderboard", "games", "feedback", "admin"]);
     if (!allowed.has(view)) view = "home";
-    if (view === "admin" && !isAdmin()) view = "home";
+    if (view === "admin") {
+      if (!state.session) {
+        toast("請先登入才能進入管理後台", "warning");
+        view = "home";
+      } else if (state.authLoading || !state.profileReady) {
+        toast("管理員權限載入中，請稍候再試", "warning");
+        view = "home";
+      } else if (!isAdmin()) {
+        toast(`你不是管理員（目前角色：${state.profile?.role || "member"}）`, "warning");
+        view = "home";
+      }
+    }
     if (location.hash.slice(1) !== view) {
       history.replaceState(null, "", `#${view}`);
     }
@@ -2472,7 +2732,14 @@
     $("#ranking-platform")?.addEventListener("change", renderLeaderboard);
     $("#ranking-order")?.addEventListener("change", renderLeaderboard);
     $$(".ranking-tab").forEach(button => button.addEventListener("click", () => switchRankingTab(button.dataset.rankingTab)));
-    bindClick("#new-game-button", () => gameEditor());
+    bindClick("#new-game-button", async () => {
+      try {
+        await gameEditor();
+      } catch (error) {
+        console.error("gameEditor failed", error);
+        toast(`無法開啟遊戲評鑑：${error.message || error}`, "error");
+      }
+    });
     $("#feedback-body")?.addEventListener("input", event => { if ($("#feedback-count")) $("#feedback-count").textContent = `${event.target.value.length} / 2000`; });
     $("#recommendation-body")?.addEventListener("input", event => { if ($("#recommendation-count")) $("#recommendation-count").textContent = `${event.target.value.length} / 2000`; });
     document.addEventListener("input", event => { if (event.target.id === "admin-work-search") renderAdminWorks(); });
@@ -2491,6 +2758,7 @@
       if (event.target.id === "work-ingest-form") return ingestWork(event);
     });
     document.addEventListener("click", async event => {
+      try {
       if (event.target.classList?.contains("modal") && event.target.id !== "age-gate") {
         closeModal(event.target.id);
         return;
@@ -2521,9 +2789,9 @@
       if (target.dataset.vote) voteReview(target.dataset.reviewId, Number(target.dataset.vote));
       if (target.dataset.editReview) editReview(target.dataset.editReview);
       if (target.dataset.deleteReview) deleteReview(target.dataset.deleteReview);
-      if (target.dataset.report) reportReview(target.dataset.report);
+      if (target.dataset.report) await reportReview(target.dataset.report);
       if (target.dataset.openGame) openGame(target.dataset.openGame);
-      if (target.dataset.editGame) { const { data } = await supabase.from("games").select("*").eq("id", target.dataset.editGame).single(); gameEditor(data); }
+      if (target.dataset.editGame) { const { data } = await supabase.from("games").select("*").eq("id", target.dataset.editGame).single(); await gameEditor(data); }
       if (target.dataset.deleteGame) deleteGame(target.dataset.deleteGame);
       if (target.dataset.deleteGameComment) deleteGameComment(target.dataset.deleteGameComment, target.dataset.gameId);
       if (target.dataset.adminTab) loadAdmin(target.dataset.adminTab);
@@ -2554,6 +2822,10 @@
       if (target.dataset.resolveReport) { const { error } = await supabase.from("content_reports").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveReport); toast(error ? error.message : "檢舉已完成", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
       if (target.dataset.hideReview) { const { error } = await supabase.rpc("moderate_review", { target_review: target.dataset.hideReview, new_status: "hidden" }); toast(error ? error.message : "內容已隱藏", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
       if (target.dataset.adminDeleteReview && confirm("確定永久刪除被檢舉的內容？")) { const { error } = await supabase.from("reviews").delete().eq("id", target.dataset.adminDeleteReview); toast(error ? error.message : "內容已刪除", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
+      } catch (error) {
+        console.error("click handler failed", error);
+        toast(`操作失敗：${error.message || error}`, "error");
+      }
     });
   }
 
@@ -2567,6 +2839,8 @@
       if (event === "SIGNED_IN") closeModal("auth-modal");
       if (event === "SIGNED_OUT") {
         state.profile = null;
+        state.profileReady = false;
+        state.authLoading = false;
         state.favorites.clear();
         state.preferenceTags.clear();
         updateAuthUi();
