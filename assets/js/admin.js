@@ -537,20 +537,63 @@
   async function refreshView() {
     if (!window.SB || !window.SB.isConfigured()) { show("view-unconfigured"); return; }
     client = window.SB.client();
-    var user = await window.SBAuth.getUser();
-    if (!user) { show("view-login"); $("who").textContent = ""; $("btn-logout").classList.add("hidden"); return; }
-    var admin = await window.SBAuth.isAdmin();
+    var hint = $("login-hint");
+    if (hint) hint.textContent = "";
+    var guestHint = $("guest-hint");
+    if (guestHint) guestHint.textContent = "";
+
+    var user = null;
+    try {
+      user = await window.SBAuth.getUser();
+    } catch (e) {
+      console.warn("[admin] getUser failed:", e);
+      if (hint) hint.textContent = "讀取登入狀態失敗，請按「清除登入資料後重登」。";
+      show("view-login");
+      $("who").textContent = "";
+      $("btn-logout").classList.add("hidden");
+      return;
+    }
+    if (!user) {
+      show("view-login");
+      $("who").textContent = "";
+      $("btn-logout").classList.add("hidden");
+      return;
+    }
+    var admin = false;
+    try {
+      admin = await window.SBAuth.isAdmin();
+    } catch (e2) {
+      console.warn("[admin] isAdmin failed:", e2);
+    }
     if (!admin) {
       show("view-guest");
       $("who").textContent = "訪客：" + (user.email || "");
       $("btn-logout").classList.remove("hidden");
+      if (guestHint) {
+        guestHint.textContent =
+          "目前登入：" + (user.email || "（無 email）") +
+          "。若你確定是管理員帳號卻看到這頁，請清除登入資料後用 jay0975008815@gmail.com 重登。";
+      }
       return;
     }
     enterAdmin(user);
   }
 
+  function bindClearAuthButtons() {
+    function onClear() {
+      if (!window.SBAuth || !window.SBAuth.clearLocalAuthAndReload) return;
+      if (!confirm("將清除本機主站登入資料並重新整理，接著請再用管理員 Google 帳號登入。繼續？")) return;
+      window.SBAuth.clearLocalAuthAndReload();
+    }
+    var a = $("btn-clear-auth");
+    var b = $("btn-clear-auth-guest");
+    if (a) a.addEventListener("click", onClear);
+    if (b) b.addEventListener("click", onClear);
+  }
+
   // ---------- 事件綁定 ----------
   function bind() {
+    bindClearAuthButtons();
     var g = $("btn-google");
     if (g) g.addEventListener("click", function () {
       window.SBAuth.signInWithGoogle(window.location.href.split("#")[0]);

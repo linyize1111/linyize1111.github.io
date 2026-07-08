@@ -53,15 +53,24 @@
         <div class="card hidden center" id="view-login">
             <h3>請以管理員 Google 帳號登入</h3>
             <p class="muted">一般帳號登入後僅為訪客，沒有任何編輯權限。</p>
+            <p class="muted" id="login-hint" style="margin-top:.6rem;"></p>
             <p style="margin-top:1.2rem;">
                 <button class="btn google" id="btn-google">使用 Google 登入</button>
             </p>
+            <p style="margin-top:.9rem;">
+                <button type="button" class="btn" id="btn-clear-auth" title="清除本機殘留的 Supabase session 後重新整理">清除登入資料後重登</button>
+            </p>
+            <p class="muted" style="margin-top:.7rem;font-size:.85rem;">若無痕可以登入、一般視窗卻卡住：多半是本機舊的 auth token／PKCE 殘渣，請按上方按鈕。</p>
         </div>
 
         <!-- 非管理員 -->
         <div class="card hidden center" id="view-guest">
             <h3>你已登入，但不是管理員</h3>
             <p class="muted">你的帳號不在管理員白名單，只有訪客權限。若這是誤判，請聯絡站長把你的信箱加入白名單。</p>
+            <p class="muted" id="guest-hint" style="margin-top:.6rem;"></p>
+            <p style="margin-top:1rem;">
+                <button type="button" class="btn" id="btn-clear-auth-guest">清除登入資料後重登</button>
+            </p>
         </div>
 
         <!-- 管理員後台 -->

@@ -1125,12 +1125,15 @@ html.paw-cursor-active * {
 }
 
 .paw-cursor-dot.is-pressed {
-    /* 按下時直接隱藏主游標紅點，只留掌下的極小 flash（仍低於 catArm） */
+    /* 按下期間：常駐紅點必須完全看不見（截圖痛點） */
     opacity: 0 !important;
-    width: 6px;
-    height: 6px;
-    margin: -3px 0 0 -3px;
-    box-shadow: none;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
 }
 
 .paw-click-fx {
@@ -1141,45 +1144,31 @@ html.paw-cursor-active * {
     z-index: 9996;
 }
 
+/* 舊版曾 spawn 中心紅點；保險起見一律不顯示 */
 .paw-click-dot {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 6px;
-    height: 6px;
-    margin: -3px 0 0 -3px;
-    border-radius: 50%;
-    background: rgba(255, 70, 110, 0.75);
-    box-shadow: 0 0 8px rgba(255, 90, 130, 0.55);
-    animation: paw-click-dot 220ms ease-out forwards;
+    display: none !important;
 }
 
 .paw-click-ripple {
     position: absolute;
     left: 0;
     top: 0;
-    width: 16px;
-    height: 16px;
-    margin: -8px 0 0 -8px;
-    border: 2px solid rgba(255, 100, 140, 0.9);
+    width: 18px;
+    height: 18px;
+    margin: -9px 0 0 -9px;
+    border: 2px solid rgba(255, 160, 190, 0.55);
     border-radius: 50%;
-    box-shadow: 0 0 14px rgba(255, 110, 150, 0.55);
+    background: transparent;
+    box-shadow: none;
     animation: paw-click-ripple 380ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-@keyframes paw-click-dot {
-    0% { transform: scale(0.6); opacity: 1; }
-    35% { transform: scale(1); opacity: 1; }
-    100% { transform: scale(0.85); opacity: 0; }
-}
-
 @keyframes paw-click-ripple {
-    0% { transform: scale(0.4); opacity: 0.95; }
-    100% { transform: scale(2.8); opacity: 0; }
+    0% { transform: scale(0.45); opacity: 0.7; }
+    100% { transform: scale(2.6); opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .paw-click-dot,
     .paw-click-ripple {
         animation: none !important;
         opacity: 0 !important;

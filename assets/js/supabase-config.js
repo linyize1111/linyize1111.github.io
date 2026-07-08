@@ -10,4 +10,6 @@ window.SUPABASE_CONFIG = {
   url: "https://ypyiqysgfwgxcmmsylob.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlweWlxeXNnZndneGNtbXN5bG9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0NTIwMTEsImV4cCI6MjA5OTAyODAxMX0.NXeAbzvvoUOpXlKGwnEuubJ4_tcfy6ZurULcY8ED7AQ",
   bucket: "article-images",
+  // 與 acg-portal 的 acg-portal-auth / 預設 sb-<ref>-auth-token 隔離
+  storageKey: "lyz-main-auth",
 };

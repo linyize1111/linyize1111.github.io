@@ -112,6 +112,19 @@
       document.body.appendChild(this.cursorDot);
     }
 
+    setCursorDotPressed(pressed) {
+      if (!this.cursorDot) return;
+      this.cursorDot.classList.toggle("is-pressed", !!pressed);
+      // 同步強制隱藏，不靠下一幀 _tick，避免按下瞬間仍看得見紅點
+      if (pressed) {
+        this.cursorDot.style.opacity = "0";
+        this.cursorDot.style.visibility = "hidden";
+      } else {
+        this.cursorDot.style.opacity = "";
+        this.cursorDot.style.visibility = "";
+      }
+    }
+
     spawnClickFeedback(x, y) {
       if (!this.clickLayer || REDUCED) return;
       while (this.clickFx.length >= MAX_CLICK_FX) {
@@ -123,10 +136,7 @@
       wrap.style.left = x + "px";
       wrap.style.top = y + "px";
 
-      var dot = document.createElement("span");
-      dot.className = "paw-click-dot";
-      wrap.appendChild(dot);
-
+      // 只留 ripple，不 spawn 中心實心紅點（按下期間不得出現任何紅點）
       var ripple = document.createElement("span");
       ripple.className = "paw-click-ripple";
       wrap.appendChild(ripple);
@@ -228,6 +238,7 @@
     _onDown(e) {
       if (e.button !== 0) return;
       this.isPressed = true;
+      this.setCursorDotPressed(true);
       this.spawnClickFeedback(e.clientX, e.clientY);
       this.padList.push(this.createPaw(e.clientX + window.scrollX, e.clientY + window.scrollY));
       while (this.padList.length > MAX_PRINTS) {
@@ -237,7 +248,10 @@
       if (this.illo) this.illo.updateRenderGraph();
     }
 
-    _onUp() { this.isPressed = false; }
+    _onUp() {
+      this.isPressed = false;
+      this.setCursorDotPressed(false);
+    }
 
     _onScroll() {
       if (!this.illo) return;
@@ -301,7 +315,7 @@
       }
       if (this.cursorDot) {
         this.cursorDot.style.transform = "translate(" + this.target.x + "px," + this.target.y + "px)";
-        this.cursorDot.classList.toggle("is-pressed", this.isPressed);
+        this.setCursorDotPressed(this.isPressed);
       }
 
       for (var i = this.padList.length - 1; i >= 0; i--) {

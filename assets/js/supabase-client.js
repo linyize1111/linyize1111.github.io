@@ -36,13 +36,27 @@
       console.error("[SB] supabase-js 尚未載入");
       return null;
     }
+    // 固定 storageKey，避免與同 origin（acg-portal）或其他舊 sb-* key 互相踩踏。
     // detectSessionInUrl=false：由 auth.js 單一處做 PKCE code 交換，避免與 SDK 雙重交換把 code 用掉。
+    var storageKey = cfg.storageKey || "lyz-main-auth";
+    // 一次性遷移：舊版預設 key sb-<ref>-auth-token → 新 key，避免硬刷後「其實有 session 卻讀不到」
+    try {
+      var legacyKey = "sb-ypyiqysgfwgxcmmsylob-auth-token";
+      if (!localStorage.getItem(storageKey)) {
+        var legacy = localStorage.getItem(legacyKey);
+        if (legacy) {
+          localStorage.setItem(storageKey, legacy);
+          localStorage.removeItem(legacyKey);
+        }
+      }
+    } catch (e) { /* ignore */ }
     _client = window.supabase.createClient(cfg.url, cfg.anonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: false,
         flowType: "pkce",
+        storageKey: storageKey,
       },
     });
     return _client;
