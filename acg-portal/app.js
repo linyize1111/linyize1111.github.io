@@ -77,7 +77,15 @@
 
   function workerErrorMessage(error) {
     const detail = error?.detail || error?.message || String(error || "");
+    if (error?.status === 404 || /\b404\b/.test(detail)) {
+      return "後端 worker 未部署或已休眠（Render 免費方案常見）。請至 Render Dashboard 喚醒，或改用 GitHub Actions 手動同步。";
+    }
     return detail ? `後端 worker 目前不可用：${detail}` : "後端 worker 目前不可用";
+  }
+
+  function workerDownBanner() {
+    if (state.workerStatus.available !== false) return "";
+    return '<div class="empty-state warning">後端 worker 未連線。爬蟲喚醒與手動入庫暫時不可用；可改用 GitHub Actions 手動同步。</div>';
   }
 
   async function fetchWorkerJson(path, options = {}, timeoutMs = 15000) {
@@ -1849,7 +1857,7 @@
       }).join("") || '<div class="empty-state">目前沒有意見或推薦</div>';
     } else if (tab === "jobs") {
       state.sourceStats = await loadSourceStatus();
-      content.innerHTML = `<div class="admin-source-status"><div id="admin-source-status-grid" class="source-status-grid"></div></div><div class="job-controls">${["all","discord","hanime","18comic","pixiv"].map(source => `<button class="button ${source === "all" ? "button-primary" : "button-secondary"}" data-run-job="${source}">執行 ${source}</button>`).join("")}<button class="button button-secondary" data-refresh-jobs>更新狀態</button><a class="button button-secondary" href="https://github.com/linyize1111/acg-portal/actions/workflows/scheduled-sync.yml" target="_blank" rel="noopener noreferrer">GitHub 手動同步 ↗</a></div><div id="job-list"></div>`;
+      content.innerHTML = `${workerDownBanner()}<div class="admin-source-status"><div id="admin-source-status-grid" class="source-status-grid"></div></div><div class="job-controls">${["all","discord","hanime","18comic","pixiv"].map(source => `<button class="button ${source === "all" ? "button-primary" : "button-secondary"}" data-run-job="${source}">執行 ${source}</button>`).join("")}<button class="button button-secondary" data-refresh-jobs>更新狀態</button><a class="button button-secondary" href="https://github.com/linyize1111/acg-portal/actions/workflows/scheduled-sync.yml" target="_blank" rel="noopener noreferrer">GitHub 手動同步 ↗</a></div><div id="job-list"></div>`;
       renderSourceStatus("#admin-source-status-grid");
       await loadJobs();
     }

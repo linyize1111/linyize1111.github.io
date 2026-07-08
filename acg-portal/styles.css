@@ -320,6 +320,9 @@ textarea { width: 100%; min-height: 150px; padding: 14px; resize: vertical; }
   .platform-grid, .source-status-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }.library-grid { grid-template-columns: repeat(4, minmax(0,1fr)); }.games-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }.bulk-draw-list { grid-template-columns: repeat(4,minmax(0,1fr)); }
 }
 @media (max-width: 980px) {
+  .toast-region { left: 16px; right: 16px; bottom: 16px; }
+  .toast { max-width: none; }
+  .library-item .quick-favorite { min-width: 44px; height: 44px; }
   .site-header { padding: 0 16px; min-height: 64px; }.brand { flex: 1; }.mobile-only { display: grid; }.main-nav { top: 64px; }.auth-area > .button { padding: 10px; font-size: 11px; }.profile-menu div { display: none; }
   main { width: min(94vw, 680px); padding-top: 30px; }.hero { padding-top: 8px; }.mentor-heading { align-items: center; }.mentor-image { width: 96px; border-radius: 20px; }.site-note { font-size: 12px !important; padding: 14px; }.search-row, .section-heading, .filters { flex-direction: column; align-items: stretch; }.search-row .button { height: 50px; }.section-heading { margin-top: 8px; }.filters select, .filters input { width: 100%; }
   .platform-grid, .source-status-grid { grid-template-columns: 1fr; }.work-card, .card-back { min-height: 0; }.work-card-cover { height: min(105vw,460px); }.card-placeholder { min-height: 300px; }
