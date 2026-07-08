@@ -312,6 +312,10 @@ textarea { width: 100%; min-height: 150px; padding: 14px; resize: vertical; }
 .email-login input { width: 100%; }
 .auth-options #auth-clear-storage-button { margin-top: -4px; }
 .small-note { font-size: 11px; line-height: 1.65; }
+.button.is-busy,
+.button[aria-busy="true"] { opacity: .72; cursor: wait; }
+.button.is-busy::after,
+.button[aria-busy="true"]::after { content: ""; display: inline-block; width: 12px; height: 12px; margin-left: 8px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; vertical-align: -2px; animation: button-spin .7s linear infinite; }
 
 .toast-region { position: fixed; right: 20px; bottom: 20px; z-index: 100; display: grid; gap: 9px; }
 .toast { max-width: 380px; padding: 13px 16px; border: 1px solid var(--border); border-radius: 14px; background: #191e31; box-shadow: var(--shadow); font-size: 13px; line-height: 1.55; animation: toast-in .25s ease; }
@@ -319,6 +323,7 @@ textarea { width: 100%; min-height: 150px; padding: 14px; resize: vertical; }
 .toast.error { border-color: rgba(255,101,119,.55); background: rgba(34,16,22,.96); }
 .toast.warning { border-color: rgba(255,203,102,.5); background: rgba(34,28,14,.96); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes button-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 1160px) {
   .nav-toggle { display: grid; }

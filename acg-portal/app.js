@@ -79,6 +79,27 @@
     setTimeout(() => node.remove(), 4200);
   }
 
+  async function withBusyButton(button, busyText, task) {
+    if (!button) return task();
+    if (button.dataset.busy === "1") return null;
+    const original = button.dataset.originalText || button.textContent;
+    button.dataset.originalText = original;
+    button.dataset.busy = "1";
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.classList.add("is-busy");
+    if (busyText) button.textContent = busyText;
+    try {
+      return await task();
+    } finally {
+      button.disabled = false;
+      button.setAttribute("aria-busy", "false");
+      button.classList.remove("is-busy");
+      button.dataset.busy = "0";
+      button.textContent = original;
+    }
+  }
+
   function workerErrorMessage(error) {
     const detail = error?.detail || error?.message || String(error || "");
     if (!config.workerUrl) {
@@ -1325,6 +1346,7 @@
   }
 
   async function loginWithGoogle() {
+    const button = $("#google-login-button");
     if (state.googleProviderEnabled === null) await detectGoogleProvider();
     if (!state.googleProviderEnabled) {
       $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用，所以我先不跳轉，避免再次出現 400 JSON 錯誤。請先用 Gmail 信箱＋站內密碼登入。";
@@ -1333,15 +1355,17 @@
     const redirectTo = authRedirectUrl();
     markOAuthPending("google");
     authDebug("oauth start", { redirectTo });
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
-    if (error) {
-      clearOAuthPending();
-      const message = error.message || "";
-      if (message.includes("Unsupported provider") || message.includes("provider is not enabled")) {
-        $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用。請先用 Gmail 信箱帳密登入；之後可到 Supabase Dashboard → Authentication → Providers → Google 啟用 OAuth。";
+    await withBusyButton(button, "跳轉中…", async () => {
+      const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+      if (error) {
+        clearOAuthPending();
+        const message = error.message || "";
+        if (message.includes("Unsupported provider") || message.includes("provider is not enabled")) {
+          $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用。請先用 Gmail 信箱帳密登入；之後可到 Supabase Dashboard → Authentication → Providers → Google 啟用 OAuth。";
+        }
+        toast(`Google OAuth 尚未啟用或設定錯誤：${message}`, "error");
       }
-      toast(`Google OAuth 尚未啟用或設定錯誤：${message}`, "error");
-    }
+    });
   }
 
   async function loginWithEmail() {
@@ -1843,6 +1867,7 @@
   async function saveGame(event) {
     event.preventDefault();
     if (!isAdmin()) return;
+    const submitButton = event.currentTarget.querySelector('button[type="submit"], .button.button-primary');
     const id = event.currentTarget.dataset.gameId;
     const name = $("#game-name").value.trim();
     const reviewBody = $("#game-review").value.trim();
@@ -1857,17 +1882,41 @@
       if (uploaded === null) return;
       coverUrl = uploaded;
     }
-    const payload = {
-      name, cover_url: coverUrl,
-      rating, review_body: reviewBody,
-      tags: $("#game-tags").value.split(/[,，]/).map(value => value.trim()).filter(Boolean),
-      status: "published",
-      created_by: state.session.user.id
-    };
-    const request = id ? supabase.from("games").update(payload).eq("id", id) : supabase.from("games").insert(payload);
-    const { error } = await request;
-    if (error) return toast(`儲存失敗：${error.message}`, "error");
-    closeModal("editor-modal"); await loadGames(); toast("遊戲評鑑已儲存", "success");
+    const tags = $("#game-tags").value.split(/[,，]/).map(value => value.trim()).filter(Boolean);
+    await withBusyButton(submitButton, "儲存中…", async () => {
+      let error = null;
+      const { error: rpcError, data: rpcData } = await supabase.rpc("admin_upsert_game_review", {
+        target_game: id || null,
+        game_name: name,
+        game_cover_url: coverUrl,
+        game_rating: rating,
+        game_tags: tags,
+        game_review_body: reviewBody
+      });
+      error = rpcError;
+      if (error && !/function .*admin_upsert_game_review|could not find/i.test(error.message || "")) {
+        return toast(`儲存失敗：${error.message}`, "error");
+      }
+      if (error) {
+        const payload = {
+          name,
+          cover_url: coverUrl,
+          rating,
+          review_body: reviewBody,
+          tags,
+          status: "published",
+          created_by: state.session.user.id
+        };
+        const request = id ? supabase.from("games").update(payload).eq("id", id) : supabase.from("games").insert(payload);
+        const fallback = await request;
+        if (fallback.error) {
+          return toast(`儲存失敗：${fallback.error.message}`, "error");
+        }
+      }
+      closeModal("editor-modal");
+      await loadGames();
+      toast(rpcData && !id ? "遊戲評鑑已新增" : "遊戲評鑑已儲存", "success");
+    });
   }
 
   async function saveGameComment(event) {
@@ -1898,24 +1947,34 @@
     const isRecommendation = kind === "recommendation";
     const textarea = isRecommendation ? $("#recommendation-body") : $("#feedback-body");
     const counter = isRecommendation ? $("#recommendation-count") : $("#feedback-count");
+    const button = isRecommendation ? $("#recommendation-send") : $("#feedback-send");
     const body = textarea.value.trim();
     if (!body || body.length > 2000) return toast("意見內容需為 1～2000 字", "warning");
-    const { error } = await supabase.from("feedback").insert({
-      user_id: state.session.user.id,
-      kind: isRecommendation ? "recommendation" : "feedback",
-      body
+    await withBusyButton(button, isRecommendation ? "送出中…" : "寄送中…", async () => {
+      const { error } = await supabase.from("feedback").insert({
+        user_id: state.session.user.id,
+        kind: isRecommendation ? "recommendation" : "feedback",
+        body
+      });
+      if (error) {
+        const missingTable = /feedback.*does not exist|relation .*feedback/i.test(error.message);
+        const rateLimited = /Please wait a moment before sending/i.test(error.message);
+        if (missingTable) return toast("意見系統尚未啟用（需先套用 0005 migration）", "error");
+        if (rateLimited) {
+          return toast(
+            isRecommendation
+              ? "剛送出過推薦，系統已擋住重複送出；請等約 10 秒再試，不需要連按。"
+              : "剛送出過意見，系統已擋住重複送出；請等約 10 秒再試，不需要連按。",
+            "warning"
+          );
+        }
+        return toast(`送出失敗：${error.message}`, "error");
+      }
+      textarea.value = "";
+      counter.textContent = "0 / 2000";
+      toast(isRecommendation ? "推薦已送出" : "意見已送出", "success");
+      await loadFeedbackThreads();
     });
-    if (error) {
-      const missingTable = /feedback.*does not exist|relation .*feedback/i.test(error.message);
-      const rateLimited = /Please wait a moment before sending/i.test(error.message);
-      if (missingTable) return toast("意見系統尚未啟用（需先套用 0005 migration）", "error");
-      if (rateLimited) return toast(isRecommendation ? "推薦作品送太快了，請稍候再送同類型內容。" : "意見送太快了，請稍候再送同類型內容。", "warning");
-      return toast(`送出失敗：${error.message}`, "error");
-    }
-    textarea.value = "";
-    counter.textContent = "0 / 2000";
-    toast(isRecommendation ? "推薦已送出" : "意見已送出", "success");
-    await loadFeedbackThreads();
   }
 
   async function loadFeedbackThreads() {
@@ -2005,15 +2064,24 @@
     const feedbackId = event.currentTarget.dataset.feedbackReply;
     const replyId = event.currentTarget.dataset.replyId;
     const textarea = event.currentTarget.querySelector("textarea");
+    const submitButton = event.currentTarget.querySelector('button[type="submit"], .button.button-primary');
     const body = textarea?.value.trim() || "";
     if (!body || body.length > 2000) return toast("回覆需為 1～2000 字", "warning");
-    const request = replyId
-      ? supabase.from("feedback_replies").update({ body }).eq("id", replyId)
-      : supabase.from("feedback_replies").insert({ feedback_id: feedbackId, user_id: state.session.user.id, body });
-    const { error } = await request;
-    if (error) return toast(error.message, "error");
-    await loadFeedbackThreads();
-    toast(replyId ? "回覆已更新" : "回覆已送出", "success");
+    await withBusyButton(submitButton, replyId ? "儲存中…" : "回覆中…", async () => {
+      const request = replyId
+        ? supabase.from("feedback_replies").update({ body }).eq("id", replyId)
+        : supabase.from("feedback_replies").insert({ feedback_id: feedbackId, user_id: state.session.user.id, body });
+      const { error } = await request;
+      if (error) {
+        const missing = /feedback_replies.*does not exist|relation .*feedback_replies/i.test(error.message || "");
+        const denied = /permission denied|row-level security|policy/i.test(error.message || "");
+        if (missing) return toast("回覆功能尚未啟用（需先套用 0006/0008 migration）", "error");
+        if (denied) return toast("回覆被資料庫權限擋下；請先套用本輪 migration 後再試。", "error");
+        return toast(error.message, "error");
+      }
+      await loadFeedbackThreads();
+      toast(replyId ? "回覆已更新" : "回覆已送出", "success");
+    });
   }
 
   async function loadAdmin(tab = state.adminTab) {
@@ -2172,6 +2240,14 @@
   }
 
   async function queueManualIngestion(platform, externalId) {
+    const { error: rpcError } = await supabase.rpc("admin_queue_manual_ingestion", {
+      target_platform: platform,
+      target_external_id: externalId
+    });
+    if (!rpcError) return;
+    if (!/function .*admin_queue_manual_ingestion|could not find/i.test(rpcError.message || "")) {
+      throw rpcError;
+    }
     const payload = {
       source: "manual",
       platform,
@@ -2375,9 +2451,11 @@
       if (target.dataset.deleteGameComment) deleteGameComment(target.dataset.deleteGameComment, target.dataset.gameId);
       if (target.dataset.adminTab) loadAdmin(target.dataset.adminTab);
       if (target.dataset.approveAllPending) {
-        const { data, error } = await supabase.rpc("approve_all_pending");
-        toast(error ? error.message : `已通過 ${data || 0} 位會員`, error ? "error" : "success");
-        if (!error) loadAdmin("users");
+        await withBusyButton(target, "核准中…", async () => {
+          const { data, error } = await supabase.rpc("approve_all_pending");
+          toast(error ? error.message : `已通過 ${data || 0} 位會員`, error ? "error" : "success");
+          if (!error) loadAdmin("users");
+        });
       }
       if (target.dataset.approveUser) { const { error } = await supabase.rpc("approve_user", { target_user: target.dataset.approveUser, approve: true }); toast(error ? error.message : "會員已通過", error ? "error" : "success"); if (!error) loadAdmin("users"); }
       if (target.dataset.suspendUser) { const { error } = await supabase.rpc("set_user_suspension", { target_user: target.dataset.suspendUser, suspend: target.dataset.suspend === "true" }); toast(error ? error.message : "會員狀態已更新", error ? "error" : "success"); if (!error) loadAdmin("users"); }

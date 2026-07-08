@@ -15,6 +15,8 @@
 (function () {
   "use strict";
 
+  var callbackHandled = false;
+
   function c() {
     return window.SB && window.SB.client ? window.SB.client() : null;
   }
@@ -50,9 +52,68 @@
     await client.auth.signOut();
   }
 
+  function authCallbackParams() {
+    var url = new URL(window.location.href);
+    var hashBody = window.location.hash.replace(/^#/, "");
+    var hashParams = new URLSearchParams(hashBody.indexOf("=") >= 0 ? hashBody : "");
+    return {
+      code: url.searchParams.get("code"),
+      error:
+        url.searchParams.get("error_description") ||
+        url.searchParams.get("error") ||
+        hashParams.get("error_description") ||
+        hashParams.get("error"),
+      hasHashToken:
+        hashParams.has("access_token") || hashParams.has("refresh_token"),
+    };
+  }
+
+  function clearAuthCallbackUrl() {
+    var url = new URL(window.location.href);
+    ["code", "error", "error_description", "state"].forEach(function (key) {
+      url.searchParams.delete(key);
+    });
+    var hashBody = window.location.hash.replace(/^#/, "");
+    var hashParams = new URLSearchParams(hashBody.indexOf("=") >= 0 ? hashBody : "");
+    var hasAuthHash =
+      hashParams.has("access_token") ||
+      hashParams.has("refresh_token") ||
+      hashParams.has("error");
+    var next = url.pathname + (url.search || "");
+    if (!hasAuthHash && hashBody && hashBody.indexOf("=") === -1) next += "#" + hashBody;
+    window.history.replaceState({}, document.title, next.replace(/\?$/, ""));
+  }
+
+  async function ensureSessionFromUrl() {
+    var client = c();
+    if (!client || callbackHandled) return null;
+    var params = authCallbackParams();
+    if (!params.code && !params.error && !params.hasHashToken) return null;
+    callbackHandled = true;
+    if (params.error) {
+      console.warn("[auth] OAuth callback error:", params.error);
+      clearAuthCallbackUrl();
+      return null;
+    }
+    if (params.code) {
+      try {
+        var exchanged = await client.auth.exchangeCodeForSession(params.code);
+        if (exchanged && exchanged.error) {
+          console.warn("[auth] exchangeCodeForSession failed:", exchanged.error.message);
+        }
+      } catch (e) {
+        console.warn("[auth] OAuth exchange exception:", e);
+      }
+    }
+    clearAuthCallbackUrl();
+    var res = await client.auth.getSession();
+    return res && res.data ? res.data.session : null;
+  }
+
   async function getSession() {
     var client = c();
     if (!client) return null;
+    await ensureSessionFromUrl();
     var res = await client.auth.getSession();
     return res && res.data ? res.data.session : null;
   }
@@ -97,5 +158,6 @@
     getUser: getUser,
     isAdmin: isAdmin,
     onChange: onChange,
+    ensureSessionFromUrl: ensureSessionFromUrl,
   };
 })();
