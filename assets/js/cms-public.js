@@ -42,6 +42,17 @@
   }
 
   // ---- 1. 清單頁 ---------------------------------------------------
+  function safeHttpsUrl(url) {
+    if (!url) return "";
+    try {
+      var u = new URL(String(url), window.location.origin);
+      if (u.protocol !== "https:") return "";
+      return u.href;
+    } catch (e) {
+      return "";
+    }
+  }
+
   function buildCard(a) {
     var url = articleUrl(a);
     var upload = fmtDate(a.published_at || a.created_at);
@@ -81,11 +92,14 @@
       mediaHtml += "</div>";
     }
 
-    var pdfBtn = a.pdf_url
-      ? '<li><a href="' +
-        esc(a.pdf_url) +
-        '" target="_blank" rel="noopener" class="button primary">檢視 PDF</a></li>'
-      : "";
+    var pdfBtn = "";
+    var safePdf = safeHttpsUrl(a.pdf_url);
+    if (safePdf) {
+      pdfBtn =
+        '<li><a href="' +
+        esc(safePdf) +
+        '" target="_blank" rel="noopener noreferrer" class="button primary">檢視 PDF</a></li>';
+    }
 
     var art = document.createElement("article");
     art.className = "note-item";

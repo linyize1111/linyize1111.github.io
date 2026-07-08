@@ -19,13 +19,26 @@
     return window.SB && window.SB.client ? window.SB.client() : null;
   }
 
+  /** 僅允許同 origin 回跳，防 open redirect（RFC 9700 / OWASP） */
+  function safeRedirectTo(url) {
+    var fallback = window.location.origin + "/admin.html";
+    try {
+      var u = new URL(String(url || window.location.href), window.location.origin);
+      if (u.origin !== window.location.origin) return fallback;
+      if (u.protocol !== "http:" && u.protocol !== "https:") return fallback;
+      return u.origin + u.pathname + u.search;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
   async function signInWithGoogle(redirectTo) {
     var client = c();
     if (!client) throw new Error("Supabase 尚未設定");
     return client.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: redirectTo || window.location.href.split("#")[0],
+        redirectTo: safeRedirectTo(redirectTo),
         queryParams: { access_type: "online", prompt: "select_account" },
       },
     });

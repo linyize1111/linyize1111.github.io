@@ -23,7 +23,7 @@
     var el = typeof container === "string" ? $(container) : container;
     if (!el) return;
     if (!text) { el.innerHTML = ""; return; }
-    el.innerHTML = '<div class="msg ' + (kind || "ok") + '">' + text + "</div>";
+    el.innerHTML = '<div class="msg ' + (kind || "ok") + '">' + window.SB.escapeText(text) + "</div>";
   }
 
   // ---------- 視圖切換 ----------

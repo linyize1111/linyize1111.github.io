@@ -52,8 +52,15 @@
     if (window.DOMPurify) {
       return window.DOMPurify.sanitize(dirty, {
         ADD_ATTR: ["target", "rel"],
-        FORBID_TAGS: ["style", "form", "input", "button"],
-        FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "style"],
+        FORBID_TAGS: [
+          "style", "form", "input", "button", "script", "iframe", "object",
+          "embed", "link", "meta", "base", "svg", "math",
+        ],
+        FORBID_ATTR: [
+          "onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur",
+          "oninput", "onchange", "style", "formaction", "xlink:href",
+        ],
+        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
       });
     }
     // 沒有 DOMPurify 時的保守 fallback：純文字轉義

@@ -37,6 +37,7 @@
   }
 
   async function trackPageView() {
+    if (document.hidden) return;
     var sessionId = pageKey();
     try {
       if (sessionStorage.getItem(SESSION_KEY) === sessionId) return;

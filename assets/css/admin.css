@@ -148,3 +148,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   padding-bottom: .35rem;
   border-bottom: 1px solid var(--a-border);
 }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(86, 208, 248, 0.45); }
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none; box-shadow: 0 0 0 3px rgba(86, 208, 248, 0.35);
+}
+.card { box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22); }
+.list-item { transition: border-color 0.15s ease, transform 0.12s ease; }
+.list-item:hover { border-color: rgba(86, 208, 248, 0.35); transform: translateY(-1px); }
+.tab:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(86, 208, 248, 0.35); }
+.admin-top h1 { font-size: clamp(1.2rem, 1rem + 0.8vw, 1.55rem); }
