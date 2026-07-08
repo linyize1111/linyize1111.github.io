@@ -283,6 +283,14 @@
     );
   }
 
+  function oauthExchangeFailureMessage(rawMessage) {
+    const message = decodeURIComponent(String(rawMessage || "").replace(/\+/g, " "));
+    if (/unable to exchange external code/i.test(message)) {
+      return "Google 登入失敗：Supabase 無法向 Google 換取 token。請到 Supabase ACG 專案（xpztpetskjohuxrpgmcm）→ Authentication → Providers → Google，重新貼上與 Google Cloud 同一組 Client ID 與 Client Secret（勿用主站 ypyi 專案的 secret）。詳見 docs/FIX-UNABLE-TO-EXCHANGE-EXTERNAL-CODE.md";
+    }
+    return message || "未知錯誤";
+  }
+
   function authCallbackParams() {
     const url = new URL(location.href);
     const hashBody = location.hash.replace(/^#/, "");
@@ -349,7 +357,7 @@
       path: location.pathname
     });
     if (oauthError) {
-      toast(`登入失敗：${decodeURIComponent(String(oauthError).replace(/\+/g, " "))}`, "error");
+      toast(oauthExchangeFailureMessage(oauthError), "error");
       clearAuthCallbackUrl();
       return null;
     }
@@ -375,7 +383,10 @@
           const hint = /code verifier|flow state|invalid grant/i.test(error.message || "")
             ? "（常見原因：用了不同分頁/無痕視窗，或中途清除了瀏覽器資料）"
             : "";
-          toast(`OAuth 驗證失敗：${error.message || "未知錯誤"}${hint}`, "error");
+          const detail = /unable to exchange external code/i.test(error.message || "")
+            ? oauthExchangeFailureMessage(error.message)
+            : `${error.message || "未知錯誤"}${hint}`;
+          toast(/unable to exchange external code/i.test(error.message || "") ? detail : `OAuth 驗證失敗：${detail}`, "error");
           clearAuthCallbackUrl();
           clearOAuthPending();
           return null;
