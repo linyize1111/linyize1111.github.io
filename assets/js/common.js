@@ -3,7 +3,7 @@
  *
  * Shared logic for LYZ's website:
  * 1. Loading screen
- * 2. Background music controls
+ * 2. Media controls (video + audio)
  * 3. Sakura canvas animation
  * 4. Three-mode theme system: light / dark / glass
  */
@@ -18,16 +18,16 @@ function initLoadingScreen() {
             loader.classList.add('fade-out');
             setTimeout(function () {
                 loader.style.display = 'none';
-                var video = document.getElementById('bg-video');
-                if (video) {
-                    video.play().catch(function () { });
+                var v = document.getElementById('bg-video');
+                if (v && sessionStorage.getItem('mediaPaused') !== 'true') {
+                    v.play().catch(function () { });
                 }
             }, 700);
         }, 400);
     });
 }
 
-/* ─── 2. Music Controls ─────────────────────────────────────── */
+/* ─── 2. Media Controls ─────────────────────────────────────── */
 function initMediaControls() {
     document.addEventListener('DOMContentLoaded', function () {
         var video = document.getElementById('bg-video');
@@ -35,12 +35,9 @@ function initMediaControls() {
         var btnMute = document.getElementById('btn-mute');
         var btnPlay = document.getElementById('btn-play');
 
-        if (!music || !btnMute || !btnPlay) return;
+        if (!video || !music || !btnMute || !btnPlay) return;
 
-        if (video) {
-            video.muted = true;
-            video.defaultMuted = true;
-        }
+        video.muted = true;
         var isMuted = (sessionStorage.getItem('mediaMuted') === 'true');
         music.muted = isMuted;
 
@@ -51,15 +48,11 @@ function initMediaControls() {
         }
         updateMuteBtn();
 
-        // Default: never autoplay. User must press play explicitly.
-        music.pause();
-        btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-        sessionStorage.setItem('musicPaused', 'true');
-
         var savedTime = sessionStorage.getItem('musicCurrentTime');
         if (savedTime && !isNaN(savedTime)) {
             var timeToSet = parseFloat(savedTime);
-            if (music.readyState >= 1) {
+            // 由於 preload="none" ，在音樂還沒載入 metadata 前無法設定 currentTime
+            if (music.readyState >= 1) { // HAVE_METADATA or higher
                 music.currentTime = timeToSet;
             } else {
                 music.addEventListener('loadedmetadata', function () {
@@ -67,6 +60,12 @@ function initMediaControls() {
                 }, { once: true });
             }
         }
+
+        // Default: music never autoplays. User must press play explicitly.
+        // Video still autoplays (muted) via initLoadingScreen.
+        music.pause();
+        btnPlay.innerHTML = '<i class="fas fa-play"></i>';
+        sessionStorage.setItem('musicPaused', 'true');
 
         btnMute.addEventListener('click', function (e) {
             e.stopPropagation();
@@ -77,12 +76,11 @@ function initMediaControls() {
 
         btnPlay.addEventListener('click', function () {
             if (music.paused) {
-                if (video && video.paused) {
-                    video.play().catch(function () { });
-                }
+                if (video.paused) video.play().catch(function () { });
                 music.play().catch(function () { });
                 btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
                 sessionStorage.setItem('musicPaused', 'false');
+                sessionStorage.setItem('mediaPaused', 'false');
             } else {
                 music.pause();
                 btnPlay.innerHTML = '<i class="fas fa-play"></i>';
@@ -92,6 +90,7 @@ function initMediaControls() {
 
         window.addEventListener('beforeunload', function () {
             sessionStorage.setItem('mediaMuted', music.muted);
+            sessionStorage.setItem('mediaPaused', video.paused);
             sessionStorage.setItem('musicPaused', music.paused);
             sessionStorage.setItem('musicCurrentTime', music.currentTime);
         });
@@ -210,18 +209,15 @@ function initTheme() {
 
     document.addEventListener('DOMContentLoaded', function () {
         var controls = document.getElementById('video-controls');
-        var btn = document.getElementById('btn-theme');
-        if (!btn) {
-            btn = document.createElement('button');
-            btn.id = 'btn-theme';
-            btn.style.cssText = 'position:relative;';
-        }
+        var btn = document.createElement('button');
+        btn.id = 'btn-theme';
+        btn.style.cssText = 'position:relative;';
 
         function updateBtn() {
             var t = currentTheme();
             var meta = THEME_META[t];
             btn.innerHTML = meta.icon;
-            btn.title = '目前：' + meta.label + ' → ' + THEME_META[meta.next].label;
+            btn.title = '切換：' + meta.label + ' → ' + THEME_META[meta.next].label;
             btn.setAttribute('aria-label', meta.label);
         }
         updateBtn();
@@ -234,9 +230,9 @@ function initTheme() {
             updateBtn();
         });
 
-        if (controls && !btn.parentNode) {
+        if (controls) {
             controls.insertBefore(btn, controls.firstChild);
-        } else if (!controls) {
+        } else {
             var panel = document.createElement('div');
             panel.id = 'video-controls';
             panel.appendChild(btn);
@@ -245,15 +241,23 @@ function initTheme() {
     });
 }
 
-/* ─── Hero Spacer for Non-Index pages ─────────────────────── */
+/* ─── Hero Spacer for Non-Index pages ───────────────────────
+ * Index has a tall #intro section that lets background show.
+ * All other pages go straight header→nav→#main, covering bg.
+ * Fix: inject a transparent spacer div BEFORE #main on sub-pages.
+ * The spacer is z-index 1 (above bg, below content) and fully
+ * transparent so only the fixed background is visible through it.
+ */
 function initHeroSpacer() {
     document.addEventListener('DOMContentLoaded', function () {
+        // Only run on pages without #intro (sub-pages)
         var intro = document.getElementById('intro');
-        if (intro) return;
+        if (intro) return; // Index — leave alone
 
         var main = document.getElementById('main');
         if (!main) return;
 
+        // Create the spacer
         var spacer = document.createElement('div');
         spacer.id = 'page-hero-spacer';
         main.parentNode.insertBefore(spacer, main);
@@ -287,8 +291,8 @@ function initAnalytics() {
 }
 
 function initCommon() {
-    initTheme();
-    initHeroSpacer();
+    initTheme();           // Must be first — applies theme before paint
+    initHeroSpacer();      // Inject hero spacer before #main on sub-pages
     initLoadingScreen();
     initMediaControls();
     initSakuraIfPresent();

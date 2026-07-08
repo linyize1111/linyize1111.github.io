@@ -3385,7 +3385,7 @@ table.alt tbody tr td {
 	pointer-events: none;
 }
 
-/* 右下角控制按鈕 */
+/* 右下角影片控制按鈕 */
 #video-controls {
 	position: fixed;
 	bottom: 1.5rem;

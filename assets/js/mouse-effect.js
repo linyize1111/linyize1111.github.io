@@ -9,7 +9,6 @@
   var MAX_PRINTS = 28;
   var MAX_CLICK_FX = 8;
   var CLICK_FX_MS = 320;
-  var GLOW_SIZE = 22;
   var COARSE = window.matchMedia("(hover: none), (pointer: coarse)").matches;
   var REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -59,7 +58,6 @@
       this.mounted = true;
       document.documentElement.classList.add("paw-cursor-active");
       this.initClickLayer();
-      this.initCursorGlow();
       this.initCanvas();
       this.initZdog();
       this.initArm();
@@ -77,11 +75,9 @@
       document.removeEventListener("visibilitychange", this._onVis);
       window.removeEventListener("resize", this._onResize);
       if (this.clickLayer && this.clickLayer.parentNode) this.clickLayer.parentNode.removeChild(this.clickLayer);
-      if (this.cursorGlow && this.cursorGlow.parentNode) this.cursorGlow.parentNode.removeChild(this.cursorGlow);
       if (this.canvas && this.canvas.parentNode) this.canvas.parentNode.removeChild(this.canvas);
       if (this.catArm && this.catArm.parentNode) this.catArm.parentNode.removeChild(this.catArm);
       this.clickLayer = null;
-      this.cursorGlow = null;
       this.canvas = null;
       this.catArm = null;
       this.illo = null;
@@ -103,14 +99,6 @@
       this.clickLayer.className = "paw-click-layer";
       this.clickLayer.setAttribute("aria-hidden", "true");
       document.body.appendChild(this.clickLayer);
-    }
-
-    initCursorGlow() {
-      if (REDUCED) return;
-      this.cursorGlow = document.createElement("div");
-      this.cursorGlow.className = "paw-cursor-glow";
-      this.cursorGlow.setAttribute("aria-hidden", "true");
-      document.body.appendChild(this.cursorGlow);
     }
 
     spawnClickFeedback(x, y) {
@@ -280,10 +268,6 @@
       var now = performance.now();
       var ratio = this.size / 80;
 
-      if (this.cursorGlow && !REDUCED) {
-        this.cursorGlow.style.transform = "translate(" + this.target.x + "px," + this.target.y + "px)";
-      }
-
       if (!this.isPressed) {
         var dx = this.target.x - this.pos.x;
         var dy = this.target.y - this.pos.y;
@@ -326,7 +310,7 @@
 
   function initPawToggle(effect) {
     document.addEventListener("DOMContentLoaded", function () {
-      var controls = document.getElementById("video-controls") || document.getElementById("site-controls");
+      var controls = document.getElementById("video-controls");
       if (!controls) return;
       var btn = document.createElement("button");
       btn.id = "btn-paw";
