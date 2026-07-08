@@ -2,6 +2,7 @@
   "use strict";
 
   const config = window.ACG_CONFIG;
+  const MANUAL_SYNC_WORKFLOW_HINT = "actions/workflows/scheduled-sync.yml";
   const AUTH_STORAGE_KEY = "acg-portal-auth";
   const supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
     auth: {
@@ -16,6 +17,7 @@
 
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
   const EDIT_WINDOW_MS = 30 * 60 * 1000;
+  const FEEDBACK_REPLY_WINDOW_MS = 30 * 60 * 1000;
   const DRAW_HISTORY_KEY = "acg_draw_history_v1";
 
   const PLATFORM_LABELS = { nhentai: "Nhentai", "18comic": "禁漫", hanime: "Hanime", pixiv: "Pixiv" };
@@ -80,7 +82,7 @@
   function workerErrorMessage(error) {
     const detail = error?.detail || error?.message || String(error || "");
     if (!config.workerUrl) {
-      return "本站目前不再依賴常駐 worker。請改從 GitHub Actions 手動同步，紀錄則直接以 Supabase 內的同步結果為準。";
+      return detail || "目前請改由 GitHub Actions 執行同步；同步紀錄與作品資料會直接回寫 Supabase。";
     }
     if (error?.status === 404 || /\b404\b/.test(detail)) {
       return "背景同步 API 目前不可用；請改從 GitHub Actions 手動同步，稍後再回來看 Supabase 同步紀錄。";
@@ -93,7 +95,7 @@
       if (state.workerStatus.available !== false) return "";
       return '<div class="empty-state warning">背景同步 API 暫時無法連線；作品清單與同步紀錄仍以 Supabase 現況顯示。若要立即同步，請改用 GitHub Actions 手動觸發。</div>';
     }
-    return '<div class="empty-state warning">本站目前使用 GitHub Actions + Supabase，同步紀錄直接讀取資料庫；若要手動同步，請開啟 GitHub Actions 工作流程。</div>';
+    return '<div class="empty-state warning">本站目前使用 Discord / GitHub Actions / Supabase。手動新增的車號會先進待同步佇列，再由下一次同步匯入作品庫。</div>';
   }
 
   async function fetchWorkerJson(path, options = {}, timeoutMs = 15000) {
@@ -170,6 +172,13 @@
     return workSearchScore(work, query) > Number.NEGATIVE_INFINITY;
   }
 
+  function isRecentWeeklyWork(work) {
+    if (!work) return false;
+    if (!["discord", "manual"].includes(String(work.source_kind || ""))) return false;
+    const seenAt = new Date(work.first_seen_at || work.created_at || 0).getTime();
+    return Number.isFinite(seenAt) && Date.now() - seenAt <= 7 * 86400000;
+  }
+
   function stableRandom(value, seed = state.librarySeed) {
     const text = `${seed}:${value}`;
     let hash = 2166136261;
@@ -244,6 +253,22 @@
     if (isAdmin()) return true;
     if (review.user_id !== state.session.user.id) return false;
     return Date.now() - new Date(review.created_at).getTime() <= EDIT_WINDOW_MS;
+  }
+
+  function feedbackReplyEditable(reply) {
+    if (!reply || !state.session) return false;
+    if (isAdmin()) return true;
+    if (reply.user_id !== state.session.user.id) return false;
+    return Date.now() - new Date(reply.created_at).getTime() <= FEEDBACK_REPLY_WINDOW_MS;
+  }
+
+  function feedbackReplyDeletable(reply) {
+    return feedbackReplyEditable(reply);
+  }
+
+  function feedbackItemDeletable(item) {
+    if (!item || !state.session) return false;
+    return isAdmin() || item.user_id === state.session.user.id;
   }
 
   function loadDrawHistory() {
@@ -524,10 +549,7 @@
 
   function passesWorkFilters(work, prefix = "home") {
     const weekFilter = $(`#${prefix}-filter-week`)?.value || "all";
-    if (weekFilter === "week") {
-      const seenAt = new Date(work.last_seen_at || work.created_at || 0).getTime();
-      if (Date.now() - seenAt > 7 * 86400000) return false;
-    }
+    if (weekFilter === "week" && !isRecentWeeklyWork(work)) return false;
     if (prefix === "home") {
       const scope = $("#home-filter-scope")?.value || "all";
       if (scope === "favorites") {
@@ -642,7 +664,7 @@
         className: "pending",
         label: "SYNCING",
         count: `${stats.total.toLocaleString()} pending`,
-        description: "已建立資料槽，等待 GitHub Actions 或手動同步匯入"
+        description: "已建立資料槽，等待 GitHub Actions 或手動同步佇列處理"
       };
     }
     return {
@@ -1885,7 +1907,10 @@
     });
     if (error) {
       const missingTable = /feedback.*does not exist|relation .*feedback/i.test(error.message);
-      return toast(missingTable ? "意見系統尚未啟用（需先套用 0005 migration）" : `送出失敗：${error.message}`, "error");
+      const rateLimited = /Please wait a moment before sending/i.test(error.message);
+      if (missingTable) return toast("意見系統尚未啟用（需先套用 0005 migration）", "error");
+      if (rateLimited) return toast(isRecommendation ? "推薦作品送太快了，請稍候再送同類型內容。" : "意見送太快了，請稍候再送同類型內容。", "warning");
+      return toast(`送出失敗：${error.message}`, "error");
     }
     textarea.value = "";
     counter.textContent = "0 / 2000";
@@ -1903,7 +1928,10 @@
       lists.forEach(({ node }) => { if (node) node.innerHTML = '<p class="muted">登入並通過審核後可查看寄出紀錄。</p>'; });
       return;
     }
-    const { data: rows, error } = await supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(40);
+    const [{ data: rows, error }, { data: replyRows, error: replyError }] = await Promise.all([
+      supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(40),
+      supabase.from("feedback_replies").select("*").order("created_at", { ascending: true }).limit(400)
+    ]);
     if (error) {
       const missingTable = /feedback.*does not exist|relation .*feedback/i.test(error.message);
       lists.forEach(({ node }) => {
@@ -1911,22 +1939,81 @@
       });
       return;
     }
-    await loadProfilesForReviews((rows || []).map(row => ({ user_id: row.user_id })));
+    if (replyError && !/feedback_replies.*does not exist|relation .*feedback_replies/i.test(replyError.message)) {
+      lists.forEach(({ node }) => {
+        if (node) node.innerHTML = `<p class="muted">${escapeHtml(replyError.message)}</p>`;
+      });
+      return;
+    }
+    const repliesByFeedback = new Map();
+    for (const reply of replyRows || []) {
+      if (!repliesByFeedback.has(reply.feedback_id)) repliesByFeedback.set(reply.feedback_id, []);
+      repliesByFeedback.get(reply.feedback_id).push(reply);
+    }
+    await loadProfilesForReviews([
+      ...(rows || []).map(row => ({ user_id: row.user_id })),
+      ...((replyRows || []).map(row => ({ user_id: row.user_id })))
+    ]);
     lists.forEach(({ kind, node }) => {
       if (!node) return;
       const items = (rows || []).filter(row => row.kind === kind);
       node.innerHTML = items.map(item => {
         const author = memberName(state.profiles.get(item.user_id));
         const statusLabel = item.status === "resolved" ? "已處理" : "處理中";
-        const adminActions = isAdmin() ? `<div class="admin-actions"><button class="button button-secondary" data-edit-feedback="${item.id}">編輯</button><button class="button button-danger" data-delete-feedback="${item.id}">刪除</button>${item.status === "open" ? `<button class="button button-primary" data-resolve-feedback="${item.id}">完成</button>` : ""}</div>` : "";
-        return `<article class="feedback-thread" data-feedback="${item.id}"><div class="feedback-thread-header"><h4>${escapeHtml(author)}</h4><span class="feedback-status ${item.status === "resolved" ? "resolved" : "open"}">${escapeHtml(statusLabel)}</span></div><p>${escapeHtml(item.body)}</p><small>${new Date(item.created_at).toLocaleString("zh-TW")}</small>${adminActions}</article>`;
+        const itemReplies = (repliesByFeedback.get(item.id) || []).slice().sort((a, b) => {
+          const roleA = state.profiles.get(a.user_id)?.role === "admin" ? 1 : 0;
+          const roleB = state.profiles.get(b.user_id)?.role === "admin" ? 1 : 0;
+          if (roleA !== roleB) return roleB - roleA;
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        });
+        const deleteButton = feedbackItemDeletable(item)
+          ? `<button class="button button-danger" data-delete-feedback="${item.id}">刪除</button>`
+          : "";
+        const replyButton = isApproved()
+          ? `<button class="button button-secondary" data-feedback-reply-open="${item.id}">回覆</button>`
+          : "";
+        const repliesHtml = itemReplies.map(reply => {
+          const profile = state.profiles.get(reply.user_id);
+          const isAdminReply = profile?.role === "admin";
+          const canEdit = feedbackReplyEditable(reply);
+          const canDelete = feedbackReplyDeletable(reply);
+          return `<div class="review ${isAdminReply ? "admin-reply" : ""}">
+            <div class="review-header"><strong>${escapeHtml(memberName(profile))}${isAdminReply ? " · ADMIN 置頂回覆" : ""}</strong></div>
+            <p>${escapeHtml(reply.body)}</p>
+            <div class="review-footer">
+              <small>${new Date(reply.created_at).toLocaleString("zh-TW")}</small>
+              ${canEdit ? `<button data-edit-feedback-reply="${reply.id}">編輯</button>` : ""}
+              ${canDelete ? `<button data-delete-feedback-reply="${reply.id}">刪除</button>` : ""}
+            </div>
+          </div>`;
+        }).join("");
+        return `<article class="feedback-thread" data-feedback="${item.id}">
+          <div class="feedback-thread-header"><h4>${escapeHtml(author)}</h4><span class="feedback-status ${item.status === "resolved" ? "resolved" : "open"}">${escapeHtml(statusLabel)}</span></div>
+          <p>${escapeHtml(item.body)}</p>
+          <small>${new Date(item.created_at).toLocaleString("zh-TW")}</small>
+          <div class="admin-actions">${replyButton}${deleteButton}</div>
+          <div class="replies">${repliesHtml || '<p class="muted">尚無回覆</p>'}</div>
+          <div class="reply-form" id="feedback-reply-${item.id}"></div>
+        </article>`;
       }).join("") || '<p class="muted">尚無紀錄</p>';
     });
   }
 
   async function saveFeedbackReply(event) {
     event.preventDefault();
-    toast("回覆串已關閉；請直接再寄一則意見，或由站長在後台處理。", "warning");
+    if (!await requireMember()) return;
+    const feedbackId = event.currentTarget.dataset.feedbackReply;
+    const replyId = event.currentTarget.dataset.replyId;
+    const textarea = event.currentTarget.querySelector("textarea");
+    const body = textarea?.value.trim() || "";
+    if (!body || body.length > 2000) return toast("回覆需為 1～2000 字", "warning");
+    const request = replyId
+      ? supabase.from("feedback_replies").update({ body }).eq("id", replyId)
+      : supabase.from("feedback_replies").insert({ feedback_id: feedbackId, user_id: state.session.user.id, body });
+    const { error } = await request;
+    if (error) return toast(error.message, "error");
+    await loadFeedbackThreads();
+    toast(replyId ? "回覆已更新" : "回覆已送出", "success");
   }
 
   async function loadAdmin(tab = state.adminTab) {
@@ -2012,7 +2099,7 @@
       }).join("") || '<div class="empty-state">目前沒有意見或推薦</div>';
     } else if (tab === "jobs") {
       state.sourceStats = await loadSourceStatus();
-      content.innerHTML = `${workerDownBanner()}<div class="admin-source-status"><div id="admin-source-status-grid" class="source-status-grid"></div></div><div class="job-controls"><button class="button button-primary" data-run-job="all">前往手動同步</button><button class="button button-secondary" data-refresh-jobs>更新紀錄</button><a class="button button-secondary" href="${escapeHtml(config.manualSyncUrl)}" target="_blank" rel="noopener noreferrer">GitHub Actions ↗</a></div><div id="job-list"></div>`;
+      content.innerHTML = `${workerDownBanner()}<div class="admin-source-status"><div id="admin-source-status-grid" class="source-status-grid"></div></div><div class="job-controls"><button class="button button-primary" data-run-job="all">執行同步 / 開啟 Actions</button><button class="button button-secondary" data-refresh-jobs>更新紀錄</button><a class="button button-secondary" href="${escapeHtml(config.manualSyncUrl)}" target="_blank" rel="noopener noreferrer">GitHub Actions ↗</a></div><div id="job-list"></div>`;
       renderSourceStatus("#admin-source-status-grid");
       await loadJobs();
     }
@@ -2078,10 +2165,24 @@
       $("#editor-content").innerHTML = `<h2 id="editor-title">手動新增作品</h2><form id="work-ingest-form" class="editor-form">
         <label>平台<select id="ingest-platform">${config.platforms.map(platform => `<option value="${platform}">${PLATFORM_LABELS[platform]}</option>`).join("")}</select></label>
         <label>車號（外部 ID）<input id="ingest-external-id" required placeholder="例：123456"></label>
-        <p class="muted small-note">送出後由爬蟲自動抓取標題、封面、作者與標籤（Hanime 需改用 Discord 收錄）。</p>
-        <button class="button button-primary">抓取並新增</button></form>`;
+        <p class="muted small-note">Nhentai / 禁漫 / Pixiv 會直接進入待同步佇列，下一次 GitHub Actions 同步就會抓取標題、封面、作者與標籤。Hanime 目前仍需走既有播放清單同步。</p>
+        <button class="button button-primary">加入同步佇列</button></form>`;
     }
     openModal("editor-modal");
+  }
+
+  async function queueManualIngestion(platform, externalId) {
+    const payload = {
+      source: "manual",
+      platform,
+      external_id: externalId,
+      raw_text: externalId,
+      source_author: state.profile?.display_name || "admin"
+    };
+    const { error } = await supabase.from("ingestion_candidates").upsert(payload, {
+      onConflict: "source,platform,external_id"
+    });
+    if (error) throw error;
   }
 
   async function ingestWork(event) {
@@ -2090,7 +2191,17 @@
     const platform = $("#ingest-platform").value;
     const externalId = $("#ingest-external-id").value.trim();
     if (!externalId) return toast("請輸入車號", "warning");
+    if (platform === "hanime") {
+      return toast("Hanime 目前不支援單筆車號新增，請改走既有播放清單同步。", "warning");
+    }
     try {
+      if (!config.workerUrl) {
+        await queueManualIngestion(platform, externalId);
+        closeModal("editor-modal");
+        toast("已加入待同步佇列；請到「爬蟲與紀錄」執行同步或等待下一次 GitHub Actions。", "success");
+        await loadAdmin("jobs");
+        return;
+      }
       await fetchWorkerJson("/api/admin/ingest-work", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${state.session.access_token}` },
@@ -2276,17 +2387,26 @@
       if (target.dataset.editWork) editWork(target.dataset.editWork);
       if (target.dataset.toggleWork) { const { error } = await supabase.from("works").update({ status: target.dataset.status }).eq("id", target.dataset.toggleWork); toast(error ? error.message : "作品狀態已更新", error ? "error" : "success"); if (!error) { await loadWorks(); loadAdmin("works"); } }
       if (target.dataset.purgeWork) purgeWork(target.dataset.purgeWork);
-      if (target.dataset.editFeedback) {
-        const body = prompt("編輯內容（1～2000 字）：")?.trim();
-        if (!body) return;
-        const { error } = await supabase.from("feedback").update({ body }).eq("id", target.dataset.editFeedback);
-        toast(error ? error.message : "已更新", error ? "error" : "success");
-        if (!error) { loadFeedbackThreads(); loadAdmin("feedback"); }
+      if (target.dataset.feedbackReplyOpen) {
+        if (!await requireMember()) return;
+        $(`#feedback-reply-${target.dataset.feedbackReplyOpen}`).innerHTML = `<form data-feedback-reply="${target.dataset.feedbackReplyOpen}" class="review-form"><textarea maxlength="2000" required placeholder="回覆（最多 2000 字）…"></textarea><button class="button button-primary">送出回覆</button></form>`;
       }
       if (target.dataset.deleteFeedback && confirm("確定刪除此則意見？")) {
         const { error } = await supabase.from("feedback").delete().eq("id", target.dataset.deleteFeedback);
         toast(error ? error.message : "已刪除", error ? "error" : "success");
         if (!error) { loadFeedbackThreads(); loadAdmin("feedback"); }
+      }
+      if (target.dataset.editFeedbackReply) {
+        const { data: reply } = await supabase.from("feedback_replies").select("*").eq("id", target.dataset.editFeedbackReply).maybeSingle();
+        if (!reply) return;
+        const container = target.closest(".feedback-thread")?.querySelector(`#feedback-reply-${reply.feedback_id}`);
+        if (!container) return;
+        container.innerHTML = `<form data-feedback-reply="${reply.feedback_id}" data-reply-id="${reply.id}" class="review-form"><textarea maxlength="2000" required>${escapeHtml(reply.body || "")}</textarea><button class="button button-primary">儲存回覆</button></form>`;
+      }
+      if (target.dataset.deleteFeedbackReply && confirm("確定刪除這則回覆？")) {
+        const { error } = await supabase.from("feedback_replies").delete().eq("id", target.dataset.deleteFeedbackReply);
+        toast(error ? error.message : "回覆已刪除", error ? "error" : "success");
+        if (!error) loadFeedbackThreads();
       }
       if (target.dataset.resolveFeedback) { const { error } = await supabase.from("feedback").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveFeedback); toast(error ? error.message : "已標記完成", error ? "error" : "success"); if (!error) { loadFeedbackThreads(); loadAdmin("feedback"); } }
       if (target.dataset.resolveReport) { const { error } = await supabase.from("content_reports").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveReport); toast(error ? error.message : "檢舉已完成", error ? "error" : "success"); if (!error) loadAdmin("reports"); }

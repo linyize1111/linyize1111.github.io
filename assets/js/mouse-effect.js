@@ -36,6 +36,7 @@
       this.maxPrintLifeTime = options.maxPrintLifeTime || 2200;
       this.padList = [];
       this.clickFx = [];
+      this.cursorDot = null;
       this.DEFAULT_SHAPE_SIZE = 80;
       this.pos = { x: -120, y: -120 };
       this.target = { x: -120, y: -120 };
@@ -61,6 +62,7 @@
       this.initCanvas();
       this.initZdog();
       this.initArm();
+      this.initCursorDot();
       this.bindEvents();
       this.start();
     }
@@ -75,9 +77,11 @@
       document.removeEventListener("visibilitychange", this._onVis);
       window.removeEventListener("resize", this._onResize);
       if (this.clickLayer && this.clickLayer.parentNode) this.clickLayer.parentNode.removeChild(this.clickLayer);
+      if (this.cursorDot && this.cursorDot.parentNode) this.cursorDot.parentNode.removeChild(this.cursorDot);
       if (this.canvas && this.canvas.parentNode) this.canvas.parentNode.removeChild(this.canvas);
       if (this.catArm && this.catArm.parentNode) this.catArm.parentNode.removeChild(this.catArm);
       this.clickLayer = null;
+      this.cursorDot = null;
       this.canvas = null;
       this.catArm = null;
       this.illo = null;
@@ -99,6 +103,13 @@
       this.clickLayer.className = "paw-click-layer";
       this.clickLayer.setAttribute("aria-hidden", "true");
       document.body.appendChild(this.clickLayer);
+    }
+
+    initCursorDot() {
+      this.cursorDot = document.createElement("div");
+      this.cursorDot.className = "paw-cursor-dot";
+      this.cursorDot.setAttribute("aria-hidden", "true");
+      document.body.appendChild(this.cursorDot);
     }
 
     spawnClickFeedback(x, y) {
@@ -287,6 +298,10 @@
         var offsetY = 58 * ratio;
         this.catArm.style.transform = "translate(" + (this.pos.x - offsetX) + "px," + (this.pos.y - offsetY) + "px) rotateY(-180deg) rotateZ(0deg) scale(1)";
         if (this.padsEl) this.padsEl.style.opacity = "0";
+      }
+      if (this.cursorDot) {
+        this.cursorDot.style.transform = "translate(" + this.target.x + "px," + this.target.y + "px)";
+        this.cursorDot.classList.toggle("is-pressed", this.isPressed);
       }
 
       for (var i = this.padList.length - 1; i >= 0; i--) {
