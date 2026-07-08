@@ -49,6 +49,7 @@
     adminTab: "users",
     workerStatus: { available: null, lastError: null },
     googleProviderEnabled: null,
+    autoApproveOpen: false,
     reviewStatsByWork: new Map(),
     favoriteCounts: new Map()
   };
@@ -1273,8 +1274,36 @@
     renderLeaderboard();
   }
 
+  async function refreshAutoApproveStatus() {
+    try {
+      const { data, error } = await supabase.rpc("get_auto_approve_status");
+      if (error) throw error;
+      state.autoApproveOpen = Boolean(data?.open);
+    } catch (error) {
+      console.warn("get_auto_approve_status failed", error);
+      state.autoApproveOpen = false;
+    }
+    return state.autoApproveOpen;
+  }
+
+  async function claimAutoApprovalIfNeeded(profile) {
+    if (!profile || profile.status !== "pending") return profile;
+    try {
+      const { data, error } = await supabase.rpc("claim_auto_approval");
+      if (error) throw error;
+      if (data?.approved) {
+        const { data: refreshed } = await supabase.from("profiles").select("*").eq("id", profile.id).maybeSingle();
+        return refreshed || { ...profile, status: "active" };
+      }
+    } catch (error) {
+      console.warn("claim_auto_approval failed", error);
+    }
+    return profile;
+  }
+
   async function loadAuth() {
     try {
+      await refreshAutoApproveStatus();
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
         toast(`讀取登入狀態失敗：${sessionError.message}`, "error");
@@ -1286,10 +1315,11 @@
       state.session = session;
       state.profile = null;
       if (session) {
-        const { data, error: profileError } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+        let { data, error: profileError } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
         if (profileError) {
           toast(`讀取會員資料失敗：${profileError.message}`, "error");
         } else {
+          if (data?.status === "pending") data = await claimAutoApprovalIfNeeded(data);
           state.profile = data;
           if (!data) toast("正在建立會員資料，部分功能可能暫時不可用", "warning");
         }
@@ -1324,9 +1354,13 @@
     if (checking) {
       help.textContent = "正在檢查 Google 登入狀態…";
     } else if (state.googleProviderEnabled) {
-      help.textContent = "Google 登入已可使用；第一次登入後需等待管理員審核，才可留言、評分與收藏。若 Google 失敗，請改用下方信箱登入，或確認 Supabase Site URL 為 /acg-portal/（Console 可設 localStorage.setItem('acg_debug_auth','1') 看詳情）。";
+      help.textContent = state.autoApproveOpen
+        ? "目前開放審核中：新註冊／登入會自動通過。Google 可用；若失敗請改用信箱登入。"
+        : "Google 登入已可使用；第一次登入後需等待管理員審核，才可留言、評分與收藏。若 Google 失敗，請改用下方信箱登入，或確認 Supabase Site URL 為 /acg-portal/（Console 可設 localStorage.setItem('acg_debug_auth','1') 看詳情）。";
     } else {
-      help.textContent = "Google OAuth 尚未在 Supabase 啟用；目前請先使用信箱＋站內密碼或信箱魔法連結。";
+      help.textContent = state.autoApproveOpen
+        ? "目前開放審核中：新註冊／登入會自動通過。Google OAuth 尚未啟用，請先用信箱＋站內密碼。"
+        : "Google OAuth 尚未在 Supabase 啟用；目前請先使用信箱＋站內密碼或信箱魔法連結。";
     }
   }
 
@@ -1430,11 +1464,18 @@
     }
     if (data?.session) {
       closeModal("auth-modal");
-      toast("帳號已建立並登入；請等站長審核後才能評分收藏", "success");
+      toast(
+        state.autoApproveOpen
+          ? "帳號已建立並自動通過審核"
+          : "帳號已建立並登入；請等站長審核後才能評分收藏",
+        "success"
+      );
       await loadAuth();
       return;
     }
-    $("#auth-help").textContent = "確認信已寄出。請到信箱點連結完成驗證後，再用同一組密碼回來登入；登入後仍需等站長審核。";
+    $("#auth-help").textContent = state.autoApproveOpen
+      ? "確認信已寄出。點連結後回來登入即可使用（目前開放審核中）。"
+      : "確認信已寄出。請到信箱點連結完成驗證後，再用同一組密碼回來登入；登入後仍需等站長審核。";
     toast("請先到信箱確認，再回來登入", "success");
   }
 
@@ -1489,11 +1530,15 @@
     }
     $$(".admin-only").forEach(node => node.classList.toggle("hidden", !isAdmin()));
     if (!isAdmin() && location.hash === "#admin") location.hash = "#home";
+    updateGoogleProviderUi();
   }
 
   async function requireMember() {
     if (!state.session) { toast("請先登入", "warning"); return false; }
-    if (!isApproved()) { toast("帳號仍在等待管理員審核", "warning"); return false; }
+    if (!isApproved()) {
+      toast(state.autoApproveOpen ? "帳號資料尚未就緒，請稍候再試或重新整理" : "帳號仍在等待管理員審核", "warning");
+      return false;
+    }
     return true;
   }
 
@@ -1621,7 +1666,9 @@
       return;
     }
     if (!isApproved()) {
-      container.innerHTML = '<div class="review-form"><p class="muted">帳號正在等待管理員審核；公開內容仍可正常瀏覽。</p></div>';
+      container.innerHTML = state.autoApproveOpen
+        ? '<div class="review-form"><p class="muted">目前開放審核中；若剛登入請重新整理後再評分。</p></div>'
+        : '<div class="review-form"><p class="muted">帳號正在等待管理員審核；公開內容仍可正常瀏覽。</p></div>';
       return;
     }
     state.currentRating = Number(existing?.rating ?? 5);
