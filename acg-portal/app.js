@@ -242,6 +242,39 @@
     console.info("[acg-auth]", step, detail);
   }
 
+  function markOAuthPending(provider = "google") {
+    sessionStorage.setItem("acg_oauth_pending", JSON.stringify({
+      provider,
+      redirectTo: authRedirectUrl(),
+      startedAt: Date.now()
+    }));
+  }
+
+  function clearOAuthPending() {
+    sessionStorage.removeItem("acg_oauth_pending");
+  }
+
+  function oauthPendingState() {
+    try {
+      const raw = sessionStorage.getItem("acg_oauth_pending");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function oauthReturnHint() {
+    const pending = oauthPendingState();
+    if (!pending) return;
+    clearOAuthPending();
+    const ageSec = Math.round((Date.now() - Number(pending.startedAt || 0)) / 1000);
+    if (ageSec > 600) return;
+    toast(
+      "Google 登入已跳回本站，但網址沒有 OAuth 參數（?code=）。請確認 ACG 專案 Site URL 為 https://linyize1111.github.io/acg-portal/，且 Redirect URLs 含 /acg-portal/ 與 /acg-portal/index.html。",
+      "warning"
+    );
+  }
+
   function authCallbackParams() {
     const url = new URL(location.href);
     const hashBody = location.hash.replace(/^#/, "");
@@ -312,7 +345,10 @@
       clearAuthCallbackUrl();
       return null;
     }
-    if (!hasAuthParams) return null;
+    if (!hasAuthParams) {
+      oauthReturnHint();
+      return null;
+    }
 
     let session = null;
     if (code) {
@@ -323,8 +359,12 @@
         const { data: { session: existing } } = await supabase.auth.getSession();
         session = existing;
         if (!session) {
-          toast(`OAuth 驗證失敗：${error.message}`, "error");
+          const hint = /code verifier|flow state|invalid grant/i.test(error.message || "")
+            ? "（常見原因：用了不同分頁/無痕視窗，或中途清除了瀏覽器資料）"
+            : "";
+          toast(`OAuth 驗證失敗：${error.message}${hint}`, "error");
           clearAuthCallbackUrl();
+          clearOAuthPending();
           return null;
         }
       } else {
@@ -337,10 +377,12 @@
 
     clearAuthCallbackUrl();
     if (session) {
+      clearOAuthPending();
       applyAuthSession(session, code ? "pkce" : "hash");
       toast("已登入", "success");
       return session;
     }
+    clearOAuthPending();
     toast("登入逾時：請在同一瀏覽器視窗重試 Google 登入", "error");
     return null;
   }
@@ -1135,8 +1177,11 @@
       return toast("Google OAuth 尚未啟用；請先用 Gmail 信箱帳密登入", "warning");
     }
     const redirectTo = authRedirectUrl();
+    markOAuthPending("google");
+    authDebug("oauth start", { redirectTo });
     const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
     if (error) {
+      clearOAuthPending();
       const message = error.message || "";
       if (message.includes("Unsupported provider") || message.includes("provider is not enabled")) {
         $("#auth-help").textContent = "Google provider 尚未在 Supabase 啟用。請先用 Gmail 信箱帳密登入；之後可到 Supabase Dashboard → Authentication → Providers → Google 啟用 OAuth。";
