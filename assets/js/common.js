@@ -42,6 +42,11 @@ function initMediaControls() {
         }
         updateMuteBtn();
 
+        // Default: never autoplay. User must press play explicitly.
+        music.pause();
+        btnPlay.innerHTML = '<i class="fas fa-play"></i>';
+        sessionStorage.setItem('musicPaused', 'true');
+
         var savedTime = sessionStorage.getItem('musicCurrentTime');
         if (savedTime && !isNaN(savedTime)) {
             var timeToSet = parseFloat(savedTime);
@@ -54,33 +59,16 @@ function initMediaControls() {
             }
         }
 
-        if (sessionStorage.getItem('musicPaused') === 'true') {
-            btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-        } else {
-            var pp = music.play();
-            if (pp !== undefined) {
-                pp.catch(function () {
-                    music.muted = true;
-                    updateMuteBtn();
-                    sessionStorage.setItem('mediaMuted', 'true');
-                    music.play().catch(function () { });
-                });
-            }
-        }
-
         btnMute.addEventListener('click', function (e) {
             e.stopPropagation();
             music.muted = !music.muted;
             updateMuteBtn();
             sessionStorage.setItem('mediaMuted', music.muted);
-            if (music.paused && sessionStorage.getItem('musicPaused') !== 'true') {
-                music.play().catch(function () { });
-            }
         });
 
         btnPlay.addEventListener('click', function () {
             if (music.paused) {
-                music.play();
+                music.play().catch(function () { });
                 btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
                 sessionStorage.setItem('musicPaused', 'false');
             } else {
