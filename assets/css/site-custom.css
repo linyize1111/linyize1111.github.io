@@ -1174,9 +1174,9 @@ html.paw-cursor-active * {
 }
 
 @keyframes paw-stamp-fade {
-    0% { opacity: 0.88; transform: scale(1.08); }
-    12% { opacity: 0.92; transform: scale(1); }
-    100% { opacity: 0; transform: scale(0.94); }
+    0% { opacity: 0.88; transform: translate(-22px, -26px) rotate(-12deg) scale(1.08); }
+    12% { opacity: 0.92; transform: translate(-22px, -26px) rotate(-12deg) scale(1); }
+    100% { opacity: 0; transform: translate(-22px, -26px) rotate(-12deg) scale(0.94); }
 }
 
 @keyframes paw-trail-fade {

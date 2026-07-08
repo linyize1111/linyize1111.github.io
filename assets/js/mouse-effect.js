@@ -143,7 +143,8 @@
     }
     var ring = document.createElement("div");
     ring.className = "paw-click-ripple";
-    ring.style.transform = "translate(" + x + "px," + y + "px)";
+    ring.style.left = x + "px";
+    ring.style.top = y + "px";
     this.fxLayer.appendChild(ring);
     this.ripples.push(ring);
     setTimeout(function () {
@@ -155,7 +156,8 @@
     if (!this.fxLayer) return;
     var glow = document.createElement("div");
     glow.className = "paw-click-glow";
-    glow.style.transform = "translate(" + x + "px," + y + "px)";
+    glow.style.left = x + "px";
+    glow.style.top = y + "px";
     this.fxLayer.appendChild(glow);
     setTimeout(function () {
       if (glow.parentNode) glow.parentNode.removeChild(glow);
@@ -171,7 +173,8 @@
     var stamp = document.createElement("div");
     stamp.className = "paw-click-stamp";
     stamp.innerHTML = PAW_SVG;
-    stamp.style.transform = "translate(" + (x - 22) + "px," + (y - 26) + "px) rotate(-12deg)";
+    stamp.style.left = x + "px";
+    stamp.style.top = y + "px";
     this.fxLayer.appendChild(stamp);
     this.stamps.push(stamp);
     setTimeout(function () {
@@ -189,7 +192,8 @@
     }
     var dot = document.createElement("div");
     dot.className = "paw-trail-dot";
-    dot.style.transform = "translate(" + x + "px," + y + "px)";
+    dot.style.left = x + "px";
+    dot.style.top = y + "px";
     this.fxLayer.appendChild(dot);
     this.trails.push(dot);
     setTimeout(function () {
