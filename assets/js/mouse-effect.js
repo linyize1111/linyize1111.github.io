@@ -120,10 +120,10 @@
       if (pressed) {
         this.cursorDot.style.opacity = "0";
         this.cursorDot.style.visibility = "hidden";
-        this.cursorDot.style.width = "0";
-        this.cursorDot.style.height = "0";
-        this.cursorDot.style.margin = "0";
-        this.cursorDot.style.border = "none";
+        this.cursorDot.style.width = "0px";
+        this.cursorDot.style.height = "0px";
+        this.cursorDot.style.margin = "0px";
+        this.cursorDot.style.border = "0";
         this.cursorDot.style.background = "transparent";
         this.cursorDot.style.boxShadow = "none";
       } else {
