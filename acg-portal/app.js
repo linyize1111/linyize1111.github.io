@@ -2,8 +2,16 @@
   "use strict";
 
   const config = window.ACG_CONFIG;
+  const AUTH_STORAGE_KEY = "acg-portal-auth";
   const supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, flowType: "pkce" }
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      flowType: "pkce",
+      storageKey: AUTH_STORAGE_KEY,
+      storage: window.localStorage
+    }
   });
 
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -239,7 +247,7 @@
 
   function authDebug(step, detail = {}) {
     if (localStorage.getItem("acg_debug_auth") !== "1") return;
-    console.info("[acg-auth]", step, detail);
+    console.info("[acg-auth]", step, { storageKey: AUTH_STORAGE_KEY, ...detail });
   }
 
   function markOAuthPending(provider = "google") {
@@ -355,14 +363,19 @@
       authDebug("exchange code");
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) {
-        authDebug("exchange failed", { message: error.message });
+        authDebug("exchange failed", {
+          message: error.message,
+          name: error.name,
+          status: error.status,
+          code: error.code
+        });
         const { data: { session: existing } } = await supabase.auth.getSession();
         session = existing;
         if (!session) {
           const hint = /code verifier|flow state|invalid grant/i.test(error.message || "")
             ? "（常見原因：用了不同分頁/無痕視窗，或中途清除了瀏覽器資料）"
             : "";
-          toast(`OAuth 驗證失敗：${error.message}${hint}`, "error");
+          toast(`OAuth 驗證失敗：${error.message || "未知錯誤"}${hint}`, "error");
           clearAuthCallbackUrl();
           clearOAuthPending();
           return null;
@@ -1146,7 +1159,7 @@
     if (checking) {
       help.textContent = "正在檢查 Google 登入狀態…";
     } else if (state.googleProviderEnabled) {
-      help.textContent = "Google 登入已可使用；第一次登入後需等待管理員審核，才可留言、評分與收藏。";
+      help.textContent = "Google 登入已可使用；第一次登入後需等待管理員審核，才可留言、評分與收藏。若 Google 失敗，請改用下方信箱登入，或確認 Supabase Site URL 為 /acg-portal/（Console 可設 localStorage.setItem('acg_debug_auth','1') 看詳情）。";
     } else {
       help.textContent = "Google OAuth 尚未在 Supabase 啟用；目前請先使用信箱＋站內密碼或信箱魔法連結。";
     }
