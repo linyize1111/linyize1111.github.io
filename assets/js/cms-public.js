@@ -61,8 +61,9 @@
   function collectSlides(a) {
     var seen = new Set();
     var slides = [];
+    var broken = /(?:^|\/)rat\.jpg$/i;
     function push(src, caption) {
-      if (!src || seen.has(src)) return;
+      if (!src || seen.has(src) || broken.test(src)) return;
       seen.add(src);
       slides.push({ src: src, caption: caption || "" });
     }
