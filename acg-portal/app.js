@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.3.9";
+  const APP_VERSION = "1.3.10";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -49,6 +49,8 @@
     currentWork: null,
     currentReviews: new Map(),
     currentGameId: null,
+    reportTargetReviewId: null,
+    editingGameId: null,
     adminWorks: [],
     currentRating: 5,
     adminTab: "users",
@@ -111,14 +113,32 @@
     form?.querySelector(".form-error")?.remove();
   }
 
-  function showFormErrorById(id, message) {
+  function showFormErrorById(id, message, toastType = "error") {
     const box = $(id);
     if (box) {
       box.textContent = message;
       box.hidden = false;
       box.classList.remove("hidden");
     }
-    toast(message, "error");
+    if (message) toast(message, toastType);
+  }
+
+  function setFormStatus(id, message) {
+    const box = $(id);
+    if (!box) return;
+    if (!message) {
+      box.textContent = "";
+      box.hidden = true;
+      box.classList.add("hidden");
+      return;
+    }
+    box.textContent = message;
+    box.hidden = false;
+    box.classList.remove("hidden");
+  }
+
+  function isValidUuid(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
   }
 
   function clearFormErrorById(id) {
@@ -2067,41 +2087,49 @@
   }
 
   async function reportReview(reviewId) {
+    state.reportTargetReviewId = reviewId;
     toast("正在開啟檢舉表單…", "info");
     $("#editor-content").innerHTML = `
       <h2 id="editor-title">檢舉內容</h2>
       <div id="report-error" class="form-error hidden" role="alert"></div>
-      <form id="report-form" class="editor-form" data-review-id="${escapeHtml(reviewId)}">
+      <form id="report-form" class="editor-form" novalidate data-review-id="${escapeHtml(reviewId)}">
         <label>檢舉原因（3～500 字）
-          <textarea id="report-reason" maxlength="500" required placeholder="請描述問題，例如：違規內容、錯誤資訊、廣告或洗版…"></textarea>
+          <textarea id="report-reason" maxlength="500" placeholder="請描述問題，例如：違規內容、錯誤資訊、廣告或洗版…"></textarea>
         </label>
-        <button class="button button-primary" type="submit">送出檢舉</button>
+        <button id="btn-submit-report" class="button button-primary" type="button">送出檢舉</button>
       </form>`;
     openModal("editor-modal");
+    wireEditorFormHandlers();
     if (!await requireMember("檢舉")) {
-      showFormErrorById("#report-error", $("#report-error")?.textContent || "無法檢舉：請先登入並通過審核");
+      showFormErrorById("#report-error", "無法檢舉：請先登入並通過審核", "warning");
       return;
     }
     setTimeout(() => $("#report-reason")?.focus(), 40);
   }
 
   async function submitReport(event) {
-    event.preventDefault();
+    event?.preventDefault?.();
     clearFormErrorById("#report-error");
-    const form = event.currentTarget;
+    const form = event?.currentTarget || $("#report-form");
+    if (!form) return;
+    toast("正在送出檢舉…", "info");
     if (!await requireMember("檢舉")) {
-      showFormErrorById("#report-error", "無法檢舉：請先登入並通過審核");
+      showFormErrorById("#report-error", "無法檢舉：請先登入並通過審核", "warning");
       return;
     }
-    const reviewId = form.dataset.reviewId;
-    const reason = $("#report-reason").value.trim();
+    const reviewId = form.dataset.reviewId || state.reportTargetReviewId;
+    if (!isValidUuid(reviewId)) {
+      const message = "找不到要檢舉的內容，請關閉視窗後再試一次";
+      showFormErrorById("#report-error", message, "warning");
+      return;
+    }
+    const reason = $("#report-reason")?.value.trim() || "";
     if (reason.length < 3 || reason.length > 500) {
       const message = "檢舉原因需為 3～500 字";
-      showFormErrorById("#report-error", message);
-      toast(message, "warning");
+      showFormErrorById("#report-error", message, "warning");
       return;
     }
-    const submitButton = form.querySelector('button[type="submit"]');
+    const submitButton = $("#btn-submit-report") || form.querySelector("button");
     await withBusyButton(submitButton, "送出中…", async () => {
       let error = null;
       const { error: rpcError } = await supabase.rpc("submit_content_report", {
@@ -2129,7 +2157,8 @@
         return;
       }
       closeModal("editor-modal");
-      toast("檢舉已送交管理員", "success");
+      state.reportTargetReviewId = null;
+      toast("已送出檢舉", "success");
     });
   }
 
@@ -2185,72 +2214,100 @@
       showFormErrorById("#game-save-error", gate.message);
       return;
     }
+    state.editingGameId = game?.id || null;
     $("#editor-content").innerHTML = `<h2 id="editor-title">${game ? "編輯" : "新增"}遊戲評鑑</h2>
       <div id="game-save-error" class="form-error hidden" role="alert"></div>
-      <form id="game-editor-form" class="editor-form" data-game-id="${game?.id || ""}">
-        <label>名稱<input id="game-name" type="text" maxlength="300" required value="${escapeHtml(game?.name || "")}"></label>
-        <label>上傳封面圖片（≤ 5MB，PNG/JPG/WEBP/GIF）<input id="game-cover-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
-        <label>或直接填封面網址<input id="game-cover" type="url" value="${escapeHtml(game?.cover_url || "")}"></label>
+      <div id="game-save-status" class="form-status hidden" aria-live="polite"></div>
+      <form id="game-editor-form" class="editor-form" novalidate data-game-id="${game?.id || ""}">
+        <label>名稱<input id="game-name" type="text" maxlength="300" value="${escapeHtml(game?.name || "")}"></label>
+        <label>上傳封面圖片（可選，≤ 5MB）<input id="game-cover-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
+        <label>或直接填封面網址<input id="game-cover" type="text" inputmode="url" placeholder="https://…" value="${escapeHtml(game?.cover_url || "")}"></label>
         ${game?.cover_url ? `<img class="editor-cover-preview" src="${escapeHtml(imageUrl(game.cover_url))}" alt="目前封面">` : ""}
-        <label>評分（-5～+5）<input id="game-rating" type="number" min="-5" max="5" required value="${game?.rating ?? 0}"></label>
+        <label>評分（-5～+5）<input id="game-rating" type="number" min="-5" max="5" step="1" value="${game?.rating ?? 0}"></label>
         <label>標籤（逗號分隔）<input id="game-tags" type="text" value="${escapeHtml((game?.tags || []).join(", "))}"></label>
-        <label>心得<textarea id="game-review" maxlength="5000" required>${escapeHtml(game?.review_body || "")}</textarea></label>
-        <button class="button button-primary" type="submit">儲存評鑑</button>
+        <label>心得<textarea id="game-review" maxlength="5000">${escapeHtml(game?.review_body || "")}</textarea></label>
+        <button id="btn-save-game" class="button button-primary" type="button">儲存評鑑</button>
       </form>`;
+    openModal("editor-modal");
+    wireEditorFormHandlers();
     setTimeout(() => $("#game-name")?.focus(), 40);
   }
 
-  async function uploadGameCover(file) {
-    if (file.size > 5 * 1024 * 1024) { toast("圖片需小於 5MB", "warning"); return null; }
-    if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) { toast("僅支援 PNG / JPG / WEBP / GIF", "warning"); return null; }
+  async function uploadGameCover(file, timeoutMs = 20000) {
+    if (file.size > 5 * 1024 * 1024) {
+      return { url: null, error: "圖片需小於 5MB" };
+    }
+    if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+      return { url: null, error: "僅支援 PNG / JPG / WEBP / GIF" };
+    }
     const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
     const path = `${crypto.randomUUID?.() || Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("game-covers").upload(path, file, { contentType: file.type, upsert: false });
+    const uploadTask = supabase.storage.from("game-covers").upload(path, file, { contentType: file.type, upsert: false });
+    let result;
+    try {
+      result = await Promise.race([
+        uploadTask,
+        sleep(timeoutMs).then(() => { throw new Error("圖片上傳逾時，已略過封面並繼續儲存文字內容"); })
+      ]);
+    } catch (error) {
+      return { url: null, error: error.message || "圖片上傳失敗" };
+    }
+    const { error } = result;
     if (error) {
       const missingBucket = /bucket.*not found|not found/i.test(error.message);
-      toast(missingBucket ? "圖片儲存桶尚未建立（需先套用 0005 migration）" : `圖片上傳失敗：${error.message}`, "error");
-      return null;
+      return {
+        url: null,
+        error: missingBucket ? "圖片儲存桶尚未建立（需先套用 0005 migration）" : `圖片上傳失敗：${formatApiError(error)}`
+      };
     }
-    return supabase.storage.from("game-covers").getPublicUrl(path).data.publicUrl;
+    return { url: supabase.storage.from("game-covers").getPublicUrl(path).data.publicUrl, error: null };
   }
 
   async function saveGame(event) {
-    event.preventDefault();
+    event?.preventDefault?.();
     clearFormErrorById("#game-save-error");
-    const form = event.currentTarget;
+    setFormStatus("#game-save-status", "正在儲存…");
+    const form = event?.currentTarget || $("#game-editor-form");
+    if (!form) return;
     const gate = await ensureAdmin("儲存遊戲評鑑");
     if (!gate.ok) {
-      showFormErrorById("#game-save-error", gate.message);
+      setFormStatus("#game-save-status", "");
+      showFormErrorById("#game-save-error", gate.message, "warning");
       return;
     }
-    const submitButton = form.querySelector('button[type="submit"], .button.button-primary');
-    const id = normalizeGameId(form.dataset.gameId);
-    const name = $("#game-name").value.trim();
-    const reviewBody = $("#game-review").value.trim();
-    const rating = Number($("#game-rating").value);
+    const submitButton = $("#btn-save-game") || form.querySelector("button");
+    const id = normalizeGameId(form.dataset.gameId || state.editingGameId);
+    const name = $("#game-name")?.value.trim() || "";
+    const reviewBody = $("#game-review")?.value.trim() || "";
+    const rating = Number($("#game-rating")?.value);
     if (!name) {
-      const message = "請輸入名稱";
-      showFormErrorById("#game-save-error", message);
-      return toast(message, "warning");
+      setFormStatus("#game-save-status", "");
+      const message = "請輸入遊戲名稱";
+      showFormErrorById("#game-save-error", message, "warning");
+      return;
     }
     if (!reviewBody) {
+      setFormStatus("#game-save-status", "");
       const message = "請輸入心得內容";
-      showFormErrorById("#game-save-error", message);
-      return toast(message, "warning");
+      showFormErrorById("#game-save-error", message, "warning");
+      return;
     }
     if (!Number.isFinite(rating) || rating < -5 || rating > 5) {
+      setFormStatus("#game-save-status", "");
       const message = "評分需介於 -5 ~ +5";
-      showFormErrorById("#game-save-error", message);
-      return toast(message, "warning");
+      showFormErrorById("#game-save-error", message, "warning");
+      return;
     }
-    let coverUrl = $("#game-cover").value.trim();
+    let coverUrl = $("#game-cover")?.value.trim() || "";
     const fileInput = $("#game-cover-file");
     if (fileInput?.files?.length) {
-      const uploaded = await uploadGameCover(fileInput.files[0]);
-      if (uploaded === null) return;
-      coverUrl = uploaded;
+      const uploadResult = await uploadGameCover(fileInput.files[0]);
+      if (uploadResult.error) {
+        showFormErrorById("#game-save-error", `${uploadResult.error}（已略過封面，繼續儲存文字）`, "warning");
+      }
+      if (uploadResult.url) coverUrl = uploadResult.url;
     }
-    const tags = $("#game-tags").value.split(/[,，]/).map(value => value.trim()).filter(Boolean);
+    const tags = ($("#game-tags")?.value || "").split(/[,，]/).map(value => value.trim()).filter(Boolean);
     await withBusyButton(submitButton, "儲存中…", async () => {
       const { error: rpcError, data: rpcData } = await supabase.rpc("admin_upsert_game_review", {
         target_game: id,
@@ -2262,6 +2319,8 @@
       });
       authDebug("saveGame rpc", { rpcError, rpcData, id });
       if (!rpcError) {
+        setFormStatus("#game-save-status", "");
+        state.editingGameId = null;
         closeModal("editor-modal");
         await loadGames();
         return toast(id ? "遊戲評鑑已儲存" : "遊戲評鑑已新增", "success");
@@ -2296,6 +2355,7 @@
         return toast(message, "error");
       }
       closeModal("editor-modal");
+      state.editingGameId = null;
       await loadGames();
       toast(id ? "遊戲評鑑已儲存" : "遊戲評鑑已新增", "success");
     });
@@ -2461,12 +2521,14 @@
       } else {
         reports = data || [];
       }
-      content.innerHTML = loadNote + (reports.map(report => {
+      const reportCount = reports.length;
+      const countLine = `<p class="muted">共 ${reportCount} 筆檢舉</p>`;
+      content.innerHTML = loadNote + countLine + (reports.map(report => {
         const snippet = report.review_body
           ? `<p>${escapeHtml(String(report.review_body).slice(0, 180))}</p>`
           : `<p class="muted">${report.review_id ? "（無留言內容／僅評分）" : "內容已刪除"}</p>`;
         return `<div class="admin-row"><div><h4>${escapeHtml(report.reason)}</h4>${snippet}<p><small>檢舉人：${escapeHtml(report.reporter_name || "會員")} · 狀態：${escapeHtml(report.status)} · ${new Date(report.created_at).toLocaleString("zh-TW")}</small></p><p><small>內容狀態：${escapeHtml(report.review_status || "—")} · review ${escapeHtml(report.review_id || "無")}</small></p></div><div class="admin-actions">${report.review_id ? `<button class="button button-secondary" data-hide-review="${report.review_id}">隱藏內容</button><button class="button button-danger" data-admin-delete-review="${report.review_id}">刪除內容</button>` : ""}<button class="button button-primary" data-resolve-report="${report.id}">標記完成</button></div></div>`;
-      }).join("") || '<div class="empty-state">沒有檢舉紀錄。若會員有送出卻看不到，請確認已套用 0007 migration，且檢舉 insert 未遭 RLS 擋下。</div>');
+      }).join("") || '<div class="empty-state">目前沒有檢舉</div>');
     } else if (tab === "feedback") {
       const { data, error } = await supabase
         .from("feedback")
@@ -2675,12 +2737,46 @@
     if (view === "admin") loadAdmin(state.adminTab || "users");
   }
 
+  function editorFormEvent(form) {
+    return { preventDefault() {}, currentTarget: form, target: form };
+  }
+
+  function wireEditorFormHandlers() {
+    const root = $("#editor-content");
+    if (!root || root.dataset.formWired === "1") return;
+    root.dataset.formWired = "1";
+    root.addEventListener("click", event => {
+      const reportBtn = event.target.closest("#btn-submit-report");
+      if (reportBtn) {
+        event.preventDefault();
+        const form = reportBtn.closest("form");
+        if (form) void submitReport(editorFormEvent(form));
+        return;
+      }
+      const saveBtn = event.target.closest("#btn-save-game");
+      if (saveBtn) {
+        event.preventDefault();
+        const form = saveBtn.closest("form");
+        if (form) void saveGame(editorFormEvent(form));
+      }
+    });
+    root.addEventListener("keydown", event => {
+      if (event.key !== "Enter" || event.target?.tagName === "TEXTAREA") return;
+      const form = event.target?.closest?.("#report-form, #game-editor-form");
+      if (!form || !root.contains(form)) return;
+      event.preventDefault();
+      if (form.id === "report-form") void submitReport(editorFormEvent(form));
+      if (form.id === "game-editor-form") void saveGame(editorFormEvent(form));
+    });
+  }
+
   function bindClick(selector, handler) {
     const node = $(selector);
     if (node) node.addEventListener("click", handler);
   }
 
   function bindEvents() {
+    wireEditorFormHandlers();
     document.addEventListener("error", event => {
       if (event.target instanceof HTMLImageElement && !event.target.dataset.fallbackApplied) {
         event.target.dataset.fallbackApplied = "1";
@@ -2747,15 +2843,21 @@
     bindClick("#recommendation-send", () => sendFeedback("recommendation"));
     window.addEventListener("hashchange", () => switchView(location.hash.slice(1) || "home"));
     document.addEventListener("keydown", event => { if (event.key === "Escape") $$(".modal.open:not(#age-gate)").forEach(modal => closeModal(modal.id)); });
-    document.addEventListener("submit", async event => {
-      if (event.target.id === "profile-editor-form") return saveProfileName(event);
-      if (event.target.id === "report-form") return submitReport(event);
-      if (event.target.id === "review-form") return submitReview(event);
-      if (event.target.matches("[data-reply-form]")) { event.preventDefault(); return submitReply(event.target.dataset.replyForm); }
-      if (event.target.id === "game-editor-form") return saveGame(event);
-      if (event.target.id === "game-comment-form") return saveGameComment(event);
-      if (event.target.id === "work-editor-form") return saveWork(event);
-      if (event.target.id === "work-ingest-form") return ingestWork(event);
+    document.addEventListener("submit", event => {
+      const form = event.target;
+      if (!form || form.tagName !== "FORM") return;
+      if ($("#editor-content")?.contains(form)) {
+        event.preventDefault();
+        if (form.id === "report-form") void submitReport(event);
+        else if (form.id === "game-editor-form") void saveGame(event);
+        else if (form.id === "game-comment-form") void saveGameComment(event);
+        else if (form.id === "profile-editor-form") void saveProfileName(event);
+        else if (form.id === "work-editor-form") void saveWork(event);
+        else if (form.id === "work-ingest-form") void ingestWork(event);
+        return;
+      }
+      if (form.id === "review-form") { event.preventDefault(); void submitReview(event); }
+      if (form.matches("[data-reply-form]")) { event.preventDefault(); void submitReply(form.dataset.replyForm); }
     });
     document.addEventListener("click", async event => {
       try {
