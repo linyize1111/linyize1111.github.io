@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co https://acg-portal.onrender.com; frame-src https://www.youtube-nocookie.com; upgrade-insecure-requests">
   <title>你的夜鹿導師 | ACG Portal</title>
   <meta name="description" content="私人整理、公開瀏覽的 ACG 收藏與內容推薦入口。">
-  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=1.2.4">
+  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=1.2.5">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=1.2.4">
+  <link rel="stylesheet" href="styles.css?v=1.2.5">
 </head>
 <body>
   <div class="video-backdrop" aria-hidden="true">
@@ -28,7 +29,7 @@
 
   <header class="site-header">
     <a class="brand" href="#home" aria-label="ACG Portal 首頁">
-      <span class="brand-mark"><img src="assets/yoru-icon.png?v=1.2.4" alt=""></span>
+      <span class="brand-mark"><img src="assets/yoru-icon.png?v=1.2.5" alt=""></span>
       <span><strong>夜鹿導師</strong><small>ACG PORTAL</small></span>
     </a>
     <nav id="main-nav" class="main-nav" aria-label="主要導覽">
@@ -60,7 +61,7 @@
             <p class="eyebrow">CURATED DISCOVERY</p>
             <h1>你的夜鹿導師</h1>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=1.2.4" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=1.2.5" alt="夜鹿導師">
         </div>
         <div class="site-note">
           <p>本站永遠不營利、不放廣告，單純為了方便整理、記錄與分享個人精選。</p>
@@ -256,29 +257,29 @@
     <div class="modal-card auth-card">
       <button class="modal-close" data-close-modal="auth-modal" aria-label="關閉">×</button>
       <div class="auth-header">
-        <span class="auth-mark">🦌</span>
+        <span class="auth-mark" aria-hidden="true">🦌</span>
         <h2 id="auth-title">登入夜鹿導師</h2>
         <p class="muted">公開瀏覽不需要登入；留言、評分與收藏才需要帳號。</p>
       </div>
       <div class="auth-options">
-        <button id="google-login-button" class="button button-primary auth-google">使用 Google 登入</button>
-        <div class="auth-divider"><span>或使用信箱</span></div>
+        <button id="google-login-button" class="button button-primary auth-google" type="button">使用 Google 登入</button>
+        <div class="auth-divider" aria-hidden="true"><span>或使用信箱</span></div>
         <label class="email-login">
           <span>信箱</span>
-          <input id="password-login-email" type="email" placeholder="you@gmail.com" autocomplete="username">
+          <input id="password-login-email" type="email" placeholder="you@gmail.com" autocomplete="username" inputmode="email">
         </label>
         <label class="email-login">
           <span>密碼</span>
           <input id="password-login-password" type="password" placeholder="站內密碼" autocomplete="current-password">
         </label>
-        <button id="password-login-button" class="button button-primary">信箱＋密碼登入</button>
+        <button id="password-login-button" class="button button-primary" type="button">信箱＋密碼登入</button>
         <label class="email-login">
           <span>信箱魔法連結</span>
-          <input id="email-login-input" type="email" placeholder="you@example.com" autocomplete="email">
+          <input id="email-login-input" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email">
         </label>
-        <button id="email-login-button" class="button button-secondary">寄送登入連結</button>
+        <button id="email-login-button" class="button button-secondary" type="button">寄送登入連結</button>
       </div>
-      <p id="auth-help" class="muted small-note">正在檢查 Google 登入狀態；若尚未啟用，仍可先用信箱與站內密碼登入。</p>
+      <p id="auth-help" class="muted small-note auth-help">正在檢查 Google 登入狀態；若尚未啟用，仍可先用信箱與站內密碼登入。</p>
     </div>
   </div>
 
@@ -286,7 +287,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"
     integrity="sha384-z2hqtpr/vSDZ8zSjLOiNgnR/mpU799AD93s6rvkNJLI6Hl0YlKXEhDtREzNT749S" crossorigin="anonymous"></script>
-  <script src="config.js?v=1.2.4"></script>
-  <script src="app.js?v=1.2.4"></script>
+  <script src="config.js?v=1.2.5"></script>
+  <script src="app.js?v=1.2.5"></script>
 </body>
 </html>

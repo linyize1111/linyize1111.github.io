@@ -3,8 +3,10 @@
 
   const config = window.ACG_CONFIG;
   const supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
-    auth: { persistSession: true, detectSessionInUrl: true, flowType: "pkce" }
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" }
   });
+
+  const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
 
   const PLATFORM_LABELS = { nhentai: "Nhentai", "18comic": "禁漫", hanime: "Hanime", pixiv: "Pixiv" };
   const state = {
@@ -228,9 +230,84 @@
   }
 
   function authRedirectUrl() {
+    if (location.hostname.endsWith("github.io")) return CANONICAL_AUTH_REDIRECT;
     const path = location.pathname.replace(/\/index\.html$/i, "");
     const normalized = path.endsWith("/") ? path : `${path}/`;
     return `${location.origin}${normalized}`;
+  }
+
+  function authCallbackParams() {
+    const url = new URL(location.href);
+    const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
+    return {
+      code: url.searchParams.get("code"),
+      error: url.searchParams.get("error_description")
+        || url.searchParams.get("error")
+        || hashParams.get("error_description")
+        || hashParams.get("error"),
+      hasHashToken: hashParams.has("access_token") || hashParams.has("refresh_token")
+    };
+  }
+
+  function clearAuthCallbackUrl() {
+    const url = new URL(location.href);
+    ["code", "error", "error_description", "state"].forEach(key => url.searchParams.delete(key));
+    const cleaned = `${url.origin}${url.pathname}${url.search}`.replace(/\?$/, "");
+    history.replaceState({}, document.title, cleaned);
+  }
+
+  async function waitForAuthSession(maxWaitMs = 9000) {
+    const deadline = Date.now() + maxWaitMs;
+    while (Date.now() < deadline) {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      if (session) return session;
+      await sleep(180);
+    }
+    return null;
+  }
+
+  async function handleAuthCallback() {
+    const { code, error: oauthError, hasHashToken } = authCallbackParams();
+    if (oauthError) {
+      toast(`登入失敗：${decodeURIComponent(String(oauthError).replace(/\+/g, " "))}`, "error");
+      clearAuthCallbackUrl();
+      return null;
+    }
+    if (!code && !hasHashToken) return null;
+
+    if (code) {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          toast(`OAuth 驗證失敗：${error.message}`, "error");
+          clearAuthCallbackUrl();
+          return null;
+        }
+        clearAuthCallbackUrl();
+        state.session = session;
+        closeModal("auth-modal");
+        toast("已登入", "success");
+        return session;
+      }
+      clearAuthCallbackUrl();
+      state.session = data.session;
+      closeModal("auth-modal");
+      toast("已登入", "success");
+      return data.session;
+    }
+
+    const session = await waitForAuthSession();
+    clearAuthCallbackUrl();
+    if (session) {
+      state.session = session;
+      closeModal("auth-modal");
+      toast("已登入", "success");
+      return session;
+    }
+    toast("登入逾時：請在同一瀏覽器視窗重試 Google 登入", "error");
+    return null;
   }
 
   function workReviewStats(workId) {
@@ -823,18 +900,38 @@
   }
 
   async function loadAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
-    state.session = session;
-    state.profile = null;
-    if (session) {
-      const { data } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
-      state.profile = data;
-      await loadFavorites();
-      await loadPreferences();
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        toast(`讀取登入狀態失敗：${sessionError.message}`, "error");
+        state.session = null;
+        state.profile = null;
+        updateAuthUi();
+        return;
+      }
+      state.session = session;
+      state.profile = null;
+      if (session) {
+        const { data, error: profileError } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+        if (profileError) {
+          toast(`讀取會員資料失敗：${profileError.message}`, "error");
+        } else {
+          state.profile = data;
+          if (!data) toast("正在建立會員資料，部分功能可能暫時不可用", "warning");
+        }
+        const favoritesOk = await loadFavorites();
+        if (favoritesOk) await loadPreferences();
+      } else {
+        state.favorites.clear();
+        state.preferenceTags.clear();
+      }
+      updateAuthUi();
+      renderBulkDraw();
+      if ($("#view-library")?.classList.contains("active")) renderLibrary();
+    } catch (error) {
+      console.error("loadAuth failed", error);
+      toast(`登入狀態更新失敗：${error.message || error}`, "error");
     }
-    updateAuthUi();
-    renderBulkDraw();
-    if ($("#view-library")?.classList.contains("active")) renderLibrary();
   }
 
   function login() {
@@ -976,9 +1073,14 @@
   }
 
   async function loadFavorites() {
-    if (!state.session) return;
-    const { data } = await supabase.from("favorites").select("work_id").eq("user_id", state.session.user.id);
+    if (!state.session) return false;
+    const { data, error } = await supabase.from("favorites").select("work_id").eq("user_id", state.session.user.id);
+    if (error) {
+      toast(`讀取收藏失敗：${error.message}`, "error");
+      return false;
+    }
     state.favorites = new Set((data || []).map(item => item.work_id));
+    return true;
   }
 
   async function loadPreferences() {
@@ -1647,11 +1749,20 @@
     bindEvents();
     setupVideoFallback();
     detectGoogleProvider();
+    await handleAuthCallback();
     renderPlatformSkeletons();
     $("#home-summary").textContent = "正在讀取作品資料…";
     supabase.auth.onAuthStateChange((event, session) => {
       state.session = session;
-      if (event !== "INITIAL_SESSION") setTimeout(loadAuth, 0);
+      if (event === "SIGNED_IN") closeModal("auth-modal");
+      if (event === "SIGNED_OUT") {
+        state.profile = null;
+        state.favorites.clear();
+        state.preferenceTags.clear();
+        updateAuthUi();
+        return;
+      }
+      if (event !== "INITIAL_SESSION") setTimeout(() => loadAuth(), 0);
     });
     try {
       await Promise.all([loadWorks(), loadLeaderboardData(), loadFavoriteCounts()]);
