@@ -3,7 +3,7 @@
 
   const config = window.ACG_CONFIG;
   const supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" }
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, flowType: "pkce" }
   });
 
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -14,6 +14,7 @@
     sourceStats: Object.fromEntries(config.platforms.map(platform => [platform, { total: 0, active: 0, inactive: 0, rejected: 0, running: false, lastRun: null }])),
     workById: new Map(),
     leaderboard: [],
+    weeklyLeaderboard: [],
     scoreByWork: new Map(),
     shownByPlatform: Object.fromEntries(config.platforms.map(platform => [platform, new Set()])),
     currentByPlatform: Object.fromEntries(config.platforms.map(platform => [platform, null])),
@@ -236,24 +237,45 @@
     return `${location.origin}${normalized}`;
   }
 
+  function authDebug(step, detail = {}) {
+    if (localStorage.getItem("acg_debug_auth") !== "1") return;
+    console.info("[acg-auth]", step, detail);
+  }
+
   function authCallbackParams() {
     const url = new URL(location.href);
-    const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
+    const hashBody = location.hash.replace(/^#/, "");
+    const hashParams = new URLSearchParams(hashBody.includes("=") ? hashBody : "");
     return {
       code: url.searchParams.get("code"),
       error: url.searchParams.get("error_description")
         || url.searchParams.get("error")
         || hashParams.get("error_description")
         || hashParams.get("error"),
-      hasHashToken: hashParams.has("access_token") || hashParams.has("refresh_token")
+      hasHashToken: hashParams.has("access_token") || hashParams.has("refresh_token"),
+      hasAuthParams: Boolean(
+        url.searchParams.get("code")
+        || url.searchParams.get("error")
+        || url.searchParams.get("error_description")
+        || hashParams.has("access_token")
+        || hashParams.has("refresh_token")
+        || hashParams.get("error")
+      )
     };
   }
 
   function clearAuthCallbackUrl() {
     const url = new URL(location.href);
     ["code", "error", "error_description", "state"].forEach(key => url.searchParams.delete(key));
-    const cleaned = `${url.origin}${url.pathname}${url.search}`.replace(/\?$/, "");
+    const viewNames = ["home", "library", "leaderboard", "games", "feedback", "admin"];
+    const hashBody = location.hash.replace(/^#/, "");
+    const hashParams = new URLSearchParams(hashBody.includes("=") ? hashBody : "");
+    const hasAuthHash = hashParams.has("access_token") || hashParams.has("refresh_token") || hashParams.has("error");
+    let viewHash = "";
+    if (!hasAuthHash && viewNames.includes(hashBody)) viewHash = `#${hashBody}`;
+    const cleaned = `${url.pathname}${url.search ? url.search : ""}${viewHash}`.replace(/\?$/, "");
     history.replaceState({}, document.title, cleaned);
+    authDebug("url cleaned", { path: cleaned });
   }
 
   async function waitForAuthSession(maxWaitMs = 9000) {
@@ -267,42 +289,55 @@
     return null;
   }
 
+  function applyAuthSession(session, source = "callback") {
+    if (!session) return null;
+    state.session = session;
+    closeModal("auth-modal");
+    updateAuthUi();
+    authDebug("session applied", { source, userId: session.user?.id });
+    return session;
+  }
+
   async function handleAuthCallback() {
-    const { code, error: oauthError, hasHashToken } = authCallbackParams();
+    const { code, error: oauthError, hasHashToken, hasAuthParams } = authCallbackParams();
+    authDebug("callback start", {
+      hasCode: Boolean(code),
+      hasHashToken,
+      hasAuthParams,
+      redirect: authRedirectUrl(),
+      path: location.pathname
+    });
     if (oauthError) {
       toast(`登入失敗：${decodeURIComponent(String(oauthError).replace(/\+/g, " "))}`, "error");
       clearAuthCallbackUrl();
       return null;
     }
-    if (!code && !hasHashToken) return null;
+    if (!hasAuthParams) return null;
 
+    let session = null;
     if (code) {
+      authDebug("exchange code");
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) {
-        const { data: { session } } = await supabase.auth.getSession();
+        authDebug("exchange failed", { message: error.message });
+        const { data: { session: existing } } = await supabase.auth.getSession();
+        session = existing;
         if (!session) {
           toast(`OAuth 驗證失敗：${error.message}`, "error");
           clearAuthCallbackUrl();
           return null;
         }
-        clearAuthCallbackUrl();
-        state.session = session;
-        closeModal("auth-modal");
-        toast("已登入", "success");
-        return session;
+      } else {
+        session = data.session;
       }
-      clearAuthCallbackUrl();
-      state.session = data.session;
-      closeModal("auth-modal");
-      toast("已登入", "success");
-      return data.session;
+    } else if (hasHashToken) {
+      authDebug("wait hash session");
+      session = await waitForAuthSession();
     }
 
-    const session = await waitForAuthSession();
     clearAuthCallbackUrl();
     if (session) {
-      state.session = session;
-      closeModal("auth-modal");
+      applyAuthSession(session, code ? "pkce" : "hash");
       toast("已登入", "success");
       return session;
     }
@@ -501,6 +536,62 @@
       raw_average: Number(item.raw_average || 0),
       weighted_score: Number(item.weighted_score || 0)
     }]));
+  }
+
+  function taipeiWeekStartIso() {
+    const now = new Date();
+    const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Taipei", weekday: "short" }).format(now);
+    const weekdayMap = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+    const dayOffset = weekdayMap[weekday] ?? 0;
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(now);
+    const year = parts.find(part => part.type === "year")?.value;
+    const month = parts.find(part => part.type === "month")?.value;
+    const day = parts.find(part => part.type === "day")?.value;
+    const start = new Date(`${year}-${month}-${day}T00:00:00+08:00`);
+    start.setDate(start.getDate() - dayOffset);
+    return start.toISOString();
+  }
+
+  async function loadWeeklyLeaderboardData() {
+    const since = taipeiWeekStartIso();
+    const reviews = await fetchAll("reviews", query => query
+      .select("work_id,rating,created_at")
+      .is("parent_id", null)
+      .eq("status", "visible")
+      .gte("created_at", since));
+    const grouped = new Map();
+    for (const review of reviews) {
+      const bucket = grouped.get(review.work_id) || { sum: 0, count: 0 };
+      bucket.sum += Number(review.rating || 0);
+      bucket.count += 1;
+      grouped.set(review.work_id, bucket);
+    }
+    const rated = state.leaderboard.filter(item => item.review_count > 0);
+    const globalAverage = rated.length
+      ? rated.reduce((sum, item) => sum + Number(item.raw_average || 0), 0) / rated.length
+      : 0;
+    state.weeklyLeaderboard = [...grouped.entries()].map(([workId, stats]) => {
+      const work = state.workById.get(workId);
+      if (!work) return null;
+      const rawAverage = stats.count ? stats.sum / stats.count : 0;
+      const weighted = (stats.count / (stats.count + 4)) * rawAverage + (4 / (stats.count + 4)) * globalAverage;
+      return {
+        work_id: workId,
+        platform: work.platform,
+        title: work.title,
+        author: work.author,
+        cover_url: work.cover_url,
+        review_count: stats.count,
+        raw_average: rawAverage,
+        weighted_score: weighted
+      };
+    }).filter(Boolean).sort((a, b) => {
+      const scoreDiff = Number(b.weighted_score) - Number(a.weighted_score);
+      if (Math.abs(scoreDiff) > .0001) return scoreDiff;
+      return Number(b.review_count) - Number(a.review_count);
+    });
   }
 
   async function loadFavoriteCounts() {
@@ -800,6 +891,49 @@
     toast(platform === "nhentai" ? `已複製 ${lines.length} 個車號` : `已複製 ${lines.length} 筆標題/連結`, "success");
   }
 
+  function librarySortMode() {
+    return $("#library-sort")?.value || "default";
+  }
+
+  function sortLibraryRows(rows, query) {
+    const mode = librarySortMode();
+    const hasQuery = Boolean(normalize(query));
+    if (mode === "default" && hasQuery) {
+      return rows.sort((a, b) => {
+        const scoreDiff = workSearchScore(b, query) - workSearchScore(a, query);
+        if (Math.abs(scoreDiff) > .0001) return scoreDiff;
+        return stableRandom(a.id) - stableRandom(b.id);
+      });
+    }
+    if (mode === "default") {
+      return rows.sort((a, b) => stableRandom(a.id) - stableRandom(b.id));
+    }
+    const stat = workId => workReviewStats(workId);
+    return rows.sort((a, b) => {
+      const aStats = stat(a.id);
+      const bStats = stat(b.id);
+      const aFav = state.favoriteCounts.get(a.id) || 0;
+      const bFav = state.favoriteCounts.get(b.id) || 0;
+      if (mode === "score-desc") return Number(bStats?.raw_average || 0) - Number(aStats?.raw_average || 0);
+      if (mode === "score-asc") return Number(aStats?.raw_average || 0) - Number(bStats?.raw_average || 0);
+      if (mode === "reviews-desc") return Number(bStats?.review_count || 0) - Number(aStats?.review_count || 0);
+      if (mode === "favorites-desc") return bFav - aFav;
+      return stableRandom(a.id) - stableRandom(b.id);
+    });
+  }
+
+  function librarySummaryText(works, query) {
+    const mode = librarySortMode();
+    const sortLabels = {
+      default: normalize(query) ? "搜尋相關性" : "隨機打亂",
+      "score-desc": "平均分（高→低）",
+      "score-asc": "平均分（低→高）",
+      "reviews-desc": "評分數量（多→少）",
+      "favorites-desc": "收藏數（多→少）"
+    };
+    return `${works.length.toLocaleString()} 筆符合條件；排序：${sortLabels[mode] || sortLabels.default}`;
+  }
+
   function filteredLibraryWorks() {
     const platform = $("#library-platform").value;
     const query = $("#library-search").value;
@@ -813,11 +947,7 @@
     if (scope === "favorites" && !state.session) {
       rows = [];
     }
-    rows.sort((a, b) => {
-      const scoreDiff = workSearchScore(b, query) - workSearchScore(a, query);
-      if (Math.abs(scoreDiff) > .0001) return scoreDiff;
-      return stableRandom(a.id) - stableRandom(b.id);
-    });
+    rows = sortLibraryRows(rows, query);
     return diversifyByAuthor(rows, query.trim() ? 4 : 3);
   }
 
@@ -825,9 +955,10 @@
     if (reset) state.libraryVisible = 60;
     const works = filteredLibraryWorks();
     const scope = $("#library-scope")?.value || "all";
+    const query = $("#library-search")?.value || "";
     $("#library-summary").textContent = scope === "favorites" && !state.session
       ? "請先登入後查看你的收藏"
-      : `${works.length.toLocaleString()} 筆符合條件；預設順序已打亂，搜尋時以相關性排序並盡量錯開同作者`;
+      : librarySummaryText(works, query);
     $("#library-grid").innerHTML = works.slice(0, state.libraryVisible).map(work => `
       <article class="library-item">
         <a class="cover-link" href="${escapeHtml(work.source_url)}" target="_blank" rel="noopener noreferrer" data-source-open="${work.id}" aria-label="開啟 ${escapeHtml(work.title)} 來源">
@@ -885,6 +1016,8 @@
   }
 
   function renderLeaderboard() {
+    const tab = document.querySelector(".ranking-tab.active")?.dataset.rankingTab || "alltime";
+    if (tab === "weekly") return renderWeeklyLeaderboard();
     const platform = $("#ranking-platform").value;
     const order = $("#ranking-order").value;
     let rows = state.leaderboard.filter(item => platform === "all" || item.platform === platform);
@@ -897,6 +1030,27 @@
         <div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(PLATFORM_LABELS[item.platform])} · ${escapeHtml(item.author)} · ${item.review_count} 則評分</p></div>
         ${rankingScoreHtml(item)}
       </article>`).join("") || '<div class="empty-state">目前還沒有足夠的評分資料</div>';
+  }
+
+  function renderWeeklyLeaderboard() {
+    const platform = $("#ranking-platform").value;
+    let rows = state.weeklyLeaderboard.filter(item => platform === "all" || item.platform === platform);
+    rows = rows.slice(0, 30);
+    $("#ranking-list").innerHTML = rows.map((item, index) => `
+      <article class="ranking-row" data-open-work="${item.work_id}">
+        <div class="ranking-number">#${index + 1}</div>
+        <img src="${escapeHtml(imageUrl(item.cover_url))}" alt="" loading="lazy">
+        <div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(PLATFORM_LABELS[item.platform])} · ${escapeHtml(item.author)} · 本週 ${item.review_count} 則主評論</p></div>
+        ${rankingScoreHtml(item)}
+      </article>`).join("") || '<div class="empty-state">本週還沒有新的主評論；週一 00:00（台北時間）起算的評分活動會出現在這裡。</div>';
+  }
+
+  function switchRankingTab(tab) {
+    $$(".ranking-tab").forEach(button => button.classList.toggle("active", button.dataset.rankingTab === tab));
+    $("#ranking-order-wrap")?.classList.toggle("hidden", tab === "weekly");
+    $("#ranking-explainer-alltime")?.classList.toggle("hidden", tab !== "alltime");
+    $("#ranking-explainer-weekly")?.classList.toggle("hidden", tab !== "weekly");
+    renderLeaderboard();
   }
 
   async function loadAuth() {
@@ -921,6 +1075,7 @@
         }
         const favoritesOk = await loadFavorites();
         if (favoritesOk) await loadPreferences();
+        updateAuthUi();
       } else {
         state.favorites.clear();
         state.preferenceTags.clear();
@@ -1669,19 +1824,22 @@
     bindClick("#clear-bulk-button", () => { state.bulkWorks = []; renderBulkDraw(); });
     $("#home-search")?.addEventListener("input", debounce(drawAll));
     ["home", "library"].forEach(prefix => {
-      ["filter-rating", "filter-reviews", "filter-week", "filter-favorites"].forEach(name => {
+      ["filter-rating", "filter-reviews", "filter-favorites"].forEach(name => {
         $(`#${prefix}-${name}`)?.addEventListener("change", () => {
           if (prefix === "home") drawAll();
           else renderLibrary(true);
         });
       });
     });
+    $("#home-filter-week")?.addEventListener("change", drawAll);
     $("#library-platform")?.addEventListener("change", () => renderLibrary(true));
     $("#library-scope")?.addEventListener("change", () => renderLibrary(true));
+    $("#library-sort")?.addEventListener("change", () => renderLibrary(true));
     $("#library-search")?.addEventListener("input", debounce(() => renderLibrary(true)));
     bindClick("#library-more", () => { state.libraryVisible += 60; renderLibrary(); });
     $("#ranking-platform")?.addEventListener("change", renderLeaderboard);
     $("#ranking-order")?.addEventListener("change", renderLeaderboard);
+    $$(".ranking-tab").forEach(button => button.addEventListener("click", () => switchRankingTab(button.dataset.rankingTab)));
     bindClick("#new-game-button", () => gameEditor());
     $("#feedback-body")?.addEventListener("input", event => { if ($("#feedback-count")) $("#feedback-count").textContent = `${event.target.value.length} / 2000`; });
     $("#recommendation-body")?.addEventListener("input", event => { if ($("#recommendation-count")) $("#recommendation-count").textContent = `${event.target.value.length} / 2000`; });
@@ -1749,12 +1907,15 @@
     bindEvents();
     setupVideoFallback();
     detectGoogleProvider();
-    await handleAuthCallback();
-    renderPlatformSkeletons();
-    $("#home-summary").textContent = "正在讀取作品資料…";
     supabase.auth.onAuthStateChange((event, session) => {
+      authDebug("auth state", { event, hasSession: Boolean(session) });
       state.session = session;
-      if (event === "SIGNED_IN") closeModal("auth-modal");
+      if (event === "SIGNED_IN") {
+        closeModal("auth-modal");
+        updateAuthUi();
+        setTimeout(() => loadAuth(), 0);
+        return;
+      }
       if (event === "SIGNED_OUT") {
         state.profile = null;
         state.favorites.clear();
@@ -1762,10 +1923,14 @@
         updateAuthUi();
         return;
       }
-      if (event !== "INITIAL_SESSION") setTimeout(() => loadAuth(), 0);
+      if (event === "INITIAL_SESSION" && session) updateAuthUi();
     });
+    await handleAuthCallback();
+    renderPlatformSkeletons();
+    $("#home-summary").textContent = "正在讀取作品資料…";
     try {
       await Promise.all([loadWorks(), loadLeaderboardData(), loadFavoriteCounts()]);
+      await loadWeeklyLeaderboardData();
       await loadAuth();
       drawAll();
       renderLibrary(true); renderLeaderboard();

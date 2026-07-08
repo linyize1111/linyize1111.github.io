@@ -8,11 +8,11 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co https://acg-portal.onrender.com; frame-src https://www.youtube-nocookie.com; upgrade-insecure-requests">
   <title>你的夜鹿導師 | ACG Portal</title>
   <meta name="description" content="私人整理、公開瀏覽的 ACG 收藏與內容推薦入口。">
-  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=1.2.5">
+  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=1.2.6">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=1.2.5">
+  <link rel="stylesheet" href="styles.css?v=1.2.6">
 </head>
 <body>
   <div class="video-backdrop" aria-hidden="true">
@@ -29,7 +29,7 @@
 
   <header class="site-header">
     <a class="brand" href="#home" aria-label="ACG Portal 首頁">
-      <span class="brand-mark"><img src="assets/yoru-icon.png?v=1.2.5" alt=""></span>
+      <span class="brand-mark"><img src="assets/yoru-icon.png?v=1.2.6" alt=""></span>
       <span><strong>夜鹿導師</strong><small>ACG PORTAL</small></span>
     </a>
     <nav id="main-nav" class="main-nav" aria-label="主要導覽">
@@ -61,7 +61,7 @@
             <p class="eyebrow">CURATED DISCOVERY</p>
             <h1>你的夜鹿導師</h1>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=1.2.5" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=1.2.6" alt="夜鹿導師">
         </div>
         <div class="site-note">
           <p>本站永遠不營利、不放廣告，單純為了方便整理、記錄與分享個人精選。</p>
@@ -78,27 +78,27 @@
           <button id="draw-ten-button" class="button button-secondary">一次 10 本</button>
         </div>
         <div class="filter-row">
-          <select id="home-filter-rating" aria-label="平均分篩選">
-            <option value="all">全部分數</option>
-            <option value="high">高評（≥2）</option>
-            <option value="mid">中評（-1～2）</option>
-            <option value="low">低評（&lt;-1）</option>
-            <option value="none">尚無評分</option>
+          <select id="home-filter-rating" aria-label="分數篩選">
+            <option value="all">分數：全部</option>
+            <option value="high">分數：高評（≥2）</option>
+            <option value="mid">分數：中評（-1～2）</option>
+            <option value="low">分數：低評（&lt;-1）</option>
+            <option value="none">分數：尚無評分</option>
           </select>
           <select id="home-filter-reviews" aria-label="評分數篩選">
-            <option value="all">全部評分數</option>
-            <option value="1">至少 1 則</option>
-            <option value="5">至少 5 則</option>
-            <option value="10">至少 10 則</option>
+            <option value="all">評分數：全部</option>
+            <option value="1">評分數：至少 1 則</option>
+            <option value="5">評分數：至少 5 則</option>
+            <option value="10">評分數：至少 10 則</option>
           </select>
-          <select id="home-filter-week" aria-label="時間篩選">
-            <option value="all">全部時間</option>
-            <option value="week">本週更新</option>
+          <select id="home-filter-week" aria-label="收錄時間篩選">
+            <option value="all">收錄：全部時間</option>
+            <option value="week">收錄：本週新收錄</option>
           </select>
           <select id="home-filter-favorites" aria-label="收藏數篩選">
-            <option value="all">全部收藏數</option>
-            <option value="1">至少 1 收藏</option>
-            <option value="3">至少 3 收藏</option>
+            <option value="all">收藏：全部</option>
+            <option value="1">收藏：至少 1 人</option>
+            <option value="3">收藏：至少 3 人</option>
           </select>
         </div>
         <p id="home-summary" class="muted">正在讀取作品資料…</p>
@@ -133,27 +133,30 @@
         </div>
       </div>
       <div class="filter-row library-filters">
-        <select id="library-filter-rating" aria-label="平均分篩選">
-          <option value="all">全部分數</option>
-          <option value="high">高評（≥2）</option>
-          <option value="mid">中評（-1～2）</option>
-          <option value="low">低評（&lt;-1）</option>
-          <option value="none">尚無評分</option>
+        <select id="library-filter-rating" aria-label="分數篩選">
+          <option value="all">分數：全部</option>
+          <option value="high">分數：高評（≥2）</option>
+          <option value="mid">分數：中評（-1～2）</option>
+          <option value="low">分數：低評（&lt;-1）</option>
+          <option value="none">分數：尚無評分</option>
         </select>
         <select id="library-filter-reviews" aria-label="評分數篩選">
-          <option value="all">全部評分數</option>
-          <option value="1">至少 1 則</option>
-          <option value="5">至少 5 則</option>
-          <option value="10">至少 10 則</option>
-        </select>
-        <select id="library-filter-week" aria-label="時間篩選">
-          <option value="all">全部時間</option>
-          <option value="week">本週更新</option>
+          <option value="all">評分數：全部</option>
+          <option value="1">評分數：至少 1 則</option>
+          <option value="5">評分數：至少 5 則</option>
+          <option value="10">評分數：至少 10 則</option>
         </select>
         <select id="library-filter-favorites" aria-label="收藏數篩選">
-          <option value="all">全部收藏數</option>
-          <option value="1">至少 1 收藏</option>
-          <option value="3">至少 3 收藏</option>
+          <option value="all">收藏：全部</option>
+          <option value="1">收藏：至少 1 人</option>
+          <option value="3">收藏：至少 3 人</option>
+        </select>
+        <select id="library-sort" aria-label="排序方式">
+          <option value="default">排序：預設（打亂／搜尋相關性）</option>
+          <option value="score-desc">排序：平均分 高→低</option>
+          <option value="score-asc">排序：平均分 低→高</option>
+          <option value="reviews-desc">排序：評分數 多→少</option>
+          <option value="favorites-desc">排序：收藏數 多→少</option>
         </select>
       </div>
       <p id="library-summary" class="muted"></p>
@@ -163,7 +166,7 @@
 
     <section id="view-leaderboard" class="view">
       <div class="section-heading">
-        <div><p class="eyebrow">BAYESIAN RANKING</p><h2>排行榜 <button type="button" class="info-badge" data-tooltip="分數 -5～+5；排名用貝氏加權，評分越少越靠近全站平均。" aria-label="排行榜分數說明">?</button></h2><p>綜合平均分與評論數，降低少量極端評分造成的偏差。</p></div>
+        <div><p class="eyebrow">BAYESIAN RANKING</p><h2>排行榜 <button type="button" class="info-badge" data-tooltip="分數 -5～+5；總榜用貝氏加權，本週榜只看本週主評論。" aria-label="排行榜分數說明">?</button></h2><p>總榜與本週榜並存：總榜看長期口碑，本週榜看近期討論熱度。</p></div>
         <div class="filters">
           <select id="ranking-platform" aria-label="排行榜平台">
             <option value="all">全部平台</option>
@@ -172,15 +175,25 @@
             <option value="hanime">Hanime</option>
             <option value="pixiv">Pixiv</option>
           </select>
-          <select id="ranking-order" aria-label="排行榜順序">
-            <option value="top">好評 Top 30</option>
-            <option value="bottom">負評 Bottom 30</option>
-          </select>
+          <span id="ranking-order-wrap">
+            <select id="ranking-order" aria-label="排行榜順序">
+              <option value="top">好評 Top 30</option>
+              <option value="bottom">負評 Bottom 30</option>
+            </select>
+          </span>
         </div>
       </div>
-      <div class="ranking-explainer">
+      <div class="ranking-tabs" role="tablist" aria-label="排行榜類型">
+        <button type="button" class="ranking-tab active" data-ranking-tab="alltime">總榜</button>
+        <button type="button" class="ranking-tab" data-ranking-tab="weekly">本週排行</button>
+      </div>
+      <div id="ranking-explainer-alltime" class="ranking-explainer">
         <p><strong>評分怎麼看？</strong>每人可給 <b>-5～+5</b>：<b>-5</b> 超雷、<b>0</b> 普通、<b>+5</b> 神作。這只是主觀感受，僅供參考。</p>
-        <p><strong>排名怎麼算？</strong>不是只看平均分，而是用<b>貝氏加權</b>：評分越少，分數越靠近全站平均，避免一兩票就衝高或墊底。</p>
+        <p><strong>總榜怎麼算？</strong>不是只看平均分，而是用<b>貝氏加權</b>：評分越少，分數越靠近全站平均，避免一兩票就衝高或墊底。</p>
+      </div>
+      <div id="ranking-explainer-weekly" class="ranking-explainer hidden">
+        <p><strong>本週排行怎麼算？</strong>統計<b>週一 00:00（台北時間）</b>起新增的<b>主評論</b>（含評分、非回覆）。同一作品本週評論越多、分數越高，排名越前。</p>
+        <p>本週榜也套用較輕的貝氏加權（m=4），避免一兩則極端評分就霸榜；與總榜分開計算，不互相覆蓋。</p>
       </div>
       <div id="ranking-list" class="ranking-list"></div>
     </section>
@@ -287,7 +300,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"
     integrity="sha384-z2hqtpr/vSDZ8zSjLOiNgnR/mpU799AD93s6rvkNJLI6Hl0YlKXEhDtREzNT749S" crossorigin="anonymous"></script>
-  <script src="config.js?v=1.2.5"></script>
-  <script src="app.js?v=1.2.5"></script>
+  <script src="config.js?v=1.2.6"></script>
+  <script src="app.js?v=1.2.6"></script>
 </body>
 </html>
