@@ -144,7 +144,7 @@
       Object.assign(this.canvas.style, {
         position: "fixed", top: "0", left: "0",
         width: "100vw", height: "100vh",
-        pointerEvents: "none", zIndex: "9998",
+        pointerEvents: "none", zIndex: "10004",
       });
       this.canvas.width = window.innerWidth;
       this.canvas.height = window.innerHeight;
@@ -163,7 +163,7 @@
       this.catArm = document.createElement("div");
       this.catArm.setAttribute("aria-hidden", "true");
       Object.assign(this.catArm.style, {
-        position: "fixed", pointerEvents: "none", zIndex: "10000",
+        position: "fixed", pointerEvents: "none", zIndex: "10005",
         width: (68 * ratio) + "px", height: (136 * ratio) + "px",
         backgroundColor: this.pawBaseColor, borderRadius: (34 * ratio) + "px",
         transformStyle: "preserve-3d", perspective: "500px",

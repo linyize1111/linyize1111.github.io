@@ -100,6 +100,10 @@
         var exchanged = await client.auth.exchangeCodeForSession(params.code);
         if (exchanged && exchanged.error) {
           console.warn("[auth] exchangeCodeForSession failed:", exchanged.error.message);
+          // 常見於 code 已交換過 / code_verifier 遺失：清 URL 後改讀既有 session，不要卡住登入畫面
+        } else if (exchanged && exchanged.data && exchanged.data.session) {
+          clearAuthCallbackUrl();
+          return exchanged.data.session;
         }
       } catch (e) {
         console.warn("[auth] OAuth exchange exception:", e);
@@ -113,7 +117,8 @@
   async function getSession() {
     var client = c();
     if (!client) return null;
-    await ensureSessionFromUrl();
+    var fromUrl = await ensureSessionFromUrl();
+    if (fromUrl) return fromUrl;
     var res = await client.auth.getSession();
     return res && res.data ? res.data.session : null;
   }

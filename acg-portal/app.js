@@ -4,6 +4,7 @@
   const config = window.ACG_CONFIG;
   const MANUAL_SYNC_WORKFLOW_HINT = "actions/workflows/scheduled-sync.yml";
   const AUTH_STORAGE_KEY = "acg-portal-auth";
+  const VIEW_STORAGE_KEY = "acg_portal_last_view";
   const supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
     auth: {
       persistSession: true,
@@ -17,7 +18,6 @@
 
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
   const EDIT_WINDOW_MS = 30 * 60 * 1000;
-  const FEEDBACK_REPLY_WINDOW_MS = 30 * 60 * 1000;
   const DRAW_HISTORY_KEY = "acg_draw_history_v1";
 
   const PLATFORM_LABELS = { nhentai: "Nhentai", "18comic": "禁漫", hanime: "Hanime", pixiv: "Pixiv" };
@@ -276,20 +276,23 @@
     return Date.now() - new Date(review.created_at).getTime() <= EDIT_WINDOW_MS;
   }
 
-  function feedbackReplyEditable(reply) {
-    if (!reply || !state.session) return false;
-    if (isAdmin()) return true;
-    if (reply.user_id !== state.session.user.id) return false;
-    return Date.now() - new Date(reply.created_at).getTime() <= FEEDBACK_REPLY_WINDOW_MS;
-  }
-
-  function feedbackReplyDeletable(reply) {
-    return feedbackReplyEditable(reply);
-  }
-
   function feedbackItemDeletable(item) {
     if (!item || !state.session) return false;
     return isAdmin() || item.user_id === state.session.user.id;
+  }
+
+  function rememberView(view) {
+    try { localStorage.setItem(VIEW_STORAGE_KEY, view); } catch (_) { /* ignore */ }
+  }
+
+  function readRememberedView() {
+    const fromHash = location.hash.replace(/^#/, "").trim();
+    if (fromHash) return fromHash;
+    try {
+      const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+      if (saved) return saved;
+    } catch (_) { /* ignore */ }
+    return "home";
   }
 
   function loadDrawHistory() {
@@ -1987,10 +1990,7 @@
       lists.forEach(({ node }) => { if (node) node.innerHTML = '<p class="muted">登入並通過審核後可查看寄出紀錄。</p>'; });
       return;
     }
-    const [{ data: rows, error }, { data: replyRows, error: replyError }] = await Promise.all([
-      supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(40),
-      supabase.from("feedback_replies").select("*").order("created_at", { ascending: true }).limit(400)
-    ]);
+    const { data: rows, error } = await supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(40);
     if (error) {
       const missingTable = /feedback.*does not exist|relation .*feedback/i.test(error.message);
       lists.forEach(({ node }) => {
@@ -1998,89 +1998,23 @@
       });
       return;
     }
-    if (replyError && !/feedback_replies.*does not exist|relation .*feedback_replies/i.test(replyError.message)) {
-      lists.forEach(({ node }) => {
-        if (node) node.innerHTML = `<p class="muted">${escapeHtml(replyError.message)}</p>`;
-      });
-      return;
-    }
-    const repliesByFeedback = new Map();
-    for (const reply of replyRows || []) {
-      if (!repliesByFeedback.has(reply.feedback_id)) repliesByFeedback.set(reply.feedback_id, []);
-      repliesByFeedback.get(reply.feedback_id).push(reply);
-    }
-    await loadProfilesForReviews([
-      ...(rows || []).map(row => ({ user_id: row.user_id })),
-      ...((replyRows || []).map(row => ({ user_id: row.user_id })))
-    ]);
+    await loadProfilesForReviews((rows || []).map(row => ({ user_id: row.user_id })));
     lists.forEach(({ kind, node }) => {
       if (!node) return;
       const items = (rows || []).filter(row => row.kind === kind);
       node.innerHTML = items.map(item => {
         const author = memberName(state.profiles.get(item.user_id));
         const statusLabel = item.status === "resolved" ? "已處理" : "處理中";
-        const itemReplies = (repliesByFeedback.get(item.id) || []).slice().sort((a, b) => {
-          const roleA = state.profiles.get(a.user_id)?.role === "admin" ? 1 : 0;
-          const roleB = state.profiles.get(b.user_id)?.role === "admin" ? 1 : 0;
-          if (roleA !== roleB) return roleB - roleA;
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        });
         const deleteButton = feedbackItemDeletable(item)
           ? `<button class="button button-danger" data-delete-feedback="${item.id}">刪除</button>`
           : "";
-        const replyButton = isApproved()
-          ? `<button class="button button-secondary" data-feedback-reply-open="${item.id}">回覆</button>`
-          : "";
-        const repliesHtml = itemReplies.map(reply => {
-          const profile = state.profiles.get(reply.user_id);
-          const isAdminReply = profile?.role === "admin";
-          const canEdit = feedbackReplyEditable(reply);
-          const canDelete = feedbackReplyDeletable(reply);
-          return `<div class="review ${isAdminReply ? "admin-reply" : ""}">
-            <div class="review-header"><strong>${escapeHtml(memberName(profile))}${isAdminReply ? " · ADMIN 置頂回覆" : ""}</strong></div>
-            <p>${escapeHtml(reply.body)}</p>
-            <div class="review-footer">
-              <small>${new Date(reply.created_at).toLocaleString("zh-TW")}</small>
-              ${canEdit ? `<button data-edit-feedback-reply="${reply.id}">編輯</button>` : ""}
-              ${canDelete ? `<button data-delete-feedback-reply="${reply.id}">刪除</button>` : ""}
-            </div>
-          </div>`;
-        }).join("");
         return `<article class="feedback-thread" data-feedback="${item.id}">
           <div class="feedback-thread-header"><h4>${escapeHtml(author)}</h4><span class="feedback-status ${item.status === "resolved" ? "resolved" : "open"}">${escapeHtml(statusLabel)}</span></div>
           <p>${escapeHtml(item.body)}</p>
           <small>${new Date(item.created_at).toLocaleString("zh-TW")}</small>
-          <div class="admin-actions">${replyButton}${deleteButton}</div>
-          <div class="replies">${repliesHtml || '<p class="muted">尚無回覆</p>'}</div>
-          <div class="reply-form" id="feedback-reply-${item.id}"></div>
+          <div class="admin-actions">${deleteButton}</div>
         </article>`;
       }).join("") || '<p class="muted">尚無紀錄</p>';
-    });
-  }
-
-  async function saveFeedbackReply(event) {
-    event.preventDefault();
-    if (!await requireMember()) return;
-    const feedbackId = event.currentTarget.dataset.feedbackReply;
-    const replyId = event.currentTarget.dataset.replyId;
-    const textarea = event.currentTarget.querySelector("textarea");
-    const submitButton = event.currentTarget.querySelector('button[type="submit"], .button.button-primary');
-    const body = textarea?.value.trim() || "";
-    if (!body || body.length > 2000) return toast("回覆需為 1～2000 字", "warning");
-    await withBusyButton(submitButton, replyId ? "儲存中…" : "回覆中…", async () => {
-      const request = replyId
-        ? supabase.from("feedback_replies").update({ body }).eq("id", replyId)
-        : supabase.from("feedback_replies").insert({ feedback_id: feedbackId, user_id: state.session.user.id, body });
-      const { error } = await request;
-      if (error) {
-        const missing = /feedback_replies.*does not exist|relation .*feedback_replies/i.test(error.message || "");
-        const denied = /permission denied|row-level security|policy/i.test(error.message || "");
-        if (missing) return toast("回覆功能尚未啟用（需先套用 0006/0008 migration）", "error");
-        if (denied) return toast("回覆被資料庫權限擋下；請先套用本輪 migration 後再試。", "error");
-        return toast(error.message, "error");
-      }
-      await loadFeedbackThreads();
-      toast(replyId ? "回覆已更新" : "回覆已送出", "success");
     });
   }
 
@@ -2326,7 +2260,13 @@
   }
 
   function switchView(view) {
+    const allowed = new Set(["home", "library", "leaderboard", "games", "feedback", "admin"]);
+    if (!allowed.has(view)) view = "home";
     if (view === "admin" && !isAdmin()) view = "home";
+    if (location.hash.slice(1) !== view) {
+      history.replaceState(null, "", `#${view}`);
+    }
+    rememberView(view);
     $$(".view").forEach(section => section.classList.toggle("active", section.id === `view-${view}`));
     $$("[data-view]").forEach(link => link.classList.toggle("active", link.dataset.view === view));
     $("#main-nav").classList.remove("open");
@@ -2334,7 +2274,7 @@
     if (view === "leaderboard") renderLeaderboard();
     if (view === "games") loadGames();
     if (view === "feedback") loadFeedbackThreads();
-    if (view === "admin") loadAdmin();
+    if (view === "admin") loadAdmin(state.adminTab || "users");
   }
 
   function bindClick(selector, handler) {
@@ -2411,7 +2351,6 @@
       if (event.target.id === "game-comment-form") return saveGameComment(event);
       if (event.target.id === "work-editor-form") return saveWork(event);
       if (event.target.id === "work-ingest-form") return ingestWork(event);
-      if (event.target.matches("[data-feedback-reply]")) return saveFeedbackReply(event);
     });
     document.addEventListener("click", async event => {
       if (event.target.classList?.contains("modal") && event.target.id !== "age-gate") {
@@ -2453,7 +2392,10 @@
       if (target.dataset.approveAllPending) {
         await withBusyButton(target, "核准中…", async () => {
           const { data, error } = await supabase.rpc("approve_all_pending");
-          toast(error ? error.message : `已通過 ${data || 0} 位會員`, error ? "error" : "success");
+          const count = (data && typeof data === "object" && data.approved != null)
+            ? Number(data.approved)
+            : Number(data || 0);
+          toast(error ? error.message : `已通過 ${Number.isFinite(count) ? count : 0} 位會員`, error ? "error" : "success");
           if (!error) loadAdmin("users");
         });
       }
@@ -2465,26 +2407,10 @@
       if (target.dataset.editWork) editWork(target.dataset.editWork);
       if (target.dataset.toggleWork) { const { error } = await supabase.from("works").update({ status: target.dataset.status }).eq("id", target.dataset.toggleWork); toast(error ? error.message : "作品狀態已更新", error ? "error" : "success"); if (!error) { await loadWorks(); loadAdmin("works"); } }
       if (target.dataset.purgeWork) purgeWork(target.dataset.purgeWork);
-      if (target.dataset.feedbackReplyOpen) {
-        if (!await requireMember()) return;
-        $(`#feedback-reply-${target.dataset.feedbackReplyOpen}`).innerHTML = `<form data-feedback-reply="${target.dataset.feedbackReplyOpen}" class="review-form"><textarea maxlength="2000" required placeholder="回覆（最多 2000 字）…"></textarea><button class="button button-primary">送出回覆</button></form>`;
-      }
       if (target.dataset.deleteFeedback && confirm("確定刪除此則意見？")) {
         const { error } = await supabase.from("feedback").delete().eq("id", target.dataset.deleteFeedback);
         toast(error ? error.message : "已刪除", error ? "error" : "success");
         if (!error) { loadFeedbackThreads(); loadAdmin("feedback"); }
-      }
-      if (target.dataset.editFeedbackReply) {
-        const { data: reply } = await supabase.from("feedback_replies").select("*").eq("id", target.dataset.editFeedbackReply).maybeSingle();
-        if (!reply) return;
-        const container = target.closest(".feedback-thread")?.querySelector(`#feedback-reply-${reply.feedback_id}`);
-        if (!container) return;
-        container.innerHTML = `<form data-feedback-reply="${reply.feedback_id}" data-reply-id="${reply.id}" class="review-form"><textarea maxlength="2000" required>${escapeHtml(reply.body || "")}</textarea><button class="button button-primary">儲存回覆</button></form>`;
-      }
-      if (target.dataset.deleteFeedbackReply && confirm("確定刪除這則回覆？")) {
-        const { error } = await supabase.from("feedback_replies").delete().eq("id", target.dataset.deleteFeedbackReply);
-        toast(error ? error.message : "回覆已刪除", error ? "error" : "success");
-        if (!error) loadFeedbackThreads();
       }
       if (target.dataset.resolveFeedback) { const { error } = await supabase.from("feedback").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveFeedback); toast(error ? error.message : "已標記完成", error ? "error" : "success"); if (!error) { loadFeedbackThreads(); loadAdmin("feedback"); } }
       if (target.dataset.resolveReport) { const { error } = await supabase.from("content_reports").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveReport); toast(error ? error.message : "檢舉已完成", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
@@ -2524,7 +2450,7 @@
       await loadAuth();
       drawAll();
       renderLibrary(true); renderLeaderboard();
-      switchView(location.hash.slice(1) || "home");
+      switchView(readRememberedView());
     } catch (error) {
       console.error(error);
       $("#home-summary").textContent = "資料載入失敗，請稍後重試。";

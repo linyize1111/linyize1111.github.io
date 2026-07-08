@@ -36,11 +36,12 @@
       console.error("[SB] supabase-js 尚未載入");
       return null;
     }
+    // detectSessionInUrl=false：由 auth.js 單一處做 PKCE code 交換，避免與 SDK 雙重交換把 code 用掉。
     _client = window.supabase.createClient(cfg.url, cfg.anonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: false,
         flowType: "pkce",
       },
     });

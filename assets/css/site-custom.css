@@ -900,6 +900,13 @@ body:not(:has(#intro)) #header {
     --card-media-scale: 1;
 }
 
+/* Book/poster covers: prefer upright portrait framing without hard crop */
+.posts article[data-cover-fit="cover"] .image.fit img,
+article.note-item[data-cover-fit="cover"] .image.fit img,
+article.post[data-cover-fit="cover"] .image.main img {
+    object-fit: cover;
+}
+
 body {
     font-family: var(--font-body);
     font-size: var(--font-size-base);
@@ -980,18 +987,21 @@ article.note-item:hover {
 .posts article .image.fit,
 article.note-item .image.fit,
 article.post .image.main {
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 3 / 4;
     height: auto !important;
-    min-height: 180px;
-    max-height: 320px;
+    min-height: 200px;
+    max-height: 420px;
     border-radius: var(--radius-sm);
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.08);
+    background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.2)),
+        rgba(0, 0, 0, 0.08);
     margin-bottom: var(--space-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.75rem;
+    padding: 0.55rem;
+    position: relative;
 }
 
 .posts article .image.fit img,
@@ -999,10 +1009,27 @@ article.note-item .image.fit img,
 article.post .image.main img {
     width: 100%;
     height: 100%;
-    object-fit: var(--card-media-fit);
-    object-position: var(--card-media-position);
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center center;
     transform: scale(var(--card-media-scale));
     transition: transform 0.35s ease;
+    background: transparent;
+}
+
+/* Avoid stray caption/alt text leaking beside broken image layouts */
+.posts article .image.fit,
+article.note-item .image.fit,
+article.post .image.main {
+    color: transparent;
+    font-size: 0;
+    line-height: 0;
+}
+.posts article .image.fit img,
+article.note-item .image.fit img,
+article.post .image.main img {
+    font-size: 0;
 }
 
 .posts article:hover .image.fit img,
@@ -1011,9 +1038,9 @@ article.note-item:hover .image.fit img {
 }
 
 .post.featured .image.main {
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 3 / 4;
     height: auto !important;
-    max-height: 480px;
+    max-height: 560px;
 }
 
 #main .image.right,
@@ -1071,11 +1098,12 @@ html.paw-cursor-active * {
     cursor: none !important;
 }
 
+/* Click FX 必須低於貓掌本體（arm ~10005），按下時紅點要被完全蓋住 */
 .paw-click-layer {
     position: fixed;
     inset: 0;
     pointer-events: none;
-    z-index: 10001;
+    z-index: 9996;
     overflow: hidden;
 }
 
@@ -1083,25 +1111,26 @@ html.paw-cursor-active * {
     position: fixed;
     left: 0;
     top: 0;
-    width: 12px;
-    height: 12px;
-    margin: -6px 0 0 -6px;
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
     border-radius: 50%;
     pointer-events: none;
-    z-index: 10002;
+    z-index: 9997;
     background: rgba(255, 66, 110, 0.98);
     border: 2px solid rgba(255, 255, 255, 0.92);
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18), 0 0 18px rgba(255, 82, 126, 0.8);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18), 0 0 14px rgba(255, 82, 126, 0.7);
     transform: translate(-120px, -120px);
-    transition: transform 0.03s linear, width 0.08s ease, height 0.08s ease, margin 0.08s ease, box-shadow 0.08s ease;
+    transition: transform 0.03s linear, opacity 0.06s ease, width 0.08s ease, height 0.08s ease, margin 0.08s ease;
 }
 
 .paw-cursor-dot.is-pressed {
-    z-index: 9999;
-    width: 14px;
-    height: 14px;
-    margin: -7px 0 0 -7px;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.22), 0 0 26px rgba(255, 82, 126, 0.92);
+    /* 按下時直接隱藏主游標紅點，只留掌下的極小 flash（仍低於 catArm） */
+    opacity: 0 !important;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    box-shadow: none;
 }
 
 .paw-click-fx {
@@ -1109,19 +1138,20 @@ html.paw-cursor-active * {
     width: 0;
     height: 0;
     pointer-events: none;
+    z-index: 9996;
 }
 
 .paw-click-dot {
     position: absolute;
     left: 0;
     top: 0;
-    width: 10px;
-    height: 10px;
-    margin: -5px 0 0 -5px;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
     border-radius: 50%;
-    background: rgba(255, 70, 110, 0.95);
-    box-shadow: 0 0 12px rgba(255, 90, 130, 0.85), 0 0 24px rgba(255, 60, 100, 0.45);
-    animation: paw-click-dot 320ms ease-out forwards;
+    background: rgba(255, 70, 110, 0.75);
+    box-shadow: 0 0 8px rgba(255, 90, 130, 0.55);
+    animation: paw-click-dot 220ms ease-out forwards;
 }
 
 .paw-click-ripple {
