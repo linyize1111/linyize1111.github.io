@@ -116,12 +116,25 @@
       if (!this.cursorDot) return;
       this.cursorDot.classList.toggle("is-pressed", !!pressed);
       // 同步強制隱藏，不靠下一幀 _tick，避免按下瞬間仍看得見紅點
+      // 同時清掉尺寸／底色，避免部分瀏覽器 getComputedStyle(opacity) 誤報仍可見
       if (pressed) {
         this.cursorDot.style.opacity = "0";
         this.cursorDot.style.visibility = "hidden";
+        this.cursorDot.style.width = "0";
+        this.cursorDot.style.height = "0";
+        this.cursorDot.style.margin = "0";
+        this.cursorDot.style.border = "none";
+        this.cursorDot.style.background = "transparent";
+        this.cursorDot.style.boxShadow = "none";
       } else {
         this.cursorDot.style.opacity = "";
         this.cursorDot.style.visibility = "";
+        this.cursorDot.style.width = "";
+        this.cursorDot.style.height = "";
+        this.cursorDot.style.margin = "";
+        this.cursorDot.style.border = "";
+        this.cursorDot.style.background = "";
+        this.cursorDot.style.boxShadow = "";
       }
     }
 
