@@ -1,27 +1,16 @@
 /**
- * Cat Paw Cursor v2 — SVG 主游標 + 點擊 ripple/印章 + 節制拖尾
- * 零外部依賴；transform/opacity only；可關閉 / 觸控 / reduced-motion / 背景分頁暫停
+ * Cat Paw Cursor — Zdog 3D 游標 + 點擊紅光點回饋
+ * 依賴 Zdog（頁面需先載入 zdog.dist.min.js）
  */
 (function () {
   "use strict";
 
   var STORAGE_KEY = "catPawEnabled";
-  var MAX_STAMPS = 16;
-  var MAX_TRAILS = 4;
-  var MAX_RIPPLES = 6;
-  var TRAIL_INTERVAL = 90;
+  var MAX_PRINTS = 28;
+  var MAX_CLICK_FX = 8;
+  var CLICK_FX_MS = 320;
   var COARSE = window.matchMedia("(hover: none), (pointer: coarse)").matches;
   var REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  var PAW_SVG =
-    '<svg class="paw-svg" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-    '<ellipse class="paw-pad paw-pad-main" cx="24" cy="33" rx="13" ry="11"/>' +
-    '<ellipse class="paw-pad" cx="13" cy="17" rx="4.8" ry="5.8"/>' +
-    '<ellipse class="paw-pad" cx="24" cy="12.5" rx="4.8" ry="5.8"/>' +
-    '<ellipse class="paw-pad" cx="35" cy="17" rx="4.8" ry="5.8"/>' +
-    '<ellipse class="paw-pad paw-pad-side" cx="7.5" cy="24" rx="3.2" ry="4.2"/>' +
-    '<ellipse class="paw-pad paw-pad-side" cx="40.5" cy="24" rx="3.2" ry="4.2"/>' +
-    "</svg>";
 
   function readEnabled() {
     try {
@@ -36,210 +25,288 @@
     try { localStorage.setItem(STORAGE_KEY, on ? "1" : "0"); } catch (e) { /* ignore */ }
   }
 
-  function CatPawCursor(options) {
-    options = options || {};
-    this.enabled = options.enabled !== false;
-    this.mounted = false;
-    this.running = false;
-    this.visible = !document.hidden;
-    this.isPressed = false;
-    this.pos = { x: -120, y: -120 };
-    this.target = { x: -120, y: -120 };
-    this.angle = -18;
-    this.lastTrailAt = 0;
-    this.stamps = [];
-    this.trails = [];
-    this.ripples = [];
-    this._onMove = this._onMove.bind(this);
-    this._onDown = this._onDown.bind(this);
-    this._onUp = this._onUp.bind(this);
-    this._onVis = this._onVis.bind(this);
-    if (this.enabled) this.mount();
+  class CatPawEffect {
+    constructor(options) {
+      options = options || {};
+      this.enabled = options.enabled !== false;
+      this.size = options.size || 36;
+      this.padPrintColor = options.padPrintColor || "#F5F5EC";
+      this.cursorPadColor = options.cursorPadColor || "#FFA1B8";
+      this.pawBaseColor = options.pawBaseColor || "#404040";
+      this.maxPrintLifeTime = options.maxPrintLifeTime || 2200;
+      this.padList = [];
+      this.clickFx = [];
+      this.DEFAULT_SHAPE_SIZE = 80;
+      this.pos = { x: -120, y: -120 };
+      this.target = { x: -120, y: -120 };
+      this.vel = { x: 0, y: 0 };
+      this.angle = -34;
+      this.isPressed = false;
+      this.running = false;
+      this.visible = !document.hidden;
+      this._onMove = this._onMove.bind(this);
+      this._onDown = this._onDown.bind(this);
+      this._onUp = this._onUp.bind(this);
+      this._onScroll = this._onScroll.bind(this);
+      this._onVis = this._onVis.bind(this);
+      this._onResize = this._onResize.bind(this);
+      if (this.enabled) this.mount();
+    }
+
+    mount() {
+      if (this.mounted || typeof window.Zdog === "undefined") return;
+      this.mounted = true;
+      document.documentElement.classList.add("paw-cursor-active");
+      this.initClickLayer();
+      this.initCanvas();
+      this.initZdog();
+      this.initArm();
+      this.bindEvents();
+      this.start();
+    }
+
+    unmount() {
+      this.stop();
+      document.documentElement.classList.remove("paw-cursor-active");
+      window.removeEventListener("mousemove", this._onMove);
+      window.removeEventListener("mousedown", this._onDown);
+      window.removeEventListener("mouseup", this._onUp);
+      window.removeEventListener("scroll", this._onScroll, { passive: true });
+      document.removeEventListener("visibilitychange", this._onVis);
+      window.removeEventListener("resize", this._onResize);
+      if (this.clickLayer && this.clickLayer.parentNode) this.clickLayer.parentNode.removeChild(this.clickLayer);
+      if (this.canvas && this.canvas.parentNode) this.canvas.parentNode.removeChild(this.canvas);
+      if (this.catArm && this.catArm.parentNode) this.catArm.parentNode.removeChild(this.catArm);
+      this.clickLayer = null;
+      this.canvas = null;
+      this.catArm = null;
+      this.illo = null;
+      this.padList = [];
+      this.clickFx = [];
+      this.mounted = false;
+    }
+
+    setEnabled(on) {
+      this.enabled = !!on;
+      writeEnabled(this.enabled);
+      if (this.enabled) this.mount();
+      else this.unmount();
+      return this.enabled;
+    }
+
+    initClickLayer() {
+      this.clickLayer = document.createElement("div");
+      this.clickLayer.className = "paw-click-layer";
+      this.clickLayer.setAttribute("aria-hidden", "true");
+      document.body.appendChild(this.clickLayer);
+    }
+
+    spawnClickFeedback(x, y) {
+      if (!this.clickLayer || REDUCED) return;
+      while (this.clickFx.length >= MAX_CLICK_FX) {
+        var old = this.clickFx.shift();
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+      }
+      var wrap = document.createElement("div");
+      wrap.className = "paw-click-fx";
+      wrap.style.left = x + "px";
+      wrap.style.top = y + "px";
+
+      var dot = document.createElement("span");
+      dot.className = "paw-click-dot";
+      wrap.appendChild(dot);
+
+      var ripple = document.createElement("span");
+      ripple.className = "paw-click-ripple";
+      wrap.appendChild(ripple);
+
+      this.clickLayer.appendChild(wrap);
+      this.clickFx.push(wrap);
+      setTimeout(function () {
+        if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+      }, CLICK_FX_MS + 80);
+    }
+
+    initCanvas() {
+      this.canvas = document.createElement("canvas");
+      this.canvas.setAttribute("aria-hidden", "true");
+      Object.assign(this.canvas.style, {
+        position: "fixed", top: "0", left: "0",
+        width: "100vw", height: "100vh",
+        pointerEvents: "none", zIndex: "9998",
+      });
+      this.canvas.width = window.innerWidth;
+      this.canvas.height = window.innerHeight;
+      document.body.appendChild(this.canvas);
+    }
+
+    initZdog() {
+      this.illo = new Zdog.Illustration({
+        element: this.canvas,
+        dragRotate: false,
+      });
+    }
+
+    initArm() {
+      var ratio = this.size / 80;
+      this.catArm = document.createElement("div");
+      this.catArm.setAttribute("aria-hidden", "true");
+      Object.assign(this.catArm.style, {
+        position: "fixed", pointerEvents: "none", zIndex: "10000",
+        width: (68 * ratio) + "px", height: (136 * ratio) + "px",
+        backgroundColor: this.pawBaseColor, borderRadius: (34 * ratio) + "px",
+        transformStyle: "preserve-3d", perspective: "500px",
+        top: "0", left: "0", transform: "translate(-120px,-120px)",
+        willChange: "transform",
+      });
+      this.catArm.innerHTML =
+        '<div id="paw-pads" style="width:100%;height:100%;transition:opacity .06s;">' +
+        '<div style="position:absolute;width:' + (45 * ratio) + 'px;height:' + (40 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (38 * ratio) + 'px;left:' + (11.5 * ratio) + 'px;"></div>' +
+        '<div style="position:absolute;width:' + (35 * ratio) + 'px;height:' + (40 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (35 * ratio) + 'px;left:' + (16.5 * ratio) + 'px;"></div>' +
+        '<div style="position:absolute;width:' + (10 * ratio) + 'px;height:' + (20 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (18 * ratio) + 'px;left:' + (49 * ratio) + 'px;"></div>' +
+        '<div style="position:absolute;width:' + (10 * ratio) + 'px;height:' + (20 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (8 * ratio) + 'px;left:' + (37 * ratio) + 'px;"></div>' +
+        '<div style="position:absolute;width:' + (10 * ratio) + 'px;height:' + (20 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (8 * ratio) + 'px;left:' + (21 * ratio) + 'px;"></div>' +
+        '<div style="position:absolute;width:' + (10 * ratio) + 'px;height:' + (20 * ratio) + 'px;background:' + this.cursorPadColor + ';border-radius:50%;top:' + (18 * ratio) + 'px;left:' + (9 * ratio) + 'px;"></div>' +
+        "</div>";
+      document.body.appendChild(this.catArm);
+      this.padsEl = this.catArm.querySelector("#paw-pads");
+    }
+
+    getValue(baseValue) {
+      return baseValue * (this.size / this.DEFAULT_SHAPE_SIZE);
+    }
+
+    createPaw(x, y) {
+      var group = new Zdog.Group({
+        addTo: this.illo,
+        translate: {
+          x: x - window.innerWidth / 2,
+          y: y - window.innerHeight / 2 + this.getValue(20),
+        },
+        rotate: { z: 0 },
+      });
+      new Zdog.Hemisphere({ addTo: group, translate: { y: this.getValue(-10), z: this.getValue(38) }, color: this.padPrintColor, stroke: 0, width: this.getValue(45), height: this.getValue(40) });
+      new Zdog.Hemisphere({ addTo: group, translate: { y: this.getValue(-13), z: this.getValue(38) }, color: this.padPrintColor, stroke: 0, width: this.getValue(35), height: this.getValue(40) });
+      [[20, -40], [8, -50], [-8, -50], [-20, -40]].forEach(function (t) {
+        new Zdog.Hemisphere({ addTo: group, translate: { x: this.getValue(t[0]), y: this.getValue(t[1]), z: this.getValue(38) }, color: this.padPrintColor, width: this.getValue(10), height: this.getValue(20) });
+      }, this);
+      return { group: group, createdAt: performance.now() };
+    }
+
+    hexToRgba(hex, alpha) {
+      hex = String(hex).replace("#", "");
+      if (hex.length === 3) hex = hex.split("").map(function (x) { return x + x; }).join("");
+      var n = parseInt(hex, 16);
+      return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + alpha + ")";
+    }
+
+    bindEvents() {
+      window.addEventListener("mousemove", this._onMove, { passive: true });
+      window.addEventListener("mousedown", this._onDown);
+      window.addEventListener("mouseup", this._onUp);
+      window.addEventListener("scroll", this._onScroll, { passive: true });
+      document.addEventListener("visibilitychange", this._onVis);
+      window.addEventListener("resize", this._onResize);
+    }
+
+    _onMove(e) {
+      this.target.x = e.clientX;
+      this.target.y = e.clientY;
+    }
+
+    _onDown(e) {
+      if (e.button !== 0) return;
+      this.isPressed = true;
+      this.spawnClickFeedback(e.clientX, e.clientY);
+      this.padList.push(this.createPaw(e.clientX + window.scrollX, e.clientY + window.scrollY));
+      while (this.padList.length > MAX_PRINTS) {
+        var old = this.padList.shift();
+        if (old && old.group) old.group.remove();
+      }
+      if (this.illo) this.illo.updateRenderGraph();
+    }
+
+    _onUp() { this.isPressed = false; }
+
+    _onScroll() {
+      if (!this.illo) return;
+      this.illo.translate.x = window.scrollX;
+      this.illo.translate.y = -window.scrollY;
+      this.illo.updateRenderGraph();
+    }
+
+    _onVis() {
+      this.visible = !document.hidden;
+      if (this.visible) this.start();
+      else this.stop();
+    }
+
+    _onResize() {
+      if (!this.canvas) return;
+      this.canvas.width = window.innerWidth;
+      this.canvas.height = window.innerHeight;
+      if (this.illo) this.illo.updateRenderGraph();
+    }
+
+    start() {
+      if (this.running || !this.mounted) return;
+      this.running = true;
+      this._tick();
+    }
+
+    stop() {
+      this.running = false;
+      if (this._raf) cancelAnimationFrame(this._raf);
+      this._raf = null;
+    }
+
+    _tick() {
+      if (!this.running) return;
+      this._raf = requestAnimationFrame(this._tick.bind(this));
+      if (!this.visible || !this.catArm) return;
+
+      var now = performance.now();
+      var ratio = this.size / 80;
+
+      if (!this.isPressed) {
+        var dx = this.target.x - this.pos.x;
+        var dy = this.target.y - this.pos.y;
+        this.vel.x = dx * 0.28;
+        this.vel.y = dy * 0.28;
+        this.pos.x += this.vel.x;
+        this.pos.y += this.vel.y;
+        var targetAngle = -34 + (this.vel.x * -0.45);
+        targetAngle = Math.max(-50, Math.min(-15, targetAngle));
+        this.angle += (targetAngle - this.angle) * 0.28;
+        this.catArm.style.transform = "translate(" + (this.pos.x + 25) + "px," + (this.pos.y + 25) + "px) rotateY(0deg) rotateZ(" + this.angle + "deg) scale(1)";
+        if (this.padsEl) this.padsEl.style.opacity = "1";
+      } else {
+        this.pos.x = this.target.x;
+        this.pos.y = this.target.y;
+        var offsetX = 34 * ratio;
+        var offsetY = 58 * ratio;
+        this.catArm.style.transform = "translate(" + (this.pos.x - offsetX) + "px," + (this.pos.y - offsetY) + "px) rotateY(-180deg) rotateZ(0deg) scale(1)";
+        if (this.padsEl) this.padsEl.style.opacity = "0";
+      }
+
+      for (var i = this.padList.length - 1; i >= 0; i--) {
+        var pad = this.padList[i];
+        var delta = now - pad.createdAt;
+        if (delta > this.maxPrintLifeTime - 900) {
+          var opacity = Math.max(0, 1 - (delta - (this.maxPrintLifeTime - 900)) / 900);
+          pad.group.children.forEach(function (child) {
+            if (child instanceof Zdog.Hemisphere) child.color = this.hexToRgba(this.padPrintColor, opacity);
+          }, this);
+        }
+        if (delta > this.maxPrintLifeTime) {
+          pad.group.remove();
+          this.padList.splice(i, 1);
+        }
+      }
+
+      if (this.illo) this.illo.updateRenderGraph();
+    }
   }
-
-  CatPawCursor.prototype.mount = function () {
-    if (this.mounted || COARSE || REDUCED) return;
-    this.mounted = true;
-    document.documentElement.classList.add("paw-cursor-active");
-
-    this.fxLayer = document.createElement("div");
-    this.fxLayer.className = "paw-cursor-fx";
-    this.fxLayer.setAttribute("aria-hidden", "true");
-
-    this.cursor = document.createElement("div");
-    this.cursor.className = "paw-cursor-main";
-    this.cursor.setAttribute("aria-hidden", "true");
-    this.cursor.innerHTML = PAW_SVG;
-
-    document.body.appendChild(this.fxLayer);
-    document.body.appendChild(this.cursor);
-
-    window.addEventListener("mousemove", this._onMove, { passive: true });
-    window.addEventListener("mousedown", this._onDown);
-    window.addEventListener("mouseup", this._onUp);
-    document.addEventListener("visibilitychange", this._onVis);
-    this.start();
-  };
-
-  CatPawCursor.prototype.unmount = function () {
-    this.stop();
-    document.documentElement.classList.remove("paw-cursor-active");
-    window.removeEventListener("mousemove", this._onMove);
-    window.removeEventListener("mousedown", this._onDown);
-    window.removeEventListener("mouseup", this._onUp);
-    document.removeEventListener("visibilitychange", this._onVis);
-    if (this.fxLayer && this.fxLayer.parentNode) this.fxLayer.parentNode.removeChild(this.fxLayer);
-    if (this.cursor && this.cursor.parentNode) this.cursor.parentNode.removeChild(this.cursor);
-    this.fxLayer = null;
-    this.cursor = null;
-    this.stamps = [];
-    this.trails = [];
-    this.ripples = [];
-    this.mounted = false;
-  };
-
-  CatPawCursor.prototype.setEnabled = function (on) {
-    this.enabled = !!on;
-    writeEnabled(this.enabled);
-    if (this.enabled) this.mount();
-    else this.unmount();
-    return this.enabled;
-  };
-
-  CatPawCursor.prototype._onMove = function (e) {
-    this.target.x = e.clientX;
-    this.target.y = e.clientY;
-  };
-
-  CatPawCursor.prototype._onDown = function (e) {
-    if (e.button !== 0 || !this.mounted) return;
-    this.isPressed = true;
-    this.cursor.classList.add("is-pressed");
-    this.spawnClickFeedback(e.clientX, e.clientY);
-  };
-
-  CatPawCursor.prototype._onUp = function () {
-    this.isPressed = false;
-    if (this.cursor) this.cursor.classList.remove("is-pressed");
-  };
-
-  CatPawCursor.prototype._onVis = function () {
-    this.visible = !document.hidden;
-    if (this.visible) this.start();
-    else this.stop();
-  };
-
-  CatPawCursor.prototype.spawnClickFeedback = function (x, y) {
-    this.spawnRipple(x, y);
-    this.spawnGlow(x, y);
-    this.spawnStamp(x, y);
-  };
-
-  CatPawCursor.prototype.spawnRipple = function (x, y) {
-    if (!this.fxLayer) return;
-    while (this.ripples.length >= MAX_RIPPLES) {
-      var old = this.ripples.shift();
-      if (old && old.parentNode) old.parentNode.removeChild(old);
-    }
-    var ring = document.createElement("div");
-    ring.className = "paw-click-ripple";
-    ring.style.left = x + "px";
-    ring.style.top = y + "px";
-    this.fxLayer.appendChild(ring);
-    this.ripples.push(ring);
-    setTimeout(function () {
-      if (ring.parentNode) ring.parentNode.removeChild(ring);
-    }, 480);
-  };
-
-  CatPawCursor.prototype.spawnGlow = function (x, y) {
-    if (!this.fxLayer) return;
-    var glow = document.createElement("div");
-    glow.className = "paw-click-glow";
-    glow.style.left = x + "px";
-    glow.style.top = y + "px";
-    this.fxLayer.appendChild(glow);
-    setTimeout(function () {
-      if (glow.parentNode) glow.parentNode.removeChild(glow);
-    }, 380);
-  };
-
-  CatPawCursor.prototype.spawnStamp = function (x, y) {
-    if (!this.fxLayer) return;
-    while (this.stamps.length >= MAX_STAMPS) {
-      var old = this.stamps.shift();
-      if (old && old.parentNode) old.parentNode.removeChild(old);
-    }
-    var stamp = document.createElement("div");
-    stamp.className = "paw-click-stamp";
-    stamp.innerHTML = PAW_SVG;
-    stamp.style.left = x + "px";
-    stamp.style.top = y + "px";
-    this.fxLayer.appendChild(stamp);
-    this.stamps.push(stamp);
-    setTimeout(function () {
-      if (stamp.parentNode) stamp.parentNode.removeChild(stamp);
-    }, 2400);
-  };
-
-  CatPawCursor.prototype.maybeTrail = function (x, y, now) {
-    if (!this.fxLayer || this.isPressed) return;
-    if (now - this.lastTrailAt < TRAIL_INTERVAL) return;
-    this.lastTrailAt = now;
-    while (this.trails.length >= MAX_TRAILS) {
-      var old = this.trails.shift();
-      if (old && old.parentNode) old.parentNode.removeChild(old);
-    }
-    var dot = document.createElement("div");
-    dot.className = "paw-trail-dot";
-    dot.style.left = x + "px";
-    dot.style.top = y + "px";
-    this.fxLayer.appendChild(dot);
-    this.trails.push(dot);
-    setTimeout(function () {
-      if (dot.parentNode) dot.parentNode.removeChild(dot);
-    }, 520);
-  };
-
-  CatPawCursor.prototype.start = function () {
-    if (this.running || !this.mounted) return;
-    this.running = true;
-    this._tick();
-  };
-
-  CatPawCursor.prototype.stop = function () {
-    this.running = false;
-    if (this._raf) cancelAnimationFrame(this._raf);
-    this._raf = null;
-  };
-
-  CatPawCursor.prototype._tick = function () {
-    if (!this.running) return;
-    this._raf = requestAnimationFrame(this._tick.bind(this));
-    if (!this.visible || !this.cursor) return;
-
-    var now = performance.now();
-    var dx = this.target.x - this.pos.x;
-    var dy = this.target.y - this.pos.y;
-
-    if (this.isPressed) {
-      this.pos.x = this.target.x;
-      this.pos.y = this.target.y;
-    } else {
-      this.pos.x += dx * 0.32;
-      this.pos.y += dy * 0.32;
-      var targetAngle = -18 + dx * -0.35;
-      targetAngle = Math.max(-32, Math.min(-8, targetAngle));
-      this.angle += (targetAngle - this.angle) * 0.22;
-      this.maybeTrail(this.pos.x, this.pos.y, now);
-    }
-
-    var scale = this.isPressed ? 0.86 : 1;
-    var rot = this.isPressed ? 0 : this.angle;
-    this.cursor.style.transform =
-      "translate(" + this.pos.x + "px," + this.pos.y + "px) " +
-      "translate(-50%,-50%) rotate(" + rot + "deg) scale(" + scale + ")";
-  };
 
   function initPawToggle(effect) {
     document.addEventListener("DOMContentLoaded", function () {
@@ -267,7 +334,14 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     if (COARSE) return;
-    var effect = new CatPawCursor({ enabled: readEnabled() });
+    var effect = new CatPawEffect({
+      enabled: readEnabled(),
+      size: 34,
+      padPrintColor: "#F5F5EC",
+      cursorPadColor: "#FFA1B8",
+      pawBaseColor: "#404040",
+      maxPrintLifeTime: 2400,
+    });
     window.CatPawEffect = effect;
     initPawToggle(effect);
   });
