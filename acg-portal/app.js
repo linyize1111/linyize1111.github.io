@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.3.10";
+  const APP_VERSION = "1.3.11";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -456,9 +456,20 @@
     try { localStorage.setItem(VIEW_STORAGE_KEY, view); } catch (_) { /* ignore */ }
   }
 
+  function parseLocationHash() {
+    const raw = location.hash.replace(/^#/, "").trim();
+    const workMatch = /^work-([0-9a-f-]{36})(?:-review-([0-9a-f-]{36}))?$/i.exec(raw);
+    if (workMatch) {
+      return { view: "home", workId: workMatch[1], reviewId: workMatch[2] || null };
+    }
+    const viewNames = ["home", "library", "leaderboard", "games", "feedback", "admin"];
+    if (viewNames.includes(raw)) return { view: raw, workId: null, reviewId: null };
+    return { view: null, workId: null, reviewId: null };
+  }
+
   function readRememberedView() {
-    const fromHash = location.hash.replace(/^#/, "").trim();
-    if (fromHash) return fromHash;
+    const fromHash = parseLocationHash();
+    if (fromHash.view) return fromHash.view;
     try {
       const saved = localStorage.getItem(VIEW_STORAGE_KEY);
       if (saved) return saved;
@@ -927,6 +938,25 @@
       raw_average: Number(item.raw_average || 0),
       weighted_score: Number(item.weighted_score || 0)
     }]));
+  }
+
+  async function refreshLeaderboardAfterReviewChange() {
+    await loadLeaderboardData();
+    await loadWeeklyLeaderboardData();
+    if ($("#view-leaderboard")?.classList.contains("active")) renderLeaderboard();
+    if ($("#view-library")?.classList.contains("active")) renderLibrary(true);
+    if (state.currentWork) drawAll();
+  }
+
+  function scrollToReview(reviewId) {
+    if (!reviewId) return;
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-review="${reviewId}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("review-highlight");
+      setTimeout(() => el.classList.remove("review-highlight"), 3200);
+    });
   }
 
   function taipeiWeekStartIso() {
@@ -1877,7 +1907,7 @@
     await supabase.from("viewing_history").insert({ user_id: state.session.user.id, work_id: workId, interaction });
   }
 
-  async function openWork(workId) {
+  async function openWork(workId, { reviewId = null } = {}) {
     const work = state.workById.get(workId);
     if (!work) return;
     state.currentWork = work;
@@ -1907,6 +1937,27 @@
     openModal("detail-modal");
     recordView(work.id);
     await renderReviews(work.id);
+    scrollToReview(reviewId);
+  }
+
+  async function navigateToReportedContent(workId, reviewId) {
+    let resolvedWorkId = workId || null;
+    if (!resolvedWorkId && reviewId) {
+      const cached = state.currentReviews.get(reviewId);
+      if (cached?.work_id) resolvedWorkId = cached.work_id;
+      else {
+        const { data, error } = await supabase.from("reviews").select("work_id").eq("id", reviewId).maybeSingle();
+        if (error || !data?.work_id) return toast("找不到對應作品", "warning");
+        resolvedWorkId = data.work_id;
+      }
+    }
+    if (!resolvedWorkId) return toast("此檢舉沒有關聯作品", "warning");
+    if (!state.workById.has(resolvedWorkId)) await loadWorks();
+    if (!state.workById.has(resolvedWorkId)) return toast("作品已下架或不存在", "warning");
+    const hash = reviewId ? `#work-${resolvedWorkId}-review-${reviewId}` : `#work-${resolvedWorkId}`;
+    history.replaceState(null, "", hash);
+    switchView("home");
+    await openWork(resolvedWorkId, { reviewId: reviewId || null });
   }
 
   async function clearAuthStorage() {
@@ -2057,7 +2108,7 @@
   }
 
   async function deleteReview(reviewId) {
-    if (!state.session || !confirm("確定刪除這則內容？")) return;
+    if (!state.session || !confirm("確定刪除這則內容？刪除後作品的評分也會從排行榜移除。")) return;
     const review = state.currentReviews.get(reviewId);
     if (review && !reviewDeletable(review)) return toast("超過 30 分鐘，無法再刪除", "warning");
     const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
@@ -2065,7 +2116,9 @@
       const expired = /delete window expired|Edit window expired|30 minutes/i.test(error.message);
       return toast(expired ? "超過 30 分鐘，無法再刪除" : error.message, "error");
     }
+    toast("已刪除", "success");
     await renderReviews(state.currentWork.id);
+    await refreshLeaderboardAfterReviewChange();
   }
 
   async function editReview(reviewId) {
@@ -2504,7 +2557,7 @@
       if (error) {
         const { data: fallback, error: fallbackError } = await supabase
           .from("content_reports")
-          .select("id,reason,status,created_at,review_id,reporter_id")
+          .select("id,reason,status,created_at,review_id,reporter_id,reviews(work_id,body,status)")
           .order("created_at", { ascending: false })
           .limit(200);
         if (fallbackError) {
@@ -2513,9 +2566,14 @@
         }
         loadNote = '<p class="muted">RPC 不可用，已改用直接查詢 content_reports。</p>';
         reports = (fallback || []).map(report => ({
-          ...report,
-          review_body: "",
-          review_status: report.review_id ? "未知" : "已刪除",
+          id: report.id,
+          reason: report.reason,
+          status: report.status,
+          created_at: report.created_at,
+          review_id: report.review_id,
+          work_id: report.reviews?.work_id || null,
+          review_body: report.reviews?.body || "",
+          review_status: report.reviews?.status || (report.review_id ? "未知" : "已刪除"),
           reporter_name: "會員"
         }));
       } else {
@@ -2527,7 +2585,13 @@
         const snippet = report.review_body
           ? `<p>${escapeHtml(String(report.review_body).slice(0, 180))}</p>`
           : `<p class="muted">${report.review_id ? "（無留言內容／僅評分）" : "內容已刪除"}</p>`;
-        return `<div class="admin-row"><div><h4>${escapeHtml(report.reason)}</h4>${snippet}<p><small>檢舉人：${escapeHtml(report.reporter_name || "會員")} · 狀態：${escapeHtml(report.status)} · ${new Date(report.created_at).toLocaleString("zh-TW")}</small></p><p><small>內容狀態：${escapeHtml(report.review_status || "—")} · review ${escapeHtml(report.review_id || "無")}</small></p></div><div class="admin-actions">${report.review_id ? `<button class="button button-secondary" data-hide-review="${report.review_id}">隱藏內容</button><button class="button button-danger" data-admin-delete-review="${report.review_id}">刪除內容</button>` : ""}<button class="button button-primary" data-resolve-report="${report.id}">標記完成</button></div></div>`;
+        const navButtons = report.work_id
+          ? `<button class="button button-secondary" data-goto-work="${report.work_id}" data-goto-review="${report.review_id || ""}">前往作品</button>`
+          : "";
+        const reviewButton = report.review_id
+          ? `<button class="button button-secondary" data-goto-review="${report.review_id}" data-goto-work="${report.work_id || ""}">前往留言</button>`
+          : "";
+        return `<div class="admin-row"><div><h4>${escapeHtml(report.reason)}</h4>${snippet}<p><small>檢舉人：${escapeHtml(report.reporter_name || "會員")} · 狀態：${escapeHtml(report.status)} · ${new Date(report.created_at).toLocaleString("zh-TW")}</small></p><p><small>內容狀態：${escapeHtml(report.review_status || "—")} · review ${escapeHtml(report.review_id || "無")}</small></p></div><div class="admin-actions">${navButtons}${reviewButton}${report.review_id ? `<button class="button button-secondary" data-hide-review="${report.review_id}">隱藏內容</button><button class="button button-danger" data-admin-delete-review="${report.review_id}">刪除內容</button>` : ""}<button class="button button-primary" data-resolve-report="${report.id}">標記完成</button></div></div>`;
       }).join("") || '<div class="empty-state">目前沒有檢舉</div>');
     } else if (tab === "feedback") {
       const { data, error } = await supabase
@@ -2841,7 +2905,18 @@
     document.addEventListener("input", event => { if (event.target.id === "admin-work-search") renderAdminWorks(); });
     bindClick("#feedback-send", () => sendFeedback("feedback"));
     bindClick("#recommendation-send", () => sendFeedback("recommendation"));
-    window.addEventListener("hashchange", () => switchView(location.hash.slice(1) || "home"));
+    window.addEventListener("hashchange", async () => {
+      const loc = parseLocationHash();
+      if (loc.workId) {
+        if (!state.workById.has(loc.workId)) await loadWorks();
+        if (state.workById.has(loc.workId)) {
+          switchView(loc.view || "home");
+          await openWork(loc.workId, { reviewId: loc.reviewId });
+          return;
+        }
+      }
+      switchView(loc.view || readRememberedView());
+    });
     document.addEventListener("keydown", event => { if (event.key === "Escape") $$(".modal.open:not(#age-gate)").forEach(modal => closeModal(modal.id)); });
     document.addEventListener("submit", event => {
       const form = event.target;
@@ -2922,8 +2997,25 @@
       }
       if (target.dataset.resolveFeedback) { const { error } = await supabase.from("feedback").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveFeedback); toast(error ? error.message : "已標記完成", error ? "error" : "success"); if (!error) { loadFeedbackThreads(); loadAdmin("feedback"); } }
       if (target.dataset.resolveReport) { const { error } = await supabase.from("content_reports").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveReport); toast(error ? error.message : "檢舉已完成", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
-      if (target.dataset.hideReview) { const { error } = await supabase.rpc("moderate_review", { target_review: target.dataset.hideReview, new_status: "hidden" }); toast(error ? error.message : "內容已隱藏", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
-      if (target.dataset.adminDeleteReview && confirm("確定永久刪除被檢舉的內容？")) { const { error } = await supabase.from("reviews").delete().eq("id", target.dataset.adminDeleteReview); toast(error ? error.message : "內容已刪除", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
+      if (target.dataset.gotoWork || target.dataset.gotoReview) {
+        await navigateToReportedContent(target.dataset.gotoWork || null, target.dataset.gotoReview || null);
+      }
+      if (target.dataset.hideReview) {
+        const { error } = await supabase.rpc("moderate_review", { target_review: target.dataset.hideReview, new_status: "hidden" });
+        toast(error ? error.message : "內容已隱藏", error ? "error" : "success");
+        if (!error) {
+          await refreshLeaderboardAfterReviewChange();
+          loadAdmin("reports");
+        }
+      }
+      if (target.dataset.adminDeleteReview && confirm("確定永久刪除被檢舉的內容？刪除後作品的評分也會從排行榜移除。")) {
+        const { error } = await supabase.from("reviews").delete().eq("id", target.dataset.adminDeleteReview);
+        toast(error ? error.message : "內容已刪除", error ? "error" : "success");
+        if (!error) {
+          await refreshLeaderboardAfterReviewChange();
+          loadAdmin("reports");
+        }
+      }
       } catch (error) {
         console.error("click handler failed", error);
         toast(`操作失敗：${error.message || error}`, "error");
@@ -2961,7 +3053,11 @@
       await loadAuth();
       drawAll();
       renderLibrary(true); renderLeaderboard();
-      switchView(readRememberedView());
+      const loc = parseLocationHash();
+      switchView(loc.view || readRememberedView());
+      if (loc.workId && state.workById.has(loc.workId)) {
+        await openWork(loc.workId, { reviewId: loc.reviewId });
+      }
     } catch (error) {
       console.error(error);
       $("#home-summary").textContent = "資料載入失敗，請稍後重試。";
