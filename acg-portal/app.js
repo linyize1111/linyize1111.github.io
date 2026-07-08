@@ -2586,7 +2586,7 @@
           ? `<p>${escapeHtml(String(report.review_body).slice(0, 180))}</p>`
           : `<p class="muted">${report.review_id ? "（無留言內容／僅評分）" : "內容已刪除"}</p>`;
         const navButtons = report.work_id
-          ? `<button class="button button-secondary" data-goto-work="${report.work_id}" data-goto-review="${report.review_id || ""}">前往作品</button>`
+          ? `<button class="button button-secondary" data-goto-work="${report.work_id}">前往作品</button>`
           : "";
         const reviewButton = report.review_id
           ? `<button class="button button-secondary" data-goto-review="${report.review_id}" data-goto-work="${report.work_id || ""}">前往留言</button>`
