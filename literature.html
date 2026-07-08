@@ -1,4 +1,4 @@
-<!DOCTYPE HTML>
+﻿<!DOCTYPE HTML>
 <html>
 
 <head>
@@ -332,12 +332,7 @@
 
     <!-- 真正的 Loading Screen -->
     <div id="loading-screen"></div>
-
-    <!--  影片與音樂背景 -->
-    <video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="none">
-        <source src="images/bg-video.mp4" type="video/mp4">
-    </video>
-    <audio id="bg-music" loop preload="none">
+<audio id="bg-music" loop preload="none">
         <source src="images/bg-music.mp3" type="audio/mpeg">
     </audio>
 
@@ -365,8 +360,8 @@
     <div id="video-controls">
         <button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
             style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
-        <button id="btn-mute" title="音效開/關"><i class="fas fa-volume-mute"></i></button>
-        <button id="btn-play" title="暫停/播放"><i class="fas fa-pause"></i></button>
+        <button id="btn-mute" title="音樂音效開/關"><i class="fas fa-volume-mute"></i></button>
+        <button id="btn-play" title="音樂暫停/播放"><i class="fas fa-pause"></i></button>
     </div>
 
     <div id="wrapper" class="fade-in">

@@ -15,6 +15,7 @@
   });
 
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
+  const EDIT_WINDOW_MS = 30 * 60 * 1000;
 
   const PLATFORM_LABELS = { nhentai: "Nhentai", "18comic": "禁漫", hanime: "Hanime", pixiv: "Pixiv" };
   const state = {
@@ -214,6 +215,21 @@
 
   function isApproved() { return state.profile?.status === "active"; }
   function isAdmin() { return isApproved() && state.profile?.role === "admin"; }
+
+  function reviewEditable(review) {
+    if (!review || !state.session) return false;
+    if (isAdmin()) return review.user_id === state.session.user.id;
+    if (review.user_id !== state.session.user.id) return false;
+    return Date.now() - new Date(review.created_at).getTime() <= EDIT_WINDOW_MS;
+  }
+
+  function adminVoteHint(reviewId, voteStats) {
+    const votes = voteStats?.adminVotes;
+    if (!votes?.length) return "";
+    if (votes.some(v => v.vote === 1)) return '<div class="admin-vote-hint">站長偷偷點讚</div>';
+    if (votes.some(v => v.vote === -1)) return '<div class="admin-vote-hint">站長偷偷倒讚</div>';
+    return "";
+  }
 
   // Some legacy rows stored a corrupted display name (e.g. "????") when the
   // original CJK name was lost during import. Treat those as empty so we can
@@ -444,18 +460,12 @@
   }
 
   function passesWorkFilters(work, prefix = "home") {
-    const ratingFilter = $(`#${prefix}-filter-rating`)?.value || "all";
     const reviewFilter = $(`#${prefix}-filter-reviews`)?.value || "all";
     const weekFilter = $(`#${prefix}-filter-week`)?.value || "all";
     const favoriteFilter = $(`#${prefix}-filter-favorites`)?.value || "all";
     const stats = workReviewStats(work.id);
     const reviewCount = stats?.review_count || 0;
-    const average = Number(stats?.raw_average || 0);
     const favoriteCount = state.favoriteCounts.get(work.id) || 0;
-    if (ratingFilter === "high" && (reviewCount === 0 || average < 2)) return false;
-    if (ratingFilter === "mid" && (reviewCount === 0 || average < -1 || average >= 2)) return false;
-    if (ratingFilter === "low" && (reviewCount === 0 || average >= -1)) return false;
-    if (ratingFilter === "none" && reviewCount > 0) return false;
     if (reviewFilter === "1" && reviewCount < 1) return false;
     if (reviewFilter === "5" && reviewCount < 5) return false;
     if (reviewFilter === "10" && reviewCount < 10) return false;
@@ -1254,7 +1264,7 @@
         <label>顯示名稱（1～40 字）
           <input id="profile-display-name" type="text" maxlength="40" required value="${escapeHtml(current)}" autocomplete="nickname">
         </label>
-        <p class="muted small-note">這是留言、評分與後台顯示的名稱，隨時可以修改。</p>
+        <p class="muted small-note">非管理員每月僅能改名一次；改名後全站留言會同步顯示新名稱。</p>
         <button class="button button-primary" type="submit">儲存暱稱</button>
       </form>`;
     openModal("editor-modal");
@@ -1280,6 +1290,7 @@
     const loggedIn = Boolean(state.session);
     $("#login-button").classList.toggle("hidden", loggedIn);
     $("#profile-menu").classList.toggle("hidden", !loggedIn);
+    $("#clear-auth-button")?.classList.toggle("hidden", !loggedIn);
     if (loggedIn) {
       $("#profile-name").textContent = myDisplayName();
       const labels = { pending: "等待管理員審核", active: isAdmin() ? "管理員" : "已通過審核", suspended: "帳號已停權" };
@@ -1395,6 +1406,23 @@
     await renderReviews(work.id);
   }
 
+  async function clearAuthStorage() {
+    if (!confirm("清除本站登入 cookie／localStorage？將登出且需重新登入。")) return;
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith("sb-") || key.includes("acg-portal") || key.startsWith("acg_"))) keys.push(key);
+    }
+    keys.forEach(key => localStorage.removeItem(key));
+    sessionStorage.removeItem("acg_oauth_pending");
+    await supabase.auth.signOut();
+    state.session = null;
+    state.profile = null;
+    state.favorites.clear();
+    updateAuthUi();
+    toast("已清除登入資料", "success");
+  }
+
   function renderReviewForm(existing = null) {
     const container = $("#review-form-container");
     if (!container) return;
@@ -1409,10 +1437,10 @@
     state.currentRating = Number(existing?.rating ?? 5);
     container.innerHTML = `
       <form id="review-form" class="review-form">
-        <div><strong>${existing ? "編輯你的評分" : "留下你的評分"}</strong><p class="muted">每件作品限一篇主評論，最多 500 字。評分 -5 ~ +5：<b>-5</b> 超雷、<b>0</b> 普通、<b>+5</b> 私心神作。</p></div>
+        <div><strong>${existing ? "編輯你的評分" : "留下你的評分"}</strong><p class="muted">每件作品限一則主評論；評分 -5 ~ +5 必填，評論文字選填（最多 500 字）。</p></div>
         <div class="rating-picker">${Array.from({ length: 11 }, (_, i) => i - 5).map(value => `<button type="button" data-rating="${value}" class="${value === state.currentRating ? "selected" : ""}">${value > 0 ? "+" : ""}${value}</button>`).join("")}</div>
-        <textarea id="review-body" maxlength="500" required placeholder="分享你的心得…">${escapeHtml(existing?.body || "")}</textarea>
-        <button class="button button-primary" type="submit">${existing ? "儲存修改" : "送出評論"}</button>
+        <textarea id="review-body" maxlength="500" placeholder="選填：分享你的心得…">${escapeHtml(existing?.body || "")}</textarea>
+        <button class="button button-primary" type="submit">${existing ? "儲存修改" : "送出評分"}</button>
       </form>`;
   }
 
@@ -1431,12 +1459,14 @@
     const { data: votes } = reviewIds.length
       ? await supabase.from("review_votes").select("review_id,user_id,vote").in("review_id", reviewIds)
       : { data: [] };
-    await loadProfilesForReviews(reviews || []);
+    await loadProfilesForReviews([...(reviews || []), ...(votes || []).map(vote => ({ user_id: vote.user_id }))]);
     const voteStats = new Map();
+    const adminIds = new Set([...state.profiles.values()].filter(p => p.role === "admin").map(p => p.id));
     for (const vote of votes || []) {
-      const stats = voteStats.get(vote.review_id) || { up: 0, down: 0, mine: 0 };
+      const stats = voteStats.get(vote.review_id) || { up: 0, down: 0, mine: 0, adminVotes: [] };
       if (vote.vote === 1) stats.up++; else stats.down++;
       if (vote.user_id === state.session?.user?.id) stats.mine = vote.vote;
+      if (adminIds.has(vote.user_id)) stats.adminVotes.push(vote);
       voteStats.set(vote.review_id, stats);
     }
     const roots = (reviews || []).filter(review => !review.parent_id && review.status === "visible");
@@ -1451,10 +1481,12 @@
       const profile = state.profiles.get(review.user_id) || null;
       const stats = voteStats.get(review.id) || { up: 0, down: 0, mine: 0 };
       const canDelete = isAdmin() || review.user_id === state.session?.user?.id;
-      const canEdit = review.user_id === state.session?.user?.id;
+      const canEdit = reviewEditable(review);
+      const bodyHtml = review.body ? `<p>${escapeHtml(review.body)}</p>` : '<p class="muted">（僅評分，無文字評論）</p>';
       return `<article class="review" data-review="${review.id}">
+        ${adminVoteHint(review.id, stats)}
         <div class="review-header"><strong>${escapeHtml(memberName(profile))}${profile?.role === "admin" ? " · ADMIN" : ""}</strong>${review.rating === null ? "" : `<span>${review.rating > 0 ? "+" : ""}${review.rating}</span>`}</div>
-        <p>${escapeHtml(review.body)}</p>
+        ${bodyHtml}
         <div class="review-footer">
           <button data-vote="1" data-review-id="${review.id}">${stats.mine === 1 ? "●" : "▲"} ${stats.up}</button>
           <button data-vote="-1" data-review-id="${review.id}">${stats.mine === -1 ? "●" : "▼"} ${stats.down}</button>
@@ -1471,15 +1503,18 @@
   async function submitReview(event) {
     event.preventDefault();
     if (!await requireMember() || !state.currentWork) return;
-    const body = $("#review-body").value.trim();
-    if (!body || body.length > 500) return toast("評論需為 1～500 字", "warning");
+    const body = ($("#review-body")?.value || "").trim();
+    if (body.length > 500) return toast("評論最多 500 字", "warning");
     const { data: existing } = await supabase.from("reviews").select("id").eq("work_id", state.currentWork.id).eq("user_id", state.session.user.id).is("parent_id", null).maybeSingle();
     const request = existing
       ? supabase.from("reviews").update({ body, rating: state.currentRating }).eq("id", existing.id)
       : supabase.from("reviews").insert({ work_id: state.currentWork.id, user_id: state.session.user.id, body, rating: state.currentRating });
     const { error } = await request;
-    if (error) return toast(error.message, "error");
-    toast(existing ? "評論已更新" : "評論已送出", "success");
+    if (error) {
+      const dup = /duplicate key|unique|one_root_per_user/i.test(error.message);
+      return toast(dup ? "你已經評分過這件作品了" : error.message, "error");
+    }
+    toast(existing ? "評分已更新" : "評分已送出", "success");
     await renderReviews(state.currentWork.id);
     await loadLeaderboardData();
     await loadPreferences();
@@ -1515,6 +1550,7 @@
     if (!await requireMember()) return;
     const review = state.currentReviews.get(reviewId);
     if (!review || review.user_id !== state.session.user.id) return;
+    if (!reviewEditable(review)) return toast("超過 30 分鐘，無法再編輯", "warning");
     if (!review.parent_id) {
       renderReviewForm(review);
       $("#review-body")?.focus();
@@ -1530,6 +1566,7 @@
 
   async function reportReview(reviewId) {
     if (!await requireMember()) return;
+    closeModal("detail-modal");
     $("#editor-content").innerHTML = `
       <h2 id="editor-title">檢舉內容</h2>
       <form id="report-form" class="editor-form" data-review-id="${escapeHtml(reviewId)}">
@@ -1645,6 +1682,7 @@
       name, cover_url: coverUrl,
       rating, review_body: reviewBody,
       tags: $("#game-tags").value.split(/[,，]/).map(value => value.trim()).filter(Boolean),
+      status: "published",
       created_by: state.session.user.id
     };
     const request = id ? supabase.from("games").update(payload).eq("id", id) : supabase.from("games").insert(payload);
@@ -1694,7 +1732,63 @@
     }
     textarea.value = "";
     counter.textContent = "0 / 2000";
-    toast(isRecommendation ? "推薦已送出，等待站長審核" : "意見已送出", "success");
+    toast(isRecommendation ? "推薦已送出" : "意見已送出", "success");
+    await loadFeedbackThreads();
+  }
+
+  async function loadFeedbackThreads() {
+    const lists = [
+      { kind: "feedback", node: $("#feedback-thread-list") },
+      { kind: "recommendation", node: $("#recommendation-thread-list") }
+    ];
+    if (!lists.some(item => item.node)) return;
+    if (!state.session || !isApproved()) {
+      lists.forEach(({ node }) => { if (node) node.innerHTML = '<p class="muted">登入並通過審核後可查看與回覆。</p>'; });
+      return;
+    }
+    const { data: rows, error } = await supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(40);
+    if (error) {
+      const missingTable = /feedback.*does not exist|relation .*feedback/i.test(error.message);
+      lists.forEach(({ node }) => {
+        if (node) node.innerHTML = missingTable ? '<p class="muted">需套用 0005 migration 後才會顯示。</p>' : `<p class="muted">${escapeHtml(error.message)}</p>`;
+      });
+      return;
+    }
+    const ids = (rows || []).map(row => row.id);
+    const { data: replies } = ids.length
+      ? await supabase.from("feedback_replies").select("*").in("feedback_id", ids).order("created_at")
+      : { data: [] };
+    await loadProfilesForReviews((rows || []).map(row => ({ user_id: row.user_id })).concat((replies || []).map(row => ({ user_id: row.user_id }))));
+    const replyMap = new Map();
+    (replies || []).forEach(reply => {
+      if (!replyMap.has(reply.feedback_id)) replyMap.set(reply.feedback_id, []);
+      replyMap.get(reply.feedback_id).push(reply);
+    });
+    lists.forEach(({ kind, node }) => {
+      if (!node) return;
+      const items = (rows || []).filter(row => row.kind === kind);
+      node.innerHTML = items.map(item => {
+        const author = memberName(state.profiles.get(item.user_id));
+        const replyHtml = (replyMap.get(item.id) || []).map(reply => `<div class="feedback-replies"><div><strong>${escapeHtml(memberName(state.profiles.get(reply.user_id)))}</strong><p>${escapeHtml(reply.body)}</p><small>${new Date(reply.created_at).toLocaleString("zh-TW")}</small></div></div>`).join("");
+        const adminActions = isAdmin() ? `<div class="admin-actions"><button class="button button-secondary" data-edit-feedback="${item.id}">編輯</button><button class="button button-danger" data-delete-feedback="${item.id}">刪除</button>${item.status === "open" ? `<button class="button button-primary" data-resolve-feedback="${item.id}">完成</button>` : ""}</div>` : "";
+        return `<article class="feedback-thread" data-feedback="${item.id}"><h4>${escapeHtml(author)} · ${escapeHtml(item.status)}</h4><p>${escapeHtml(item.body)}</p><small>${new Date(item.created_at).toLocaleString("zh-TW")}</small>${replyHtml}${adminActions}<form data-feedback-reply="${item.id}" class="review-form"><textarea maxlength="2000" required placeholder="回覆…"></textarea><button class="button button-primary">送出回覆</button></form></article>`;
+      }).join("") || '<p class="muted">尚無紀錄</p>';
+    });
+  }
+
+  async function saveFeedbackReply(event) {
+    event.preventDefault();
+    if (!await requireMember()) return;
+    const feedbackId = event.currentTarget.dataset.feedbackReply;
+    const body = event.currentTarget.querySelector("textarea")?.value.trim();
+    if (!body) return;
+    const { error } = await supabase.from("feedback_replies").insert({ feedback_id: feedbackId, user_id: state.session.user.id, body });
+    if (error) {
+      const missing = /feedback_replies.*does not exist|relation .*feedback_replies/i.test(error.message);
+      return toast(missing ? "需套用 0006 migration 後才可回覆" : error.message, "error");
+    }
+    await loadFeedbackThreads();
+    toast("回覆已送出", "success");
   }
 
   async function loadAdmin(tab = state.adminTab) {
@@ -1723,14 +1817,14 @@
       }
       users = users.slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
       const degradedNotice = degraded ? '<div class="empty-state warning">尚未套用 0005 migration（admin_list_users），暫時只顯示 profiles；套用後即可看到信箱與最近登入時間。</div>' : "";
-      content.innerHTML = degradedNotice + (users.map(profile => {
+      content.innerHTML = degradedNotice + `<div class="job-controls"><button class="button button-primary" data-approve-all-pending>一鍵通過全部待審</button></div>` + (users.map(profile => {
         const email = cleanName(profile.email) || (degraded ? "需套用 migration" : "（無信箱）");
         const lastSignIn = profile.last_sign_in_at ? new Date(profile.last_sign_in_at).toLocaleString("zh-TW") : (degraded ? "需套用 migration" : "尚未登入");
         return `<div class="admin-row"><div><h4>${escapeHtml(memberName(profile))}</h4><p>${escapeHtml(email)} · ${escapeHtml(profile.role)} · ${escapeHtml(profile.status)}</p><small>最近登入：${escapeHtml(lastSignIn)}</small></div><div class="admin-actions">${profile.role === "admin" ? "" : `${profile.status === "pending" ? `<button class="button button-primary" data-approve-user="${profile.id}">通過</button>` : ""}<button class="button button-secondary" data-suspend-user="${profile.id}" data-suspend="${profile.status === "suspended" ? "false" : "true"}">${profile.status === "suspended" ? "解除停權" : "停權"}</button>`}</div></div>`;
       }).join("") || '<div class="empty-state">目前沒有會員</div>');
     } else if (tab === "works") {
       state.adminWorks = await fetchAll("works", query => query.order("updated_at", { ascending: false }));
-      content.innerHTML = `<div class="job-controls"><button class="button button-primary" data-new-work>＋ 手動新增</button><button class="button button-danger" data-purge-inactive>永久刪除所有失效作品</button><input id="admin-work-search" type="search" placeholder="搜尋車號、標題、作者或標籤…"></div><p id="admin-work-summary" class="muted"></p><div id="admin-work-list"></div>`;
+      content.innerHTML = `<div class="job-controls"><button class="button button-primary" data-new-work>＋ 手動新增（車號）</button><input id="admin-work-search" type="search" placeholder="搜尋車號、標題、作者或標籤…"></div><p id="admin-work-summary" class="muted"></p><div id="admin-work-list"></div>`;
       renderAdminWorks();
     } else if (tab === "reports") {
       const { data } = await supabase.from("content_reports").select("*").order("created_at", { ascending: false });
@@ -1767,7 +1861,7 @@
     const query = $("#admin-work-search")?.value || "";
     const rows = state.adminWorks.filter(work => workMatches(work, query));
     $("#admin-work-summary").textContent = `${rows.length.toLocaleString()} 筆；畫面顯示前 200 筆`;
-    list.innerHTML = rows.slice(0, 200).map(work => `<div class="admin-row"><div><h4>${escapeHtml(work.title)}</h4><p>${escapeHtml(work.platform)} · ${escapeHtml(work.work_id)} · ${escapeHtml(work.status)}</p></div><div class="admin-actions"><button class="button button-secondary" data-edit-work="${work.id}">編輯</button><button class="button button-secondary" data-toggle-work="${work.id}" data-status="${work.status === "active" ? "inactive" : "active"}">${work.status === "active" ? "標記失效" : "恢復"}</button><button class="button button-danger" data-purge-work="${work.id}">永久刪除</button></div></div>`).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
+    list.innerHTML = rows.slice(0, 200).map(work => `<div class="admin-row with-thumb"><img class="admin-work-thumb" src="${escapeHtml(imageUrl(work.cover_url))}" alt=""><div><h4>${escapeHtml(work.title)}</h4><p>${escapeHtml(work.platform)} · ${escapeHtml(work.work_id)} · ${escapeHtml(work.status)}</p></div><div class="admin-actions"><button class="button button-secondary" data-edit-work="${work.id}">編輯</button><button class="button button-secondary" data-toggle-work="${work.id}" data-status="${work.status === "active" ? "inactive" : "active"}">${work.status === "active" ? "標記失效" : "恢復"}</button></div></div>`).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
   }
 
   async function loadJobs() {
@@ -1800,18 +1894,47 @@
   }
 
   async function editWork(workId = null) {
-    const work = workId ? (await supabase.from("works").select("*").eq("id", workId).single()).data : null;
-    $("#editor-content").innerHTML = `<h2 id="editor-title">${work ? "編輯" : "新增"}作品</h2><form id="work-editor-form" class="editor-form" data-work-id="${work?.id || ""}">
-      <label>平台<select id="work-platform">${config.platforms.map(platform => `<option value="${platform}" ${work?.platform === platform ? "selected" : ""}>${PLATFORM_LABELS[platform]}</option>`).join("")}</select></label>
-      <label>外部 ID<input id="work-external-id" required value="${escapeHtml(work?.work_id || "")}"></label>
-      <label>標題<input id="work-title" required value="${escapeHtml(work?.title || "")}"></label>
-      <label>作者<input id="work-author" value="${escapeHtml(work?.author || "Unknown Artist")}"></label>
-      <label>封面網址<input id="work-cover" type="url" value="${escapeHtml(work?.cover_url || "")}"></label>
-      <label>來源網址<input id="work-source" type="url" required value="${escapeHtml(work?.source_url || "")}"></label>
-      <label>標籤<input id="work-tags" value="${escapeHtml((work?.tags || []).join(", "))}"></label>
-      <label>狀態<select id="work-status"><option value="active">active</option><option value="inactive" ${work?.status === "inactive" ? "selected" : ""}>inactive</option><option value="rejected" ${work?.status === "rejected" ? "selected" : ""}>rejected</option></select></label>
-      <button class="button button-primary">儲存作品</button></form>`;
+    if (workId) {
+      const work = (await supabase.from("works").select("*").eq("id", workId).single()).data;
+      $("#editor-content").innerHTML = `<h2 id="editor-title">編輯作品</h2><form id="work-editor-form" class="editor-form" data-work-id="${work?.id || ""}">
+        <label>平台<select id="work-platform">${config.platforms.map(platform => `<option value="${platform}" ${work?.platform === platform ? "selected" : ""}>${PLATFORM_LABELS[platform]}</option>`).join("")}</select></label>
+        <label>車號<input id="work-external-id" required value="${escapeHtml(work?.work_id || "")}"></label>
+        <label>標題<input id="work-title" required value="${escapeHtml(work?.title || "")}"></label>
+        <label>作者<input id="work-author" value="${escapeHtml(work?.author || "Unknown Artist")}"></label>
+        <label>封面網址<input id="work-cover" type="url" value="${escapeHtml(work?.cover_url || "")}"></label>
+        <label>來源網址<input id="work-source" type="url" required value="${escapeHtml(work?.source_url || "")}"></label>
+        <label>標籤<input id="work-tags" value="${escapeHtml((work?.tags || []).join(", "))}"></label>
+        <label>狀態<select id="work-status"><option value="active">active</option><option value="inactive" ${work?.status === "inactive" ? "selected" : ""}>inactive</option><option value="rejected" ${work?.status === "rejected" ? "selected" : ""}>rejected</option></select></label>
+        <button class="button button-primary">儲存作品</button></form>`;
+    } else {
+      $("#editor-content").innerHTML = `<h2 id="editor-title">手動新增作品</h2><form id="work-ingest-form" class="editor-form">
+        <label>平台<select id="ingest-platform">${config.platforms.map(platform => `<option value="${platform}">${PLATFORM_LABELS[platform]}</option>`).join("")}</select></label>
+        <label>車號（外部 ID）<input id="ingest-external-id" required placeholder="例：123456"></label>
+        <p class="muted small-note">送出後由爬蟲自動抓取標題、封面、作者與標籤（Hanime 需改用 Discord 收錄）。</p>
+        <button class="button button-primary">抓取並新增</button></form>`;
+    }
     openModal("editor-modal");
+  }
+
+  async function ingestWork(event) {
+    event.preventDefault();
+    if (!isAdmin()) return;
+    const platform = $("#ingest-platform").value;
+    const externalId = $("#ingest-external-id").value.trim();
+    if (!externalId) return toast("請輸入車號", "warning");
+    try {
+      await fetchWorkerJson("/api/admin/ingest-work", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${state.session.access_token}` },
+        body: JSON.stringify({ platform, external_id: externalId })
+      });
+      closeModal("editor-modal");
+      await loadWorks();
+      await loadAdmin("works");
+      toast("作品已抓取並新增", "success");
+    } catch (error) {
+      toast(workerErrorMessage(error), "error");
+    }
   }
 
   async function saveWork(event) {
@@ -1830,7 +1953,7 @@
     const nav = $("#main-nav");
     const open = force === null ? !nav.classList.contains("open") : Boolean(force);
     nav.classList.toggle("open", open);
-    ["#mobile-menu-button", "#nav-menu-button"].forEach(selector => {
+    ["#mobile-menu-button"].forEach(selector => {
       const button = $(selector);
       if (button) button.setAttribute("aria-expanded", String(open));
     });
@@ -1844,27 +1967,13 @@
     if (view === "library") renderLibrary(true);
     if (view === "leaderboard") renderLeaderboard();
     if (view === "games") loadGames();
+    if (view === "feedback") loadFeedbackThreads();
     if (view === "admin") loadAdmin();
   }
 
   function bindClick(selector, handler) {
     const node = $(selector);
     if (node) node.addEventListener("click", handler);
-  }
-
-  function setupVideoFallback() {
-    const backdrop = $(".video-backdrop");
-    const iframe = backdrop?.querySelector("iframe");
-    if (!backdrop || !iframe) return;
-    const activateFallback = () => backdrop.classList.add("fallback-active");
-    iframe.addEventListener("error", activateFallback);
-    window.setTimeout(() => {
-      try {
-        if (!iframe.contentWindow) activateFallback();
-      } catch {
-        activateFallback();
-      }
-    }, 4500);
   }
 
   function bindEvents() {
@@ -1879,6 +1988,7 @@
     if (localStorage.getItem("acg_age_confirmed") === "1") closeModal("age-gate");
     bindClick("#login-button", login);
     bindClick("#logout-button", logout);
+    bindClick("#clear-auth-button", clearAuthStorage);
     bindClick("#profile-edit-button", openProfileEditor);
     bindClick("#google-login-button", loginWithGoogle);
     bindClick("#password-login-button", loginWithPassword);
@@ -1886,14 +1996,20 @@
     $("#password-login-password")?.addEventListener("keydown", event => { if (event.key === "Enter") loginWithPassword(); });
     $("#email-login-input")?.addEventListener("keydown", event => { if (event.key === "Enter") loginWithEmail(); });
     bindClick("#mobile-menu-button", event => { event.stopPropagation(); toggleMobileMenu(); });
-    bindClick("#nav-menu-button", event => { event.stopPropagation(); toggleMobileMenu(); });
+    $$("[data-view]").forEach(link => link.addEventListener("click", event => {
+      event.preventDefault();
+      const view = link.dataset.view;
+      location.hash = view;
+      switchView(view);
+      toggleMobileMenu(false);
+    }));
     bindClick("#draw-all-button", drawAll);
     bindClick("#draw-five-button", () => drawBatch(5));
     bindClick("#draw-ten-button", () => drawBatch(10));
     bindClick("#clear-bulk-button", () => { state.bulkWorks = []; renderBulkDraw(); });
     $("#home-search")?.addEventListener("input", debounce(drawAll));
     ["home", "library"].forEach(prefix => {
-      ["filter-rating", "filter-reviews", "filter-favorites"].forEach(name => {
+      ["filter-reviews", "filter-favorites"].forEach(name => {
         $(`#${prefix}-${name}`)?.addEventListener("change", () => {
           if (prefix === "home") drawAll();
           else renderLibrary(true);
@@ -1925,13 +2041,15 @@
       if (event.target.id === "game-editor-form") return saveGame(event);
       if (event.target.id === "game-comment-form") return saveGameComment(event);
       if (event.target.id === "work-editor-form") return saveWork(event);
+      if (event.target.id === "work-ingest-form") return ingestWork(event);
+      if (event.target.matches("[data-feedback-reply]")) return saveFeedbackReply(event);
     });
     document.addEventListener("click", async event => {
       if (event.target.classList?.contains("modal") && event.target.id !== "age-gate") {
         closeModal(event.target.id);
         return;
       }
-      if (!event.target.closest("#main-nav") && !event.target.closest("#mobile-menu-button") && !event.target.closest("#nav-menu-button")) toggleMobileMenu(false);
+      if (!event.target.closest("#main-nav") && !event.target.closest("#mobile-menu-button")) toggleMobileMenu(false);
       const target = event.target.closest("button,a,article"); if (!target) return;
       if (target.tagName === "BUTTON") flashButton(target);
       if (target.dataset.closeModal) closeModal(target.dataset.closeModal);
@@ -1956,6 +2074,11 @@
       if (target.dataset.deleteGame) deleteGame(target.dataset.deleteGame);
       if (target.dataset.deleteGameComment) deleteGameComment(target.dataset.deleteGameComment, target.dataset.gameId);
       if (target.dataset.adminTab) loadAdmin(target.dataset.adminTab);
+      if (target.dataset.approveAllPending) {
+        const { data, error } = await supabase.rpc("approve_all_pending");
+        toast(error ? error.message : `已通過 ${data || 0} 位會員`, error ? "error" : "success");
+        if (!error) loadAdmin("users");
+      }
       if (target.dataset.approveUser) { const { error } = await supabase.rpc("approve_user", { target_user: target.dataset.approveUser, approve: true }); toast(error ? error.message : "會員已通過", error ? "error" : "success"); if (!error) loadAdmin("users"); }
       if (target.dataset.suspendUser) { const { error } = await supabase.rpc("set_user_suspension", { target_user: target.dataset.suspendUser, suspend: target.dataset.suspend === "true" }); toast(error ? error.message : "會員狀態已更新", error ? "error" : "success"); if (!error) loadAdmin("users"); }
       if (target.dataset.runJob) runJob(target.dataset.runJob);
@@ -1964,7 +2087,18 @@
       if (target.dataset.editWork) editWork(target.dataset.editWork);
       if (target.dataset.toggleWork) { const { error } = await supabase.from("works").update({ status: target.dataset.status }).eq("id", target.dataset.toggleWork); toast(error ? error.message : "作品狀態已更新", error ? "error" : "success"); if (!error) { await loadWorks(); loadAdmin("works"); } }
       if (target.dataset.purgeWork) purgeWork(target.dataset.purgeWork);
-      if (target.dataset.purgeInactive !== undefined) { const confirmation = prompt('永久刪除所有 inactive/rejected 作品。請輸入「PURGE INACTIVE WORKS」確認：'); if (confirmation) { const { data, error } = await supabase.rpc("purge_inactive_works", { confirmation }); toast(error ? error.message : `已永久刪除 ${data} 筆`, error ? "error" : "success"); if (!error) { await loadWorks(); loadAdmin("works"); } } }
+      if (target.dataset.editFeedback) {
+        const body = prompt("編輯內容（1～2000 字）：")?.trim();
+        if (!body) return;
+        const { error } = await supabase.from("feedback").update({ body }).eq("id", target.dataset.editFeedback);
+        toast(error ? error.message : "已更新", error ? "error" : "success");
+        if (!error) { loadFeedbackThreads(); loadAdmin("feedback"); }
+      }
+      if (target.dataset.deleteFeedback && confirm("確定刪除此則意見？")) {
+        const { error } = await supabase.from("feedback").delete().eq("id", target.dataset.deleteFeedback);
+        toast(error ? error.message : "已刪除", error ? "error" : "success");
+        if (!error) { loadFeedbackThreads(); loadAdmin("feedback"); }
+      }
       if (target.dataset.resolveFeedback) { const { error } = await supabase.from("feedback").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveFeedback); toast(error ? error.message : "已標記完成", error ? "error" : "success"); if (!error) loadAdmin("feedback"); }
       if (target.dataset.resolveReport) { const { error } = await supabase.from("content_reports").update({ status: "resolved", resolved_by: state.session.user.id, resolved_at: new Date().toISOString() }).eq("id", target.dataset.resolveReport); toast(error ? error.message : "檢舉已完成", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
       if (target.dataset.hideReview) { const { error } = await supabase.rpc("moderate_review", { target_review: target.dataset.hideReview, new_status: "hidden" }); toast(error ? error.message : "內容已隱藏", error ? "error" : "success"); if (!error) loadAdmin("reports"); }
@@ -1974,7 +2108,6 @@
 
   async function init() {
     bindEvents();
-    setupVideoFallback();
     detectGoogleProvider();
     supabase.auth.onAuthStateChange((event, session) => {
       authDebug("auth state", { event, hasSession: Boolean(session) });
