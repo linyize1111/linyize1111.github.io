@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.3.11";
+  const APP_VERSION = "1.3.12";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -2614,7 +2614,7 @@
       }).join("") || '<div class="empty-state">目前沒有意見或推薦</div>';
     } else if (tab === "jobs") {
       state.sourceStats = await loadSourceStatus();
-      content.innerHTML = `${workerDownBanner()}<div class="admin-source-status"><div id="admin-source-status-grid" class="source-status-grid"></div></div><div class="job-controls"><button class="button button-primary" data-run-job="all">執行同步 / 開啟 Actions</button><button class="button button-secondary" data-refresh-jobs>更新紀錄</button><a class="button button-secondary" href="${escapeHtml(config.manualSyncUrl)}" target="_blank" rel="noopener noreferrer">GitHub Actions ↗</a></div><div id="job-list"></div>`;
+      content.innerHTML = `${workerDownBanner()}<div class="admin-source-status"><div id="admin-source-status-grid" class="source-status-grid"></div></div><p class="muted small-note">自動同步：每日 12:00（台灣時間）於 GitHub Actions 背景執行，不會在本機跳出瀏覽器視窗。</p><div class="job-controls"><button class="button button-primary" data-run-job="all">執行同步 / 開啟 Actions</button><button class="button button-secondary" data-refresh-jobs>更新紀錄</button><a class="button button-secondary" href="${escapeHtml(config.manualSyncUrl)}" target="_blank" rel="noopener noreferrer">GitHub Actions ↗</a></div><div id="job-list"></div>`;
       renderSourceStatus("#admin-source-status-grid");
       await loadJobs();
     }
