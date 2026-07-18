@@ -295,6 +295,47 @@ textarea { width: 100%; min-height: 150px; padding: 14px; resize: vertical; }
 .score-chip.score-na { min-width: 42px; }
 .game-score-live { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
 .game-score-live strong { color: var(--warning); font-size: 18px; }
+
+.game-autofill-panel {
+  margin: 0 0 4px;
+  padding: 14px;
+  border: 1px solid rgba(255, 203, 102, .28);
+  border-radius: 14px;
+  background: rgba(255, 203, 102, .05);
+}
+.game-autofill-panel legend { padding: 0 6px; font-weight: 800; color: var(--warning); }
+.game-autofill-hint { margin: 0 0 10px; font-size: 12px; }
+.game-autofill-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.game-autofill-results { display: grid; gap: 10px; margin-top: 12px; }
+.game-autofill-card {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
+}
+.game-autofill-card img {
+  width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); background: #111;
+}
+.game-autofill-card strong { display: block; font-size: 13px; line-height: 1.35; margin-bottom: 4px; }
+.game-autofill-card small { display: block; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.game-autofill-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.button-compact { padding: 7px 12px; font-size: 12px; }
+.game-meta-row {
+  display: flex; flex-wrap: wrap; gap: 8px 14px;
+  margin: 0 0 10px; font-size: 12px; color: var(--muted);
+}
+.game-meta-row span { font-weight: 600; }
+.game-source-link { margin: 0 0 12px; font-size: 13px; }
+.game-source-link a { color: var(--warning); font-weight: 700; }
+.tag-genre { opacity: .92; border-style: dashed; }
+.editor-cover-preview.hidden { display: none; }
+
+@media (max-width: 720px) {
+  .game-autofill-row { grid-template-columns: 1fr; }
+}
 .feedback-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
 .feedback-card { display: flex; flex-direction: column; min-height: 100%; margin: 30px 0; padding: clamp(24px,4vw,36px); border: 1px solid var(--border); border-radius: 28px; background: var(--surface); box-shadow: var(--shadow); }
 .feedback-card > p { color: var(--muted); line-height: 1.7; margin: 0 0 12px; }

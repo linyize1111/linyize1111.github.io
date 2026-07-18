@@ -52,3 +52,5 @@ ACG Portal 站長評鑑採分項制（v1.4.0+）。
 - `score_total` (numeric)：總分一位小數
 - `grade` (text)：S/A/B/C/D
 - `rating` (smallint)：總分四捨五入整數 1–10
+
+自動填入作品 metadata（不含分數）見 `docs/GAME-REVIEW-AUTOFILL.md`。

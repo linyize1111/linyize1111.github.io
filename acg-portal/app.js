@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.4.0";
+  const APP_VERSION = "1.5.0";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -34,6 +34,7 @@
     { key: "animation", label: "演出", optional: true }
   ];
   const GAME_GRADE_LABELS = { S: "神作", A: "佳作", B: "良作", C: "普通", D: "雷" };
+  const GAME_CG_TYPE_LABELS = { static: "靜態 CG", animated: "動態演出", mixed: "動靜混合", unknown: "未標示" };
   const emptyRecentByPlatform = () => Object.fromEntries(config.platforms.map(platform => [platform, []]));
   const state = {
     works: [],
@@ -2407,18 +2408,189 @@
     state.currentGameId = gameId;
     const { data: comments } = await supabase.from("game_comments").select("*").eq("game_id", gameId).order("created_at");
     await loadProfilesForReviews(comments || []);
+    const metaBits = [];
+    if (game.developer) metaBits.push(`<span>開發／社團：${escapeHtml(game.developer)}</span>`);
+    if (game.product_code) metaBits.push(`<span>代碼：${escapeHtml(game.product_code)}</span>`);
+    if (game.work_type_label) metaBits.push(`<span>形式：${escapeHtml(game.work_type_label)}</span>`);
+    if (game.cg_type && game.cg_type !== "unknown") {
+      metaBits.push(`<span>演出：${escapeHtml(GAME_CG_TYPE_LABELS[game.cg_type] || game.cg_type)}</span>`);
+    }
+    if (game.release_date) metaBits.push(`<span>發售：${escapeHtml(String(game.release_date).slice(0, 10))}</span>`);
+    const sourceLink = game.source_url
+      ? `<p class="game-source-link"><a href="${escapeHtml(game.source_url)}" target="_blank" rel="noopener noreferrer">來源頁面</a></p>`
+      : "";
+    const genreTags = (game.genres || []).length
+      ? `<div class="tag-row game-genre-row">${(game.genres || []).slice(0, 16).map(tag => `<span class="tag tag-genre">${escapeHtml(tag)}</span>`).join("")}</div>`
+      : "";
     $("#editor-content").innerHTML = `
       <h2 id="editor-title">${escapeHtml(game.name)}</h2>
       <img class="detail-cover" src="${escapeHtml(imageUrl(game.cover_url))}" alt="">
+      ${metaBits.length ? `<div class="game-meta-row">${metaBits.join("")}</div>` : ""}
+      ${sourceLink}
       ${gameScoreSummaryHtml(game)}
       ${gameScoreBreakdownHtml(game)}
       <p class="game-review-body">${escapeHtml(game.review_body)}</p>
+      ${genreTags}
       <div class="tag-row">${(game.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>
       ${isAdmin() ? `<button class="button button-secondary" data-edit-game="${game.id}">編輯評鑑</button><button class="button button-danger" data-delete-game="${game.id}">刪除評鑑</button>` : ""}
       <hr><h3>會員留言</h3>
       <div>${(comments || []).map(comment => `<div class="review"><strong>${escapeHtml(memberName(state.profiles.get(comment.user_id)))}</strong><p>${escapeHtml(comment.body)}</p>${isAdmin() || comment.user_id === state.session?.user?.id ? `<button data-delete-game-comment="${comment.id}" data-game-id="${game.id}">刪除</button>` : ""}</div>`).join("") || '<p class="muted">尚無留言</p>'}</div>
       ${isApproved() ? `<form id="game-comment-form" class="review-form" data-game-id="${game.id}"><textarea id="game-comment-body" maxlength="500" required placeholder="留言…"></textarea><button class="button button-primary">送出留言</button></form>` : ""}`;
     openModal("editor-modal");
+  }
+
+  function gameCgTypeOptionsHtml(selected = "unknown") {
+    return Object.entries(GAME_CG_TYPE_LABELS).map(([value, label]) =>
+      `<option value="${value}"${selected === value ? " selected" : ""}>${escapeHtml(label)}</option>`
+    ).join("");
+  }
+
+  function gameAutofillPanelHtml() {
+    return `<fieldset class="game-autofill-panel">
+      <legend>自動填入（DLsite）</legend>
+      <p class="muted game-autofill-hint">貼上 RJ／VJ／BJ 代碼或作品頁 URL 最穩；關鍵字搜尋為輔。不會自動填分數。</p>
+      <div class="game-autofill-row">
+        <input id="game-autofill-query" type="text" maxlength="500" placeholder="例：RJ436654、VJ01000381、或遊戲名稱關鍵字">
+        <button id="btn-game-autofill" class="button button-secondary" type="button">搜尋／自動填入</button>
+      </div>
+      <div id="game-autofill-error" class="form-error hidden" role="alert"></div>
+      <div id="game-autofill-status" class="form-status hidden" aria-live="polite"></div>
+      <div id="game-autofill-results" class="game-autofill-results hidden"></div>
+    </fieldset>`;
+  }
+
+  function genresToInputValue(genres) {
+    return (Array.isArray(genres) ? genres : []).map(g => String(g || "").trim()).filter(Boolean).join(", ");
+  }
+
+  function applyGameAutofillProduct(product, { mergeTags = true } = {}) {
+    if (!product) return;
+    const nameEl = $("#game-name");
+    const coverEl = $("#game-cover");
+    const devEl = $("#game-developer");
+    const codeEl = $("#game-product-code");
+    const sourceEl = $("#game-source-url");
+    const releaseEl = $("#game-release-date");
+    const workTypeEl = $("#game-work-type");
+    const cgEl = $("#game-cg-type");
+    const genresEl = $("#game-genres");
+    const tagsEl = $("#game-tags");
+    const metaEl = $("#game-metadata-json");
+
+    if (nameEl && product.title) nameEl.value = product.title;
+    if (coverEl && product.cover_url) coverEl.value = product.cover_url;
+    if (devEl) devEl.value = product.developer || "";
+    if (codeEl) codeEl.value = product.product_code || "";
+    if (sourceEl) sourceEl.value = product.source_url || "";
+    if (releaseEl) releaseEl.value = product.release_date ? String(product.release_date).slice(0, 10) : "";
+    if (workTypeEl) workTypeEl.value = product.work_type_label || product.work_type || "";
+    if (cgEl && product.cg_type) cgEl.value = product.cg_type;
+    const genres = Array.isArray(product.genres) ? product.genres : [];
+    if (genresEl) genresEl.value = genresToInputValue(genres);
+    if (mergeTags && tagsEl && genres.length) {
+      const existing = (tagsEl.value || "").split(/[,，]/).map(v => v.trim()).filter(Boolean);
+      const merged = [...existing];
+      for (const g of genres) {
+        if (g && !merged.includes(g)) merged.push(g);
+      }
+      tagsEl.value = merged.join(", ");
+    }
+    if (metaEl) metaEl.value = JSON.stringify(product);
+    const preview = $("#game-autofill-cover-preview");
+    if (preview && product.cover_url) {
+      preview.src = imageUrl(product.cover_url);
+      preview.classList.remove("hidden");
+    }
+  }
+
+  function renderGameAutofillResults(payload) {
+    const box = $("#game-autofill-results");
+    if (!box) return;
+    const candidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
+    if (!candidates.length) {
+      box.classList.add("hidden");
+      box.innerHTML = "";
+      return;
+    }
+    box.classList.remove("hidden");
+    box.innerHTML = candidates.map((item, index) => {
+      const genres = Array.isArray(item.genres) ? item.genres.slice(0, 6).join(" · ") : "";
+      return `<article class="game-autofill-card">
+        <img src="${escapeHtml(imageUrl(item.cover_url || ""))}" alt="" loading="lazy">
+        <div>
+          <strong>${escapeHtml(item.title || item.product_code || "未命名")}</strong>
+          <small>${escapeHtml([item.product_code, item.developer, item.work_type_label, GAME_CG_TYPE_LABELS[item.cg_type] || ""].filter(Boolean).join(" · "))}</small>
+          ${genres ? `<small class="muted">${escapeHtml(genres)}</small>` : ""}
+          <div class="game-autofill-card-actions">
+            <button type="button" class="button button-primary button-compact" data-autofill-apply="${index}">套用此筆</button>
+            ${item.source_url ? `<a class="button button-secondary button-compact" href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer">開來源</a>` : ""}
+          </div>
+        </div>
+      </article>`;
+    }).join("");
+    box.querySelectorAll("[data-autofill-apply]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const idx = Number(btn.getAttribute("data-autofill-apply"));
+        const product = candidates[idx];
+        if (!product) return;
+        applyGameAutofillProduct(product);
+        setFormStatus("#game-autofill-status", `已套用：${product.title || product.product_code || ""}（分數未改動，請手動評分）`);
+        toast("已填入作品資料，請繼續填寫分項評分與心得", "success");
+      });
+    });
+  }
+
+  async function runGameAutofill() {
+    clearFormErrorById("#game-autofill-error");
+    const query = $("#game-autofill-query")?.value.trim() || "";
+    if (!query) {
+      showFormErrorById("#game-autofill-error", "請輸入 RJ／VJ 代碼、DLsite URL 或關鍵字", "warning");
+      return;
+    }
+    const gate = await ensureAdmin("自動填入遊戲資料");
+    if (!gate.ok) {
+      showFormErrorById("#game-autofill-error", gate.message);
+      return;
+    }
+    const button = $("#btn-game-autofill");
+    await withBusyButton(button, "抓取中…", async () => {
+      setFormStatus("#game-autofill-status", "正在向 DLsite 抓取資料…");
+      const { data, error } = await supabase.rpc("admin_fetch_game_metadata", { query });
+      if (error) {
+        setFormStatus("#game-autofill-status", "");
+        const message = `自動填入失敗：${formatApiError(error)}`;
+        showFormErrorById("#game-autofill-error", message);
+        toast(message, "error");
+        return;
+      }
+      const payload = data || {};
+      if (!payload.ok) {
+        setFormStatus("#game-autofill-status", "");
+        const message = "自動填入失敗：來源未回傳有效資料";
+        showFormErrorById("#game-autofill-error", message);
+        toast(message, "error");
+        return;
+      }
+      renderGameAutofillResults(payload);
+      if (payload.mode === "detail" && payload.product) {
+        applyGameAutofillProduct(payload.product);
+        setFormStatus("#game-autofill-status", `已自動填入 ${payload.product.product_code || ""}（分數未改動）`);
+        toast("已自動填入作品資料", "success");
+      } else {
+        setFormStatus("#game-autofill-status", `找到 ${(payload.candidates || []).length} 筆結果，請選擇要套用的作品`);
+        toast(`找到 ${(payload.candidates || []).length} 筆候選`, "info");
+      }
+    });
+  }
+
+  function wireGameAutofill() {
+    $("#btn-game-autofill")?.addEventListener("click", () => void runGameAutofill());
+    $("#game-autofill-query")?.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        void runGameAutofill();
+      }
+    });
   }
 
   async function gameEditor(game = null) {
@@ -2437,23 +2609,34 @@
       return;
     }
     state.editingGameId = game?.id || null;
+    const releaseValue = game?.release_date ? String(game.release_date).slice(0, 10) : "";
     $("#editor-content").innerHTML = `<h2 id="editor-title">${game ? "編輯" : "新增"}遊戲評鑑</h2>
       <div id="game-save-error" class="form-error hidden" role="alert"></div>
       <div id="game-save-status" class="form-status hidden" aria-live="polite"></div>
       <form id="game-editor-form" class="editor-form" novalidate data-game-id="${game?.id || ""}">
+        ${gameAutofillPanelHtml()}
         <label>名稱<input id="game-name" type="text" maxlength="300" value="${escapeHtml(game?.name || "")}"></label>
+        <label>開發商／社團<input id="game-developer" type="text" maxlength="200" value="${escapeHtml(game?.developer || "")}"></label>
+        <label>產品代碼（RJ／VJ／BJ）<input id="game-product-code" type="text" maxlength="32" value="${escapeHtml(game?.product_code || "")}"></label>
+        <label>來源連結<input id="game-source-url" type="url" inputmode="url" placeholder="https://www.dlsite.com/…" value="${escapeHtml(game?.source_url || "")}"></label>
+        <label>發售日<input id="game-release-date" type="date" value="${escapeHtml(releaseValue)}"></label>
+        <label>作品形式<input id="game-work-type" type="text" maxlength="120" value="${escapeHtml(game?.work_type_label || "")}"></label>
+        <label>演出類型<select id="game-cg-type">${gameCgTypeOptionsHtml(game?.cg_type || "unknown")}</select></label>
         <label>上傳封面圖片（可選，≤ 5MB）<input id="game-cover-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
         <label>或直接填封面網址<input id="game-cover" type="text" inputmode="url" placeholder="https://…" value="${escapeHtml(game?.cover_url || "")}"></label>
-        ${game?.cover_url ? `<img class="editor-cover-preview" src="${escapeHtml(imageUrl(game.cover_url))}" alt="目前封面">` : ""}
+        ${game?.cover_url ? `<img class="editor-cover-preview" id="game-autofill-cover-preview" src="${escapeHtml(imageUrl(game.cover_url))}" alt="目前封面">` : `<img class="editor-cover-preview hidden" id="game-autofill-cover-preview" alt="封面預覽">`}
         ${gameScoreEditorHtml(game)}
+        <label>類型標籤／genres（逗號分隔，自動填入參考）<input id="game-genres" type="text" value="${escapeHtml(genresToInputValue(game?.genres || []))}"></label>
         <label>標籤（逗號分隔）<input id="game-tags" type="text" value="${escapeHtml((game?.tags || []).join(", "))}"></label>
         <label>心得<textarea id="game-review" maxlength="5000">${escapeHtml(game?.review_body || "")}</textarea></label>
+        <input id="game-metadata-json" type="hidden" value="${escapeHtml(game?.metadata ? JSON.stringify(game.metadata) : "")}">
         <button id="btn-save-game" class="button button-primary" type="button">儲存評鑑</button>
       </form>`;
     openModal("editor-modal");
     wireEditorFormHandlers();
     wireGameScoreEditor();
-    setTimeout(() => $("#game-name")?.focus(), 40);
+    wireGameAutofill();
+    setTimeout(() => ($("#game-autofill-query") || $("#game-name"))?.focus(), 40);
   }
 
   async function uploadGameCover(file, timeoutMs = 20000) {
@@ -2545,6 +2728,21 @@
       if (uploadResult.url) coverUrl = uploadResult.url;
     }
     const tags = ($("#game-tags")?.value || "").split(/[,，]/).map(value => value.trim()).filter(Boolean);
+    const genres = ($("#game-genres")?.value || "").split(/[,，]/).map(value => value.trim()).filter(Boolean);
+    const developer = $("#game-developer")?.value.trim() || "";
+    const productCode = ($("#game-product-code")?.value || "").trim().toUpperCase();
+    const sourceUrl = $("#game-source-url")?.value.trim() || "";
+    const workTypeLabel = $("#game-work-type")?.value.trim() || "";
+    const cgType = $("#game-cg-type")?.value || "unknown";
+    const releaseRaw = $("#game-release-date")?.value || "";
+    const releaseDate = /^\d{4}-\d{2}-\d{2}$/.test(releaseRaw) ? releaseRaw : null;
+    let metadata = {};
+    try {
+      const rawMeta = $("#game-metadata-json")?.value?.trim();
+      if (rawMeta) metadata = JSON.parse(rawMeta);
+    } catch {
+      metadata = {};
+    }
     await withBusyButton(submitButton, "儲存中…", async () => {
       const { error: rpcError, data: rpcData } = await supabase.rpc("admin_upsert_game_review", {
         target_game: id,
@@ -2553,7 +2751,15 @@
         game_rating: rating,
         game_tags: tags,
         game_review_body: reviewBody,
-        game_scores: scores
+        game_scores: scores,
+        game_developer: developer,
+        game_genres: genres,
+        game_cg_type: cgType,
+        game_source_url: sourceUrl,
+        game_product_code: productCode,
+        game_release_date: releaseDate,
+        game_work_type_label: workTypeLabel,
+        game_metadata: metadata
       });
       authDebug("saveGame rpc", { rpcError, rpcData, id, scores, scoreTotal, grade });
       if (!rpcError) {
@@ -2582,6 +2788,14 @@
         grade,
         review_body: reviewBody,
         tags,
+        developer,
+        genres,
+        cg_type: cgType,
+        source_url: sourceUrl,
+        product_code: productCode,
+        release_date: releaseDate,
+        work_type_label: workTypeLabel,
+        metadata,
         status: "published",
         created_by: state.session.user.id
       };
