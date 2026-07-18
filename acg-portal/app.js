@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.3.12";
+  const APP_VERSION = "1.4.0";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -24,6 +24,16 @@
   const DRAW_HISTORY_KEY = "acg_draw_history_v1";
 
   const PLATFORM_LABELS = { nhentai: "Nhentai", "18comic": "禁漫", hanime: "Hanime", pixiv: "Pixiv" };
+  /** 遊戲評鑑分項：1–10；optional 可 N/A。總分＝非 null 等權平均。見 docs/GAME-REVIEW-SCORING.md */
+  const GAME_SCORE_FIELDS = [
+    { key: "story", label: "劇情", optional: false },
+    { key: "art", label: "美術", optional: false },
+    { key: "voice", label: "配音", optional: true },
+    { key: "gameplay", label: "系統", optional: false },
+    { key: "presentation", label: "表現力", optional: false },
+    { key: "animation", label: "演出", optional: true }
+  ];
+  const GAME_GRADE_LABELS = { S: "神作", A: "佳作", B: "良作", C: "普通", D: "雷" };
   const emptyRecentByPlatform = () => Object.fromEntries(config.platforms.map(platform => [platform, []]));
   const state = {
     works: [],
@@ -2223,13 +2233,171 @@
     if (pick) openWork(pick.id); else toast("目前沒有可推薦的相似作品", "warning");
   }
 
+  function legacyRatingToTen(rating) {
+    const n = Number(rating);
+    if (!Number.isFinite(n)) return 7;
+    if (n >= 1 && n <= 10) return Math.round(n);
+    if (n >= -5 && n <= 5) return Math.max(1, Math.min(10, n + 5));
+    return 7;
+  }
+
+  function normalizeGameScores(raw, fallbackRating) {
+    const src = raw && typeof raw === "object" ? raw : {};
+    const fallback = legacyRatingToTen(fallbackRating);
+    const out = {};
+    for (const field of GAME_SCORE_FIELDS) {
+      const v = src[field.key];
+      if (v === null || v === undefined || v === "") {
+        out[field.key] = field.optional ? null : fallback;
+      } else {
+        const n = Number(v);
+        out[field.key] = Number.isFinite(n) ? Math.max(1, Math.min(10, Math.round(n))) : (field.optional ? null : fallback);
+      }
+    }
+    return out;
+  }
+
+  function computeGameScoreTotal(scores) {
+    const vals = GAME_SCORE_FIELDS.map(f => scores[f.key]).filter(v => v !== null && v !== undefined);
+    if (!vals.length) return null;
+    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+  }
+
+  function gameScoreGrade(total) {
+    if (total == null) return null;
+    if (total >= 9) return "S";
+    if (total >= 8) return "A";
+    if (total >= 6.5) return "B";
+    if (total >= 5) return "C";
+    return "D";
+  }
+
+  function gameGradeLabel(grade) {
+    return GAME_GRADE_LABELS[grade] || "";
+  }
+
+  function formatGameTotal(game) {
+    if (game?.score_total != null && Number.isFinite(Number(game.score_total))) {
+      return Number(game.score_total).toFixed(1);
+    }
+    const scores = normalizeGameScores(game?.scores, game?.rating);
+    const total = computeGameScoreTotal(scores);
+    if (total != null) return total.toFixed(1);
+    if (game?.rating != null) return Number(legacyRatingToTen(game.rating)).toFixed(1);
+    return "—";
+  }
+
+  function formatGameGrade(game) {
+    if (game?.grade && GAME_GRADE_LABELS[game.grade]) return game.grade;
+    const total = game?.score_total != null ? Number(game.score_total) : computeGameScoreTotal(normalizeGameScores(game?.scores, game?.rating));
+    return gameScoreGrade(total) || "";
+  }
+
+  function gameScoreSummaryHtml(game, { compact = false } = {}) {
+    const total = formatGameTotal(game);
+    const grade = formatGameGrade(game);
+    const label = gameGradeLabel(grade);
+    if (compact) {
+      return `<span class="game-rating" title="${grade ? `${grade} · ${label}` : "總分"}">${escapeHtml(total)}<small>/10${grade ? ` · ${grade}` : ""}</small></span>`;
+    }
+    return `<div class="game-score-hero">
+      <div class="game-score-total"><strong>${escapeHtml(total)}</strong><span>/10</span></div>
+      ${grade ? `<div class="game-grade grade-${grade}"><b>${escapeHtml(grade)}</b><small>${escapeHtml(label)}</small></div>` : ""}
+    </div>`;
+  }
+
+  function gameScoreBreakdownHtml(game) {
+    const scores = normalizeGameScores(game?.scores, game?.rating);
+    const rows = GAME_SCORE_FIELDS.map(field => {
+      const v = scores[field.key];
+      const display = v == null ? "N/A" : `${v}`;
+      const bar = v == null ? 0 : v * 10;
+      return `<div class="game-score-row">
+        <span class="game-score-label">${escapeHtml(field.label)}</span>
+        <div class="game-score-bar" aria-hidden="true"><i style="width:${bar}%"></i></div>
+        <span class="game-score-value">${escapeHtml(display)}${v == null ? "" : "<small>/10</small>"}</span>
+      </div>`;
+    }).join("");
+    return `<div class="game-score-breakdown">${rows}</div>`;
+  }
+
+  function gameScoreEditorHtml(game) {
+    const scores = normalizeGameScores(game?.scores, game?.rating ?? 7);
+    const total = computeGameScoreTotal(scores);
+    const grade = gameScoreGrade(total);
+    const fields = GAME_SCORE_FIELDS.map(field => {
+      const current = scores[field.key];
+      const naSelected = field.optional && current == null;
+      const buttons = Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
+        `<button type="button" class="score-chip${current === n ? " selected" : ""}" data-score-key="${field.key}" data-score-value="${n}">${n}</button>`
+      ).join("");
+      const naBtn = field.optional
+        ? `<button type="button" class="score-chip score-na${naSelected ? " selected" : ""}" data-score-key="${field.key}" data-score-value="na">N/A</button>`
+        : "";
+      return `<div class="game-score-field" data-score-field="${field.key}">
+        <div class="game-score-field-head"><strong>${escapeHtml(field.label)}</strong>${field.optional ? '<span class="muted">可選</span>' : ""}</div>
+        <div class="score-chip-row" role="group" aria-label="${escapeHtml(field.label)}">${buttons}${naBtn}</div>
+      </div>`;
+    }).join("");
+    return `<fieldset class="game-score-editor">
+      <legend>分項評分（1–10）</legend>
+      <p class="muted game-score-hint">總分＝各有效分項等權平均；配音／演出可標 N/A。</p>
+      ${fields}
+      <div class="game-score-live" id="game-score-live" aria-live="polite">
+        預覽總分 <strong>${total != null ? total.toFixed(1) : "—"}</strong>/10
+        ${grade ? `· <span class="game-grade-inline grade-${grade}">${grade} ${gameGradeLabel(grade)}</span>` : ""}
+      </div>
+    </fieldset>`;
+  }
+
+  function readGameScoresFromEditor() {
+    const scores = {};
+    for (const field of GAME_SCORE_FIELDS) {
+      const selected = $(`.score-chip.selected[data-score-key="${field.key}"]`);
+      if (!selected) {
+        scores[field.key] = field.optional ? null : null;
+        continue;
+      }
+      const raw = selected.dataset.scoreValue;
+      scores[field.key] = raw === "na" ? null : Number(raw);
+    }
+    return scores;
+  }
+
+  function refreshGameScoreLivePreview() {
+    const live = $("#game-score-live");
+    if (!live) return;
+    const scores = readGameScoresFromEditor();
+    const missing = GAME_SCORE_FIELDS.filter(f => !f.optional && (scores[f.key] == null || !Number.isFinite(scores[f.key])));
+    if (missing.length) {
+      live.innerHTML = `尚缺：${missing.map(f => f.label).join("、")}`;
+      return;
+    }
+    const total = computeGameScoreTotal(scores);
+    const grade = gameScoreGrade(total);
+    live.innerHTML = `預覽總分 <strong>${total != null ? total.toFixed(1) : "—"}</strong>/10${grade ? ` · <span class="game-grade-inline grade-${grade}">${grade} ${gameGradeLabel(grade)}</span>` : ""}`;
+  }
+
+  function wireGameScoreEditor() {
+    const form = $("#game-editor-form");
+    if (!form) return;
+    form.querySelectorAll(".score-chip").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const key = btn.dataset.scoreKey;
+        form.querySelectorAll(`.score-chip[data-score-key="${key}"]`).forEach(el => el.classList.toggle("selected", el === btn));
+        refreshGameScoreLivePreview();
+      });
+    });
+    refreshGameScoreLivePreview();
+  }
+
   async function loadGames() {
     const { data, error } = await supabase.from("games").select("*").order("created_at", { ascending: false });
     if (error) return toast(error.message, "error");
     $("#games-grid").innerHTML = (data || []).map(game => `
       <article class="game-card" data-open-game="${game.id}">
         <img src="${escapeHtml(imageUrl(game.cover_url))}" alt="${escapeHtml(game.name)}" loading="lazy">
-        <div><h3>${escapeHtml(game.name)}</h3><span class="game-rating">${game.rating > 0 ? "+" : ""}${game.rating}</span><div class="tag-row">${(game.tags || []).slice(0,3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div></div>
+        <div><h3>${escapeHtml(game.name)}</h3>${gameScoreSummaryHtml(game, { compact: true })}<div class="tag-row">${(game.tags || []).slice(0,3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div></div>
       </article>`).join("") || '<div class="empty-state">站長尚未發表遊戲評鑑</div>';
   }
 
@@ -2242,8 +2410,9 @@
     $("#editor-content").innerHTML = `
       <h2 id="editor-title">${escapeHtml(game.name)}</h2>
       <img class="detail-cover" src="${escapeHtml(imageUrl(game.cover_url))}" alt="">
-      <p class="game-rating">站長評分 ${game.rating > 0 ? "+" : ""}${game.rating}</p>
-      <p>${escapeHtml(game.review_body)}</p>
+      ${gameScoreSummaryHtml(game)}
+      ${gameScoreBreakdownHtml(game)}
+      <p class="game-review-body">${escapeHtml(game.review_body)}</p>
       <div class="tag-row">${(game.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>
       ${isAdmin() ? `<button class="button button-secondary" data-edit-game="${game.id}">編輯評鑑</button><button class="button button-danger" data-delete-game="${game.id}">刪除評鑑</button>` : ""}
       <hr><h3>會員留言</h3>
@@ -2276,13 +2445,14 @@
         <label>上傳封面圖片（可選，≤ 5MB）<input id="game-cover-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
         <label>或直接填封面網址<input id="game-cover" type="text" inputmode="url" placeholder="https://…" value="${escapeHtml(game?.cover_url || "")}"></label>
         ${game?.cover_url ? `<img class="editor-cover-preview" src="${escapeHtml(imageUrl(game.cover_url))}" alt="目前封面">` : ""}
-        <label>評分（-5～+5）<input id="game-rating" type="number" min="-5" max="5" step="1" value="${game?.rating ?? 0}"></label>
+        ${gameScoreEditorHtml(game)}
         <label>標籤（逗號分隔）<input id="game-tags" type="text" value="${escapeHtml((game?.tags || []).join(", "))}"></label>
         <label>心得<textarea id="game-review" maxlength="5000">${escapeHtml(game?.review_body || "")}</textarea></label>
         <button id="btn-save-game" class="button button-primary" type="button">儲存評鑑</button>
       </form>`;
     openModal("editor-modal");
     wireEditorFormHandlers();
+    wireGameScoreEditor();
     setTimeout(() => $("#game-name")?.focus(), 40);
   }
 
@@ -2332,7 +2502,7 @@
     const id = normalizeGameId(form.dataset.gameId || state.editingGameId);
     const name = $("#game-name")?.value.trim() || "";
     const reviewBody = $("#game-review")?.value.trim() || "";
-    const rating = Number($("#game-rating")?.value);
+    const scores = readGameScoresFromEditor();
     if (!name) {
       setFormStatus("#game-save-status", "");
       const message = "請輸入遊戲名稱";
@@ -2345,12 +2515,26 @@
       showFormErrorById("#game-save-error", message, "warning");
       return;
     }
-    if (!Number.isFinite(rating) || rating < -5 || rating > 5) {
+    const missing = GAME_SCORE_FIELDS.filter(f => !f.optional && (scores[f.key] == null || !Number.isFinite(scores[f.key])));
+    if (missing.length) {
       setFormStatus("#game-save-status", "");
-      const message = "評分需介於 -5 ~ +5";
+      const message = `請完成分項評分：${missing.map(f => f.label).join("、")}`;
       showFormErrorById("#game-save-error", message, "warning");
       return;
     }
+    for (const field of GAME_SCORE_FIELDS) {
+      const v = scores[field.key];
+      if (v == null) continue;
+      if (!Number.isInteger(v) || v < 1 || v > 10) {
+        setFormStatus("#game-save-status", "");
+        const message = `${field.label} 需為 1–10 整數`;
+        showFormErrorById("#game-save-error", message, "warning");
+        return;
+      }
+    }
+    const scoreTotal = computeGameScoreTotal(scores);
+    const grade = gameScoreGrade(scoreTotal);
+    const rating = Math.max(1, Math.min(10, Math.round(scoreTotal)));
     let coverUrl = $("#game-cover")?.value.trim() || "";
     const fileInput = $("#game-cover-file");
     if (fileInput?.files?.length) {
@@ -2366,11 +2550,12 @@
         target_game: id,
         game_name: name,
         game_cover_url: coverUrl || "",
-        game_rating: Math.round(rating),
+        game_rating: rating,
         game_tags: tags,
-        game_review_body: reviewBody
+        game_review_body: reviewBody,
+        game_scores: scores
       });
-      authDebug("saveGame rpc", { rpcError, rpcData, id });
+      authDebug("saveGame rpc", { rpcError, rpcData, id, scores, scoreTotal, grade });
       if (!rpcError) {
         setFormStatus("#game-save-status", "");
         state.editingGameId = null;
@@ -2391,7 +2576,10 @@
       const payload = {
         name,
         cover_url: coverUrl || "",
-        rating: Math.round(rating),
+        rating,
+        scores,
+        score_total: scoreTotal,
+        grade,
         review_body: reviewBody,
         tags,
         status: "published",
