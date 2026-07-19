@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.5.0";
+  const APP_VERSION = "1.6.0";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -2445,16 +2445,30 @@
     ).join("");
   }
 
-  function gameAutofillPanelHtml() {
+  function gameAutofillPanelHtml(prefillName = "") {
+    const q = escapeHtml(prefillName || "");
     return `<fieldset class="game-autofill-panel">
-      <legend>自動填入（DLsite）</legend>
-      <p class="muted game-autofill-hint">貼上 RJ／VJ／BJ 代碼或作品頁 URL 最穩；關鍵字搜尋為輔。不會自動填分數。</p>
+      <legend>以標題搜尋並填入</legend>
+      <p class="muted game-autofill-hint">輸入<strong>遊戲名稱</strong>搜尋 DLsite → 從候選（封面＋店家／代碼）點「套用此筆」確認。不會自動填分數。中文譯名常找不到，請改日文原名或貼官方 URL。</p>
       <div class="game-autofill-row">
-        <input id="game-autofill-query" type="text" maxlength="500" placeholder="例：RJ436654、VJ01000381、或遊戲名稱關鍵字">
-        <button id="btn-game-autofill" class="button button-secondary" type="button">搜尋／自動填入</button>
+        <input id="game-autofill-query" type="text" maxlength="500" placeholder="例：ensemble、ゲームタイトル…" value="${q}">
+        <button id="btn-game-autofill" class="button button-primary" type="button">搜尋標題</button>
       </div>
+      <div class="game-autofill-toolbar">
+        <button id="btn-game-autofill-from-name" class="button button-secondary button-compact" type="button">用上方名稱搜尋</button>
+      </div>
+      <details class="game-autofill-advanced">
+        <summary>進階：RJ／VJ／BJ 代碼或作品頁 URL</summary>
+        <p class="muted game-autofill-hint">有代碼或官方 URL 時最準；可貼進上方搜尋框後按「搜尋標題」。命中後仍請確認候選再套用（代碼精確命中會先帶入預覽）。</p>
+      </details>
+      <details class="game-autofill-advanced game-autofill-imagesearch">
+        <summary>以圖搜圖（預留）</summary>
+        <p class="muted game-autofill-hint">需在 Supabase Edge Function secrets 設定 <code>SAUCENAO_API_KEY</code> 後啟用。目前未設定金鑰，請改用標題搜尋或貼 RJ／URL。詳見文件。</p>
+        <button id="btn-game-autofill-by-image" class="button button-secondary button-compact" type="button" disabled title="需設定 SauceNAO API key">以此封面搜尋（未啟用）</button>
+      </details>
       <div id="game-autofill-error" class="form-error hidden" role="alert"></div>
       <div id="game-autofill-status" class="form-status hidden" aria-live="polite"></div>
+      <div id="game-autofill-empty" class="game-autofill-empty muted hidden" role="status"></div>
       <div id="game-autofill-results" class="game-autofill-results hidden"></div>
     </fieldset>`;
   }
@@ -2503,6 +2517,33 @@
     }
   }
 
+  function showGameAutofillEmpty(hint) {
+    const empty = $("#game-autofill-empty");
+    const box = $("#game-autofill-results");
+    if (box) {
+      box.classList.add("hidden");
+      box.innerHTML = "";
+    }
+    if (!empty) return;
+    if (!hint) {
+      empty.classList.add("hidden");
+      empty.innerHTML = "";
+      return;
+    }
+    empty.classList.remove("hidden");
+    empty.innerHTML = `<p>${escapeHtml(hint)}</p>
+      <ul>
+        <li>改貼<strong>日文原名</strong>或更完整官方標題再搜</li>
+        <li>或貼 DLsite 作品頁 <strong>URL</strong>／<strong>RJ・VJ・BJ</strong> 代碼（進階）</li>
+        <li>確認後才會寫入欄位；分項分數請手動評分</li>
+      </ul>`;
+  }
+
+  function storeBadgeHtml(item) {
+    const store = item?.store || (item?.source === "dlsite" ? "DLsite" : (item?.source || "來源"));
+    return `<span class="game-autofill-store">${escapeHtml(store)}</span>`;
+  }
+
   function renderGameAutofillResults(payload) {
     const box = $("#game-autofill-results");
     if (!box) return;
@@ -2512,14 +2553,16 @@
       box.innerHTML = "";
       return;
     }
+    showGameAutofillEmpty("");
     box.classList.remove("hidden");
     box.innerHTML = candidates.map((item, index) => {
       const genres = Array.isArray(item.genres) ? item.genres.slice(0, 6).join(" · ") : "";
+      const metaBits = [item.product_code, item.developer, item.work_type_label, GAME_CG_TYPE_LABELS[item.cg_type] || ""].filter(Boolean);
       return `<article class="game-autofill-card">
         <img src="${escapeHtml(imageUrl(item.cover_url || ""))}" alt="" loading="lazy">
         <div>
-          <strong>${escapeHtml(item.title || item.product_code || "未命名")}</strong>
-          <small>${escapeHtml([item.product_code, item.developer, item.work_type_label, GAME_CG_TYPE_LABELS[item.cg_type] || ""].filter(Boolean).join(" · "))}</small>
+          <div class="game-autofill-card-head">${storeBadgeHtml(item)}<strong>${escapeHtml(item.title || item.product_code || "未命名")}</strong></div>
+          <small>${escapeHtml(metaBits.join(" · "))}</small>
           ${genres ? `<small class="muted">${escapeHtml(genres)}</small>` : ""}
           <div class="game-autofill-card-actions">
             <button type="button" class="button button-primary button-compact" data-autofill-apply="${index}">套用此筆</button>
@@ -2542,9 +2585,10 @@
 
   async function runGameAutofill() {
     clearFormErrorById("#game-autofill-error");
+    showGameAutofillEmpty("");
     const query = $("#game-autofill-query")?.value.trim() || "";
     if (!query) {
-      showFormErrorById("#game-autofill-error", "請輸入 RJ／VJ 代碼、DLsite URL 或關鍵字", "warning");
+      showFormErrorById("#game-autofill-error", "請輸入遊戲名稱（建議），或 RJ／URL", "warning");
       return;
     }
     const gate = await ensureAdmin("自動填入遊戲資料");
@@ -2553,38 +2597,59 @@
       return;
     }
     const button = $("#btn-game-autofill");
-    await withBusyButton(button, "抓取中…", async () => {
-      setFormStatus("#game-autofill-status", "正在向 DLsite 抓取資料…");
+    await withBusyButton(button, "搜尋中…", async () => {
+      setFormStatus("#game-autofill-status", "正在以標題／代碼向 DLsite 搜尋…");
       const { data, error } = await supabase.rpc("admin_fetch_game_metadata", { query });
       if (error) {
         setFormStatus("#game-autofill-status", "");
-        const message = `自動填入失敗：${formatApiError(error)}`;
+        const message = `搜尋失敗：${formatApiError(error)}`;
         showFormErrorById("#game-autofill-error", message);
+        showGameAutofillEmpty("搜尋失敗。請改貼更精準標題、日文原名，或作品頁 URL／RJ 代碼。");
         toast(message, "error");
         return;
       }
       const payload = data || {};
-      if (!payload.ok) {
+      const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
+      if (!payload.ok || !candidates.length) {
         setFormStatus("#game-autofill-status", "");
-        const message = "自動填入失敗：來源未回傳有效資料";
-        showFormErrorById("#game-autofill-error", message);
-        toast(message, "error");
+        const hint = payload.hint || "找不到符合的作品。請改用日文原名、更精準標題，或貼 URL／RJ 代碼。";
+        showGameAutofillEmpty(hint);
+        showFormErrorById("#game-autofill-error", hint, "warning");
+        toast("沒有候選結果", "warning");
         return;
       }
       renderGameAutofillResults(payload);
       if (payload.mode === "detail" && payload.product) {
+        // Exact code/URL hit: preview-fill, still show card so admin can re-confirm / open source
         applyGameAutofillProduct(payload.product);
-        setFormStatus("#game-autofill-status", `已自動填入 ${payload.product.product_code || ""}（分數未改動）`);
-        toast("已自動填入作品資料", "success");
+        setFormStatus("#game-autofill-status", `已依代碼預填 ${payload.product.product_code || ""}（分數未改動；可再點「套用此筆」確認）`);
+        toast("已依代碼預填，請確認後繼續評分", "success");
       } else {
-        setFormStatus("#game-autofill-status", `找到 ${(payload.candidates || []).length} 筆結果，請選擇要套用的作品`);
-        toast(`找到 ${(payload.candidates || []).length} 筆候選`, "info");
+        setFormStatus("#game-autofill-status", payload.hint || `找到 ${candidates.length} 筆候選，請點「套用此筆」確認`);
+        toast(`找到 ${candidates.length} 筆候選，請選擇要套用的作品`, "info");
       }
     });
   }
 
+  function runGameAutofillFromName() {
+    const name = $("#game-name")?.value.trim() || "";
+    if (!name) {
+      showFormErrorById("#game-autofill-error", "請先在上方「名稱」欄填入遊戲標題", "warning");
+      toast("請先填寫名稱", "warning");
+      $("#game-name")?.focus();
+      return;
+    }
+    const q = $("#game-autofill-query");
+    if (q) q.value = name;
+    void runGameAutofill();
+  }
+
   function wireGameAutofill() {
     $("#btn-game-autofill")?.addEventListener("click", () => void runGameAutofill());
+    $("#btn-game-autofill-from-name")?.addEventListener("click", () => runGameAutofillFromName());
+    $("#btn-game-autofill-by-image")?.addEventListener("click", () => {
+      toast("以圖搜圖尚未啟用：請設定 SauceNAO API key（見 GAME-REVIEW-AUTOFILL.md）", "info");
+    });
     $("#game-autofill-query")?.addEventListener("keydown", event => {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -2614,10 +2679,10 @@
       <div id="game-save-error" class="form-error hidden" role="alert"></div>
       <div id="game-save-status" class="form-status hidden" aria-live="polite"></div>
       <form id="game-editor-form" class="editor-form" novalidate data-game-id="${game?.id || ""}">
-        ${gameAutofillPanelHtml()}
-        <label>名稱<input id="game-name" type="text" maxlength="300" value="${escapeHtml(game?.name || "")}"></label>
+        <label>名稱<input id="game-name" type="text" maxlength="300" value="${escapeHtml(game?.name || "")}" placeholder="先填名稱，再按下方「用上方名稱搜尋」"></label>
+        ${gameAutofillPanelHtml(game?.name || "")}
         <label>開發商／社團<input id="game-developer" type="text" maxlength="200" value="${escapeHtml(game?.developer || "")}"></label>
-        <label>產品代碼（RJ／VJ／BJ）<input id="game-product-code" type="text" maxlength="32" value="${escapeHtml(game?.product_code || "")}"></label>
+        <label>產品代碼（RJ／VJ／BJ，可空）<input id="game-product-code" type="text" maxlength="32" value="${escapeHtml(game?.product_code || "")}"></label>
         <label>來源連結<input id="game-source-url" type="url" inputmode="url" placeholder="https://www.dlsite.com/…" value="${escapeHtml(game?.source_url || "")}"></label>
         <label>發售日<input id="game-release-date" type="date" value="${escapeHtml(releaseValue)}"></label>
         <label>作品形式<input id="game-work-type" type="text" maxlength="120" value="${escapeHtml(game?.work_type_label || "")}"></label>
@@ -2636,7 +2701,7 @@
     wireEditorFormHandlers();
     wireGameScoreEditor();
     wireGameAutofill();
-    setTimeout(() => ($("#game-autofill-query") || $("#game-name"))?.focus(), 40);
+    setTimeout(() => ($("#game-name") || $("#game-autofill-query"))?.focus(), 40);
   }
 
   async function uploadGameCover(file, timeoutMs = 20000) {

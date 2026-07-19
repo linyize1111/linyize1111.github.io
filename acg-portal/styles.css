@@ -304,8 +304,30 @@ textarea { width: 100%; min-height: 150px; padding: 14px; resize: vertical; }
   background: rgba(255, 203, 102, .05);
 }
 .game-autofill-panel legend { padding: 0 6px; font-weight: 800; color: var(--warning); }
-.game-autofill-hint { margin: 0 0 10px; font-size: 12px; }
+.game-autofill-hint { margin: 0 0 10px; font-size: 12px; line-height: 1.55; }
+.game-autofill-hint strong { color: var(--text); font-weight: 700; }
 .game-autofill-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.game-autofill-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; }
+.game-autofill-advanced { margin-top: 10px; font-size: 12px; color: var(--muted); }
+.game-autofill-advanced summary {
+  cursor: pointer; font-weight: 700; color: var(--text); list-style: none;
+}
+.game-autofill-advanced summary::-webkit-details-marker { display: none; }
+.game-autofill-advanced summary::before { content: "▸ "; color: var(--warning); }
+.game-autofill-advanced[open] summary::before { content: "▾ "; }
+.game-autofill-advanced .game-autofill-hint { margin-top: 8px; }
+.game-autofill-imagesearch code {
+  font-size: 11px; padding: 1px 5px; border-radius: 4px;
+  background: rgba(255,255,255,.06); border: 1px solid var(--border);
+}
+.game-autofill-empty {
+  margin-top: 12px; padding: 12px; border: 1px dashed rgba(255, 203, 102, .35);
+  border-radius: 12px; font-size: 12px; line-height: 1.55;
+}
+.game-autofill-empty.hidden { display: none; }
+.game-autofill-empty p { margin: 0 0 8px; }
+.game-autofill-empty ul { margin: 0; padding-left: 1.2em; }
+.game-autofill-empty li { margin: 4px 0; }
 .game-autofill-results { display: grid; gap: 10px; margin-top: 12px; }
 .game-autofill-card {
   display: grid;
@@ -319,7 +341,13 @@ textarea { width: 100%; min-height: 150px; padding: 14px; resize: vertical; }
 .game-autofill-card img {
   width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); background: #111;
 }
-.game-autofill-card strong { display: block; font-size: 13px; line-height: 1.35; margin-bottom: 4px; }
+.game-autofill-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 4px; }
+.game-autofill-card-head strong { display: inline; font-size: 13px; line-height: 1.35; margin: 0; }
+.game-autofill-store {
+  display: inline-block; flex-shrink: 0;
+  padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 800;
+  letter-spacing: .02em; color: #1a1208; background: var(--warning);
+}
 .game-autofill-card small { display: block; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .game-autofill-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .button-compact { padding: 7px 12px; font-size: 12px; }
