@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.6.0";
+  const APP_VERSION = "1.7.0";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -2449,21 +2449,25 @@
     const q = escapeHtml(prefillName || "");
     return `<fieldset class="game-autofill-panel">
       <legend>以標題搜尋並填入</legend>
-      <p class="muted game-autofill-hint">輸入<strong>遊戲名稱</strong>搜尋 DLsite → 從候選（封面＋店家／代碼）點「套用此筆」確認。不會自動填分數。中文譯名常找不到，請改日文原名或貼官方 URL。</p>
+      <p class="muted game-autofill-hint">用 <strong>Google／網頁搜尋</strong>依遊戲標題找公開商品／介紹頁（Steam、DLsite、官方站、Wikipedia 等）→ 點「套用此筆」抓 metadata 填入。資料來源為公開網頁資訊；<strong>不會</strong>自動填分數，也不會從盜版／破解站抓下載內容。</p>
       <div class="game-autofill-row">
-        <input id="game-autofill-query" type="text" maxlength="500" placeholder="例：ensemble、ゲームタイトル…" value="${q}">
-        <button id="btn-game-autofill" class="button button-primary" type="button">搜尋標題</button>
+        <input id="game-autofill-query" type="text" maxlength="500" placeholder="用 Google／網頁搜尋標題…" value="${q}">
+        <button id="btn-game-autofill" class="button button-primary" type="button">網頁搜尋</button>
       </div>
       <div class="game-autofill-toolbar">
         <button id="btn-game-autofill-from-name" class="button button-secondary button-compact" type="button">用上方名稱搜尋</button>
       </div>
       <details class="game-autofill-advanced">
-        <summary>進階：RJ／VJ／BJ 代碼或作品頁 URL</summary>
-        <p class="muted game-autofill-hint">有代碼或官方 URL 時最準；可貼進上方搜尋框後按「搜尋標題」。命中後仍請確認候選再套用（代碼精確命中會先帶入預覽）。</p>
+        <summary>進階：DLsite 代碼／URL 精確抓取</summary>
+        <p class="muted game-autofill-hint">有 RJ／VJ／BJ 或 Steam／DLsite 作品頁 URL 時最準。貼進下方後按「精確抓取」；仍請確認後再存檔。</p>
+        <div class="game-autofill-row">
+          <input id="game-autofill-exact-query" type="text" maxlength="500" placeholder="RJ…／VJ… 或 https://store.steampowered.com/app/…">
+          <button id="btn-game-autofill-exact" class="button button-secondary" type="button">精確抓取</button>
+        </div>
       </details>
       <details class="game-autofill-advanced game-autofill-imagesearch">
         <summary>以圖搜圖（預留）</summary>
-        <p class="muted game-autofill-hint">需在 Supabase Edge Function secrets 設定 <code>SAUCENAO_API_KEY</code> 後啟用。目前未設定金鑰，請改用標題搜尋或貼 RJ／URL。詳見文件。</p>
+        <p class="muted game-autofill-hint">需在 secrets 設定 <code>SAUCENAO_API_KEY</code> 後啟用。目前未設定金鑰，請改用網頁搜尋或貼官方 URL。詳見文件。</p>
         <button id="btn-game-autofill-by-image" class="button button-secondary button-compact" type="button" disabled title="需設定 SauceNAO API key">以此封面搜尋（未啟用）</button>
       </details>
       <div id="game-autofill-error" class="form-error hidden" role="alert"></div>
@@ -2533,15 +2537,78 @@
     empty.classList.remove("hidden");
     empty.innerHTML = `<p>${escapeHtml(hint)}</p>
       <ul>
-        <li>改貼<strong>日文原名</strong>或更完整官方標題再搜</li>
-        <li>或貼 DLsite 作品頁 <strong>URL</strong>／<strong>RJ・VJ・BJ</strong> 代碼（進階）</li>
-        <li>確認後才會寫入欄位；分項分數請手動評分</li>
+        <li>改貼<strong>原名</strong>或更完整官方標題再搜</li>
+        <li>或用進階貼 <strong>Steam／DLsite URL</strong>／<strong>RJ・VJ・BJ</strong> 精確抓取</li>
+        <li>候選需人工確認；分項分數請手動評分。無法保證每個破解檔標題都能對到正版商店</li>
       </ul>`;
   }
 
   function storeBadgeHtml(item) {
     const store = item?.store || (item?.source === "dlsite" ? "DLsite" : (item?.source || "來源"));
-    return `<span class="game-autofill-store">${escapeHtml(store)}</span>`;
+    const blocked = item?.fetchable === false;
+    return `<span class="game-autofill-store${blocked ? " is-blocked" : ""}">${escapeHtml(store)}</span>`;
+  }
+
+  function providerLabel(payload) {
+    const p = payload?.provider || "";
+    if (p === "google_cse") return "Google CSE";
+    if (p === "fallback_multi") return "備援（Steam／Wikipedia／DLsite）";
+    if (p === "dlsite_code") return "DLsite 代碼";
+    return p || "網頁搜尋";
+  }
+
+  async function resolveAndApplyCandidate(item) {
+    if (!item) return;
+    const fetchable = item.fetchable !== false;
+    if (!fetchable) {
+      if (item.title) {
+        const nameEl = $("#game-name");
+        const sourceEl = $("#game-source-url");
+        if (nameEl && item.title) nameEl.value = item.title;
+        if (sourceEl && item.source_url) sourceEl.value = item.source_url;
+      }
+      setFormStatus("#game-autofill-status", "此來源不自動抓取內容（下載／破解類網域）；僅填入標題與連結供參考");
+      toast("已略過內容抓取：請改選公開商店／介紹頁", "warning");
+      return;
+    }
+
+    const alreadyReady = item.ready === true && item.title && (item.cover_url || item.developer || item.product_code);
+    const query = item.source_url || item.product_code || "";
+    if (alreadyReady && item.source === "dlsite") {
+      applyGameAutofillProduct(item);
+      setFormStatus("#game-autofill-status", `已套用：${item.title || item.product_code || ""}（分數未改動，請手動評分）`);
+      toast("已填入作品資料，請繼續填寫分項評分與心得", "success");
+      return;
+    }
+    if (!query) {
+      applyGameAutofillProduct(item);
+      toast("已套用候選標題（無來源 URL 可再抓）", "info");
+      return;
+    }
+
+    setFormStatus("#game-autofill-status", "正在抓取該頁公開 metadata…");
+    const { data, error } = await supabase.rpc("admin_fetch_game_metadata", { query });
+    if (error) {
+      const message = `抓取失敗：${formatApiError(error)}`;
+      showFormErrorById("#game-autofill-error", message);
+      // Soft-fill from search hit
+      applyGameAutofillProduct(item);
+      setFormStatus("#game-autofill-status", "頁面抓取失敗，已先填入搜尋結果的標題／連結，請人工核對");
+      toast(message, "warning");
+      return;
+    }
+    const payload = data || {};
+    if (payload.ok && payload.product) {
+      applyGameAutofillProduct(payload.product);
+      setFormStatus("#game-autofill-status", payload.hint || `已套用：${payload.product.title || ""}（分數未改動）`);
+      toast("已填入作品資料，請繼續填寫分項評分與心得", "success");
+      return;
+    }
+    applyGameAutofillProduct(item);
+    const hint = payload.hint || "無法完整抓取，已填入搜尋結果欄位";
+    setFormStatus("#game-autofill-status", hint);
+    showFormErrorById("#game-autofill-error", hint, "warning");
+    toast(hint, "warning");
   }
 
   function renderGameAutofillResults(payload) {
@@ -2557,15 +2624,19 @@
     box.classList.remove("hidden");
     box.innerHTML = candidates.map((item, index) => {
       const genres = Array.isArray(item.genres) ? item.genres.slice(0, 6).join(" · ") : "";
-      const metaBits = [item.product_code, item.developer, item.work_type_label, GAME_CG_TYPE_LABELS[item.cg_type] || ""].filter(Boolean);
-      return `<article class="game-autofill-card">
+      const metaBits = [item.product_code, item.developer, item.work_type_label, item.host].filter(Boolean);
+      const snippet = item.snippet ? `<small class="game-autofill-snippet">${escapeHtml(item.snippet)}</small>` : "";
+      const blocked = item.fetchable === false;
+      const applyLabel = blocked ? "僅填標題連結" : "套用此筆";
+      return `<article class="game-autofill-card${blocked ? " is-blocked" : ""}">
         <img src="${escapeHtml(imageUrl(item.cover_url || ""))}" alt="" loading="lazy">
         <div>
           <div class="game-autofill-card-head">${storeBadgeHtml(item)}<strong>${escapeHtml(item.title || item.product_code || "未命名")}</strong></div>
           <small>${escapeHtml(metaBits.join(" · "))}</small>
+          ${snippet}
           ${genres ? `<small class="muted">${escapeHtml(genres)}</small>` : ""}
           <div class="game-autofill-card-actions">
-            <button type="button" class="button button-primary button-compact" data-autofill-apply="${index}">套用此筆</button>
+            <button type="button" class="button button-primary button-compact" data-autofill-apply="${index}">${applyLabel}</button>
             ${item.source_url ? `<a class="button button-secondary button-compact" href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer">開來源</a>` : ""}
           </div>
         </div>
@@ -2576,9 +2647,7 @@
         const idx = Number(btn.getAttribute("data-autofill-apply"));
         const product = candidates[idx];
         if (!product) return;
-        applyGameAutofillProduct(product);
-        setFormStatus("#game-autofill-status", `已套用：${product.title || product.product_code || ""}（分數未改動，請手動評分）`);
-        toast("已填入作品資料，請繼續填寫分項評分與心得", "success");
+        void resolveAndApplyCandidate(product);
       });
     });
   }
@@ -2588,7 +2657,7 @@
     showGameAutofillEmpty("");
     const query = $("#game-autofill-query")?.value.trim() || "";
     if (!query) {
-      showFormErrorById("#game-autofill-error", "請輸入遊戲名稱（建議），或 RJ／URL", "warning");
+      showFormErrorById("#game-autofill-error", "請輸入遊戲標題", "warning");
       return;
     }
     const gate = await ensureAdmin("自動填入遊戲資料");
@@ -2598,13 +2667,70 @@
     }
     const button = $("#btn-game-autofill");
     await withBusyButton(button, "搜尋中…", async () => {
-      setFormStatus("#game-autofill-status", "正在以標題／代碼向 DLsite 搜尋…");
-      const { data, error } = await supabase.rpc("admin_fetch_game_metadata", { query });
+      setFormStatus("#game-autofill-status", "正在以 Google／網頁搜尋標題…");
+      const { data, error } = await supabase.rpc("admin_search_game_web", { query });
       if (error) {
         setFormStatus("#game-autofill-status", "");
         const message = `搜尋失敗：${formatApiError(error)}`;
         showFormErrorById("#game-autofill-error", message);
-        showGameAutofillEmpty("搜尋失敗。請改貼更精準標題、日文原名，或作品頁 URL／RJ 代碼。");
+        showGameAutofillEmpty("搜尋失敗。請稍後再試，或用進階貼官方 URL／RJ 代碼。");
+        toast(message, "error");
+        return;
+      }
+      const payload = data || {};
+      if (payload.mode === "detail_hint") {
+        setFormStatus("#game-autofill-status", "");
+        const hint = payload.hint || "偵測到產品代碼，請改用進階精確抓取";
+        showGameAutofillEmpty(hint);
+        showFormErrorById("#game-autofill-error", hint, "warning");
+        const exact = $("#game-autofill-exact-query");
+        if (exact && !exact.value.trim()) exact.value = query;
+        toast(hint, "info");
+        return;
+      }
+      const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
+      if (!payload.ok || !candidates.length) {
+        setFormStatus("#game-autofill-status", "");
+        const hint = payload.hint || "找不到相近結果。請改用原名或貼官方 URL。";
+        showGameAutofillEmpty(hint);
+        showFormErrorById("#game-autofill-error", hint, "warning");
+        toast("沒有候選結果", "warning");
+        return;
+      }
+      renderGameAutofillResults(payload);
+      const used = Array.isArray(payload.providers_used) ? payload.providers_used.join("+") : "";
+      const googleNote = payload.google_configured ? "" : " · 未設定 Google CSE（備援）";
+      setFormStatus(
+        "#game-autofill-status",
+        payload.hint || `找到 ${candidates.length} 筆（${providerLabel(payload)}${used ? `／${used}` : ""}${googleNote}）`
+      );
+      toast(`找到 ${candidates.length} 筆候選，請選擇要套用的作品`, "info");
+    });
+  }
+
+  async function runGameAutofillExact() {
+    clearFormErrorById("#game-autofill-error");
+    showGameAutofillEmpty("");
+    const query = ($("#game-autofill-exact-query")?.value.trim()
+      || $("#game-autofill-query")?.value.trim()
+      || "");
+    if (!query) {
+      showFormErrorById("#game-autofill-error", "請輸入 RJ／URL 或 Steam 連結", "warning");
+      return;
+    }
+    const gate = await ensureAdmin("精確抓取遊戲資料");
+    if (!gate.ok) {
+      showFormErrorById("#game-autofill-error", gate.message);
+      return;
+    }
+    const button = $("#btn-game-autofill-exact");
+    await withBusyButton(button, "抓取中…", async () => {
+      setFormStatus("#game-autofill-status", "正在依代碼／URL 抓取…");
+      const { data, error } = await supabase.rpc("admin_fetch_game_metadata", { query });
+      if (error) {
+        setFormStatus("#game-autofill-status", "");
+        const message = `抓取失敗：${formatApiError(error)}`;
+        showFormErrorById("#game-autofill-error", message);
         toast(message, "error");
         return;
       }
@@ -2612,21 +2738,20 @@
       const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
       if (!payload.ok || !candidates.length) {
         setFormStatus("#game-autofill-status", "");
-        const hint = payload.hint || "找不到符合的作品。請改用日文原名、更精準標題，或貼 URL／RJ 代碼。";
+        const hint = payload.hint || "找不到作品。請確認代碼／URL。";
         showGameAutofillEmpty(hint);
         showFormErrorById("#game-autofill-error", hint, "warning");
-        toast("沒有候選結果", "warning");
+        toast("沒有結果", "warning");
         return;
       }
       renderGameAutofillResults(payload);
       if (payload.mode === "detail" && payload.product) {
-        // Exact code/URL hit: preview-fill, still show card so admin can re-confirm / open source
         applyGameAutofillProduct(payload.product);
-        setFormStatus("#game-autofill-status", `已依代碼預填 ${payload.product.product_code || ""}（分數未改動；可再點「套用此筆」確認）`);
-        toast("已依代碼預填，請確認後繼續評分", "success");
+        setFormStatus("#game-autofill-status", `已依代碼／URL 預填（分數未改動；可再點「套用此筆」確認）`);
+        toast("已預填，請確認後繼續評分", "success");
       } else {
-        setFormStatus("#game-autofill-status", payload.hint || `找到 ${candidates.length} 筆候選，請點「套用此筆」確認`);
-        toast(`找到 ${candidates.length} 筆候選，請選擇要套用的作品`, "info");
+        setFormStatus("#game-autofill-status", payload.hint || `找到 ${candidates.length} 筆候選`);
+        toast(`找到 ${candidates.length} 筆候選`, "info");
       }
     });
   }
@@ -2647,6 +2772,7 @@
   function wireGameAutofill() {
     $("#btn-game-autofill")?.addEventListener("click", () => void runGameAutofill());
     $("#btn-game-autofill-from-name")?.addEventListener("click", () => runGameAutofillFromName());
+    $("#btn-game-autofill-exact")?.addEventListener("click", () => void runGameAutofillExact());
     $("#btn-game-autofill-by-image")?.addEventListener("click", () => {
       toast("以圖搜圖尚未啟用：請設定 SauceNAO API key（見 GAME-REVIEW-AUTOFILL.md）", "info");
     });
@@ -2654,6 +2780,12 @@
       if (event.key === "Enter") {
         event.preventDefault();
         void runGameAutofill();
+      }
+    });
+    $("#game-autofill-exact-query")?.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        void runGameAutofillExact();
       }
     });
   }

@@ -348,6 +348,14 @@ textarea { width: 100%; min-height: 150px; padding: 14px; resize: vertical; }
   padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 800;
   letter-spacing: .02em; color: #1a1208; background: var(--warning);
 }
+.game-autofill-store.is-blocked {
+  color: #f2e8e8; background: rgba(180, 70, 70, .85);
+}
+.game-autofill-card.is-blocked { opacity: .88; border-style: dashed; }
+.game-autofill-snippet {
+  display: block; color: var(--muted); font-size: 11px; line-height: 1.45;
+  margin-top: 4px; max-height: 3.2em; overflow: hidden;
+}
 .game-autofill-card small { display: block; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .game-autofill-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .button-compact { padding: 7px 12px; font-size: 12px; }
