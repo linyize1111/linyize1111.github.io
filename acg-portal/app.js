@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.7.1";
+  const APP_VERSION = "1.8.0";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -24,14 +24,54 @@
   const DRAW_HISTORY_KEY = "acg_draw_history_v1";
 
   const PLATFORM_LABELS = { nhentai: "Nhentai", "18comic": "禁漫", hanime: "Hanime", pixiv: "Pixiv" };
-  /** 遊戲評鑑分項：1–10；optional 可 N/A。總分＝非 null 等權平均。見 docs/GAME-REVIEW-SCORING.md */
+  /**
+   * 遊戲評鑑分項 v2：1–10 或 N/A；總分＝非 null 等權平均。
+   * 氛圍＝音樂／UI／節奏沉浸；動態＝動圖／動畫品質。見 docs/GAME-REVIEW-SCORING.md
+   */
+  const GAME_SCORE_BANDS = "9–10 優秀／神級 · 7–8 還不錯 · 5–6 普通 · 3–4 偏弱 · 1–2 差";
   const GAME_SCORE_FIELDS = [
-    { key: "story", label: "劇情", optional: false },
-    { key: "art", label: "美術", optional: false },
-    { key: "voice", label: "配音", optional: true },
-    { key: "gameplay", label: "系統", optional: false },
-    { key: "presentation", label: "表現力", optional: false },
-    { key: "animation", label: "演出", optional: true }
+    {
+      key: "story",
+      label: "劇情",
+      blurb: "故事、節奏、角色塑造。無劇情可 N/A。",
+      rubric: "9–10 神級劇情｜7–8 還不錯｜5–6 普通｜3–4 偏弱｜1–2 崩壞"
+    },
+    {
+      key: "art",
+      label: "美術",
+      blurb: "立繪、CG、視覺完成度。",
+      rubric: "9–10 頂尖完成度｜7–8 好看｜5–6 中規中矩｜3–4 偏弱｜1–2 崩壞"
+    },
+    {
+      key: "voice",
+      label: "配音",
+      blurb: "語音演技與角色適配。無語音請 N/A。",
+      rubric: "9–10 高度貼合｜7–8 夠水準｜5–6 普通｜3–4 出戲｜無語音＝N/A"
+    },
+    {
+      key: "gameplay",
+      label: "系統",
+      blurb: "操作、系統深度、可玩性。拔作／純閱讀可 N/A。",
+      rubric: "9–10 深度與手感出色｜7–8 好玩｜5–6 能用｜3–4 折磨｜無系統＝N/A"
+    },
+    {
+      key: "utility",
+      label: "實用性",
+      blurb: "對目標受眾的契合度、重複遊玩／收藏價值（性癖與題材「好不好用」）。",
+      rubric: "9–10 高度契合會回鍋｜7–8 值得收藏｜5–6 普通滿足｜3–4 文不對題｜1–2 用完即丟"
+    },
+    {
+      key: "atmosphere",
+      label: "氛圍",
+      blurb: "UI、音樂氛圍、演出節奏與沉浸感（靜態也可評；與「動態」不同）。",
+      rubric: "9–10 沉浸極強｜7–8 氛圍不錯｜5–6 平淡｜3–4 出戲｜1–2 無章"
+    },
+    {
+      key: "animation",
+      label: "動態",
+      blurb: "動圖／H 動態演出密度與品質。純靜態請 N/A，勿硬打低分。",
+      rubric: "9–10 密度與品質皆高｜7–8 有動不敷衍｜5–6 點綴｜3–4 廉價｜純靜態＝N/A"
+    }
   ];
   const GAME_GRADE_LABELS = { S: "神作", A: "佳作", B: "良作", C: "普通", D: "雷" };
   const GAME_CG_TYPE_LABELS = { static: "靜態 CG", animated: "動態演出", mixed: "動靜混合", unknown: "未標示" };
@@ -2242,17 +2282,25 @@
     return 7;
   }
 
-  function normalizeGameScores(raw, fallbackRating) {
-    const src = raw && typeof raw === "object" ? raw : {};
-    const fallback = legacyRatingToTen(fallbackRating);
+  function remapLegacyGameScoreKeys(raw) {
+    const src = raw && typeof raw === "object" ? { ...raw } : {};
+    if ((src.atmosphere === null || src.atmosphere === undefined || src.atmosphere === "")
+      && src.presentation !== null && src.presentation !== undefined && src.presentation !== "") {
+      src.atmosphere = src.presentation;
+    }
+    return src;
+  }
+
+  function normalizeGameScores(raw) {
+    const src = remapLegacyGameScoreKeys(raw);
     const out = {};
     for (const field of GAME_SCORE_FIELDS) {
       const v = src[field.key];
       if (v === null || v === undefined || v === "") {
-        out[field.key] = field.optional ? null : fallback;
+        out[field.key] = null;
       } else {
         const n = Number(v);
-        out[field.key] = Number.isFinite(n) ? Math.max(1, Math.min(10, Math.round(n))) : (field.optional ? null : fallback);
+        out[field.key] = Number.isFinite(n) ? Math.max(1, Math.min(10, Math.round(n))) : null;
       }
     }
     return out;
@@ -2281,7 +2329,7 @@
     if (game?.score_total != null && Number.isFinite(Number(game.score_total))) {
       return Number(game.score_total).toFixed(1);
     }
-    const scores = normalizeGameScores(game?.scores, game?.rating);
+    const scores = normalizeGameScores(game?.scores);
     const total = computeGameScoreTotal(scores);
     if (total != null) return total.toFixed(1);
     if (game?.rating != null) return Number(legacyRatingToTen(game.rating)).toFixed(1);
@@ -2290,7 +2338,9 @@
 
   function formatGameGrade(game) {
     if (game?.grade && GAME_GRADE_LABELS[game.grade]) return game.grade;
-    const total = game?.score_total != null ? Number(game.score_total) : computeGameScoreTotal(normalizeGameScores(game?.scores, game?.rating));
+    const total = game?.score_total != null
+      ? Number(game.score_total)
+      : computeGameScoreTotal(normalizeGameScores(game?.scores));
     return gameScoreGrade(total) || "";
   }
 
@@ -2308,12 +2358,13 @@
   }
 
   function gameScoreBreakdownHtml(game) {
-    const scores = normalizeGameScores(game?.scores, game?.rating);
+    const scores = normalizeGameScores(game?.scores);
     const rows = GAME_SCORE_FIELDS.map(field => {
       const v = scores[field.key];
       const display = v == null ? "N/A" : `${v}`;
       const bar = v == null ? 0 : v * 10;
-      return `<div class="game-score-row">
+      const tip = `${field.blurb} ${field.rubric}`;
+      return `<div class="game-score-row" title="${escapeHtml(tip)}">
         <span class="game-score-label">${escapeHtml(field.label)}</span>
         <div class="game-score-bar" aria-hidden="true"><i style="width:${bar}%"></i></div>
         <span class="game-score-value">${escapeHtml(display)}${v == null ? "" : "<small>/10</small>"}</span>
@@ -2323,26 +2374,30 @@
   }
 
   function gameScoreEditorHtml(game) {
-    const scores = normalizeGameScores(game?.scores, game?.rating ?? 7);
+    const scores = normalizeGameScores(game?.scores);
     const total = computeGameScoreTotal(scores);
     const grade = gameScoreGrade(total);
+    const hasScorePayload = game?.scores && typeof game.scores === "object" && Object.keys(game.scores).length > 0;
     const fields = GAME_SCORE_FIELDS.map(field => {
       const current = scores[field.key];
-      const naSelected = field.optional && current == null;
+      const naSelected = current == null && hasScorePayload;
       const buttons = Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
         `<button type="button" class="score-chip${current === n ? " selected" : ""}" data-score-key="${field.key}" data-score-value="${n}">${n}</button>`
       ).join("");
-      const naBtn = field.optional
-        ? `<button type="button" class="score-chip score-na${naSelected ? " selected" : ""}" data-score-key="${field.key}" data-score-value="na">N/A</button>`
-        : "";
+      const naBtn = `<button type="button" class="score-chip score-na${naSelected ? " selected" : ""}" data-score-key="${field.key}" data-score-value="na" title="不適用（不計入總分）">N/A</button>`;
       return `<div class="game-score-field" data-score-field="${field.key}">
-        <div class="game-score-field-head"><strong>${escapeHtml(field.label)}</strong>${field.optional ? '<span class="muted">可選</span>' : ""}</div>
+        <div class="game-score-field-head">
+          <strong>${escapeHtml(field.label)}</strong>
+          <span class="game-score-help" title="${escapeHtml(`${field.blurb}\n${GAME_SCORE_BANDS}\n${field.rubric}`)}" aria-label="${escapeHtml(field.label)}說明">?</span>
+        </div>
+        <p class="game-score-rubric">${escapeHtml(field.blurb)}</p>
         <div class="score-chip-row" role="group" aria-label="${escapeHtml(field.label)}">${buttons}${naBtn}</div>
+        <p class="game-score-rubric-detail muted">${escapeHtml(field.rubric)}</p>
       </div>`;
     }).join("");
     return `<fieldset class="game-score-editor">
-      <legend>分項評分（1–10）</legend>
-      <p class="muted game-score-hint">總分＝各有效分項等權平均；配音／演出可標 N/A。</p>
+      <legend>分項評分（1–10，均可 N/A）</legend>
+      <p class="muted game-score-hint">總分＝有打分項目的等權平均。尺規：${escapeHtml(GAME_SCORE_BANDS)}。氛圍＝音樂／UI／節奏；動態＝動圖／動畫（純靜態請 N/A）。</p>
       ${fields}
       <div class="game-score-live" id="game-score-live" aria-live="polite">
         預覽總分 <strong>${total != null ? total.toFixed(1) : "—"}</strong>/10
@@ -2356,7 +2411,7 @@
     for (const field of GAME_SCORE_FIELDS) {
       const selected = $(`.score-chip.selected[data-score-key="${field.key}"]`);
       if (!selected) {
-        scores[field.key] = field.optional ? null : null;
+        scores[field.key] = null;
         continue;
       }
       const raw = selected.dataset.scoreValue;
@@ -2369,14 +2424,21 @@
     const live = $("#game-score-live");
     if (!live) return;
     const scores = readGameScoresFromEditor();
-    const missing = GAME_SCORE_FIELDS.filter(f => !f.optional && (scores[f.key] == null || !Number.isFinite(scores[f.key])));
-    if (missing.length) {
-      live.innerHTML = `尚缺：${missing.map(f => f.label).join("、")}`;
+    const scored = GAME_SCORE_FIELDS.filter(f => scores[f.key] != null && Number.isFinite(scores[f.key]));
+    const untouched = GAME_SCORE_FIELDS.filter(f => {
+      const selected = $(`.score-chip.selected[data-score-key="${f.key}"]`);
+      return !selected;
+    });
+    if (!scored.length) {
+      live.innerHTML = untouched.length === GAME_SCORE_FIELDS.length
+        ? "請至少為一項打分（其餘可標 N/A）"
+        : "請至少為一項打分（目前皆為 N/A）";
       return;
     }
     const total = computeGameScoreTotal(scores);
     const grade = gameScoreGrade(total);
-    live.innerHTML = `預覽總分 <strong>${total != null ? total.toFixed(1) : "—"}</strong>/10${grade ? ` · <span class="game-grade-inline grade-${grade}">${grade} ${gameGradeLabel(grade)}</span>` : ""}`;
+    const naCount = GAME_SCORE_FIELDS.length - scored.length;
+    live.innerHTML = `預覽總分 <strong>${total != null ? total.toFixed(1) : "—"}</strong>/10${grade ? ` · <span class="game-grade-inline grade-${grade}">${grade} ${gameGradeLabel(grade)}</span>` : ""}${naCount ? ` <span class="muted">（略過 ${naCount} 項 N/A）</span>` : ""}`;
   }
 
   function wireGameScoreEditor() {
@@ -2894,10 +2956,20 @@
       showFormErrorById("#game-save-error", message, "warning");
       return;
     }
-    const missing = GAME_SCORE_FIELDS.filter(f => !f.optional && (scores[f.key] == null || !Number.isFinite(scores[f.key])));
-    if (missing.length) {
+    const scoredCount = GAME_SCORE_FIELDS.filter(f => scores[f.key] != null && Number.isFinite(scores[f.key])).length;
+    if (!scoredCount) {
       setFormStatus("#game-save-status", "");
-      const message = `請完成分項評分：${missing.map(f => f.label).join("、")}`;
+      const message = "請至少為一項打分（其餘可標 N/A）";
+      showFormErrorById("#game-save-error", message, "warning");
+      return;
+    }
+    const untouched = GAME_SCORE_FIELDS.filter(f => {
+      const selected = document.querySelector(`.score-chip.selected[data-score-key="${f.key}"]`);
+      return !selected;
+    });
+    if (untouched.length) {
+      setFormStatus("#game-save-status", "");
+      const message = `尚有未選項目（請打分或按 N/A）：${untouched.map(f => f.label).join("、")}`;
       showFormErrorById("#game-save-error", message, "warning");
       return;
     }
