@@ -252,11 +252,11 @@
 
 | 優先 | 項目 | 預估性質 |
 |------|------|----------|
-| **P0** | 標題搜尋產品化：UX（名稱預填、提示、候選為主）、必要時修 DLsite 關鍵字空結果體驗；保留 RJ／URL | 小～中；多半不需新金鑰 |
-| **P0.5** | Schema／文案：跨平台時 `product_code` 可空；`metadata.source` 標店家 | 小 |
-| **P1** | Steam 標題搜尋併入同一候選列表（非 DLsite 作品） | 中；RPC 或 Edge Function |
+| **P0** | ~~標題搜尋產品化~~ → **v1.7.1 Steam／DLsite 標題搜尋**（見 `GAME-REVIEW-AUTOFILL.md`） | 已完成 |
+| **P0.5** | Schema／文案：跨平台時 `product_code` 可空；`metadata.source` 標店家 | 小（多半已做） |
+| **P1** | ~~Steam 標題搜尋併入~~（v1.7.1 主路徑） | 已完成 |
 | **P1** | 以圖搜圖 MVP：Edge Function + SauceNAO + 確認後复用詳情抓取 | 中；需 API key |
-| **P2** | Google／Bing CSE 備援（限定官方域名） | 中；付費與解析 |
+| **P2** | ~~Google CSE~~（v1.7.1 已停用；使用者自行找其他資料） | 已取消 |
 | **P2+** | Fanza／Getchu 等 | 高維護；預設擱置 |
 
 ---

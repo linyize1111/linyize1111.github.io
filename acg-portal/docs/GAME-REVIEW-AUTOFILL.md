@@ -1,42 +1,45 @@
-# 遊戲評鑑自動填入（DLsite 標題搜尋）
+# 遊戲評鑑自動填入（Steam／DLsite 標題搜尋）
 
-ACG Portal **v1.6.0+**：站長在「新增／編輯遊戲評鑑」可用 **遊戲標題** 搜尋 DLsite，從候選確認後填入 metadata，**不會自動填分數**。
+ACG Portal **v1.7.1+**：站長在「新增／編輯遊戲評鑑」可用 **遊戲標題** 搜尋 **Steam／DLsite**，從候選確認後抓公開頁 metadata 填入，**不會自動填分數**。
+
+系統只查 Steam 與 DLsite；其他資料請自行查找後手動填寫。不會整合盜版下載站，也不會從破解／網盤頁抓下載內容。
 
 ## 怎麼用（建議流程）
 
 1. 以管理員登入 → 遊戲評鑑 → 新增／編輯。
-2. 在 **名稱** 欄輸入遊戲標題（建議日文原名或官方英文名）。
-3. 按「**用上方名稱搜尋**」，或在搜尋框輸入標題後按「**搜尋標題**」。
-4. 從候選列表（封面＋店家徽章＋社團／代碼）點「**套用此筆**」確認。
+2. 在 **名稱** 欄輸入遊戲標題（原名／官方英文名較準）。
+3. 按「**用上方名稱搜尋**」，或在搜尋框按「**搜尋 Steam／DLsite**」。
+4. 從候選（來源徽章＋縮圖／連結）點「**套用此筆**」→ 系統再抓該頁 metadata 填入。
 5. **手動填分項評分與心得** → 儲存。
 
-### 進階（代碼／URL）
+### 進階（DLsite 代碼／官方 URL）
 
-有 **RJ／VJ／BJ** 或作品頁 URL 時，可貼進搜尋框（見面板「進階」說明）。精確命中會預填欄位並顯示候選卡，仍請確認；**不會**自動填分數。
+有 **RJ／VJ／BJ**、DLsite 作品頁，或 **Steam** `store.steampowered.com/app/…` 時：展開「進階：DLsite 代碼／URL 精確抓取」→「精確抓取」。
 
-### 以圖搜圖（P1 預留，尚未啟用）
+### 以圖搜圖（預留，尚未啟用）
 
-面板有「以此封面搜尋」按鈕，目前為 **disabled**。啟用條件：
+需 `SAUCENAO_API_KEY`（見可行性文件）。未設定前請用標題或 URL。
 
-1. 申請 [SauceNAO](https://saucenao.com/user.php) API key  
-2. 部署 Edge Function（建議），將金鑰放在 Supabase **secrets**（`SAUCENAO_API_KEY`），**勿**寫進前端  
-3. 流程：封面 URL／已上傳圖 → 圖搜候選 → 站長確認 → 若可解析 RJ／URL 再复用本文件的 metadata 抓取  
+## 搜尋來源
 
-未設定金鑰前請改用標題或代碼。Steam 等多店家標題搜尋列為後續（見可行性評估）。
+| Provider | 用途 |
+|----------|------|
+| **Steam** | `storesearch` 標題候選；選中後 `appdetails` |
+| **DLsite** | 關鍵字候選；選中後 `product.json`（或 RJ／VJ／BJ／作品 URL 精確抓取） |
+
+（v1.7.0 的 Google CSE／DuckDuckGo／Wikipedia 網頁通用搜尋已於 v1.7.1 停用。）
 
 ## 會自動填哪些欄位
 
 | 欄位 | 來源 |
 |------|------|
-| 名稱 | `work_name` |
-| 開發商／社團 | `maker_name` |
-| 封面網址 | `image_main` |
-| 產品代碼 | RJ／VJ／BJ（可空） |
-| 來源連結 | 作品頁 URL |
-| 發售日 | `regist_date` |
-| 作品形式 | `work_type_string` |
-| 演出類型 | 依 work_type／options／anime／movies 推斷 static／animated／mixed／unknown |
-| genres | `genres[].name`（並可合併進標籤） |
+| 名稱 | Steam／DLsite |
+| 開發商／社團 | Steam developers／DLsite maker |
+| 封面網址 | Steam header／DLsite image |
+| 產品代碼 | RJ／VJ／BJ 或 Steam app id（可空） |
+| 來源連結 | 候選 URL |
+| 發售日 | 有結構化資料時 |
+| 作品形式／genres | DLsite／Steam |
 | metadata | 精簡原始資料（jsonb，含 `source`／`store`） |
 
 **不會填**：分項分數、總分、等級、心得正文。
@@ -45,29 +48,24 @@ ACG Portal **v1.6.0+**：站長在「新增／編輯遊戲評鑑」可用 **遊�
 
 ```text
 管理員前端（標題為主）
-  → supabase.rpc('admin_fetch_game_metadata', { query })
-  → Postgres security definer（is_admin）
-  → extensions.http GET DLsite
-       1) 關鍵字 HTML fsr → 候選（封面／店家／代碼）→ 站長確認
-       2) product.json?workno=…（代碼／URL：精確預填）
-  → { ok, mode: search|detail, candidates[], hint? }
-  → 空結果回傳 soft failure + hint（不強制 raise）
+  → supabase.rpc('admin_search_game_web', { query })
+  → Steam storesearch ＋ DLsite 關鍵字
+  → 候選（Steam／DLsite 徽章、連結、縮圖）
+  → 站長點「套用此筆」
+  → supabase.rpc('admin_fetch_game_metadata', { query: url 或 code })
+  → Steam／DLsite parser → 填入表單（不含分數）
 ```
 
-- Migration：`0017_game_dlsite_autofill.sql`、`0018_game_title_search_primary.sql`
-- 本機除錯可用：`backend/acg_portal/scrapers/dlsite.py`
-- 評估與決策：[`GAME-REVIEW-SEARCH-FEASIBILITY.md`](./GAME-REVIEW-SEARCH-FEASIBILITY.md)
+- Migration：`0017`…`0020`（歷史）、`0021_game_search_steam_dlsite_only.sql`
+- 本機除錯：`backend/acg_portal/scrapers/dlsite.py`、`web_search.py`
 
-## 限制與替代用法
+## 誠實限制
 
-- **標題搜尋**依賴 DLsite 日文索引與 HTML 結構；中文譯名、破解站改標題常空結果 → 改原名或貼 URL／代碼。
-- **關鍵字路徑**不會自動取第一筆；必須點「套用此筆」。
-- 僅 **admin** 可呼叫 RPC；前端只用 anon key + 登入 JWT。
-- 不依賴 Render worker；即時抓取在 Supabase DB 端完成。
-- 以圖搜圖／Steam：見上「預留」與可行性文件後續項。
+- 僅搜尋 Steam／DLsite；不在商店上架或改名嚴重的標題可能無結果 → **必須人工確認**，不足欄位請手動補。
+- 僅 **admin** 可呼叫搜尋／抓取 RPC。
 
 ## 套用 migration
 
 ```powershell
-.\python-portable\python.exe tools\apply_migration.py supabase\migrations\0018_game_title_search_primary.sql --project-ref xpztpetskjohuxrpgmcm
+.\python-portable\python.exe tools\apply_migration.py supabase\migrations\0021_game_search_steam_dlsite_only.sql --project-ref xpztpetskjohuxrpgmcm
 ```

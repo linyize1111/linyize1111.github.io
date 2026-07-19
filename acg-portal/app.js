@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.7.0";
+  const APP_VERSION = "1.7.1";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -2449,10 +2449,10 @@
     const q = escapeHtml(prefillName || "");
     return `<fieldset class="game-autofill-panel">
       <legend>以標題搜尋並填入</legend>
-      <p class="muted game-autofill-hint">用 <strong>Google／網頁搜尋</strong>依遊戲標題找公開商品／介紹頁（Steam、DLsite、官方站、Wikipedia 等）→ 點「套用此筆」抓 metadata 填入。資料來源為公開網頁資訊；<strong>不會</strong>自動填分數，也不會從盜版／破解站抓下載內容。</p>
+      <p class="muted game-autofill-hint">用標題搜尋 <strong>Steam／DLsite</strong> 候選 → 點「套用此筆」抓 metadata 填入。<strong>不會</strong>自動填分數；其他資料請自行查找後手動填寫。</p>
       <div class="game-autofill-row">
-        <input id="game-autofill-query" type="text" maxlength="500" placeholder="用 Google／網頁搜尋標題…" value="${q}">
-        <button id="btn-game-autofill" class="button button-primary" type="button">網頁搜尋</button>
+        <input id="game-autofill-query" type="text" maxlength="500" placeholder="搜尋 Steam／DLsite 標題…" value="${q}">
+        <button id="btn-game-autofill" class="button button-primary" type="button">搜尋 Steam／DLsite</button>
       </div>
       <div class="game-autofill-toolbar">
         <button id="btn-game-autofill-from-name" class="button button-secondary button-compact" type="button">用上方名稱搜尋</button>
@@ -2467,7 +2467,7 @@
       </details>
       <details class="game-autofill-advanced game-autofill-imagesearch">
         <summary>以圖搜圖（預留）</summary>
-        <p class="muted game-autofill-hint">需在 secrets 設定 <code>SAUCENAO_API_KEY</code> 後啟用。目前未設定金鑰，請改用網頁搜尋或貼官方 URL。詳見文件。</p>
+        <p class="muted game-autofill-hint">需在 secrets 設定 <code>SAUCENAO_API_KEY</code> 後啟用。目前未設定金鑰，請改用 Steam／DLsite 搜尋或貼官方 URL。</p>
         <button id="btn-game-autofill-by-image" class="button button-secondary button-compact" type="button" disabled title="需設定 SauceNAO API key">以此封面搜尋（未啟用）</button>
       </details>
       <div id="game-autofill-error" class="form-error hidden" role="alert"></div>
@@ -2551,10 +2551,10 @@
 
   function providerLabel(payload) {
     const p = payload?.provider || "";
-    if (p === "google_cse") return "Google CSE";
-    if (p === "fallback_multi") return "備援（Steam／Wikipedia／DLsite）";
+    if (p === "steam_dlsite") return "Steam／DLsite";
     if (p === "dlsite_code") return "DLsite 代碼";
-    return p || "網頁搜尋";
+    if (p === "google_cse" || p === "fallback_multi") return "Steam／DLsite";
+    return p || "Steam／DLsite";
   }
 
   async function resolveAndApplyCandidate(item) {
@@ -2667,13 +2667,13 @@
     }
     const button = $("#btn-game-autofill");
     await withBusyButton(button, "搜尋中…", async () => {
-      setFormStatus("#game-autofill-status", "正在以 Google／網頁搜尋標題…");
+      setFormStatus("#game-autofill-status", "正在搜尋 Steam／DLsite…");
       const { data, error } = await supabase.rpc("admin_search_game_web", { query });
       if (error) {
         setFormStatus("#game-autofill-status", "");
         const message = `搜尋失敗：${formatApiError(error)}`;
         showFormErrorById("#game-autofill-error", message);
-        showGameAutofillEmpty("搜尋失敗。請稍後再試，或用進階貼官方 URL／RJ 代碼。");
+        showGameAutofillEmpty("搜尋失敗。請稍後再試，或用進階貼 Steam／DLsite URL／RJ 代碼。");
         toast(message, "error");
         return;
       }
@@ -2691,7 +2691,7 @@
       const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
       if (!payload.ok || !candidates.length) {
         setFormStatus("#game-autofill-status", "");
-        const hint = payload.hint || "找不到相近結果。請改用原名或貼官方 URL。";
+        const hint = payload.hint || "找不到相近結果。請改用原名或貼 Steam／DLsite URL。";
         showGameAutofillEmpty(hint);
         showFormErrorById("#game-autofill-error", hint, "warning");
         toast("沒有候選結果", "warning");
@@ -2699,10 +2699,9 @@
       }
       renderGameAutofillResults(payload);
       const used = Array.isArray(payload.providers_used) ? payload.providers_used.join("+") : "";
-      const googleNote = payload.google_configured ? "" : " · 未設定 Google CSE（備援）";
       setFormStatus(
         "#game-autofill-status",
-        payload.hint || `找到 ${candidates.length} 筆（${providerLabel(payload)}${used ? `／${used}` : ""}${googleNote}）`
+        payload.hint || `找到 ${candidates.length} 筆（${providerLabel(payload)}${used ? `／${used}` : ""}）`
       );
       toast(`找到 ${candidates.length} 筆候選，請選擇要套用的作品`, "info");
     });
