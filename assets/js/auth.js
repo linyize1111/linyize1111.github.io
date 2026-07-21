@@ -48,8 +48,16 @@
         (key.indexOf("sb-") === 0 && key.indexOf("auth") !== -1);
       if (!isConflict && !isMain) return;
       if (keepMain && isMain) return;
-      // 不要清掉 ACG 專用 key（同 origin 子路徑也共享 localStorage）
-      if (key === "acg-portal-auth" || key.indexOf("acg-portal-auth") === 0 || key.indexOf("acg_") === 0) return;
+      // 不要清掉同 origin 其他子專案的 auth key（ACG / 字耕）
+      if (
+        key === "acg-portal-auth" ||
+        key.indexOf("acg-portal-auth") === 0 ||
+        key.indexOf("acg_") === 0 ||
+        key === "zi-geng-auth" ||
+        key.indexOf("zi-geng-auth") === 0
+      ) {
+        return;
+      }
       try {
         localStorage.removeItem(key);
         removed.push(key);
