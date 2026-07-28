@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   "use strict";
 
   const config = window.ACG_CONFIG;
@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.8.0";
+  const APP_VERSION = "1.8.1";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -2454,14 +2454,40 @@
     refreshGameScoreLivePreview();
   }
 
+  /** Merge genres + tags into one label list (dedupe, preserve order). */
+  function mergeGameLabelTags(...lists) {
+    const seen = new Set();
+    const out = [];
+    for (const list of lists) {
+      for (const raw of Array.isArray(list) ? list : []) {
+        const tag = String(raw || "").trim();
+        if (!tag || seen.has(tag)) continue;
+        seen.add(tag);
+        out.push(tag);
+      }
+    }
+    return out;
+  }
+
+  function parseTagInput(value) {
+    return String(value || "").split(/[,，]/).map(v => v.trim()).filter(Boolean);
+  }
+
+  function gameLabelsInputValue(game) {
+    return mergeGameLabelTags(game?.tags, game?.genres).join(", ");
+  }
+
   async function loadGames() {
     const { data, error } = await supabase.from("games").select("*").order("created_at", { ascending: false });
     if (error) return toast(error.message, "error");
-    $("#games-grid").innerHTML = (data || []).map(game => `
+    $("#games-grid").innerHTML = (data || []).map(game => {
+      const labels = mergeGameLabelTags(game.tags, game.genres).slice(0, 3);
+      return `
       <article class="game-card" data-open-game="${game.id}">
         <img src="${escapeHtml(imageUrl(game.cover_url))}" alt="${escapeHtml(game.name)}" loading="lazy">
-        <div><h3>${escapeHtml(game.name)}</h3>${gameScoreSummaryHtml(game, { compact: true })}<div class="tag-row">${(game.tags || []).slice(0,3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div></div>
-      </article>`).join("") || '<div class="empty-state">站長尚未發表遊戲評鑑</div>';
+        <div><h3>${escapeHtml(game.name)}</h3>${gameScoreSummaryHtml(game, { compact: true })}<div class="tag-row">${labels.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div></div>
+      </article>`;
+    }).join("") || '<div class="empty-state">站長尚未發表遊戲評鑑</div>';
   }
 
   async function openGame(gameId) {
@@ -2481,8 +2507,9 @@
     const sourceLink = game.source_url
       ? `<p class="game-source-link"><a href="${escapeHtml(game.source_url)}" target="_blank" rel="noopener noreferrer">來源頁面</a></p>`
       : "";
-    const genreTags = (game.genres || []).length
-      ? `<div class="tag-row game-genre-row">${(game.genres || []).slice(0, 16).map(tag => `<span class="tag tag-genre">${escapeHtml(tag)}</span>`).join("")}</div>`
+    const labelTags = mergeGameLabelTags(game.tags, game.genres);
+    const labelRow = labelTags.length
+      ? `<div class="tag-row">${labelTags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>`
       : "";
     $("#editor-content").innerHTML = `
       <h2 id="editor-title">${escapeHtml(game.name)}</h2>
@@ -2492,8 +2519,7 @@
       ${gameScoreSummaryHtml(game)}
       ${gameScoreBreakdownHtml(game)}
       <p class="game-review-body">${escapeHtml(game.review_body)}</p>
-      ${genreTags}
-      <div class="tag-row">${(game.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>
+      ${labelRow}
       ${isAdmin() ? `<button class="button button-secondary" data-edit-game="${game.id}">編輯評鑑</button><button class="button button-danger" data-delete-game="${game.id}">刪除評鑑</button>` : ""}
       <hr><h3>會員留言</h3>
       <div>${(comments || []).map(comment => `<div class="review"><strong>${escapeHtml(memberName(state.profiles.get(comment.user_id)))}</strong><p>${escapeHtml(comment.body)}</p>${isAdmin() || comment.user_id === state.session?.user?.id ? `<button data-delete-game-comment="${comment.id}" data-game-id="${game.id}">刪除</button>` : ""}</div>`).join("") || '<p class="muted">尚無留言</p>'}</div>
@@ -2539,10 +2565,6 @@
     </fieldset>`;
   }
 
-  function genresToInputValue(genres) {
-    return (Array.isArray(genres) ? genres : []).map(g => String(g || "").trim()).filter(Boolean).join(", ");
-  }
-
   function applyGameAutofillProduct(product, { mergeTags = true } = {}) {
     if (!product) return;
     const nameEl = $("#game-name");
@@ -2553,7 +2575,6 @@
     const releaseEl = $("#game-release-date");
     const workTypeEl = $("#game-work-type");
     const cgEl = $("#game-cg-type");
-    const genresEl = $("#game-genres");
     const tagsEl = $("#game-tags");
     const metaEl = $("#game-metadata-json");
 
@@ -2565,15 +2586,11 @@
     if (releaseEl) releaseEl.value = product.release_date ? String(product.release_date).slice(0, 10) : "";
     if (workTypeEl) workTypeEl.value = product.work_type_label || product.work_type || "";
     if (cgEl && product.cg_type) cgEl.value = product.cg_type;
-    const genres = Array.isArray(product.genres) ? product.genres : [];
-    if (genresEl) genresEl.value = genresToInputValue(genres);
-    if (mergeTags && tagsEl && genres.length) {
-      const existing = (tagsEl.value || "").split(/[,，]/).map(v => v.trim()).filter(Boolean);
-      const merged = [...existing];
-      for (const g of genres) {
-        if (g && !merged.includes(g)) merged.push(g);
-      }
-      tagsEl.value = merged.join(", ");
+    const fromProduct = mergeGameLabelTags(product.genres, product.tags);
+    if (tagsEl && fromProduct.length) {
+      tagsEl.value = mergeTags
+        ? mergeGameLabelTags(parseTagInput(tagsEl.value), fromProduct).join(", ")
+        : fromProduct.join(", ");
     }
     if (metaEl) metaEl.value = JSON.stringify(product);
     const preview = $("#game-autofill-cover-preview");
@@ -2884,8 +2901,7 @@
         <label>或直接填封面網址<input id="game-cover" type="text" inputmode="url" placeholder="https://…" value="${escapeHtml(game?.cover_url || "")}"></label>
         ${game?.cover_url ? `<img class="editor-cover-preview" id="game-autofill-cover-preview" src="${escapeHtml(imageUrl(game.cover_url))}" alt="目前封面">` : `<img class="editor-cover-preview hidden" id="game-autofill-cover-preview" alt="封面預覽">`}
         ${gameScoreEditorHtml(game)}
-        <label>類型標籤／genres（逗號分隔，自動填入參考）<input id="game-genres" type="text" value="${escapeHtml(genresToInputValue(game?.genres || []))}"></label>
-        <label>標籤（逗號分隔）<input id="game-tags" type="text" value="${escapeHtml((game?.tags || []).join(", "))}"></label>
+        <label>標籤（逗號分隔，含類型／分類；Steam／DLsite 自動填入會寫入此欄）<input id="game-tags" type="text" value="${escapeHtml(gameLabelsInputValue(game))}" placeholder="例如：ADV, 戀愛, 百合"></label>
         <label>心得<textarea id="game-review" maxlength="5000">${escapeHtml(game?.review_body || "")}</textarea></label>
         <input id="game-metadata-json" type="hidden" value="${escapeHtml(game?.metadata ? JSON.stringify(game.metadata) : "")}">
         <button id="btn-save-game" class="button button-primary" type="button">儲存評鑑</button>
@@ -2995,8 +3011,9 @@
       }
       if (uploadResult.url) coverUrl = uploadResult.url;
     }
-    const tags = ($("#game-tags")?.value || "").split(/[,，]/).map(value => value.trim()).filter(Boolean);
-    const genres = ($("#game-genres")?.value || "").split(/[,，]/).map(value => value.trim()).filter(Boolean);
+    // Unified labels: one input → write tags + genres (compat / old readers)
+    const tags = mergeGameLabelTags(parseTagInput($("#game-tags")?.value));
+    const genres = tags;
     const developer = $("#game-developer")?.value.trim() || "";
     const productCode = ($("#game-product-code")?.value || "").trim().toUpperCase();
     const sourceUrl = $("#game-source-url")?.value.trim() || "";

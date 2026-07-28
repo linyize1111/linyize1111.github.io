@@ -39,7 +39,8 @@ ACG Portal **v1.7.1+**：站長在「新增／編輯遊戲評鑑」可用 **遊�
 | 產品代碼 | RJ／VJ／BJ 或 Steam app id（可空） |
 | 來源連結 | 候選 URL |
 | 發售日 | 有結構化資料時 |
-| 作品形式／genres | DLsite／Steam |
+| 作品形式 | DLsite／Steam |
+| 標籤（含類型／genres） | Steam／DLsite → 合併寫入單一「標籤」欄（`tags`／`genres` 同步） |
 | metadata | 精簡原始資料（jsonb，含 `source`／`store`） |
 
 **不會填**：分項分數、總分、等級、心得正文。
