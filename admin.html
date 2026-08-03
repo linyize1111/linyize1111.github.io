@@ -247,9 +247,10 @@
                             </details>
 
                             <details class="editor-meta-block">
-                                <summary>圖片</summary>
+                                <summary>圖片（選填）</summary>
                                 <div class="field full">
-                                    <label>主圖（cover）</label>
+                                    <label>主圖／封面（選填）</label>
+                                    <p class="muted" style="margin:0 0 .5rem;">可不設。沒有封面時，列表會以標題字首＋柔和底色呈現，不必每篇找圖或上傳。</p>
                                     <div class="img-row">
                                         <img id="cover-thumb" class="thumb hidden" alt="" />
                                         <input id="f-cover" placeholder="圖片 URL 或上傳" />
@@ -257,6 +258,7 @@
                                             上傳
                                             <input type="file" id="cover-file" accept="image/*" class="hidden" />
                                         </label>
+                                        <button type="button" class="btn" id="btn-clear-cover" title="清除封面">清除</button>
                                     </div>
                                     <span class="muted" id="cover-status"></span>
                                 </div>

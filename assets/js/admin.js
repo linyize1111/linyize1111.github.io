@@ -1322,6 +1322,17 @@
       if (v) { $("cover-thumb").src = v; $("cover-thumb").classList.remove("hidden"); }
       else $("cover-thumb").classList.add("hidden");
     });
+    var clearCoverBtn = $("btn-clear-cover");
+    if (clearCoverBtn) {
+      clearCoverBtn.addEventListener("click", function () {
+        $("f-cover").value = "";
+        $("cover-thumb").classList.add("hidden");
+        $("cover-thumb").removeAttribute("src");
+        $("cover-status").textContent = "已清除封面（儲存後生效）";
+        var fileInput = $("cover-file");
+        if (fileInput) fileInput.value = "";
+      });
+    }
 
     $("cover-file").addEventListener("change", async function (e) {
       var file = e.target.files[0]; if (!file) return;

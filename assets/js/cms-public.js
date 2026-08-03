@@ -91,6 +91,11 @@
     return s.slice(0, maxLen).replace(/\s+\S*$/, "") + "…";
   }
 
+  function coverInitial(title) {
+    var t = String(title || "").trim();
+    return t ? t.charAt(0) : "文";
+  }
+
   function buildCard(a) {
     var url = articleUrl(a);
     var upload = fmtDate(a.published_at || a.created_at);
@@ -99,6 +104,7 @@
     var thought = isThoughtCategory(cat);
     var slides = thought ? [] : collectSlides(a);
     var imgStyle = coverDisplayStyle(a);
+    var hasCover = slides.length > 0;
 
     var mediaHtml = "";
     if (slides.length === 1) {
@@ -127,6 +133,17 @@
           "</a></div>";
       });
       mediaHtml += "</div></div>";
+    } else if (!thought) {
+      // 選填封面：無圖時用字首＋柔和漸層，不留空洞、不強制上傳
+      // 「隨想」維持純文字卡片，不加佔位圖
+      mediaHtml =
+        '<div class="card-media-zone card-media-zone--placeholder">' +
+        '<a href="' +
+        url +
+        '" class="card-cover-placeholder" aria-hidden="true">' +
+        '<span class="card-cover-initial">' +
+        esc(coverInitial(a.title)) +
+        "</span></a></div>";
     }
 
     var summary = String(a.summary || "").trim();
@@ -158,11 +175,15 @@
         "</ul>";
 
     var art = document.createElement("article");
-    art.className = "note-item" + (thought ? " is-thought" : "");
+    art.className =
+      "note-item" +
+      (thought ? " is-thought" : "") +
+      (hasCover ? " note-item--has-cover" : " note-item--no-cover");
     art.setAttribute("data-category", cat);
     art.setAttribute("data-upload", upload);
     art.setAttribute("data-edit", edit);
     art.setAttribute("data-title", a.title || "");
+    art.setAttribute("data-has-cover", hasCover ? "1" : "0");
     art.innerHTML =
       "<header><span class=\"date\">" +
       '<span class="meta-cat">' +
@@ -200,6 +221,8 @@
   }
 
   function initListWidgets() {
+    if (typeof window.enhanceNoCoverCards === "function")
+      window.enhanceNoCoverCards();
     if (typeof window.initSortingAndFiltering === "function")
       window.initSortingAndFiltering();
     if (typeof window.initCarousel === "function") window.initCarousel();
@@ -302,9 +325,8 @@
 
     var html = window.SB.renderMarkdown(a.body || "");
     contentEl.innerHTML =
-      '<div class="markdown-body" style="background:transparent;color:inherit;padding:2em;">' +
-      html +
-      "</div>";
+      '<div class="markdown-body article-reading">' + html + "</div>";
+    if (postSection) postSection.classList.add("is-article-reading");
 
     var firstH1 = contentEl.querySelector("h1");
     if (firstH1 && titleEl && !a.title) {

@@ -93,7 +93,8 @@ function initSortingAndFiltering() {
 
     const allItems = Array.from(container.getElementsByClassName('note-item'));
     const initialOrder = allItems.slice();
-    const ITEMS_PER_PAGE = 4;
+    // 6–10 區間取 8：桌機一屏可掃完、手機仍不至於過長
+    const ITEMS_PER_PAGE = 8;
     let currentPage = 1;
     let activeItems = [];
 
@@ -283,10 +284,81 @@ function initCarousel() {
     });
 }
 
+/**
+ * 無封面卡片：補上字首／漸層佔位，避免空白破圖或硬塞圖片槽。
+ * CMS 動態卡片已自帶；此函式照顧靜態 HTML fallback。
+ */
+function enhanceNoCoverCards() {
+    const container = document.getElementById('posts-container');
+    if (!container) return;
+
+    Array.from(container.querySelectorAll('article.note-item')).forEach((article) => {
+        if (article.querySelector('.card-cover-placeholder')) {
+            article.classList.add('note-item--no-cover');
+            article.classList.remove('note-item--has-cover');
+            return;
+        }
+
+        const hasRealMedia =
+            article.querySelector('.card-carousel') ||
+            article.querySelector('a.image.fit img') ||
+            article.querySelector('.card-media-zone:not(.card-media-zone--placeholder) img');
+
+        if (hasRealMedia) {
+            article.classList.add('note-item--has-cover');
+            article.classList.remove('note-item--no-cover');
+            return;
+        }
+
+        article.classList.add('note-item--no-cover');
+        article.classList.remove('note-item--has-cover');
+
+        const titleLink = article.querySelector('header h2 a');
+        const title =
+            article.getAttribute('data-title') ||
+            (titleLink && titleLink.textContent) ||
+            '';
+        const initial = String(title).trim().charAt(0) || '文';
+        const href = (titleLink && titleLink.getAttribute('href')) || '#';
+
+        const zone = document.createElement('div');
+        zone.className = 'card-media-zone card-media-zone--placeholder';
+        zone.innerHTML =
+            '<a href="' +
+            href +
+            '" class="card-cover-placeholder" aria-hidden="true">' +
+            '<span class="card-cover-initial">' +
+            initial +
+            '</span></a>';
+
+        const body = article.querySelector('.card-body');
+        const header = article.querySelector('header');
+        if (body) article.insertBefore(zone, body);
+        else if (header && header.nextSibling) article.insertBefore(zone, header.nextSibling);
+        else article.appendChild(zone);
+
+        // 舊靜態卡片常把摘要／按鈕散落在 media 外；包進 card-body 以統一間距
+        if (!body) {
+            const wrap = document.createElement('div');
+            wrap.className = 'card-body';
+            Array.from(article.children).forEach((child) => {
+                if (child === header || child === zone || child.classList.contains('list-index')) return;
+                wrap.appendChild(child);
+            });
+            article.appendChild(wrap);
+        }
+    });
+}
+
+window.initSortingAndFiltering = initSortingAndFiltering;
+window.initCarousel = initCarousel;
+window.enhanceNoCoverCards = enhanceNoCoverCards;
+
 document.addEventListener('DOMContentLoaded', function () {
     // 若 Supabase CMS 已啟用，改由 cms-public.js 動態渲染後再自行初始化，這裡讓路
     if (window.__CMS_DYNAMIC__) return;
     checkFilesExistAndRender();
+    enhanceNoCoverCards();
     initSortingAndFiltering();
     initCarousel();
 });

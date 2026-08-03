@@ -75,7 +75,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 if (typeof marked !== 'undefined') {
-                    contentEl.innerHTML = `<div class="markdown-body" style="background: transparent; color: inherit; padding: 2em;">${marked.parse(cleanMarkdown)}</div>`;
+                    const postSection = document.querySelector('#main > section.post');
+                    if (postSection) postSection.classList.add('is-article-reading');
+                    contentEl.innerHTML = `<div class="markdown-body article-reading">${marked.parse(cleanMarkdown)}</div>`;
                 } else {
                     contentEl.innerHTML = `<pre style="white-space: pre-wrap;">${cleanMarkdown}</pre>`;
                 }
