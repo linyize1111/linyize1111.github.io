@@ -8,15 +8,18 @@
   "use strict";
 
   var CATEGORIES = {
-    literature: ["隨筆", "心得", "創作"],
-    notes: ["資訊安全", "機器學習", "程式語言", "人文"],
+    literature: ["短思", "隨筆", "心得", "創作", "長文"],
+    notes: ["資訊安全", "機器學習", "程式語言", "人文", "短思", "長文"],
   };
   var MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+  var SHORT_CHARS = 450;
+  var LONG_CHARS = 2200;
 
   var $ = function (id) { return document.getElementById(id); };
   var client = null;
   var currentImages = []; // [{src,caption}]
   var deleteInProgress = false;
+  var lastParsed = null; // 匯入預覽結果
 
   // ---------- 訊息 ----------
   function msg(container, text, kind) {
@@ -199,6 +202,59 @@
       .replace(/\s+/g, "-").replace(/[^\w\u4e00-\u9fff-]/g, "").slice(0, 120);
   }
 
+  function plainSummary(s) {
+    return String(s || "")
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+      .replace(/\[([^\]]*)\]\([^)]+\)/g, "$1")
+      .replace(/[#>*_`~]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 280);
+  }
+
+  function detectLengthKind(body, forced) {
+    if (forced === "short") return "short";
+    if (forced === "long") return "long";
+    var n = String(body || "").replace(/\s+/g, "").length;
+    if (n <= SHORT_CHARS) return "short";
+    if (n >= LONG_CHARS) return "long";
+    return "medium";
+  }
+
+  function lengthLabel(kind) {
+    if (kind === "short") return "短思";
+    if (kind === "long") return "長文";
+    return "中篇";
+  }
+
+  function updateLengthHint() {
+    var el = $("length-hint");
+    if (!el) return;
+    var body = ($("f-body") && $("f-body").value) || "";
+    var kind = detectLengthKind(body, "auto");
+    var n = String(body).replace(/\s+/g, "").length;
+    el.textContent = n
+      ? ("篇幅提示：" + lengthLabel(kind) + "（約 " + n + " 字，不含空白）— 短思適合 Threads／心情；長文適合 HackMD／讀書筆記。")
+      : "";
+  }
+
+  function isJunkSocialLine(line) {
+    var t = String(line || "").trim();
+    if (!t) return false;
+    if (/^(Like|Comment|Share|Send|Follow|Following|Translate|View\s+insights|Liked by|Reply|Repost|Quote|轉發|回覆|讚|留言|分享|追蹤|更多|查看翻譯|查看洞察報告)$/i.test(t)) return true;
+    if (/^\d+\s*(likes?|comments?|replies?|views?|讚|留言|次觀看)$/i.test(t)) return true;
+    if (/^(Threads|Facebook|Instagram|HackMD)\b/i.test(t) && t.length < 40) return true;
+    return false;
+  }
+
+  function isImageUrl(u) {
+    if (!u) return false;
+    if (/\.(png|jpe?g|webp|gif|avif)(\?|#|$)/i.test(u)) return true;
+    if (/fbcdn\.net|cdninstagram\.com|twimg\.com|imgur\.com\/[A-Za-z0-9]+($|\?)/i.test(u)) return true;
+    if (/supabase\.co\/storage\/v1\/object\/public\//i.test(u)) return true;
+    return false;
+  }
+
   // ---------- 貼文解析（本地啟發式，不送第三方） ----------
   function parseMetaLine(key, value, out) {
     var k = String(key || "").trim().toLowerCase();
@@ -209,8 +265,8 @@
     else if (k === "summary" || k === "摘要" || k === "description") out.summary = v;
     else if (k === "category" || k === "分類") out.category = v;
     else if (k === "tags" || k === "標籤") {
-      out.tags = v.split(/[,，、\s]+/).map(function (t) { return t.trim(); }).filter(Boolean);
-    } else if (k === "cover" || k === "主圖") out.cover = v;
+      out.tags = v.split(/[,，、]+/).map(function (t) { return t.trim(); }).filter(Boolean);
+    } else if (k === "cover" || k === "主圖" || k === "image" || k === "img") out.cover = v;
     else if (k === "pdf" || k === "pdf_url") out.pdf = v;
     else if (k === "status" || k === "狀態") {
       if (/publish|發佈|发布/i.test(v)) out.status = "published";
@@ -218,17 +274,31 @@
     } else if (k === "section" || k === "分區") {
       if (/note|筆記|學科/i.test(v)) out.section = "notes";
       else if (/liter|文學|隨筆/i.test(v)) out.section = "literature";
+    } else if (k === "length" || k === "篇幅" || k === "kind") {
+      if (/短|short|thought/i.test(v)) out.lengthKind = "short";
+      else if (/長|long/i.test(v)) out.lengthKind = "long";
     }
   }
 
-  function parseArticleBlob(raw) {
+  function parseArticleBlob(raw, opts) {
+    opts = opts || {};
     var text = String(raw || "").replace(/\r\n/g, "\n").trim();
     var out = {
       title: "", slug: "", summary: "", body: "", category: "",
       tags: [], cover: "", pdf: "", status: "", section: "",
-      images: [],
+      images: [], lengthKind: "",
     };
     if (!text) return out;
+
+    var onlyUrl = text.match(/^(https?:\/\/[^\s]+)$/i);
+    if (onlyUrl) {
+      out.title = "未命名匯入";
+      out.body = "來源：" + onlyUrl[1] + "\n\n（請把全文貼上後再解析；僅貼連結無法抓遠端內容。）";
+      out.summary = "請改貼全文內容。";
+      out.slug = slugify("import-" + Date.now().toString(36));
+      out.lengthKind = "short";
+      return out;
+    }
 
     if (text.indexOf("---") === 0) {
       var end = text.indexOf("\n---", 3);
@@ -241,15 +311,25 @@
       }
     }
 
-    var lines = text.split("\n");
+    var mdImgRe = /!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/gi;
+    var mdm;
+    while ((mdm = mdImgRe.exec(text)) !== null) {
+      var src = mdm[2].replace(/[),.]+$/, "");
+      if (!out.cover) out.cover = src;
+      else if (!out.images.some(function (im) { return im.src === src; })) {
+        out.images.push({ src: src, caption: mdm[1] || "" });
+      }
+    }
+
+    var lines = text.split("\n").filter(function (ln) { return !isJunkSocialLine(ln); });
     var bodyStart = 0;
-    var urlRe = /(https?:\/\/[^\s)]+)/gi;
+    var urlRe = /(https?:\/\/[^\s)>\]]+)/gi;
     var allUrls = text.match(urlRe) || [];
 
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i].trim();
       if (!line) continue;
-      var meta = line.match(/^(title|slug|summary|category|tags|cover|pdf|status|section|標題|摘要|分類|標籤|主圖|狀態|分區)\s*[:：]\s*(.+)$/i);
+      var meta = line.match(/^(title|slug|summary|category|tags|cover|pdf|status|section|length|標題|摘要|分類|標籤|主圖|狀態|分區|篇幅)\s*[:：]\s*(.+)$/i);
       if (meta) {
         parseMetaLine(meta[1], meta[2], out);
         bodyStart = i + 1;
@@ -261,8 +341,12 @@
         bodyStart = i + 1;
         break;
       }
+      if (/^https?:\/\//i.test(line)) {
+        bodyStart = i;
+        break;
+      }
       if (!out.title && line.length < 120) {
-        out.title = line.replace(/^["']|["']$/g, "");
+        out.title = line.replace(/^["「『]|["」』]$/g, "");
         bodyStart = i + 1;
         break;
       }
@@ -272,51 +356,95 @@
     var bodyLines = lines.slice(bodyStart);
     while (bodyLines.length && !bodyLines[0].trim()) bodyLines.shift();
 
+    if (out.title && bodyLines.length && bodyLines[0].trim() === out.title) {
+      bodyLines.shift();
+      while (bodyLines.length && !bodyLines[0].trim()) bodyLines.shift();
+    }
+
     if (!out.summary && bodyLines.length) {
       var para = [];
       for (var j = 0; j < bodyLines.length; j++) {
         var bl = bodyLines[j].trim();
         if (!bl) break;
         if (/^#+\s/.test(bl) || /^[-*]\s/.test(bl)) break;
+        if (/^https?:\/\//i.test(bl) || /^!\[/.test(bl)) continue;
         para.push(bl);
         if (para.join(" ").length > 40) break;
       }
-      out.summary = para.join(" ").replace(/^>\s*/, "").slice(0, 280);
+      out.summary = plainSummary(para.join(" "));
     }
 
     if (!out.tags.length) {
       var hashTags = text.match(/#[\w\u4e00-\u9fff-]+/g);
       if (hashTags) {
-        out.tags = hashTags.map(function (t) { return t.replace(/^#/, ""); }).slice(0, 12);
+        out.tags = hashTags
+          .map(function (t) { return t.replace(/^#/, ""); })
+          .filter(function (t) { return !/^(threads|instagram|facebook|hackmd)$/i.test(t); })
+          .slice(0, 12);
       }
-    }
-
-    if (!out.category) {
-      var section = $("f-section") ? $("f-section").value : "literature";
-      var pool = CATEGORIES[section] || [];
-      pool.some(function (c) {
-        if (text.indexOf(c) !== -1) { out.category = c; return true; }
-        return false;
-      });
     }
 
     allUrls.forEach(function (u) {
       var clean = u.replace(/[),.]+$/, "");
-      if (!out.pdf && /\.pdf(\?|$)/i.test(clean)) out.pdf = clean;
-      if (!out.cover && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(clean)) out.cover = clean;
-      else if (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(clean)) {
-        if (!out.images.some(function (im) { return im.src === clean; })) {
+      if (!out.pdf && /\.pdf(\?|#|$)/i.test(clean)) out.pdf = clean;
+      else if (isImageUrl(clean)) {
+        if (!out.cover) out.cover = clean;
+        else if (!out.images.some(function (im) { return im.src === clean; })) {
           out.images.push({ src: clean, caption: "" });
         }
       }
     });
 
     out.body = bodyLines.join("\n").trim();
+    if (!out.body && out.title) out.body = out.title;
+
+    var forced = opts.lengthPreference || "auto";
+    out.lengthKind = out.lengthKind || detectLengthKind(out.body, forced);
+
+    if (!out.category) {
+      var sectionGuess = out.section || opts.section || ($("import-section") && $("import-section").value) || ($("f-section") && $("f-section").value) || "literature";
+      var pool = CATEGORIES[sectionGuess] || [];
+      pool.some(function (c) {
+        if (text.indexOf(c) !== -1) { out.category = c; return true; }
+        return false;
+      });
+      if (!out.category) {
+        if (out.lengthKind === "short") out.category = "短思";
+        else if (out.lengthKind === "long") out.category = sectionGuess === "notes" ? "人文" : "長文";
+        else out.category = sectionGuess === "notes" ? "人文" : "隨筆";
+      }
+    }
+
+    if (!out.section) {
+      out.section = opts.section || ($("import-section") && $("import-section").value) || "literature";
+    }
+    if (!out.status) out.status = "draft";
     if (!out.slug && out.title) out.slug = slugify(out.title);
+    if (!out.slug) out.slug = "import-" + Date.now().toString(36);
+    if (!out.summary) out.summary = plainSummary(out.body).slice(0, 120);
     return out;
   }
 
+  function showImportPreview(parsed) {
+    var box = $("import-preview");
+    if (!box) return;
+    box.classList.remove("hidden");
+    $("preview-title").textContent = parsed.title || "（無標題）";
+    var badge = $("preview-length-badge");
+    badge.textContent = lengthLabel(parsed.lengthKind);
+    badge.className = "badge length-" + (parsed.lengthKind || "medium");
+    $("preview-meta").textContent =
+      "分區 " + (parsed.section || "—") +
+      " · 分類 " + (parsed.category || "—") +
+      " · slug " + (parsed.slug || "—") +
+      (parsed.cover ? " · 已抓到封面圖" : "") +
+      (parsed.images && parsed.images.length ? (" · 另 " + parsed.images.length + " 張圖") : "");
+    $("preview-summary").textContent = parsed.summary || "（無摘要）";
+    $("preview-body").textContent = (parsed.body || "").slice(0, 1200) + ((parsed.body || "").length > 1200 ? "\n…" : "");
+  }
+
   function applyParsedArticle(parsed) {
+    openForm(null);
     if (parsed.section) $("f-section").value = parsed.section;
     if (parsed.status) $("f-status").value = parsed.status;
     if (parsed.category) $("f-category").value = parsed.category;
@@ -329,17 +457,28 @@
       $("f-cover").value = parsed.cover;
       $("cover-thumb").src = parsed.cover;
       $("cover-thumb").classList.remove("hidden");
+    } else {
+      $("f-cover").value = "";
+      $("cover-thumb").classList.add("hidden");
     }
     if (parsed.body) $("f-body").value = parsed.body;
+    currentImages = [];
     if (parsed.images && parsed.images.length) {
       parsed.images.forEach(function (im) {
         if (!currentImages.some(function (x) { return x.src === im.src; })) {
           currentImages.push(im);
         }
       });
-      renderImagesEditor();
     }
+    renderImagesEditor();
     refreshCategoryList();
+    updateLengthHint();
+  }
+
+  async function quickSaveDraft(parsed) {
+    applyParsedArticle(parsed);
+    $("f-status").value = "draft";
+    await saveArticle();
   }
 
   async function saveArticle() {
@@ -624,17 +763,58 @@
         var raw = ($("paste-blob").value || "").trim();
         if (!raw) {
           $("paste-status").textContent = "請先貼上內容";
+          lastParsed = null;
+          if ($("btn-apply-paste")) $("btn-apply-paste").disabled = true;
+          if ($("btn-quick-draft")) $("btn-quick-draft").disabled = true;
           return;
         }
-        var parsed = parseArticleBlob(raw);
+        var opts = {
+          section: ($("import-section") && $("import-section").value) || "literature",
+          lengthPreference: ($("import-length") && $("import-length").value) || "auto",
+        };
+        var parsed = parseArticleBlob(raw, opts);
         if (!parsed.title && !parsed.body) {
           $("paste-status").textContent = "無法辨識標題或內文";
+          lastParsed = null;
+          if ($("btn-apply-paste")) $("btn-apply-paste").disabled = true;
+          if ($("btn-quick-draft")) $("btn-quick-draft").disabled = true;
           return;
         }
-        applyParsedArticle(parsed);
-        $("paste-status").textContent = "已填入：" + (parsed.title || "（無標題）");
-        var panel = $("import-panel");
-        if (panel) panel.open = false;
+        lastParsed = parsed;
+        showImportPreview(parsed);
+        if ($("btn-apply-paste")) $("btn-apply-paste").disabled = false;
+        if ($("btn-quick-draft")) $("btn-quick-draft").disabled = false;
+        $("paste-status").textContent = "預覽完成：" + (parsed.title || "（無標題）") + " · " + lengthLabel(parsed.lengthKind);
+      });
+    }
+    var applyPaste = $("btn-apply-paste");
+    if (applyPaste) {
+      applyPaste.addEventListener("click", function () {
+        if (!lastParsed) {
+          $("paste-status").textContent = "請先按「預覽解析」";
+          return;
+        }
+        applyParsedArticle(lastParsed);
+        $("paste-status").textContent = "已填入表單，請檢查後按儲存";
+        $("article-form").scrollIntoView({ behavior: "smooth" });
+      });
+    }
+    var quickDraft = $("btn-quick-draft");
+    if (quickDraft) {
+      quickDraft.addEventListener("click", async function () {
+        if (!lastParsed) {
+          $("paste-status").textContent = "請先按「預覽解析」";
+          return;
+        }
+        quickDraft.disabled = true;
+        $("paste-status").textContent = "儲存草稿中…";
+        try {
+          await quickSaveDraft(lastParsed);
+          $("paste-status").textContent = "已存成草稿 ✔";
+        } catch (e) {
+          $("paste-status").textContent = "儲存失敗";
+        }
+        quickDraft.disabled = false;
       });
     }
     var clearPaste = $("btn-clear-paste");
@@ -642,6 +822,17 @@
       clearPaste.addEventListener("click", function () {
         $("paste-blob").value = "";
         $("paste-status").textContent = "";
+        lastParsed = null;
+        if ($("btn-apply-paste")) $("btn-apply-paste").disabled = true;
+        if ($("btn-quick-draft")) $("btn-quick-draft").disabled = true;
+        var box = $("import-preview");
+        if (box) box.classList.add("hidden");
+      });
+    }
+
+    if ($("import-section") && $("list-section")) {
+      $("import-section").addEventListener("change", function () {
+        $("list-section").value = $("import-section").value;
       });
     }
 
@@ -650,6 +841,9 @@
         $("f-slug").value = slugify($("f-title").value);
       }
     });
+    if ($("f-body")) {
+      $("f-body").addEventListener("input", updateLengthHint);
+    }
     $("f-section").addEventListener("change", refreshCategoryList);
     $("f-cover").addEventListener("input", function () {
       var v = $("f-cover").value.trim();

@@ -82,6 +82,54 @@
 
             <!-- 文章 -->
             <div id="tab-articles">
+                <!-- 快速匯入：貼上 → 預覽 → 存成文章 -->
+                <div class="card import-wizard" id="import-wizard">
+                    <h3>快速匯入文章</h3>
+                    <p class="muted">從 HackMD／Markdown／Threads／FB／IG 複製文字或連結貼下方 → 預覽 → 存成草稿或直接發佈。純本地解析，不會送到第三方。</p>
+                    <ol class="import-steps muted">
+                        <li>貼上全文（可含 <code># 標題</code>、YAML frontmatter、<code>分類：短思</code>）</li>
+                        <li>按「預覽解析」檢查標題／摘要／篇幅</li>
+                        <li>確認後「填入表單」再存檔，或直接「存成草稿」</li>
+                    </ol>
+                    <div class="row" style="align-items:flex-end;">
+                        <div class="field" style="max-width:220px;">
+                            <label>預設分區</label>
+                            <select id="import-section">
+                                <option value="literature">文學隨筆</option>
+                                <option value="notes">學科筆記</option>
+                            </select>
+                        </div>
+                        <div class="field" style="max-width:180px;">
+                            <label>篇幅提示</label>
+                            <select id="import-length">
+                                <option value="auto">自動判斷</option>
+                                <option value="short">短思（短文）</option>
+                                <option value="long">長文</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field full">
+                        <label>貼上文字／Markdown／連結</label>
+                        <textarea id="paste-blob" rows="10" placeholder="範例：&#10;# 標題&#10;分類：短思&#10;&#10;第一段當摘要…&#10;&#10;其餘當內文。&#10;&#10;也可直接貼 Threads／FB 複製的純文字。"></textarea>
+                    </div>
+                    <div class="import-actions">
+                        <button type="button" class="btn primary" id="btn-parse-paste">① 預覽解析</button>
+                        <button type="button" class="btn" id="btn-apply-paste" disabled>② 填入表單</button>
+                        <button type="button" class="btn primary" id="btn-quick-draft" disabled>直接存成草稿</button>
+                        <button type="button" class="btn" id="btn-clear-paste">清除</button>
+                        <span class="muted" id="paste-status"></span>
+                    </div>
+                    <div id="import-preview" class="import-preview hidden">
+                        <div class="import-preview-head">
+                            <strong id="preview-title">—</strong>
+                            <span class="badge" id="preview-length-badge">—</span>
+                        </div>
+                        <p class="muted" id="preview-meta"></p>
+                        <p id="preview-summary"></p>
+                        <pre id="preview-body" class="import-preview-body"></pre>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="row" style="align-items:flex-end;">
                         <div class="field" style="max-width:220px;">
@@ -92,7 +140,7 @@
                             </select>
                         </div>
                         <div class="field" style="max-width:160px; flex:0;">
-                            <button class="btn primary" id="btn-new">+ 新增文章</button>
+                            <button class="btn primary" id="btn-new">+ 手動新增</button>
                         </div>
                     </div>
                     <div id="article-list"></div>
@@ -102,17 +150,6 @@
                 <div class="card hidden" id="article-form">
                     <h3 id="form-title">新增文章</h3>
                     <div id="form-msg"></div>
-
-                    <details class="import-panel" id="import-panel">
-                        <summary>快速匯入 — 貼上一坨文字自動填欄位</summary>
-                        <p class="muted">支援 YAML frontmatter、Markdown 標題、<code>分類：</code> / <code>tags:</code> 行、圖片與 PDF 連結。純本地解析，不送第三方 AI。</p>
-                        <textarea id="paste-blob" rows="8" placeholder="# 標題&#10;分類：隨筆&#10;tags: 閱讀, 反思&#10;&#10;摘要段落…&#10;&#10;## 內文…"></textarea>
-                        <div class="import-actions">
-                            <button type="button" class="btn primary" id="btn-parse-paste">解析並填入欄位</button>
-                            <button type="button" class="btn" id="btn-clear-paste">清除</button>
-                            <span class="muted" id="paste-status"></span>
-                        </div>
-                    </details>
 
                     <input type="hidden" id="f-id" />
                     <div class="row">
@@ -131,11 +168,12 @@
                             </select>
                         </div>
                         <div class="field">
-                            <label>分類</label>
-                            <input id="f-category" list="category-list" placeholder="例：隨筆 / 心得 / 創作 或 資訊安全…" />
+                            <label>分類（短思／長文／隨筆…）</label>
+                            <input id="f-category" list="category-list" placeholder="例：短思 / 隨筆 / 心得 / 長文" />
                             <datalist id="category-list"></datalist>
                         </div>
                     </div>
+                    <p class="muted" id="length-hint" style="margin-top:-.4rem;margin-bottom:1rem;"></p>
                     <div class="row">
                         <div class="field">
                             <label>標題 *</label>

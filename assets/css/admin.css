@@ -106,22 +106,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 #delete-confirm-input { margin-top: .25rem; }
 
-/* 快速匯入面板 */
-.import-panel {
-  border: 1px dashed var(--a-border);
-  border-radius: 10px;
-  padding: .75rem 1rem 1rem;
-  margin-bottom: 1.25rem;
-  background: rgba(255, 255, 255, 0.03);
+/* 快速匯入精靈 */
+.import-wizard h3 { margin: 0 0 .5rem; font-size: 1.15rem; }
+.import-steps {
+  margin: .4rem 0 1rem 1.2rem;
+  padding: 0;
+  line-height: 1.7;
+  font-size: .88rem;
 }
-.import-panel summary {
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--a-accent);
-  margin-bottom: .5rem;
-}
-.import-panel textarea {
-  min-height: 140px;
+.import-wizard textarea {
+  min-height: 180px;
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
   font-size: .84rem;
 }
@@ -130,8 +124,42 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   align-items: center;
   gap: .6rem;
   flex-wrap: wrap;
-  margin-top: .6rem;
+  margin-top: .2rem;
+  margin-bottom: .8rem;
 }
+.import-preview {
+  margin-top: .5rem;
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(86, 208, 248, 0.28);
+  background: rgba(86, 208, 248, 0.06);
+}
+.import-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin-bottom: .35rem;
+}
+.import-preview-head strong { font-size: 1.05rem; }
+.import-preview-body {
+  max-height: 220px;
+  overflow: auto;
+  margin: .6rem 0 0;
+  padding: .75rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--a-border);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: .82rem;
+  line-height: 1.55;
+  color: var(--a-text);
+}
+.badge.length-short { color: #ffd28a; border-color: #ffd28a; }
+.badge.length-long { color: var(--a-accent); border-color: var(--a-accent); }
+.badge.length-medium { color: var(--a-ok); border-color: var(--a-ok); }
 .modal-irreversible {
   font-size: .88rem;
   color: #ffd0da;

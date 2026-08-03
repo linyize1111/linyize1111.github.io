@@ -953,12 +953,42 @@ article.note-item header .date span.meta-cat {
     border-color: rgba(125, 232, 255, 0.28);
 }
 
+/* 首頁／卡片說明：max-width 必須左右 auto，否則塊會貼左，看起來「沒置中」 */
 .posts article p,
 article.note-item p,
-article.post p {
+article.post p,
+#main > .post.featured header.major > p,
+#main > .posts > article > p {
     max-width: var(--measure);
     margin-top: var(--space-sm);
     margin-bottom: var(--space-md);
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+/* 標題列／導言：覆寫全域 p { text-align: justify }，避免視覺偏移 */
+#intro,
+#intro h1,
+#intro p,
+#main > .post.featured,
+#main > .posts > article,
+#main > .post.featured header.major,
+#main > .posts > article > header {
+    text-align: center;
+}
+
+#intro h1,
+#intro p {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: min(100%, 42rem);
+}
+
+header.major > p {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
 }
 
 /* ============================================================
