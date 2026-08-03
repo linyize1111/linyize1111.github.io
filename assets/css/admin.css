@@ -160,6 +160,49 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .badge.length-short { color: #ffd28a; border-color: #ffd28a; }
 .badge.length-long { color: var(--a-accent); border-color: var(--a-accent); }
 .badge.length-medium { color: var(--a-ok); border-color: var(--a-ok); }
+.import-promise { line-height: 1.55; }
+.import-promise strong { color: #ffd28a; font-weight: 600; }
+.import-advanced, .form-advanced {
+  margin-top: .75rem;
+  padding: .65rem .85rem;
+  border: 1px dashed rgba(255,255,255,.16);
+  border-radius: 10px;
+  background: rgba(255,255,255,.03);
+}
+.import-advanced > summary,
+.form-advanced > summary {
+  cursor: pointer;
+  color: var(--a-muted);
+  font-size: .88rem;
+  list-style: none;
+}
+.import-advanced > summary::-webkit-details-marker,
+.form-advanced > summary::-webkit-details-marker { display: none; }
+.import-advanced > summary::before,
+.form-advanced > summary::before {
+  content: "▸ ";
+  color: var(--a-accent);
+}
+.import-advanced[open] > summary::before,
+.form-advanced[open] > summary::before { content: "▾ "; }
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-top: .45rem;
+}
+.chip {
+  cursor: pointer;
+  background: rgba(86, 208, 248, .08);
+  color: var(--a-text);
+  border: 1px solid var(--a-border);
+  border-radius: 999px;
+  padding: .28rem .7rem;
+  font-size: .8rem;
+  font-family: inherit;
+}
+.chip:hover { border-color: var(--a-accent); color: var(--a-accent); }
+#preview-hint { margin: .15rem 0 .35rem; font-size: .84rem; color: #ffd28a; }
 .modal-irreversible {
   font-size: .88rem;
   color: #ffd0da;

@@ -103,7 +103,10 @@ function initSortingAndFiltering() {
 
         let filtered = allItems.filter(item => {
             if (category === 'all') return true;
-            return item.dataset.category === category;
+            const itemCat = item.dataset.category || '';
+            if (category === '隨想') return itemCat === '隨想' || itemCat === '短思';
+            if (category === '短思') return itemCat === '隨想' || itemCat === '短思';
+            return itemCat === category;
         });
 
         if (sortType !== 'default' && sortType !== 'list') {
@@ -218,6 +221,18 @@ function initSortingAndFiltering() {
 
     filterCategory.addEventListener('change', updateView);
     sortBy.addEventListener('change', updateView);
+
+    // ?cat=隨想 或 #thoughts → 預設只看隨想
+    try {
+        const params = new URLSearchParams(window.location.search);
+        let cat = params.get('cat') || params.get('category');
+        if (!cat && /thoughts?|隨想|短思/i.test(window.location.hash || '')) cat = '隨想';
+        if (cat === '短思') cat = '隨想';
+        if (cat) {
+            const opt = Array.from(filterCategory.options).find(o => o.value === cat);
+            if (opt) filterCategory.value = cat;
+        }
+    } catch (e) {}
 
     // Provide initial view
     updateView();

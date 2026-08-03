@@ -75,12 +75,29 @@
     return slides;
   }
 
+  function normalizeCategory(cat) {
+    var c = String(cat || "").trim();
+    if (c === "短思") return "隨想";
+    return c;
+  }
+
+  function isThoughtCategory(cat) {
+    return normalizeCategory(cat) === "隨想";
+  }
+
+  function shortSummary(text, maxLen) {
+    var s = String(text || "").replace(/\s+/g, " ").trim();
+    if (s.length <= maxLen) return s;
+    return s.slice(0, maxLen).replace(/\s+\S*$/, "") + "…";
+  }
+
   function buildCard(a) {
     var url = articleUrl(a);
     var upload = fmtDate(a.published_at || a.created_at);
     var edit = fmtDate(a.updated_at);
-    var cat = a.category || "";
-    var slides = collectSlides(a);
+    var cat = normalizeCategory(a.category || "");
+    var thought = isThoughtCategory(cat);
+    var slides = thought ? [] : collectSlides(a);
     var imgStyle = coverDisplayStyle(a);
 
     var mediaHtml = "";
@@ -116,21 +133,32 @@
     if (CAROUSEL_HINT.test(summary) && slides.length > 1) {
       summary = "系列閱讀筆記，共 " + slides.length + " 張預覽圖。";
     }
+    if (thought) summary = shortSummary(summary, 96);
     var summaryHtml = summary
       ? "<p>" + esc(summary) + "</p>"
       : "";
 
     var pdfBtn = "";
     var safePdf = safeHttpsUrl(a.pdf_url);
-    if (safePdf) {
+    if (safePdf && !thought) {
       pdfBtn =
         '<li><a href="' +
         esc(safePdf) +
         '" target="_blank" rel="noopener noreferrer" class="button primary">檢視 PDF</a></li>';
     }
 
+    var actionsHtml = thought
+      ? '<ul class="actions special"><li><a href="' +
+        url +
+        '" class="button">閱讀</a></li></ul>'
+      : '<ul class="actions special"><li><a href="' +
+        url +
+        '" class="button">閱讀文章</a></li>' +
+        pdfBtn +
+        "</ul>";
+
     var art = document.createElement("article");
-    art.className = "note-item";
+    art.className = "note-item" + (thought ? " is-thought" : "");
     art.setAttribute("data-category", cat);
     art.setAttribute("data-upload", upload);
     art.setAttribute("data-edit", edit);
@@ -138,14 +166,15 @@
     art.innerHTML =
       "<header><span class=\"date\">" +
       '<span class="meta-cat">' +
-      esc(cat) +
+      esc(cat || (thought ? "隨想" : "")) +
       "</span>" +
       '<span class="meta-up">上傳: ' +
       esc(upload) +
       "</span>" +
-      '<span class="meta-ed">編輯: ' +
-      esc(edit) +
-      "</span></span>" +
+      (thought
+        ? ""
+        : '<span class="meta-ed">編輯: ' + esc(edit) + "</span>") +
+      "</span>" +
       '<h2><a href="' +
       url +
       '">' +
@@ -154,11 +183,8 @@
       mediaHtml +
       '<div class="card-body">' +
       summaryHtml +
-      '<ul class="actions special"><li><a href="' +
-      url +
-      '" class="button">閱讀文章</a></li>' +
-      pdfBtn +
-      "</ul></div>";
+      actionsHtml +
+      "</div>";
     return art;
   }
 
@@ -250,7 +276,7 @@
     if (titleEl) titleEl.innerText = a.title || "";
     if (statusEl)
       statusEl.innerText =
-        (a.category ? a.category + " · " : "") +
+        (a.category ? normalizeCategory(a.category) + " · " : "") +
         "更新於 " +
         fmtDate(a.updated_at || a.published_at);
 

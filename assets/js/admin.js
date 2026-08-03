@@ -8,8 +8,8 @@
   "use strict";
 
   var CATEGORIES = {
-    literature: ["短思", "隨筆", "心得", "創作", "長文"],
-    notes: ["資訊安全", "機器學習", "程式語言", "人文", "短思", "長文"],
+    literature: ["隨想", "隨筆", "心得", "創作", "長文"],
+    notes: ["資訊安全", "機器學習", "程式語言", "人文", "隨想", "長文"],
   };
   var MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
   var SHORT_CHARS = 450;
@@ -180,7 +180,7 @@
       $("f-id").value = a.id;
       $("f-section").value = a.section;
       $("f-status").value = a.status;
-      $("f-category").value = a.category || "";
+      $("f-category").value = normalizeCategory(a.category || "");
       $("f-title").value = a.title || "";
       $("f-slug").value = a.slug || "";
       $("f-summary").value = a.summary || "";
@@ -222,9 +222,48 @@
   }
 
   function lengthLabel(kind) {
-    if (kind === "short") return "短思";
+    if (kind === "short") return "隨想";
     if (kind === "long") return "長文";
     return "中篇";
+  }
+
+  function normalizeCategory(cat) {
+    var c = String(cat || "").trim();
+    if (c === "短思") return "隨想";
+    return c;
+  }
+
+  function isThoughtCategory(cat) {
+    var c = normalizeCategory(cat);
+    return c === "隨想";
+  }
+
+  function todayThoughtTitle() {
+    var d = new Date();
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day + " 隨想";
+  }
+
+  function firstSentenceTitle(text) {
+    var plain = plainSummary(text).replace(/^["「『]|["」』]$/g, "");
+    if (!plain) return "";
+    var cut = plain.split(/[。！？\n.!?\u2026]/)[0] || plain;
+    cut = cut.trim().slice(0, 48);
+    return cut;
+  }
+
+  function ensureThoughtTitle(out) {
+    var title = String(out.title || "").trim();
+    var weak = !title || title === "未命名匯入" || /^https?:\/\//i.test(title);
+    if (!weak) return;
+    if (out.lengthKind === "short" || isThoughtCategory(out.category)) {
+      var fromBody = firstSentenceTitle(out.body || out.summary || "");
+      out.title = fromBody || todayThoughtTitle();
+    } else if (!title) {
+      out.title = firstSentenceTitle(out.body) || todayThoughtTitle();
+    }
   }
 
   function updateLengthHint() {
@@ -234,8 +273,39 @@
     var kind = detectLengthKind(body, "auto");
     var n = String(body).replace(/\s+/g, "").length;
     el.textContent = n
-      ? ("篇幅提示：" + lengthLabel(kind) + "（約 " + n + " 字，不含空白）— 短思適合 Threads／心情；長文適合 HackMD／讀書筆記。")
+      ? ("篇幅提示：" + lengthLabel(kind) + "（約 " + n + " 字）— 抱怨／碎念 → 隨想；HackMD／長筆記 → 長文。")
       : "";
+  }
+
+  function addTagSuggestion(tag) {
+    var input = $("f-tags");
+    if (!input || !tag) return;
+    var cur = input.value.split(/[,，、]+/).map(function (t) { return t.trim(); }).filter(Boolean);
+    if (cur.indexOf(tag) !== -1) return;
+    cur.push(tag);
+    input.value = cur.join(", ");
+  }
+
+  function setCategoryQuick(cat) {
+    var input = $("f-category");
+    if (!input) return;
+    input.value = normalizeCategory(cat);
+  }
+
+  function ensureCategoryOnSave() {
+    var cat = normalizeCategory($("f-category").value);
+    if (cat) {
+      $("f-category").value = cat;
+      return cat;
+    }
+    var body = ($("f-body") && $("f-body").value) || "";
+    var kind = detectLengthKind(body, "auto");
+    var section = ($("f-section") && $("f-section").value) || "literature";
+    if (kind === "short") cat = "隨想";
+    else if (kind === "long") cat = section === "notes" ? "人文" : "長文";
+    else cat = section === "notes" ? "人文" : "隨筆";
+    $("f-category").value = cat;
+    return cat;
   }
 
   function isJunkSocialLine(line) {
@@ -263,7 +333,7 @@
     if (k === "title" || k === "標題") out.title = v;
     else if (k === "slug") out.slug = slugify(v);
     else if (k === "summary" || k === "摘要" || k === "description") out.summary = v;
-    else if (k === "category" || k === "分類") out.category = v;
+    else if (k === "category" || k === "分類") out.category = normalizeCategory(v);
     else if (k === "tags" || k === "標籤") {
       out.tags = v.split(/[,，、]+/).map(function (t) { return t.trim(); }).filter(Boolean);
     } else if (k === "cover" || k === "主圖" || k === "image" || k === "img") out.cover = v;
@@ -275,7 +345,7 @@
       if (/note|筆記|學科/i.test(v)) out.section = "notes";
       else if (/liter|文學|隨筆/i.test(v)) out.section = "literature";
     } else if (k === "length" || k === "篇幅" || k === "kind") {
-      if (/短|short|thought/i.test(v)) out.lengthKind = "short";
+      if (/短|隨想|抱怨|碎念|short|thought/i.test(v)) out.lengthKind = "short";
       else if (/長|long/i.test(v)) out.lengthKind = "long";
     }
   }
@@ -374,15 +444,8 @@
       out.summary = plainSummary(para.join(" "));
     }
 
-    if (!out.tags.length) {
-      var hashTags = text.match(/#[\w\u4e00-\u9fff-]+/g);
-      if (hashTags) {
-        out.tags = hashTags
-          .map(function (t) { return t.replace(/^#/, ""); })
-          .filter(function (t) { return !/^(threads|instagram|facebook|hackmd)$/i.test(t); })
-          .slice(0, 12);
-      }
-    }
+    // 標籤預設空白：不強迫、不自動灌 hashtag（使用者可一鍵建議）
+    if (!Array.isArray(out.tags)) out.tags = [];
 
     allUrls.forEach(function (u) {
       var clean = u.replace(/[),.]+$/, "");
@@ -401,24 +464,21 @@
     var forced = opts.lengthPreference || "auto";
     out.lengthKind = out.lengthKind || detectLengthKind(out.body, forced);
 
+    if (out.category) out.category = normalizeCategory(out.category);
+
     if (!out.category) {
       var sectionGuess = out.section || opts.section || ($("import-section") && $("import-section").value) || ($("f-section") && $("f-section").value) || "literature";
-      var pool = CATEGORIES[sectionGuess] || [];
-      pool.some(function (c) {
-        if (text.indexOf(c) !== -1) { out.category = c; return true; }
-        return false;
-      });
-      if (!out.category) {
-        if (out.lengthKind === "short") out.category = "短思";
-        else if (out.lengthKind === "long") out.category = sectionGuess === "notes" ? "人文" : "長文";
-        else out.category = sectionGuess === "notes" ? "人文" : "隨筆";
-      }
+      // 只認明確寫在 meta 的分類；內文出現「心得」等字不硬猜，避免誤標
+      if (out.lengthKind === "short") out.category = "隨想";
+      else if (out.lengthKind === "long") out.category = sectionGuess === "notes" ? "人文" : "長文";
+      else out.category = sectionGuess === "notes" ? "人文" : "隨筆";
     }
 
     if (!out.section) {
       out.section = opts.section || ($("import-section") && $("import-section").value) || "literature";
     }
     if (!out.status) out.status = "draft";
+    ensureThoughtTitle(out);
     if (!out.slug && out.title) out.slug = slugify(out.title);
     if (!out.slug) out.slug = "import-" + Date.now().toString(36);
     if (!out.summary) out.summary = plainSummary(out.body).slice(0, 120);
@@ -435,10 +495,17 @@
     badge.className = "badge length-" + (parsed.lengthKind || "medium");
     $("preview-meta").textContent =
       "分區 " + (parsed.section || "—") +
-      " · 分類 " + (parsed.category || "—") +
+      " · 分類 " + (parsed.category || "自動") +
+      " · 標籤 " + ((parsed.tags && parsed.tags.length) ? parsed.tags.join(", ") : "空白（可選）") +
       " · slug " + (parsed.slug || "—") +
       (parsed.cover ? " · 已抓到封面圖" : "") +
       (parsed.images && parsed.images.length ? (" · 另 " + parsed.images.length + " 張圖") : "");
+    var hint = $("preview-hint");
+    if (hint) {
+      hint.textContent = isThoughtCategory(parsed.category)
+        ? "已當成「隨想」：抱怨／碎念／突然的想法都適合這裡。標題可之後再改。"
+        : "分類已自動填好；若想改成隨想或長文，填入表單後點一鍵即可。";
+    }
     $("preview-summary").textContent = parsed.summary || "（無摘要）";
     $("preview-body").textContent = (parsed.body || "").slice(0, 1200) + ((parsed.body || "").length > 1200 ? "\n…" : "");
   }
@@ -447,11 +514,12 @@
     openForm(null);
     if (parsed.section) $("f-section").value = parsed.section;
     if (parsed.status) $("f-status").value = parsed.status;
-    if (parsed.category) $("f-category").value = parsed.category;
+    if (parsed.category) $("f-category").value = normalizeCategory(parsed.category);
     if (parsed.title) $("f-title").value = parsed.title;
     if (parsed.slug) $("f-slug").value = parsed.slug;
     if (parsed.summary) $("f-summary").value = parsed.summary;
-    if (parsed.tags && parsed.tags.length) $("f-tags").value = parsed.tags.join(", ");
+    // 標籤預設空白；僅當貼文明確寫了 tags: 才帶入
+    $("f-tags").value = (parsed.tags && parsed.tags.length) ? parsed.tags.join(", ") : "";
     if (parsed.pdf) $("f-pdf").value = parsed.pdf;
     if (parsed.cover) {
       $("f-cover").value = parsed.cover;
@@ -483,21 +551,29 @@
 
   async function saveArticle() {
     var id = $("f-id").value;
+    var bodyVal = ($("f-body") && $("f-body").value) || "";
     var title = $("f-title").value.trim();
+    if (!title) {
+      var kind = detectLengthKind(bodyVal, "auto");
+      title = (kind === "short" ? firstSentenceTitle(bodyVal) : "") || todayThoughtTitle();
+      $("f-title").value = title;
+    }
     var slug = $("f-slug").value.trim() || slugify(title);
     if (!title) { msg("form-msg", "請填標題", "err"); return; }
     if (!slug) { msg("form-msg", "請填 slug", "err"); return; }
+    $("f-slug").value = slug;
 
-    var tags = $("f-tags").value.split(",").map(function (t) { return t.trim(); }).filter(Boolean);
+    var category = ensureCategoryOnSave();
+    var tags = $("f-tags").value.split(/[,，、]+/).map(function (t) { return t.trim(); }).filter(Boolean);
     var payload = {
       section: $("f-section").value,
       slug: slug,
       title: title,
       summary: $("f-summary").value.trim(),
-      body: $("f-body").value,
+      body: bodyVal,
       cover: $("f-cover").value.trim() || null,
       images: currentImages,
-      category: $("f-category").value.trim() || null,
+      category: category || null,
       tags: tags,
       pdf_url: $("f-pdf").value.trim() || null,
       status: $("f-status").value,
@@ -758,59 +834,60 @@
     bindDeleteModal();
 
     var parseBtn = $("btn-parse-paste");
+    function runParse(showPreview) {
+      var raw = ($("paste-blob").value || "").trim();
+      if (!raw) {
+        $("paste-status").textContent = "請先貼上內容";
+        lastParsed = null;
+        if ($("btn-apply-paste")) $("btn-apply-paste").disabled = true;
+        return null;
+      }
+      var opts = {
+        section: ($("import-section") && $("import-section").value) || "literature",
+        lengthPreference: ($("import-length") && $("import-length").value) || "auto",
+      };
+      var parsed = parseArticleBlob(raw, opts);
+      if (!parsed.title && !parsed.body) {
+        $("paste-status").textContent = "無法辨識標題或內文";
+        lastParsed = null;
+        if ($("btn-apply-paste")) $("btn-apply-paste").disabled = true;
+        return null;
+      }
+      lastParsed = parsed;
+      if (showPreview !== false) showImportPreview(parsed);
+      if ($("btn-apply-paste")) $("btn-apply-paste").disabled = false;
+      $("paste-status").textContent =
+        "已整理：" + (parsed.title || "（無標題）") +
+        " · " + (parsed.category || lengthLabel(parsed.lengthKind)) +
+        " · 標籤空白（可選）";
+      return parsed;
+    }
     if (parseBtn) {
-      parseBtn.addEventListener("click", function () {
-        var raw = ($("paste-blob").value || "").trim();
-        if (!raw) {
-          $("paste-status").textContent = "請先貼上內容";
-          lastParsed = null;
-          if ($("btn-apply-paste")) $("btn-apply-paste").disabled = true;
-          if ($("btn-quick-draft")) $("btn-quick-draft").disabled = true;
-          return;
-        }
-        var opts = {
-          section: ($("import-section") && $("import-section").value) || "literature",
-          lengthPreference: ($("import-length") && $("import-length").value) || "auto",
-        };
-        var parsed = parseArticleBlob(raw, opts);
-        if (!parsed.title && !parsed.body) {
-          $("paste-status").textContent = "無法辨識標題或內文";
-          lastParsed = null;
-          if ($("btn-apply-paste")) $("btn-apply-paste").disabled = true;
-          if ($("btn-quick-draft")) $("btn-quick-draft").disabled = true;
-          return;
-        }
-        lastParsed = parsed;
-        showImportPreview(parsed);
-        if ($("btn-apply-paste")) $("btn-apply-paste").disabled = false;
-        if ($("btn-quick-draft")) $("btn-quick-draft").disabled = false;
-        $("paste-status").textContent = "預覽完成：" + (parsed.title || "（無標題）") + " · " + lengthLabel(parsed.lengthKind);
-      });
+      parseBtn.addEventListener("click", function () { runParse(true); });
     }
     var applyPaste = $("btn-apply-paste");
     if (applyPaste) {
       applyPaste.addEventListener("click", function () {
-        if (!lastParsed) {
-          $("paste-status").textContent = "請先按「預覽解析」";
+        var parsed = lastParsed || runParse(true);
+        if (!parsed) {
+          $("paste-status").textContent = "請先貼上內容";
           return;
         }
-        applyParsedArticle(lastParsed);
-        $("paste-status").textContent = "已填入表單，請檢查後按儲存";
+        applyParsedArticle(parsed);
+        $("paste-status").textContent = "已填入表單；分類／標籤可跳過，直接儲存即可";
         $("article-form").scrollIntoView({ behavior: "smooth" });
       });
     }
     var quickDraft = $("btn-quick-draft");
     if (quickDraft) {
       quickDraft.addEventListener("click", async function () {
-        if (!lastParsed) {
-          $("paste-status").textContent = "請先按「預覽解析」";
-          return;
-        }
+        var parsed = runParse(true);
+        if (!parsed) return;
         quickDraft.disabled = true;
         $("paste-status").textContent = "儲存草稿中…";
         try {
-          await quickSaveDraft(lastParsed);
-          $("paste-status").textContent = "已存成草稿 ✔";
+          await quickSaveDraft(parsed);
+          $("paste-status").textContent = "已存成草稿 ✔（分類：" + (parsed.category || "自動") + "）";
         } catch (e) {
           $("paste-status").textContent = "儲存失敗";
         }
@@ -824,7 +901,6 @@
         $("paste-status").textContent = "";
         lastParsed = null;
         if ($("btn-apply-paste")) $("btn-apply-paste").disabled = true;
-        if ($("btn-quick-draft")) $("btn-quick-draft").disabled = true;
         var box = $("import-preview");
         if (box) box.classList.add("hidden");
       });
@@ -833,6 +909,23 @@
     if ($("import-section") && $("list-section")) {
       $("import-section").addEventListener("change", function () {
         $("list-section").value = $("import-section").value;
+      });
+    }
+
+    var tagBox = $("tag-suggestions");
+    if (tagBox) {
+      tagBox.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-tag]");
+        if (!btn) return;
+        addTagSuggestion(btn.getAttribute("data-tag"));
+      });
+    }
+    var catQuick = $("category-quick");
+    if (catQuick) {
+      catQuick.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-cat]");
+        if (!btn) return;
+        setCategoryQuick(btn.getAttribute("data-cat"));
       });
     }
 

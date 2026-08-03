@@ -1450,3 +1450,47 @@ html.paw-cursor-active * {
 #posts-container.list-view > article.note-item .card-body > p {
     display: none;
 }
+
+/* 隨想：輕量卡片（短摘要、少裝飾） */
+#posts-container.posts > article.note-item.is-thought {
+    padding: 1.1rem 1.15rem 1rem;
+    background: transparent;
+    box-shadow: none;
+    border: 1px solid rgba(128, 128, 128, 0.22);
+}
+#posts-container.posts > article.note-item.is-thought:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: rgba(128, 128, 128, 0.4);
+}
+#posts-container.posts > article.note-item.is-thought header h2 {
+    font-size: 1.15rem;
+    letter-spacing: 0.01em;
+    margin-bottom: 0.35rem;
+}
+#posts-container.posts > article.note-item.is-thought header .date {
+    opacity: 0.75;
+    font-size: 0.78rem;
+}
+#posts-container.posts > article.note-item.is-thought .card-body > p {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    opacity: 0.88;
+    margin: 0.35rem 0 0.7rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+#posts-container.posts > article.note-item.is-thought .actions {
+    margin: 0;
+}
+#posts-container.posts > article.note-item.is-thought .actions .button {
+    padding: 0.35rem 0.9rem;
+    font-size: 0.82rem;
+}
+[data-theme="dark"] #posts-container.posts > article.note-item.is-thought,
+[data-theme="glass"] #posts-container.posts > article.note-item.is-thought {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.12);
+}

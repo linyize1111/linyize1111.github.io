@@ -82,49 +82,53 @@
 
             <!-- 文章 -->
             <div id="tab-articles">
-                <!-- 快速匯入：貼上 → 預覽 → 存成文章 -->
+                <!-- 零決策匯入：貼上就能存，不必想分類／標籤 -->
                 <div class="card import-wizard" id="import-wizard">
-                    <h3>快速匯入文章</h3>
-                    <p class="muted">從 HackMD／Markdown／Threads／FB／IG 複製文字或連結貼下方 → 預覽 → 存成草稿或直接發佈。純本地解析，不會送到第三方。</p>
+                    <h3>快速匯入 · 零決策</h3>
+                    <p class="muted import-promise">抱怨、碎念、突然的想法 → 直接貼上存成<strong>隨想</strong>。不必選分類、不必填標籤；系統會自動整理標題與篇幅。</p>
                     <ol class="import-steps muted">
-                        <li>貼上全文（可含 <code># 標題</code>、YAML frontmatter、<code>分類：短思</code>）</li>
-                        <li>按「預覽解析」檢查標題／摘要／篇幅</li>
-                        <li>確認後「填入表單」再存檔，或直接「存成草稿」</li>
+                        <li>貼上文字（Threads／FB／備忘錄／HackMD 都行）</li>
+                        <li>按「存成草稿」——完事</li>
+                        <li>（可選）之後再改標題、發佈，或一鍵改成「長文」</li>
                     </ol>
-                    <div class="row" style="align-items:flex-end;">
-                        <div class="field" style="max-width:220px;">
-                            <label>預設分區</label>
-                            <select id="import-section">
-                                <option value="literature">文學隨筆</option>
-                                <option value="notes">學科筆記</option>
-                            </select>
-                        </div>
-                        <div class="field" style="max-width:180px;">
-                            <label>篇幅提示</label>
-                            <select id="import-length">
-                                <option value="auto">自動判斷</option>
-                                <option value="short">短思（短文）</option>
-                                <option value="long">長文</option>
-                            </select>
-                        </div>
-                    </div>
                     <div class="field full">
-                        <label>貼上文字／Markdown／連結</label>
-                        <textarea id="paste-blob" rows="10" placeholder="範例：&#10;# 標題&#10;分類：短思&#10;&#10;第一段當摘要…&#10;&#10;其餘當內文。&#10;&#10;也可直接貼 Threads／FB 複製的純文字。"></textarea>
+                        <label>貼上內容</label>
+                        <textarea id="paste-blob" rows="10" placeholder="直接貼想法、抱怨、摘錄…&#10;&#10;不用寫分類／標籤。&#10;短的會自動變成「隨想」；長的會猜「長文／隨筆」。"></textarea>
                     </div>
                     <div class="import-actions">
-                        <button type="button" class="btn primary" id="btn-parse-paste">① 預覽解析</button>
-                        <button type="button" class="btn" id="btn-apply-paste" disabled>② 填入表單</button>
-                        <button type="button" class="btn primary" id="btn-quick-draft" disabled>直接存成草稿</button>
+                        <button type="button" class="btn primary" id="btn-quick-draft">存成草稿</button>
+                        <button type="button" class="btn" id="btn-parse-paste">先預覽</button>
+                        <button type="button" class="btn" id="btn-apply-paste" disabled>填入表單微調</button>
                         <button type="button" class="btn" id="btn-clear-paste">清除</button>
                         <span class="muted" id="paste-status"></span>
                     </div>
+                    <details class="import-advanced">
+                        <summary>進階選項（可跳過）</summary>
+                        <div class="row" style="align-items:flex-end; margin-top:.75rem;">
+                            <div class="field" style="max-width:220px;">
+                                <label>預設分區</label>
+                                <select id="import-section">
+                                    <option value="literature">文學隨筆</option>
+                                    <option value="notes">學科筆記</option>
+                                </select>
+                            </div>
+                            <div class="field" style="max-width:200px;">
+                                <label>篇幅提示（通常自動即可）</label>
+                                <select id="import-length">
+                                    <option value="auto">自動判斷</option>
+                                    <option value="short">強制當隨想</option>
+                                    <option value="long">強制當長文</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
                     <div id="import-preview" class="import-preview hidden">
                         <div class="import-preview-head">
                             <strong id="preview-title">—</strong>
                             <span class="badge" id="preview-length-badge">—</span>
                         </div>
                         <p class="muted" id="preview-meta"></p>
+                        <p class="muted" id="preview-hint"></p>
                         <p id="preview-summary"></p>
                         <pre id="preview-body" class="import-preview-body"></pre>
                     </div>
@@ -167,31 +171,30 @@
                                 <option value="published">發佈 (published)</option>
                             </select>
                         </div>
-                        <div class="field">
-                            <label>分類（短思／長文／隨筆…）</label>
-                            <input id="f-category" list="category-list" placeholder="例：短思 / 隨筆 / 心得 / 長文" />
-                            <datalist id="category-list"></datalist>
-                        </div>
                     </div>
-                    <p class="muted" id="length-hint" style="margin-top:-.4rem;margin-bottom:1rem;"></p>
                     <div class="row">
                         <div class="field">
                             <label>標題 *</label>
-                            <input id="f-title" placeholder="文章標題" />
+                            <input id="f-title" placeholder="可留空由系統取首句／日期隨想" />
                         </div>
                         <div class="field">
-                            <label>slug（網址代稱，英數/連字號）*</label>
-                            <input id="f-slug" placeholder="my-article-slug" />
+                            <label>slug（網址代稱）*</label>
+                            <input id="f-slug" placeholder="可自動產生" />
                         </div>
                     </div>
                     <div class="field full">
-                        <label>摘要（卡片顯示）</label>
+                        <label>摘要（卡片顯示，可留空）</label>
                         <input id="f-summary" placeholder="一句話簡介" />
                     </div>
                     <div class="row">
                         <div class="field">
-                            <label>標籤（逗號分隔）</label>
-                            <input id="f-tags" placeholder="tag1, tag2" />
+                            <label>標籤（選填，預設空白）</label>
+                            <input id="f-tags" placeholder="不必填；想標再點下方建議" />
+                            <div class="chip-row" id="tag-suggestions" aria-label="標籤建議">
+                                <button type="button" class="chip" data-tag="抱怨">+ 抱怨</button>
+                                <button type="button" class="chip" data-tag="想法">+ 想法</button>
+                                <button type="button" class="chip" data-tag="摘錄">+ 摘錄</button>
+                            </div>
                         </div>
                         <div class="field">
                             <label>PDF 連結（選填）</label>
@@ -202,6 +205,23 @@
                             <input id="f-sort" type="number" value="0" />
                         </div>
                     </div>
+                    <details class="form-advanced" id="organize-details">
+                        <summary>進階整理（分類可跳過，系統會自動填）</summary>
+                        <p class="muted" style="margin:.6rem 0 .4rem;">抱怨／碎念就用「隨想」；長篇筆記用「長文」。點一下即可改，不必糾結。</p>
+                        <div class="chip-row" id="category-quick" aria-label="一鍵分類">
+                            <button type="button" class="chip" data-cat="隨想">隨想</button>
+                            <button type="button" class="chip" data-cat="長文">長文</button>
+                            <button type="button" class="chip" data-cat="隨筆">隨筆</button>
+                            <button type="button" class="chip" data-cat="心得">心得</button>
+                            <button type="button" class="chip" data-cat="創作">創作</button>
+                        </div>
+                        <div class="field" style="margin-top:.75rem; max-width:320px;">
+                            <label>分類（可空白，儲存時會依篇幅自動補）</label>
+                            <input id="f-category" list="category-list" placeholder="例：隨想 / 長文 / 隨筆" />
+                            <datalist id="category-list"></datalist>
+                        </div>
+                        <p class="muted" id="length-hint"></p>
+                    </details>
 
                     <div class="field full">
                         <label>主圖（cover）</label>
