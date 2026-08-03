@@ -91,6 +91,18 @@
     return s.slice(0, maxLen).replace(/\s+\S*$/, "") + "…";
   }
 
+  function cardVisualText(a, summary) {
+    var s = String(summary || "").trim();
+    if (s) return s;
+    var title = String(a && a.title ? a.title : "").trim();
+    if (title) return title;
+    var body = String(a && a.body ? a.body : "")
+      .replace(/[#>*_`\[\]()!\-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return body ? shortSummary(body, 120) : "閱讀文章";
+  }
+
   function buildCard(a) {
     var url = articleUrl(a);
     var upload = fmtDate(a.published_at || a.created_at);
@@ -100,6 +112,12 @@
     var slides = thought ? [] : collectSlides(a);
     var imgStyle = coverDisplayStyle(a);
     var hasCover = slides.length > 0;
+
+    var summary = String(a.summary || "").trim();
+    if (CAROUSEL_HINT.test(summary) && slides.length > 1) {
+      summary = "系列閱讀筆記，共 " + slides.length + " 張預覽圖。";
+    }
+    if (thought) summary = shortSummary(summary, 96);
 
     var mediaHtml = "";
     if (slides.length === 1) {
@@ -128,16 +146,25 @@
           "</a></div>";
       });
       mediaHtml += "</div></div>";
+    } else if (!thought) {
+      // 無封面：主視覺區用簡介（fallback 標題／正文截斷），延續舊「沒圖用標題」結構
+      mediaHtml =
+        '<div class="card-media-zone card-media-zone--text">' +
+        '<a href="' +
+        url +
+        '" class="card-text-cover">' +
+        '<span class="card-text-cover__text">' +
+        esc(shortSummary(cardVisualText(a, summary), 140)) +
+        "</span></a></div>";
     }
 
-    var summary = String(a.summary || "").trim();
-    if (CAROUSEL_HINT.test(summary) && slides.length > 1) {
-      summary = "系列閱讀筆記，共 " + slides.length + " 張預覽圖。";
-    }
-    if (thought) summary = shortSummary(summary, 96);
-    var summaryHtml = summary
-      ? "<p>" + esc(summary) + "</p>"
-      : "";
+    // 有圖／隨想：摘要留在 card-body；無圖文字卡：簡介已在主視覺區，避免重複
+    var summaryHtml =
+      thought || hasCover
+        ? summary
+          ? "<p>" + esc(summary) + "</p>"
+          : ""
+        : "";
 
     var pdfBtn = "";
     var safePdf = safeHttpsUrl(a.pdf_url);

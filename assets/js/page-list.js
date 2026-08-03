@@ -285,12 +285,18 @@ function initCarousel() {
 }
 
 /**
- * 無封面卡片：標記 class、移除舊佔位圖，維持純文字排版。
+ * 無封面卡片：補上「簡介主視覺」文字區（舊版「沒圖用標題」結構，文字改為 summary）。
  * CMS 動態卡片已自帶；此函式照顧靜態 HTML fallback。
  */
 function enhanceNoCoverCards() {
     const container = document.getElementById('posts-container');
     if (!container) return;
+
+    const clampText = (text, maxLen) => {
+        const s = String(text || '').replace(/\s+/g, ' ').trim();
+        if (s.length <= maxLen) return s;
+        return s.slice(0, maxLen).replace(/\s+\S*$/, '') + '…';
+    };
 
     Array.from(container.querySelectorAll('article.note-item')).forEach((article) => {
         // 清除舊版字首／漸層佔位
@@ -312,7 +318,6 @@ function enhanceNoCoverCards() {
         article.classList.remove('note-item--has-cover');
         article.setAttribute('data-has-cover', '0');
 
-        // 舊靜態卡片常把摘要／按鈕散落在 media 外；包進 card-body 以統一間距
         const body = article.querySelector('.card-body');
         const header = article.querySelector('header');
         if (!body) {
@@ -320,10 +325,42 @@ function enhanceNoCoverCards() {
             wrap.className = 'card-body';
             Array.from(article.children).forEach((child) => {
                 if (child === header || child.classList.contains('list-index')) return;
+                if (child.classList && child.classList.contains('card-media-zone')) return;
                 wrap.appendChild(child);
             });
             article.appendChild(wrap);
         }
+
+        if (article.classList.contains('is-thought')) return;
+        if (article.querySelector('.card-text-cover')) return;
+
+        const titleLink = article.querySelector('header h2 a');
+        const href = (titleLink && titleLink.getAttribute('href')) || '#';
+        const summaryEl = article.querySelector('.card-body > p');
+        const summaryText =
+            (summaryEl && summaryEl.textContent) ||
+            article.getAttribute('data-title') ||
+            (titleLink && titleLink.textContent) ||
+            '閱讀文章';
+
+        const zone = document.createElement('div');
+        zone.className = 'card-media-zone card-media-zone--text';
+        const link = document.createElement('a');
+        link.href = href;
+        link.className = 'card-text-cover';
+        const span = document.createElement('span');
+        span.className = 'card-text-cover__text';
+        span.textContent = clampText(summaryText, 140);
+        link.appendChild(span);
+        zone.appendChild(link);
+
+        const cardBody = article.querySelector('.card-body');
+        if (cardBody) article.insertBefore(zone, cardBody);
+        else if (header && header.nextSibling) article.insertBefore(zone, header.nextSibling);
+        else article.appendChild(zone);
+
+        // 簡介已進主視覺區，避免 card-body 再重複一段
+        if (summaryEl) summaryEl.remove();
     });
 }
 

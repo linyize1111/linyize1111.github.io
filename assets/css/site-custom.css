@@ -1443,46 +1443,74 @@ html.paw-cursor-active * {
     pointer-events: none;
 }
 
-/* 無封面：純文字卡片（標題、meta、摘要），左側細線強調 */
-#posts-container.posts > article.note-item.note-item--no-cover:not(.is-thought) {
-    padding: 1.05rem 1.15rem 0.95rem 1.2rem;
-    background: transparent;
-    box-shadow: none;
-    border-left: 3px solid rgba(24, 191, 239, 0.42);
+/* 無封面：主視覺區顯示簡介（延續舊「沒圖用標題」槽位，文字改為 summary） */
+.card-media-zone--text {
+    margin-bottom: 0;
 }
 
-#posts-container.posts > article.note-item.note-item--no-cover:not(.is-thought):hover {
-    transform: none;
-    box-shadow: none;
-    border-left-color: rgba(24, 191, 239, 0.65);
+.card-text-cover {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 9.5rem;
+    aspect-ratio: 4 / 3;
+    max-height: 280px;
+    padding: 1.35rem 1.25rem;
+    border-radius: var(--radius-sm);
+    text-decoration: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: inherit !important;
+    font-size: inherit !important;
+    line-height: inherit !important;
+    background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.14)),
+        rgba(0, 0, 0, 0.06);
+    transition: filter 0.22s ease, background 0.22s ease;
 }
 
-#posts-container.posts > article.note-item.note-item--no-cover > .card-body {
+.card-text-cover:hover {
+    filter: brightness(1.03);
+}
+
+.card-text-cover__text {
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 22em;
+    margin: 0 auto;
+    font-family: var(--font-ui, inherit);
+    font-size: clamp(1.05rem, 0.95rem + 0.55vw, 1.35rem);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.45;
+    text-align: center;
+    color: inherit;
+    opacity: 0.92;
+}
+
+.note-item--no-cover:not(.is-thought) > header h2 {
+    font-size: clamp(1.05rem, 0.98rem + 0.35vw, 1.25rem);
+    line-height: 1.35;
+    margin-bottom: 0.55rem;
+    opacity: 0.9;
+}
+
+.note-item--no-cover:not(.is-thought) > .card-body {
     margin-top: var(--space-sm);
 }
 
-.note-item--no-cover > header h2 {
-    font-size: clamp(1.15rem, 1.05rem + 0.45vw, 1.4rem);
-    line-height: 1.35;
-    margin-bottom: 0.2rem;
+.note-item--no-cover:not(.is-thought) > .card-body > p {
+    display: none;
 }
 
-.note-item--no-cover > header .date {
-    opacity: 0.78;
-    font-size: 0.78rem;
-    letter-spacing: 0.02em;
-}
-
-.note-item--no-cover > header .meta-cat {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    opacity: 0.85;
-}
-
-[data-theme="dark"] #posts-container.posts > article.note-item.note-item--no-cover:not(.is-thought),
-[data-theme="glass"] #posts-container.posts > article.note-item.note-item--no-cover:not(.is-thought) {
-    border-left-color: rgba(125, 232, 255, 0.38);
+[data-theme="dark"] .card-text-cover,
+[data-theme="glass"] .card-text-cover {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.22)),
+        rgba(255, 255, 255, 0.03);
 }
 
 #posts-container.posts > article.note-item > .card-body > p {
@@ -1577,7 +1605,8 @@ section.post.is-article-reading > header.major p {
 /* 列表模式：隱藏媒體區 */
 #posts-container.list-view > article.note-item .card-media-zone,
 #posts-container.list-view > article.note-item .card-carousel,
-#posts-container.list-view > article.note-item > a.image.fit {
+#posts-container.list-view > article.note-item > a.image.fit,
+#posts-container.list-view > article.note-item .card-text-cover {
     display: none;
 }
 
@@ -1586,7 +1615,8 @@ section.post.is-article-reading > header.major p {
 }
 
 /* 隨想：輕量卡片（短摘要、少裝飾） */
-#posts-container.posts > article.note-item.is-thought .card-media-zone {
+#posts-container.posts > article.note-item.is-thought .card-media-zone,
+#posts-container.posts > article.note-item.is-thought .card-text-cover {
     display: none;
 }
 #posts-container.posts > article.note-item.is-thought {
