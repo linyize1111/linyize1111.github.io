@@ -1443,56 +1443,46 @@ html.paw-cursor-active * {
     pointer-events: none;
 }
 
-/* 無封面：字首＋柔和漸層（緊湊，不是空圖框） */
-.card-media-zone--placeholder {
-    margin-bottom: 0;
+/* 無封面：純文字卡片（標題、meta、摘要），左側細線強調 */
+#posts-container.posts > article.note-item.note-item--no-cover:not(.is-thought) {
+    padding: 1.05rem 1.15rem 0.95rem 1.2rem;
+    background: transparent;
+    box-shadow: none;
+    border-left: 3px solid rgba(24, 191, 239, 0.42);
 }
 
-.card-cover-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: 5.5rem;
-    aspect-ratio: 21 / 9;
-    max-height: 7.5rem;
-    border-radius: var(--radius-sm);
-    text-decoration: none !important;
-    border: none !important;
-    color: inherit !important;
-    background:
-        radial-gradient(ellipse at 20% 0%, rgba(24, 191, 239, 0.22), transparent 55%),
-        radial-gradient(ellipse at 90% 100%, rgba(125, 232, 255, 0.12), transparent 50%),
-        linear-gradient(145deg, rgba(24, 191, 239, 0.08), rgba(0, 0, 0, 0.06));
-    transition: transform 0.22s ease, filter 0.22s ease;
+#posts-container.posts > article.note-item.note-item--no-cover:not(.is-thought):hover {
+    transform: none;
+    box-shadow: none;
+    border-left-color: rgba(24, 191, 239, 0.65);
 }
 
-.card-cover-placeholder:hover {
-    filter: brightness(1.04);
-}
-
-.card-cover-initial {
-    font-family: var(--font-ui);
-    font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.35rem);
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    line-height: 1;
-    opacity: 0.72;
-    color: var(--accent, #18bfef);
-    user-select: none;
-}
-
-[data-theme="dark"] .card-cover-placeholder,
-[data-theme="glass"] .card-cover-placeholder {
-    background:
-        radial-gradient(ellipse at 18% 10%, rgba(125, 232, 255, 0.18), transparent 55%),
-        radial-gradient(ellipse at 85% 90%, rgba(24, 191, 239, 0.1), transparent 48%),
-        linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.2));
+#posts-container.posts > article.note-item.note-item--no-cover > .card-body {
+    margin-top: var(--space-sm);
 }
 
 .note-item--no-cover > header h2 {
     font-size: clamp(1.15rem, 1.05rem + 0.45vw, 1.4rem);
     line-height: 1.35;
+    margin-bottom: 0.2rem;
+}
+
+.note-item--no-cover > header .date {
+    opacity: 0.78;
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+}
+
+.note-item--no-cover > header .meta-cat {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.85;
+}
+
+[data-theme="dark"] #posts-container.posts > article.note-item.note-item--no-cover:not(.is-thought),
+[data-theme="glass"] #posts-container.posts > article.note-item.note-item--no-cover:not(.is-thought) {
+    border-left-color: rgba(125, 232, 255, 0.38);
 }
 
 #posts-container.posts > article.note-item > .card-body > p {
@@ -1575,11 +1565,6 @@ section.post.is-article-reading > header.major p {
 }
 
 @media screen and (max-width: 736px) {
-    .card-cover-placeholder {
-        min-height: 4.5rem;
-        max-height: 6rem;
-    }
-
     #markdown-container .markdown-body,
     #markdown-container .markdown-body.article-reading,
     .markdown-body.article-reading {
@@ -1592,8 +1577,7 @@ section.post.is-article-reading > header.major p {
 /* 列表模式：隱藏媒體區 */
 #posts-container.list-view > article.note-item .card-media-zone,
 #posts-container.list-view > article.note-item .card-carousel,
-#posts-container.list-view > article.note-item > a.image.fit,
-#posts-container.list-view > article.note-item .card-cover-placeholder {
+#posts-container.list-view > article.note-item > a.image.fit {
     display: none;
 }
 
@@ -1602,8 +1586,7 @@ section.post.is-article-reading > header.major p {
 }
 
 /* 隨想：輕量卡片（短摘要、少裝飾） */
-#posts-container.posts > article.note-item.is-thought .card-media-zone,
-#posts-container.posts > article.note-item.is-thought .card-cover-placeholder {
+#posts-container.posts > article.note-item.is-thought .card-media-zone {
     display: none;
 }
 #posts-container.posts > article.note-item.is-thought {

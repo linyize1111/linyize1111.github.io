@@ -285,7 +285,7 @@ function initCarousel() {
 }
 
 /**
- * 無封面卡片：補上字首／漸層佔位，避免空白破圖或硬塞圖片槽。
+ * 無封面卡片：標記 class、移除舊佔位圖，維持純文字排版。
  * CMS 動態卡片已自帶；此函式照顧靜態 HTML fallback。
  */
 function enhanceNoCoverCards() {
@@ -293,56 +293,33 @@ function enhanceNoCoverCards() {
     if (!container) return;
 
     Array.from(container.querySelectorAll('article.note-item')).forEach((article) => {
-        if (article.querySelector('.card-cover-placeholder')) {
-            article.classList.add('note-item--no-cover');
-            article.classList.remove('note-item--has-cover');
-            return;
-        }
+        // 清除舊版字首／漸層佔位
+        article.querySelectorAll('.card-media-zone--placeholder').forEach((zone) => zone.remove());
 
         const hasRealMedia =
             article.querySelector('.card-carousel') ||
-            article.querySelector('a.image.fit img') ||
-            article.querySelector('.card-media-zone:not(.card-media-zone--placeholder) img');
+            article.querySelector('.card-media-zone img') ||
+            article.querySelector('a.image.fit img');
 
         if (hasRealMedia) {
             article.classList.add('note-item--has-cover');
             article.classList.remove('note-item--no-cover');
+            article.setAttribute('data-has-cover', '1');
             return;
         }
 
         article.classList.add('note-item--no-cover');
         article.classList.remove('note-item--has-cover');
-
-        const titleLink = article.querySelector('header h2 a');
-        const title =
-            article.getAttribute('data-title') ||
-            (titleLink && titleLink.textContent) ||
-            '';
-        const initial = String(title).trim().charAt(0) || '文';
-        const href = (titleLink && titleLink.getAttribute('href')) || '#';
-
-        const zone = document.createElement('div');
-        zone.className = 'card-media-zone card-media-zone--placeholder';
-        zone.innerHTML =
-            '<a href="' +
-            href +
-            '" class="card-cover-placeholder" aria-hidden="true">' +
-            '<span class="card-cover-initial">' +
-            initial +
-            '</span></a>';
-
-        const body = article.querySelector('.card-body');
-        const header = article.querySelector('header');
-        if (body) article.insertBefore(zone, body);
-        else if (header && header.nextSibling) article.insertBefore(zone, header.nextSibling);
-        else article.appendChild(zone);
+        article.setAttribute('data-has-cover', '0');
 
         // 舊靜態卡片常把摘要／按鈕散落在 media 外；包進 card-body 以統一間距
+        const body = article.querySelector('.card-body');
+        const header = article.querySelector('header');
         if (!body) {
             const wrap = document.createElement('div');
             wrap.className = 'card-body';
             Array.from(article.children).forEach((child) => {
-                if (child === header || child === zone || child.classList.contains('list-index')) return;
+                if (child === header || child.classList.contains('list-index')) return;
                 wrap.appendChild(child);
             });
             article.appendChild(wrap);

@@ -91,11 +91,6 @@
     return s.slice(0, maxLen).replace(/\s+\S*$/, "") + "…";
   }
 
-  function coverInitial(title) {
-    var t = String(title || "").trim();
-    return t ? t.charAt(0) : "文";
-  }
-
   function buildCard(a) {
     var url = articleUrl(a);
     var upload = fmtDate(a.published_at || a.created_at);
@@ -133,17 +128,6 @@
           "</a></div>";
       });
       mediaHtml += "</div></div>";
-    } else if (!thought) {
-      // 選填封面：無圖時用字首＋柔和漸層，不留空洞、不強制上傳
-      // 「隨想」維持純文字卡片，不加佔位圖
-      mediaHtml =
-        '<div class="card-media-zone card-media-zone--placeholder">' +
-        '<a href="' +
-        url +
-        '" class="card-cover-placeholder" aria-hidden="true">' +
-        '<span class="card-cover-initial">' +
-        esc(coverInitial(a.title)) +
-        "</span></a></div>";
     }
 
     var summary = String(a.summary || "").trim();
