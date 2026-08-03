@@ -20,6 +20,8 @@
   var currentImages = []; // [{src,caption}]
   var deleteInProgress = false;
   var lastParsed = null; // 匯入預覽結果
+  var previewTimer = null;
+  var editorMode = "split"; // split | edit | preview
 
   // ---------- 訊息 ----------
   function msg(container, text, kind) {
@@ -147,7 +149,56 @@
     });
   }
 
-  // ---------- 開啟 / 重置表單 ----------
+  // ---------- 開啟 / 重置表單（大編輯 overlay） ----------
+  function updateMdPreview() {
+    var preview = $("md-preview");
+    var body = $("f-body");
+    if (!preview || !body) return;
+    var md = body.value || "";
+    if (!md.trim()) {
+      preview.innerHTML = "";
+      return;
+    }
+    if (window.SB && typeof window.SB.renderMarkdown === "function") {
+      preview.innerHTML = window.SB.renderMarkdown(md);
+    } else {
+      preview.textContent = md;
+    }
+  }
+
+  function scheduleMdPreview() {
+    if (previewTimer) clearTimeout(previewTimer);
+    previewTimer = setTimeout(updateMdPreview, 120);
+  }
+
+  function setEditorMode(mode) {
+    if (mode !== "split" && mode !== "edit" && mode !== "preview") mode = "split";
+    editorMode = mode;
+    var main = $("editor-main");
+    if (main) main.setAttribute("data-layout", mode);
+    document.querySelectorAll(".mode-btn").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-editor-mode") === mode);
+    });
+    if (mode === "preview" || mode === "split") updateMdPreview();
+  }
+
+  function closeForm() {
+    var form = $("article-form");
+    if (form) form.classList.add("hidden");
+    document.body.classList.remove("editor-open");
+    if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
+  }
+
+  function showEditor() {
+    var form = $("article-form");
+    if (!form) return;
+    form.classList.remove("hidden");
+    document.body.classList.add("editor-open");
+    setEditorMode(editorMode || "split");
+    updateMdPreview();
+    updateLengthHint();
+  }
+
   function resetForm() {
     $("f-id").value = "";
     $("f-section").value = $("list-section").value;
@@ -166,13 +217,14 @@
     renderImagesEditor();
     refreshCategoryList();
     msg("form-msg", "");
+    updateMdPreview();
   }
 
   async function openForm(id) {
     resetForm();
-    $("article-form").classList.remove("hidden");
     $("btn-delete").classList.toggle("hidden", !id);
     $("form-title").textContent = id ? "編輯文章" : "新增文章";
+    showEditor();
     if (id) {
       var res = await client.from("articles").select("*").eq("id", id).single();
       if (res.error) { msg("form-msg", "讀取失敗：" + res.error.message, "err"); return; }
@@ -193,8 +245,13 @@
       currentImages = Array.isArray(a.images) ? a.images.slice() : [];
       renderImagesEditor();
       refreshCategoryList();
+      updateMdPreview();
+      updateLengthHint();
     }
-    $("article-form").scrollIntoView({ behavior: "smooth" });
+    var bodyEl = $("f-body");
+    if (bodyEl && editorMode !== "preview") {
+      setTimeout(function () { bodyEl.focus(); }, 50);
+    }
   }
 
   function slugify(s) {
@@ -504,7 +561,7 @@
     if (hint) {
       hint.textContent = isThoughtCategory(parsed.category)
         ? "已當成「隨想」：抱怨／碎念／突然的想法都適合這裡。標題可之後再改。"
-        : "分類已自動填好；若想改成隨想或長文，填入表單後點一鍵即可。";
+        : "分類已自動填好；若想改成隨想或長文，進大編輯後點一鍵即可。";
     }
     $("preview-summary").textContent = parsed.summary || "（無摘要）";
     $("preview-body").textContent = (parsed.body || "").slice(0, 1200) + ((parsed.body || "").length > 1200 ? "\n…" : "");
@@ -541,6 +598,7 @@
     renderImagesEditor();
     refreshCategoryList();
     updateLengthHint();
+    updateMdPreview();
   }
 
   async function quickSaveDraft(parsed) {
@@ -663,8 +721,14 @@
       if (e.target === modal && !deleteInProgress) closeDeleteModal();
     });
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && !modal.classList.contains("hidden") && !deleteInProgress) {
+      if (e.key !== "Escape" || deleteInProgress) return;
+      if (!modal.classList.contains("hidden")) {
         closeDeleteModal();
+        return;
+      }
+      var form = $("article-form");
+      if (form && !form.classList.contains("hidden")) {
+        // 不強制關閉編輯器，避免誤觸丟內容；僅關閉刪除 modal
       }
     });
   }
@@ -703,7 +767,7 @@
       return;
     }
     closeDeleteModal();
-    $("article-form").classList.add("hidden");
+    closeForm();
     msg("global-msg", "文章已永久刪除", "ok");
     setTimeout(function () { msg("global-msg", ""); }, 2500);
     loadArticles();
@@ -828,10 +892,16 @@
 
     $("list-section").addEventListener("change", loadArticles);
     $("btn-new").addEventListener("click", function () { openForm(null); });
-    $("btn-cancel").addEventListener("click", function () { $("article-form").classList.add("hidden"); });
+    $("btn-cancel").addEventListener("click", closeForm);
     $("btn-save").addEventListener("click", saveArticle);
     $("btn-delete").addEventListener("click", openDeleteModal);
     bindDeleteModal();
+
+    document.querySelectorAll(".mode-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        setEditorMode(btn.getAttribute("data-editor-mode"));
+      });
+    });
 
     var parseBtn = $("btn-parse-paste");
     function runParse(showPreview) {
@@ -874,8 +944,7 @@
           return;
         }
         applyParsedArticle(parsed);
-        $("paste-status").textContent = "已填入表單；分類／標籤可跳過，直接儲存即可";
-        $("article-form").scrollIntoView({ behavior: "smooth" });
+        $("paste-status").textContent = "已進大編輯；左側寫 Markdown，右側看排版，改完再儲存";
       });
     }
     var quickDraft = $("btn-quick-draft");
@@ -887,7 +956,7 @@
         $("paste-status").textContent = "儲存草稿中…";
         try {
           await quickSaveDraft(parsed);
-          $("paste-status").textContent = "已存成草稿 ✔（分類：" + (parsed.category || "自動") + "）";
+          $("paste-status").textContent = "已存成草稿 ✔（分類：" + (parsed.category || "自動") + "）— 可在大編輯繼續改";
         } catch (e) {
           $("paste-status").textContent = "儲存失敗";
         }
@@ -935,7 +1004,10 @@
       }
     });
     if ($("f-body")) {
-      $("f-body").addEventListener("input", updateLengthHint);
+      $("f-body").addEventListener("input", function () {
+        updateLengthHint();
+        scheduleMdPreview();
+      });
     }
     $("f-section").addEventListener("change", refreshCategoryList);
     $("f-cover").addEventListener("input", function () {

@@ -89,7 +89,7 @@
                     <ol class="import-steps muted">
                         <li>貼上文字（Threads／FB／備忘錄／HackMD 都行）</li>
                         <li>按「存成草稿」——完事</li>
-                        <li>（可選）之後再改標題、發佈，或一鍵改成「長文」</li>
+                        <li>（可選）「進大編輯繼續改」微調標題／排版後再發佈</li>
                     </ol>
                     <div class="field full">
                         <label>貼上內容</label>
@@ -98,7 +98,7 @@
                     <div class="import-actions">
                         <button type="button" class="btn primary" id="btn-quick-draft">存成草稿</button>
                         <button type="button" class="btn" id="btn-parse-paste">先預覽</button>
-                        <button type="button" class="btn" id="btn-apply-paste" disabled>填入表單微調</button>
+                        <button type="button" class="btn" id="btn-apply-paste" disabled>進大編輯繼續改</button>
                         <button type="button" class="btn" id="btn-clear-paste">清除</button>
                         <span class="muted" id="paste-status"></span>
                     </div>
@@ -150,113 +150,140 @@
                     <div id="article-list"></div>
                 </div>
 
-                <!-- 編輯表單 -->
-                <div class="card hidden" id="article-form">
-                    <h3 id="form-title">新增文章</h3>
-                    <div id="form-msg"></div>
+            </div>
 
-                    <input type="hidden" id="f-id" />
-                    <div class="row">
-                        <div class="field">
-                            <label>分區 *</label>
-                            <select id="f-section">
-                                <option value="literature">文學隨筆 (literature)</option>
-                                <option value="notes">學科筆記 (notes)</option>
-                            </select>
+            <!-- 大編輯模式（近全螢幕）：列表點編輯／快速匯入後進入 -->
+            <div id="article-form" class="editor-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="form-title">
+                <div class="editor-shell">
+                    <header class="editor-bar">
+                        <div class="editor-bar-left">
+                            <button type="button" class="btn" id="btn-cancel" title="返回文章列表">← 返回列表</button>
+                            <h3 id="form-title">新增文章</h3>
                         </div>
-                        <div class="field">
-                            <label>狀態</label>
-                            <select id="f-status">
-                                <option value="draft">草稿 (draft)</option>
-                                <option value="published">發佈 (published)</option>
-                            </select>
+                        <div class="editor-modes" role="tablist" aria-label="編輯檢視">
+                            <button type="button" class="mode-btn active" data-editor-mode="split" title="左右分欄">分欄</button>
+                            <button type="button" class="mode-btn" data-editor-mode="edit" title="只看 Markdown">編輯</button>
+                            <button type="button" class="mode-btn" data-editor-mode="preview" title="只看排版預覽">預覽</button>
                         </div>
-                    </div>
-                    <div class="row">
-                        <div class="field">
-                            <label>標題 *</label>
-                            <input id="f-title" placeholder="可留空由系統取首句／日期隨想" />
+                        <div class="editor-bar-actions">
+                            <label class="editor-status-label">
+                                <span class="sr-only">狀態</span>
+                                <select id="f-status" title="文章狀態">
+                                    <option value="draft">草稿</option>
+                                    <option value="published">發佈</option>
+                                </select>
+                            </label>
+                            <button type="button" class="btn danger hidden" id="btn-delete">刪除</button>
+                            <button type="button" class="btn primary" id="btn-save">儲存</button>
                         </div>
-                        <div class="field">
-                            <label>slug（網址代稱）*</label>
-                            <input id="f-slug" placeholder="可自動產生" />
-                        </div>
-                    </div>
-                    <div class="field full">
-                        <label>摘要（卡片顯示，可留空）</label>
-                        <input id="f-summary" placeholder="一句話簡介" />
-                    </div>
-                    <div class="row">
-                        <div class="field">
-                            <label>標籤（選填，預設空白）</label>
-                            <input id="f-tags" placeholder="不必填；想標再點下方建議" />
-                            <div class="chip-row" id="tag-suggestions" aria-label="標籤建議">
-                                <button type="button" class="chip" data-tag="抱怨">+ 抱怨</button>
-                                <button type="button" class="chip" data-tag="想法">+ 想法</button>
-                                <button type="button" class="chip" data-tag="摘錄">+ 摘錄</button>
+                    </header>
+
+                    <div id="form-msg" class="editor-msg"></div>
+
+                    <div class="editor-layout">
+                        <aside class="editor-meta" id="editor-meta">
+                            <input type="hidden" id="f-id" />
+                            <details class="editor-meta-block" open>
+                                <summary>基本設定</summary>
+                                <div class="row">
+                                    <div class="field">
+                                        <label>分區 *</label>
+                                        <select id="f-section">
+                                            <option value="literature">文學隨筆 (literature)</option>
+                                            <option value="notes">學科筆記 (notes)</option>
+                                        </select>
+                                    </div>
+                                    <div class="field" style="max-width:100px;">
+                                        <label>排序</label>
+                                        <input id="f-sort" type="number" value="0" />
+                                    </div>
+                                </div>
+                                <div class="field full">
+                                    <label>標題 *</label>
+                                    <input id="f-title" placeholder="可留空由系統取首句／日期隨想" />
+                                </div>
+                                <div class="field full">
+                                    <label>slug（網址代稱）*</label>
+                                    <input id="f-slug" placeholder="可自動產生" />
+                                </div>
+                                <div class="field full">
+                                    <label>摘要（卡片顯示，可留空）</label>
+                                    <input id="f-summary" placeholder="一句話簡介" />
+                                </div>
+                            </details>
+
+                            <details class="editor-meta-block">
+                                <summary>分類／標籤</summary>
+                                <div class="field full">
+                                    <label>標籤（選填）</label>
+                                    <input id="f-tags" placeholder="不必填；想標再點下方建議" />
+                                    <div class="chip-row" id="tag-suggestions" aria-label="標籤建議">
+                                        <button type="button" class="chip" data-tag="抱怨">+ 抱怨</button>
+                                        <button type="button" class="chip" data-tag="想法">+ 想法</button>
+                                        <button type="button" class="chip" data-tag="摘錄">+ 摘錄</button>
+                                    </div>
+                                </div>
+                                <div class="field full">
+                                    <label>PDF 連結（選填）</label>
+                                    <input id="f-pdf" placeholder="https://… 或留空" />
+                                </div>
+                                <details class="form-advanced" id="organize-details">
+                                    <summary>進階整理（分類可跳過）</summary>
+                                    <p class="muted" style="margin:.6rem 0 .4rem;">抱怨／碎念 →「隨想」；長篇 →「長文」。</p>
+                                    <div class="chip-row" id="category-quick" aria-label="一鍵分類">
+                                        <button type="button" class="chip" data-cat="隨想">隨想</button>
+                                        <button type="button" class="chip" data-cat="長文">長文</button>
+                                        <button type="button" class="chip" data-cat="隨筆">隨筆</button>
+                                        <button type="button" class="chip" data-cat="心得">心得</button>
+                                        <button type="button" class="chip" data-cat="創作">創作</button>
+                                    </div>
+                                    <div class="field" style="margin-top:.75rem;">
+                                        <label>分類（可空白，儲存時自動補）</label>
+                                        <input id="f-category" list="category-list" placeholder="例：隨想 / 長文 / 隨筆" />
+                                        <datalist id="category-list"></datalist>
+                                    </div>
+                                    <p class="muted" id="length-hint"></p>
+                                </details>
+                            </details>
+
+                            <details class="editor-meta-block">
+                                <summary>圖片</summary>
+                                <div class="field full">
+                                    <label>主圖（cover）</label>
+                                    <div class="img-row">
+                                        <img id="cover-thumb" class="thumb hidden" alt="" />
+                                        <input id="f-cover" placeholder="圖片 URL 或上傳" />
+                                        <label class="btn" style="margin:0;">
+                                            上傳
+                                            <input type="file" id="cover-file" accept="image/*" class="hidden" />
+                                        </label>
+                                    </div>
+                                    <span class="muted" id="cover-status"></span>
+                                </div>
+                                <div class="field full">
+                                    <label>更多圖片／輪播（選填）</label>
+                                    <div id="images-editor" class="stack"></div>
+                                    <div class="img-row" style="margin-top:.5rem;">
+                                        <label class="btn" style="margin:0;">
+                                            + 上傳圖片
+                                            <input type="file" id="more-file" accept="image/*" multiple class="hidden" />
+                                        </label>
+                                        <span class="muted" id="more-status"></span>
+                                    </div>
+                                </div>
+                            </details>
+                        </aside>
+
+                        <div class="editor-main" data-layout="split" id="editor-main">
+                            <div class="editor-pane editor-pane-write" id="editor-pane-write">
+                                <div class="pane-label">Markdown</div>
+                                <textarea id="f-body" placeholder="# 標題&#10;&#10;內文支援 Markdown…&#10;&#10;- 列表&#10;- **粗體**&#10;- [連結](https://…)&#10;&#10;> 引用" spellcheck="true"></textarea>
+                            </div>
+                            <div class="editor-pane editor-pane-preview" id="editor-pane-preview">
+                                <div class="pane-label">即時預覽</div>
+                                <div id="md-preview" class="markdown-body md-preview-inner" aria-live="polite"></div>
                             </div>
                         </div>
-                        <div class="field">
-                            <label>PDF 連結（選填）</label>
-                            <input id="f-pdf" placeholder="https://… 或留空" />
-                        </div>
-                        <div class="field" style="max-width:140px;">
-                            <label>排序權重</label>
-                            <input id="f-sort" type="number" value="0" />
-                        </div>
-                    </div>
-                    <details class="form-advanced" id="organize-details">
-                        <summary>進階整理（分類可跳過，系統會自動填）</summary>
-                        <p class="muted" style="margin:.6rem 0 .4rem;">抱怨／碎念就用「隨想」；長篇筆記用「長文」。點一下即可改，不必糾結。</p>
-                        <div class="chip-row" id="category-quick" aria-label="一鍵分類">
-                            <button type="button" class="chip" data-cat="隨想">隨想</button>
-                            <button type="button" class="chip" data-cat="長文">長文</button>
-                            <button type="button" class="chip" data-cat="隨筆">隨筆</button>
-                            <button type="button" class="chip" data-cat="心得">心得</button>
-                            <button type="button" class="chip" data-cat="創作">創作</button>
-                        </div>
-                        <div class="field" style="margin-top:.75rem; max-width:320px;">
-                            <label>分類（可空白，儲存時會依篇幅自動補）</label>
-                            <input id="f-category" list="category-list" placeholder="例：隨想 / 長文 / 隨筆" />
-                            <datalist id="category-list"></datalist>
-                        </div>
-                        <p class="muted" id="length-hint"></p>
-                    </details>
-
-                    <div class="field full">
-                        <label>主圖（cover）</label>
-                        <div class="img-row">
-                            <img id="cover-thumb" class="thumb hidden" alt="" />
-                            <input id="f-cover" placeholder="圖片 URL（可直接貼，或用下方上傳）" />
-                            <label class="btn" style="margin:0;">
-                                上傳
-                                <input type="file" id="cover-file" accept="image/*" class="hidden" />
-                            </label>
-                        </div>
-                        <span class="muted" id="cover-status"></span>
-                    </div>
-
-                    <div class="field full">
-                        <label>更多圖片 / 輪播（選填）</label>
-                        <div id="images-editor" class="stack"></div>
-                        <div class="img-row" style="margin-top:.5rem;">
-                            <label class="btn" style="margin:0;">
-                                + 上傳圖片
-                                <input type="file" id="more-file" accept="image/*" multiple class="hidden" />
-                            </label>
-                            <span class="muted" id="more-status"></span>
-                        </div>
-                    </div>
-
-                    <div class="field full">
-                        <label>內文（Markdown）*</label>
-                        <textarea id="f-body" placeholder="# 標題&#10;內文支援 Markdown…"></textarea>
-                    </div>
-
-                    <div class="row" style="justify-content:flex-end; gap:.6rem;">
-                        <button class="btn" id="btn-cancel">取消</button>
-                        <button class="btn danger hidden" id="btn-delete">刪除</button>
-                        <button class="btn primary" id="btn-save">儲存</button>
                     </div>
                 </div>
             </div>
