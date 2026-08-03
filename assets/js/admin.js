@@ -918,7 +918,7 @@
       return;
     }
     closeDeleteModal();
-    closeForm();
+    closeForm(true);
     msg("global-msg", "文章已永久刪除", "ok");
     setTimeout(function () { msg("global-msg", ""); }, 2500);
     loadArticles();
