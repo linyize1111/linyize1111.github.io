@@ -276,8 +276,27 @@
 
                         <div class="editor-main" data-layout="split" id="editor-main">
                             <div class="editor-pane editor-pane-write" id="editor-pane-write">
-                                <div class="pane-label">Markdown</div>
-                                <textarea id="f-body" placeholder="# 標題&#10;&#10;內文支援 Markdown…&#10;&#10;- 列表&#10;- **粗體**&#10;- [連結](https://…)&#10;&#10;> 引用" spellcheck="true"></textarea>
+                                <div class="pane-label pane-label-row">
+                                    <span>Markdown</span>
+                                    <span class="pane-hint">Tab 縮排 · Ctrl+S 儲存</span>
+                                </div>
+                                <div class="md-toolbar" id="md-toolbar" role="toolbar" aria-label="Markdown 寫作工具列">
+                                    <button type="button" class="md-tool" data-md="h2" title="標題 ##">H2</button>
+                                    <button type="button" class="md-tool" data-md="h3" title="小標 ###">H3</button>
+                                    <span class="md-tool-sep" aria-hidden="true"></span>
+                                    <button type="button" class="md-tool" data-md="bold" title="粗體 **"><strong>B</strong></button>
+                                    <button type="button" class="md-tool" data-md="italic" title="斜體 *"><em>I</em></button>
+                                    <span class="md-tool-sep" aria-hidden="true"></span>
+                                    <button type="button" class="md-tool" data-md="link" title="連結">連結</button>
+                                    <button type="button" class="md-tool" data-md="image" title="圖片語法">圖片</button>
+                                    <span class="md-tool-sep" aria-hidden="true"></span>
+                                    <button type="button" class="md-tool" data-md="ul" title="無序列表">• 列表</button>
+                                    <button type="button" class="md-tool" data-md="ol" title="有序列表">1. 列表</button>
+                                    <button type="button" class="md-tool" data-md="quote" title="引用">引用</button>
+                                    <button type="button" class="md-tool" data-md="hr" title="分隔線">—</button>
+                                    <button type="button" class="md-tool" data-md="code" title="行內程式碼">&lt;/&gt;</button>
+                                </div>
+                                <textarea id="f-body" placeholder="# 標題&#10;&#10;內文支援 Markdown…&#10;&#10;- 列表&#10;- **粗體**&#10;- [連結](https://…)&#10;&#10;> 引用&#10;&#10;可用上方工具列插入語法；Tab 縮排；Ctrl+S 儲存。" spellcheck="true"></textarea>
                             </div>
                             <div class="editor-pane editor-pane-preview" id="editor-pane-preview">
                                 <div class="pane-label">即時預覽</div>
@@ -290,9 +309,39 @@
 
             <!-- 區塊文字 -->
             <div id="tab-sections" class="hidden">
-                <div class="card">
-                    <p class="muted">編輯首頁 / 關於我等主要區塊文字。含 <code>\n</code> 會顯示為換行。</p>
-                    <div id="sections-list"></div>
+                <div class="card sections-intro">
+                    <h3>首頁／關於我 · 區塊文案</h3>
+                    <p class="muted">點左側清單選區塊，右側大框編輯。多數欄位以純文字＋換行顯示（前端會把換行變成 &lt;br&gt;）；含 Markdown 的欄位會標示並提供簡易預覽。</p>
+                </div>
+                <div class="sections-workspace">
+                    <aside class="sections-nav card" id="sections-nav" aria-label="區塊清單">
+                        <p class="muted sections-nav-empty" id="sections-nav-empty">載入中…</p>
+                        <div id="sections-list"></div>
+                    </aside>
+                    <div class="sections-editor card hidden" id="sections-editor">
+                        <div class="sections-editor-head">
+                            <div>
+                                <h3 id="sec-title">選擇區塊</h3>
+                                <p class="muted" id="sec-desc"></p>
+                                <code class="sec-key" id="sec-key"></code>
+                            </div>
+                            <div class="sections-editor-actions">
+                                <button type="button" class="btn primary" id="btn-sec-save">儲存此區塊</button>
+                            </div>
+                        </div>
+                        <div class="field full">
+                            <label for="sec-value">文案</label>
+                            <textarea id="sec-value" rows="14" placeholder="區塊文字…" spellcheck="true"></textarea>
+                        </div>
+                        <div class="sec-preview-wrap">
+                            <div class="pane-label">站上大致會長這樣</div>
+                            <div id="sec-preview" class="sec-preview" aria-live="polite"></div>
+                        </div>
+                        <p class="muted" id="sec-status"></p>
+                    </div>
+                    <div class="sections-placeholder card" id="sections-placeholder">
+                        <p class="muted">← 從左側選一個區塊開始編輯</p>
+                    </div>
                 </div>
             </div>
         </div>

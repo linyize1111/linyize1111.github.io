@@ -22,6 +22,20 @@
   var lastParsed = null; // 匯入預覽結果
   var previewTimer = null;
   var editorMode = "split"; // split | edit | preview
+  var formDirty = false;
+  var formSnapshot = "";
+  var sectionsCache = [];
+  var activeSectionKey = null;
+  var sectionDirty = false;
+
+  var SECTION_META = {
+    "home.intro.title": { title: "首頁 · 歡迎標題", desc: "首頁 hero 主標題（短句）", mode: "text" },
+    "home.intro.subtitle": { title: "首頁 · 歡迎副標", desc: "首頁 hero 副標題", mode: "text" },
+    "home.featured.title": { title: "首頁 · 關於本站標題", desc: "首頁精選／關於區塊標題", mode: "text" },
+    "home.featured.body": { title: "首頁 · 關於本站內文", desc: "首頁長文案；換行會顯示為斷行", mode: "text" },
+    "about.heading": { title: "關於我 · 標題", desc: "about 頁大標（可多行）", mode: "text" },
+    "about.body": { title: "關於我 · 內文", desc: "about 頁介紹文字", mode: "text" },
+  };
 
   // ---------- 訊息 ----------
   function msg(container, text, kind) {
@@ -138,11 +152,14 @@
       thumb.className = "thumb"; thumb.src = im.src;
       var cap = document.createElement("input");
       cap.placeholder = "圖說（選填）"; cap.value = im.caption || "";
-      cap.addEventListener("input", function () { currentImages[idx].caption = cap.value; });
+      cap.addEventListener("input", function () {
+        currentImages[idx].caption = cap.value;
+        markFormDirty();
+      });
       var del = document.createElement("button");
       del.className = "btn danger"; del.textContent = "移除";
       del.addEventListener("click", function () {
-        currentImages.splice(idx, 1); renderImagesEditor();
+        currentImages.splice(idx, 1); renderImagesEditor(); markFormDirty();
       });
       row.appendChild(thumb); row.appendChild(cap); row.appendChild(del);
       box.appendChild(row);
@@ -182,11 +199,41 @@
     if (mode === "preview" || mode === "split") updateMdPreview();
   }
 
-  function closeForm() {
+  function captureFormSnapshot() {
+    formSnapshot = JSON.stringify({
+      id: ($("f-id") && $("f-id").value) || "",
+      section: ($("f-section") && $("f-section").value) || "",
+      status: ($("f-status") && $("f-status").value) || "",
+      category: ($("f-category") && $("f-category").value) || "",
+      title: ($("f-title") && $("f-title").value) || "",
+      slug: ($("f-slug") && $("f-slug").value) || "",
+      summary: ($("f-summary") && $("f-summary").value) || "",
+      tags: ($("f-tags") && $("f-tags").value) || "",
+      pdf: ($("f-pdf") && $("f-pdf").value) || "",
+      sort: ($("f-sort") && $("f-sort").value) || "",
+      cover: ($("f-cover") && $("f-cover").value) || "",
+      body: ($("f-body") && $("f-body").value) || "",
+      images: currentImages,
+    });
+    formDirty = false;
+  }
+
+  function markFormDirty() {
+    formDirty = true;
+  }
+
+  function confirmLeaveEditor() {
+    if (!formDirty) return true;
+    return window.confirm("有尚未儲存的變更，確定離開編輯器？");
+  }
+
+  function closeForm(force) {
+    if (!force && !confirmLeaveEditor()) return;
     var form = $("article-form");
     if (form) form.classList.add("hidden");
     document.body.classList.remove("editor-open");
     if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
+    formDirty = false;
   }
 
   function showEditor() {
@@ -197,6 +244,107 @@
     setEditorMode(editorMode || "split");
     updateMdPreview();
     updateLengthHint();
+  }
+
+  // ---------- Markdown 工具列 ----------
+  function notifyBodyChanged() {
+    markFormDirty();
+    updateLengthHint();
+    scheduleMdPreview();
+  }
+
+  function replaceBodyRange(start, end, text, selStart, selEnd) {
+    var ta = $("f-body");
+    if (!ta) return;
+    var val = ta.value;
+    ta.value = val.slice(0, start) + text + val.slice(end);
+    var a = typeof selStart === "number" ? selStart : start + text.length;
+    var b = typeof selEnd === "number" ? selEnd : a;
+    ta.focus();
+    ta.setSelectionRange(a, b);
+    notifyBodyChanged();
+  }
+
+  function wrapSelection(before, after, placeholder) {
+    var ta = $("f-body");
+    if (!ta) return;
+    var start = ta.selectionStart;
+    var end = ta.selectionEnd;
+    var selected = ta.value.slice(start, end);
+    var body = selected || placeholder || "";
+    var insert = before + body + after;
+    var selStart = start + before.length;
+    replaceBodyRange(start, end, insert, selStart, selStart + body.length);
+  }
+
+  function prefixSelectedLines(prefix) {
+    var ta = $("f-body");
+    if (!ta) return;
+    var start = ta.selectionStart;
+    var end = ta.selectionEnd;
+    var val = ta.value;
+    var lineStart = val.lastIndexOf("\n", start - 1) + 1;
+    var lineEnd = val.indexOf("\n", end);
+    if (lineEnd === -1) lineEnd = val.length;
+    var block = val.slice(lineStart, lineEnd);
+    if (!block) {
+      replaceBodyRange(lineStart, lineEnd, prefix, lineStart + prefix.length, lineStart + prefix.length);
+      return;
+    }
+    var lines = block.split("\n");
+    var next = lines.map(function (ln) {
+      if (!ln.trim()) return ln;
+      if (ln.indexOf(prefix) === 0) return ln;
+      return prefix + ln;
+    }).join("\n");
+    replaceBodyRange(lineStart, lineEnd, next, lineStart, lineStart + next.length);
+  }
+
+  function applyMdTool(action) {
+    if (action === "h2") prefixSelectedLines("## ");
+    else if (action === "h3") prefixSelectedLines("### ");
+    else if (action === "bold") wrapSelection("**", "**", "粗體文字");
+    else if (action === "italic") wrapSelection("*", "*", "斜體文字");
+    else if (action === "link") wrapSelection("[", "](https://)", "連結文字");
+    else if (action === "image") wrapSelection("![", "](https://)", "圖說");
+    else if (action === "ul") prefixSelectedLines("- ");
+    else if (action === "ol") prefixSelectedLines("1. ");
+    else if (action === "quote") prefixSelectedLines("> ");
+    else if (action === "hr") {
+      var ta = $("f-body");
+      if (!ta) return;
+      var start = ta.selectionStart;
+      var pad = (start > 0 && ta.value[start - 1] !== "\n") ? "\n\n" : "\n";
+      replaceBodyRange(start, ta.selectionEnd, pad + "---\n\n");
+    } else if (action === "code") wrapSelection("`", "`", "code");
+  }
+
+  function handleBodyTab(e) {
+    if (e.key !== "Tab") return;
+    var ta = $("f-body");
+    if (!ta || document.activeElement !== ta) return;
+    e.preventDefault();
+    var start = ta.selectionStart;
+    var end = ta.selectionEnd;
+    if (e.shiftKey) {
+      var val = ta.value;
+      var lineStart = val.lastIndexOf("\n", start - 1) + 1;
+      var lineEnd = val.indexOf("\n", end);
+      if (lineEnd === -1) lineEnd = val.length;
+      var block = val.slice(lineStart, lineEnd);
+      var next = block.split("\n").map(function (ln) {
+        if (ln.indexOf("  ") === 0) return ln.slice(2);
+        if (ln.indexOf("\t") === 0) return ln.slice(1);
+        return ln;
+      }).join("\n");
+      replaceBodyRange(lineStart, lineEnd, next, Math.max(lineStart, start - 2), Math.max(lineStart, end - (block.length - next.length)));
+      return;
+    }
+    if (start !== end) {
+      prefixSelectedLines("  ");
+      return;
+    }
+    replaceBodyRange(start, end, "  ", start + 2, start + 2);
   }
 
   function resetForm() {
@@ -248,6 +396,7 @@
       updateMdPreview();
       updateLengthHint();
     }
+    captureFormSnapshot();
     var bodyEl = $("f-body");
     if (bodyEl && editorMode !== "preview") {
       setTimeout(function () { bodyEl.focus(); }, 50);
@@ -599,6 +748,7 @@
     refreshCategoryList();
     updateLengthHint();
     updateMdPreview();
+    markFormDirty();
   }
 
   async function quickSaveDraft(parsed) {
@@ -656,6 +806,7 @@
     $("f-id").value = res.data.id;
     $("btn-delete").classList.remove("hidden");
     $("form-title").textContent = "編輯文章";
+    captureFormSnapshot();
     loadArticles();
   }
 
@@ -774,34 +925,136 @@
   }
 
   // ---------- 區塊文字 ----------
-  async function loadSections() {
+  function sectionMeta(key) {
+    return SECTION_META[key] || {
+      title: key,
+      desc: "自訂區塊文字",
+      mode: "text",
+    };
+  }
+
+  function escapeHtml(s) {
+    return window.SB && window.SB.escapeText
+      ? window.SB.escapeText(s)
+      : String(s || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+  }
+
+  function updateSectionPreview() {
+    var preview = $("sec-preview");
+    var ta = $("sec-value");
+    if (!preview || !ta) return;
+    var meta = sectionMeta(activeSectionKey || "");
+    var val = ta.value || "";
+    if (!val.trim()) {
+      preview.innerHTML = "";
+      return;
+    }
+    if (meta.mode === "markdown" && window.SB && typeof window.SB.renderMarkdown === "function") {
+      preview.innerHTML = window.SB.renderMarkdown(val);
+      preview.className = "sec-preview markdown-body";
+    } else {
+      preview.innerHTML = escapeHtml(val).replace(/\n/g, "<br />");
+      preview.className = "sec-preview";
+    }
+  }
+
+  function renderSectionsNav() {
     var box = $("sections-list");
-    box.innerHTML = '<p class="muted"><span class="spinner-inline"></span> 載入中…</p>';
-    var res = await client.from("site_sections").select("key,value").order("key");
-    if (res.error) { box.innerHTML = '<p class="muted">讀取失敗：' + res.error.message + "</p>"; return; }
-    var rows = res.data || [];
+    var empty = $("sections-nav-empty");
+    if (!box) return;
     box.innerHTML = "";
-    if (!rows.length) { box.innerHTML = '<p class="muted">尚無區塊資料（可先套用 0001 SQL 的種子）。</p>'; }
-    rows.forEach(function (r) {
-      var wrap = document.createElement("div");
-      wrap.className = "field full";
-      var lab = document.createElement("label");
-      lab.textContent = r.key;
-      var ta = document.createElement("textarea");
-      ta.style.minHeight = "80px"; ta.value = r.value || "";
+    if (!sectionsCache.length) {
+      if (empty) {
+        empty.classList.remove("hidden");
+        empty.textContent = "尚無區塊資料（可先套用 0001 SQL 的種子）。";
+      }
+      return;
+    }
+    if (empty) empty.classList.add("hidden");
+    sectionsCache.forEach(function (r) {
+      var meta = sectionMeta(r.key);
       var btn = document.createElement("button");
-      btn.className = "btn primary"; btn.textContent = "儲存此區塊";
-      btn.style.marginTop = ".4rem";
-      btn.addEventListener("click", async function () {
-        btn.disabled = true;
-        var up = await client.from("site_sections").update({ value: ta.value }).eq("key", r.key);
-        btn.disabled = false;
-        msg("global-msg", up.error ? "儲存失敗：" + up.error.message : "已儲存區塊 " + r.key + " ✔", up.error ? "err" : "ok");
-        setTimeout(function () { msg("global-msg", ""); }, 2500);
-      });
-      wrap.appendChild(lab); wrap.appendChild(ta); wrap.appendChild(btn);
-      box.appendChild(wrap);
+      btn.type = "button";
+      btn.className = "sec-nav-item" + (r.key === activeSectionKey ? " active" : "");
+      btn.setAttribute("data-sec-key", r.key);
+      var snip = String(r.value || "").replace(/\s+/g, " ").trim().slice(0, 48);
+      btn.innerHTML =
+        '<span class="sec-nav-title">' + escapeHtml(meta.title) + "</span>" +
+        '<span class="sec-nav-snip">' + escapeHtml(snip || "（空白）") + "</span>";
+      btn.addEventListener("click", function () { openSectionEditor(r.key); });
+      box.appendChild(btn);
     });
+  }
+
+  function openSectionEditor(key) {
+    if (sectionDirty && activeSectionKey && activeSectionKey !== key) {
+      if (!window.confirm("目前區塊有未儲存變更，確定切換？")) return;
+    }
+    var row = sectionsCache.find(function (r) { return r.key === key; });
+    if (!row) return;
+    activeSectionKey = key;
+    sectionDirty = false;
+    var meta = sectionMeta(key);
+    var editor = $("sections-editor");
+    var placeholder = $("sections-placeholder");
+    if (editor) editor.classList.remove("hidden");
+    if (placeholder) placeholder.classList.add("hidden");
+    if ($("sec-title")) $("sec-title").textContent = meta.title;
+    if ($("sec-desc")) $("sec-desc").textContent = meta.desc;
+    if ($("sec-key")) $("sec-key").textContent = key;
+    if ($("sec-value")) $("sec-value").value = row.value || "";
+    if ($("sec-status")) $("sec-status").textContent = "";
+    updateSectionPreview();
+    renderSectionsNav();
+  }
+
+  async function saveActiveSection() {
+    if (!activeSectionKey) return;
+    var ta = $("sec-value");
+    var btn = $("btn-sec-save");
+    if (!ta) return;
+    if (btn) btn.disabled = true;
+    if ($("sec-status")) $("sec-status").textContent = "儲存中…";
+    var up = await client.from("site_sections").update({ value: ta.value }).eq("key", activeSectionKey);
+    if (btn) btn.disabled = false;
+    if (up.error) {
+      if ($("sec-status")) $("sec-status").textContent = "儲存失敗：" + up.error.message;
+      msg("global-msg", "儲存失敗：" + up.error.message, "err");
+      return;
+    }
+    sectionsCache.forEach(function (r) {
+      if (r.key === activeSectionKey) r.value = ta.value;
+    });
+    sectionDirty = false;
+    if ($("sec-status")) $("sec-status").textContent = "已儲存 ✔";
+    msg("global-msg", "已儲存區塊 " + activeSectionKey + " ✔", "ok");
+    setTimeout(function () { msg("global-msg", ""); }, 2500);
+    renderSectionsNav();
+  }
+
+  async function loadSections() {
+    var empty = $("sections-nav-empty");
+    if (empty) {
+      empty.classList.remove("hidden");
+      empty.textContent = "載入中…";
+    }
+    var list = $("sections-list");
+    if (list) list.innerHTML = "";
+    var res = await client.from("site_sections").select("key,value").order("key");
+    if (res.error) {
+      if (empty) empty.textContent = "讀取失敗：" + res.error.message;
+      return;
+    }
+    sectionsCache = res.data || [];
+    activeSectionKey = null;
+    sectionDirty = false;
+    if ($("sections-editor")) $("sections-editor").classList.add("hidden");
+    if ($("sections-placeholder")) $("sections-placeholder").classList.remove("hidden");
+    renderSectionsNav();
   }
 
   // ---------- 進入後台 ----------
@@ -892,16 +1145,59 @@
 
     $("list-section").addEventListener("change", loadArticles);
     $("btn-new").addEventListener("click", function () { openForm(null); });
-    $("btn-cancel").addEventListener("click", closeForm);
+    $("btn-cancel").addEventListener("click", function () { closeForm(false); });
     $("btn-save").addEventListener("click", saveArticle);
     $("btn-delete").addEventListener("click", openDeleteModal);
     bindDeleteModal();
+
+    var toolbar = $("md-toolbar");
+    if (toolbar) {
+      toolbar.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-md]");
+        if (!btn) return;
+        applyMdTool(btn.getAttribute("data-md"));
+      });
+    }
 
     document.querySelectorAll(".mode-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         setEditorMode(btn.getAttribute("data-editor-mode"));
       });
     });
+
+    document.addEventListener("keydown", function (e) {
+      var form = $("article-form");
+      var editorOpen = form && !form.classList.contains("hidden");
+      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+        if (editorOpen) {
+          e.preventDefault();
+          saveArticle();
+          return;
+        }
+        if (activeSectionKey && $("tab-sections") && !$("tab-sections").classList.contains("hidden")) {
+          e.preventDefault();
+          saveActiveSection();
+        }
+        return;
+      }
+      if (editorOpen) handleBodyTab(e);
+    });
+
+    window.addEventListener("beforeunload", function (e) {
+      if (!formDirty && !sectionDirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    });
+
+    if ($("btn-sec-save")) {
+      $("btn-sec-save").addEventListener("click", saveActiveSection);
+    }
+    if ($("sec-value")) {
+      $("sec-value").addEventListener("input", function () {
+        sectionDirty = true;
+        updateSectionPreview();
+      });
+    }
 
     var parseBtn = $("btn-parse-paste");
     function runParse(showPreview) {
@@ -987,6 +1283,7 @@
         var btn = e.target.closest("[data-tag]");
         if (!btn) return;
         addTagSuggestion(btn.getAttribute("data-tag"));
+        markFormDirty();
       });
     }
     var catQuick = $("category-quick");
@@ -995,6 +1292,7 @@
         var btn = e.target.closest("[data-cat]");
         if (!btn) return;
         setCategoryQuick(btn.getAttribute("data-cat"));
+        markFormDirty();
       });
     }
 
@@ -1005,11 +1303,20 @@
     });
     if ($("f-body")) {
       $("f-body").addEventListener("input", function () {
+        markFormDirty();
         updateLengthHint();
         scheduleMdPreview();
       });
     }
-    $("f-section").addEventListener("change", refreshCategoryList);
+    ["f-title", "f-slug", "f-summary", "f-tags", "f-pdf", "f-category", "f-cover", "f-sort"].forEach(function (id) {
+      var el = $(id);
+      if (el) el.addEventListener("input", markFormDirty);
+    });
+    if ($("f-status")) $("f-status").addEventListener("change", markFormDirty);
+    $("f-section").addEventListener("change", function () {
+      markFormDirty();
+      refreshCategoryList();
+    });
     $("f-cover").addEventListener("input", function () {
       var v = $("f-cover").value.trim();
       if (v) { $("cover-thumb").src = v; $("cover-thumb").classList.remove("hidden"); }
@@ -1024,6 +1331,7 @@
         $("f-cover").value = urlStr;
         $("cover-thumb").src = urlStr; $("cover-thumb").classList.remove("hidden");
         $("cover-status").textContent = "已上傳 ✔";
+        markFormDirty();
       } catch (err) { $("cover-status").textContent = "失敗：" + (err.message || err); }
       e.target.value = "";
     });
@@ -1039,6 +1347,7 @@
       }
       renderImagesEditor();
       $("more-status").textContent = "完成 ✔";
+      markFormDirty();
       e.target.value = "";
     });
   }
