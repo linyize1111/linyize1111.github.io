@@ -3373,7 +3373,7 @@ table.alt tbody tr td {
 	z-index: -1;
 }
 
-/* 影片背景 */
+	/* 影片背景 — z-index 必須 >= 0，否則會沉到 body 底色後面消失 */
 #bg-video {
 	position: fixed;
 	top: 0;
@@ -3381,7 +3381,7 @@ table.alt tbody tr td {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
-	z-index: -2;
+	z-index: 0;
 	pointer-events: none;
 }
 

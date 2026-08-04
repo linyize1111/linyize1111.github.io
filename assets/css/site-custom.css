@@ -693,7 +693,21 @@ html[data-theme] table {
    E. BACKGROUND SCROLL — Requirement 4
    ============================================================ */
 
-/* Ensure video covers full viewport always */
+/*
+ * CRITICAL: do NOT use negative z-index on #bg-video.
+ * Negative z-index paints the video behind body's opaque
+ * background-color, so the romantic bg image/video vanishes
+ * and only a flat dark/black field remains.
+ */
+body {
+    background-color: #1e252d;
+    background-image: url("../../images/bg.jpg");
+    background-size: cover;
+    background-position: center center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+}
+
 #bg-video {
     position: fixed !important;
     top: 0;
@@ -702,15 +716,22 @@ html[data-theme] table {
     height: 100vh !important;
     object-fit: cover;
     object-position: center center;
-    z-index: -1;
+    z-index: 0 !important;
     pointer-events: none;
 }
 
-/* The #wrapper parallax bg divs */
-#wrapper>.bg {
+#wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+/* Soft tint over the video — keep image/video visible underneath */
+#wrapper > .bg {
     background-attachment: fixed !important;
     background-position: center center !important;
     background-size: cover !important;
+    background-image: none !important;
+    background-color: rgba(21, 27, 34, 0.42) !important;
 }
 
 /* Push #main down so there's room to scroll and see bg below */
@@ -1022,23 +1043,19 @@ header.major > p {
 /* ============================================================
    K. ARTICLE CARDS & COVERS
    ============================================================ */
+/* List cards only — do NOT style #main > .post (reading / featured shell) */
 .posts article,
 article.note-item,
-article.post,
 #posts-container.posts > article.note-item,
-#main > .posts > article,
-#main > .post {
+#main > .posts > article {
     transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
         box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
         border-color 0.35s ease,
-        background-color 0.3s ease,
-        backdrop-filter 0.3s ease;
+        background-color 0.3s ease;
     border-radius: 16px;
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     box-shadow: var(--card-shadow);
-    backdrop-filter: var(--card-blur);
-    -webkit-backdrop-filter: var(--card-blur);
 }
 
 .posts article:hover,
@@ -1048,11 +1065,28 @@ article.note-item:hover,
     box-shadow: var(--card-shadow-hover);
 }
 
-/* Glass: reinforce transparent #main (beats main.css #ffffff) */
+/* Dark cards: soft blur without covering the page background layer */
+[data-theme="dark"] .posts article,
+[data-theme="dark"] article.note-item,
+[data-theme="dark"] #posts-container.posts > article.note-item,
+[data-theme="dark"] #main > .posts > article {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* Glass: #main must stay translucent so bg video/image shows through */
 html[data-theme="glass"] #main {
     background-color: rgba(8, 12, 22, 0.08) !important;
-    background-image: none !important;
     box-shadow: none !important;
+}
+
+html[data-theme="glass"] .posts article,
+html[data-theme="glass"] article.note-item,
+html[data-theme="glass"] #posts-container.posts > article.note-item,
+html[data-theme="glass"] #main > .posts > article {
+    background: rgba(0, 0, 0, 0.10);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
