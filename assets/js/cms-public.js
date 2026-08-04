@@ -29,6 +29,30 @@
     }
   }
 
+  function fmtDotDate(ts) {
+    var d = fmtDate(ts);
+    return d ? d.replace(/-/g, ".") : "";
+  }
+
+  function padIndex(n) {
+    var i = Number(n) || 0;
+    return i < 10 ? "0" + i : String(i);
+  }
+
+  function editorialCta(url, label) {
+    return (
+      '<a href="' +
+      url +
+      '" class="note-card__cta">' +
+      "<span>" +
+      esc(label || "閱讀文章") +
+      "</span>" +
+      '<span class="note-card__cta-line" aria-hidden="true"></span>' +
+      '<span class="note-card__cta-arrow" aria-hidden="true">→</span>' +
+      "</a>"
+    );
+  }
+
   function esc(s) {
     return window.SB.escapeText(s);
   }
@@ -103,21 +127,89 @@
     return body ? shortSummary(body, 120) : "閱讀文章";
   }
 
-  function buildCard(a) {
+  function buildCard(a, listIndex) {
     var url = articleUrl(a);
     var upload = fmtDate(a.published_at || a.created_at);
+    var uploadDot = fmtDotDate(a.published_at || a.created_at);
     var edit = fmtDate(a.updated_at);
     var cat = normalizeCategory(a.category || "");
     var thought = isThoughtCategory(cat);
     var slides = thought ? [] : collectSlides(a);
     var imgStyle = coverDisplayStyle(a);
     var hasCover = slides.length > 0;
+    var indexLabel = padIndex((listIndex || 0) + 1);
 
     var summary = String(a.summary || "").trim();
     if (CAROUSEL_HINT.test(summary) && slides.length > 1) {
       summary = "系列閱讀筆記，共 " + slides.length + " 張預覽圖。";
     }
+    if (!summary) summary = cardVisualText(a, "");
     if (thought) summary = shortSummary(summary, 96);
+    else if (!hasCover) summary = shortSummary(summary, 160);
+
+    var art = document.createElement("article");
+    art.className =
+      "note-item" +
+      (thought ? " is-thought" : "") +
+      (hasCover ? " note-item--has-cover" : " note-item--no-cover note-item--text-only");
+    art.setAttribute("data-category", cat);
+    art.setAttribute("data-upload", upload);
+    art.setAttribute("data-edit", edit);
+    art.setAttribute("data-title", a.title || "");
+    art.setAttribute("data-has-cover", hasCover ? "1" : "0");
+
+    var metaHtml =
+      '<header class="note-card__meta">' +
+      '<span class="meta-cat">' +
+      esc(cat || (thought ? "隨想" : "")) +
+      "</span>" +
+      (uploadDot
+        ? '<time class="meta-pub" datetime="' +
+          esc(upload) +
+          '">' +
+          esc(uploadDot) +
+          "</time>"
+        : "") +
+      (edit && !thought
+        ? '<span class="meta-ed visually-quiet">編輯: ' + esc(edit) + "</span>"
+        : "") +
+      "</header>";
+
+    var pdfLink = "";
+    var safePdf = safeHttpsUrl(a.pdf_url);
+    if (safePdf && !thought) {
+      pdfLink =
+        '<a href="' +
+        esc(safePdf) +
+        '" target="_blank" rel="noopener noreferrer" class="note-card__pdf">檢視 PDF</a>';
+    }
+
+    if (!hasCover) {
+      // Editorial typography card — no gray image placeholder
+      art.innerHTML =
+        metaHtml +
+        '<div class="note-card__content">' +
+        '<h2 class="note-card__title"><a href="' +
+        url +
+        '">' +
+        esc(a.title) +
+        "</a></h2>" +
+        '<div class="note-card__rule" aria-hidden="true"></div>' +
+        (summary
+          ? '<p class="note-card__excerpt">' + esc(summary) + "</p>"
+          : "") +
+        "</div>" +
+        (!thought
+          ? '<span class="note-card__index" aria-hidden="true">' +
+            esc(indexLabel) +
+            "</span>"
+          : "") +
+        '<div class="note-card__footer">' +
+        editorialCta(url, thought ? "閱讀" : "閱讀文章") +
+        pdfLink +
+        "</div>";
+      return art;
+    }
 
     var mediaHtml = "";
     if (slides.length === 1) {
@@ -129,7 +221,7 @@
         '" alt="" style="' +
         imgStyle +
         '" /></a></div>';
-    } else if (slides.length > 1) {
+    } else {
       mediaHtml = '<div class="card-media-zone"><div class="card-carousel">';
       slides.forEach(function (s) {
         mediaHtml +=
@@ -146,77 +238,22 @@
           "</a></div>";
       });
       mediaHtml += "</div></div>";
-    } else if (!thought) {
-      // 無封面：主視覺區用簡介（fallback 標題／正文截斷），延續舊「沒圖用標題」結構
-      mediaHtml =
-        '<div class="card-media-zone card-media-zone--text">' +
-        '<a href="' +
-        url +
-        '" class="card-text-cover">' +
-        '<span class="card-text-cover__text">' +
-        esc(shortSummary(cardVisualText(a, summary), 140)) +
-        "</span></a></div>";
     }
 
-    // 有圖／隨想：摘要留在 card-body；無圖文字卡：簡介已在主視覺區，避免重複
-    var summaryHtml =
-      thought || hasCover
-        ? summary
-          ? "<p>" + esc(summary) + "</p>"
-          : ""
-        : "";
-
-    var pdfBtn = "";
-    var safePdf = safeHttpsUrl(a.pdf_url);
-    if (safePdf && !thought) {
-      pdfBtn =
-        '<li><a href="' +
-        esc(safePdf) +
-        '" target="_blank" rel="noopener noreferrer" class="button primary">檢視 PDF</a></li>';
-    }
-
-    var actionsHtml = thought
-      ? '<ul class="actions special"><li><a href="' +
-        url +
-        '" class="button">閱讀</a></li></ul>'
-      : '<ul class="actions special"><li><a href="' +
-        url +
-        '" class="button">閱讀文章</a></li>' +
-        pdfBtn +
-        "</ul>";
-
-    var art = document.createElement("article");
-    art.className =
-      "note-item" +
-      (thought ? " is-thought" : "") +
-      (hasCover ? " note-item--has-cover" : " note-item--no-cover");
-    art.setAttribute("data-category", cat);
-    art.setAttribute("data-upload", upload);
-    art.setAttribute("data-edit", edit);
-    art.setAttribute("data-title", a.title || "");
-    art.setAttribute("data-has-cover", hasCover ? "1" : "0");
     art.innerHTML =
-      "<header><span class=\"date\">" +
-      '<span class="meta-cat">' +
-      esc(cat || (thought ? "隨想" : "")) +
-      "</span>" +
-      '<span class="meta-up">上傳: ' +
-      esc(upload) +
-      "</span>" +
-      (thought
-        ? ""
-        : '<span class="meta-ed">編輯: ' + esc(edit) + "</span>") +
-      "</span>" +
-      '<h2><a href="' +
+      metaHtml +
+      '<h2 class="note-card__title"><a href="' +
       url +
       '">' +
       esc(a.title) +
-      "</a></h2></header>" +
+      "</a></h2>" +
       mediaHtml +
-      '<div class="card-body">' +
-      summaryHtml +
-      actionsHtml +
-      "</div>";
+      '<div class="card-body note-card__content">' +
+      (summary ? '<p class="note-card__excerpt">' + esc(summary) + "</p>" : "") +
+      '<div class="note-card__footer">' +
+      editorialCta(url, "閱讀文章") +
+      pdfLink +
+      "</div></div>";
     return art;
   }
 
@@ -270,8 +307,8 @@
       container.innerHTML =
         '<div style="text-align:center;padding:40px 0;opacity:.7;">尚無已發佈的文章。</div>';
     } else {
-      rows.forEach(function (a) {
-        container.appendChild(buildCard(a));
+      rows.forEach(function (a, index) {
+        container.appendChild(buildCard(a, index));
       });
     }
     initListWidgets();

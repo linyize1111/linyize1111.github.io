@@ -937,21 +937,27 @@ article.note-item header .date span {
 }
 
 .post header .date span.meta-cat,
-article.note-item header .date span.meta-cat {
+article.note-item header .date span.meta-cat,
+article.note-item .note-card__meta .meta-cat {
     display: inline-flex;
     align-items: center;
-    padding: 0.15rem 0.55rem;
-    border-radius: var(--radius-pill);
+    padding: 0.12rem 0.55rem;
+    border-radius: 999px;
     background: var(--accent-subtle);
     color: var(--accent) !important;
-    border: 1px solid rgba(24, 191, 239, 0.22);
-    margin-right: 0.35rem;
+    border: 1px solid rgba(24, 191, 239, 0.18);
+    margin-right: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
 }
 
 [data-theme="dark"] .post header .date span.meta-cat,
 [data-theme="glass"] .post header .date span.meta-cat,
 [data-theme="dark"] article.note-item header .date span.meta-cat,
-[data-theme="glass"] article.note-item header .date span.meta-cat {
+[data-theme="glass"] article.note-item header .date span.meta-cat,
+[data-theme="dark"] article.note-item .note-card__meta .meta-cat,
+[data-theme="glass"] article.note-item .note-card__meta .meta-cat {
     border-color: rgba(125, 232, 255, 0.28);
 }
 
@@ -974,9 +980,9 @@ article.post p,
 #intro h1,
 #intro p,
 #main > .post.featured,
-#main > .posts > article,
+#main > .posts > article:not(.note-item--text-only),
 #main > .post.featured header.major,
-#main > .posts > article > header {
+#main > .posts > article:not(.note-item--text-only) > header {
     text-align: center;
 }
 
@@ -999,21 +1005,49 @@ header.major > p {
 .posts article,
 article.note-item,
 article.post {
-    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
-    border-radius: var(--radius-md);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.35s ease;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="dark"] .posts article,
+[data-theme="dark"] article.note-item,
+[data-theme="glass"] .posts article,
+[data-theme="glass"] article.note-item {
+    background: var(--panel-bg);
+    border-color: var(--panel-border);
 }
 
 .posts article:hover,
 article.note-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.14);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10);
 }
 
 [data-theme="dark"] .posts article:hover,
 [data-theme="glass"] .posts article:hover,
 [data-theme="dark"] article.note-item:hover,
 [data-theme="glass"] article.note-item:hover {
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.42);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.38);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .posts article,
+    article.note-item,
+    article.post,
+    .note-card__cta,
+    .note-card__cta-arrow,
+    .note-card__cta-line {
+        transition: none !important;
+    }
+    .posts article:hover,
+    article.note-item:hover {
+        transform: none;
+    }
 }
 
 .posts article .image.fit,
@@ -1443,74 +1477,233 @@ html.paw-cursor-active * {
     pointer-events: none;
 }
 
-/* 無封面：主視覺區顯示簡介（延續舊「沒圖用標題」槽位，文字改為 summary） */
-.card-media-zone--text {
-    margin-bottom: 0;
+/* 無封面：typography-driven editorial card（禁止灰色假圖區） */
+.card-media-zone--text,
+.card-text-cover {
+    display: none !important;
 }
 
-.card-text-cover {
+.visually-quiet {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+#posts-container.posts {
+    align-items: stretch;
+}
+
+#posts-container.posts > article.note-item {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    padding: 2.6rem 2.75rem 2rem;
+}
+
+#posts-container.posts > article.note-item.note-item--has-cover {
+    padding: 1.75rem 1.75rem 1.5rem;
+}
+
+#posts-container.posts > article.note-item > .card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    position: relative;
+    z-index: 2;
+    margin-top: var(--space-md);
+}
+
+#posts-container.posts > article.note-item > .card-body > ul.actions {
+    margin-top: auto;
+}
+
+.note-card__meta {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: 9.5rem;
-    aspect-ratio: 4 / 3;
-    max-height: 280px;
-    padding: 1.35rem 1.25rem;
-    border-radius: var(--radius-sm);
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0 0 1.35rem;
+    position: relative;
+    z-index: 2;
+    text-align: left;
+}
+
+.note-card__meta .meta-pub {
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    opacity: 0.78;
+    font-variant-numeric: tabular-nums;
+}
+
+.note-card__content {
+    position: relative;
+    z-index: 2;
+    flex: 1 1 auto;
+    text-align: left;
+}
+
+.note-card__title {
+    margin: 0 0 0.85rem !important;
+    text-align: left !important;
+    font-size: clamp(1.5rem, 1.25rem + 1vw, 2.15rem);
+    font-weight: 650;
+    line-height: 1.38;
+    letter-spacing: 0.01em;
+    color: var(--text-heading);
+}
+
+.note-card__title a {
+    color: inherit !important;
     text-decoration: none !important;
     border: none !important;
-    box-shadow: none !important;
-    color: inherit !important;
-    font-size: inherit !important;
-    line-height: inherit !important;
-    background:
-        linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.14)),
-        rgba(0, 0, 0, 0.06);
-    transition: filter 0.22s ease, background 0.22s ease;
 }
 
-.card-text-cover:hover {
-    filter: brightness(1.03);
+.note-card__title a:hover {
+    color: var(--link-color) !important;
 }
 
-.card-text-cover__text {
+.note-card__rule {
+    width: 2.75rem;
+    height: 1px;
+    margin: 0 0 1.15rem;
+    background: rgba(0, 0, 0, 0.18);
+}
+
+[data-theme="dark"] .note-card__rule,
+[data-theme="glass"] .note-card__rule {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.note-card__excerpt {
+    margin: 0 !important;
+    max-width: 32em !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    text-align: left !important;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.9;
+    color: var(--text-muted);
     display: -webkit-box;
-    -webkit-line-clamp: 6;
+    -webkit-line-clamp: 5;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    max-width: 22em;
-    margin: 0 auto;
-    font-family: var(--font-ui, inherit);
-    font-size: clamp(1.05rem, 0.95rem + 0.55vw, 1.35rem);
+}
+
+.note-card__index {
+    position: absolute;
+    right: 1.4rem;
+    bottom: 3.6rem;
+    z-index: 1;
+    font-size: clamp(3rem, 2.4rem + 2vw, 4.5rem);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    color: var(--text-heading);
+    opacity: 0.05;
+    pointer-events: none;
+    user-select: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.note-card__footer {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-top: 1.75rem;
+}
+
+.note-card__cta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    color: var(--text-heading) !important;
+    text-decoration: none !important;
+    border: none !important;
+    font-size: 0.92rem;
     font-weight: 600;
-    letter-spacing: 0.02em;
-    line-height: 1.45;
-    text-align: center;
-    color: inherit;
-    opacity: 0.92;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
 }
 
-.note-item--no-cover:not(.is-thought) > header h2 {
-    font-size: clamp(1.05rem, 0.98rem + 0.35vw, 1.25rem);
-    line-height: 1.35;
-    margin-bottom: 0.55rem;
-    opacity: 0.9;
+.note-card__cta:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: 4px;
 }
 
-.note-item--no-cover:not(.is-thought) > .card-body {
-    margin-top: var(--space-sm);
+.note-card__cta-line {
+    flex: 1 1 auto;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.18);
+    transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
-.note-item--no-cover:not(.is-thought) > .card-body > p {
-    display: none;
+[data-theme="dark"] .note-card__cta-line,
+[data-theme="glass"] .note-card__cta-line {
+    background: rgba(255, 255, 255, 0.22);
 }
 
-[data-theme="dark"] .card-text-cover,
-[data-theme="glass"] .card-text-cover {
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.22)),
-        rgba(255, 255, 255, 0.03);
+.note-card__cta-arrow {
+    display: inline-block;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.note-card__cta:hover .note-card__cta-line {
+    background: rgba(0, 0, 0, 0.42);
+}
+
+[data-theme="dark"] .note-card__cta:hover .note-card__cta-line,
+[data-theme="glass"] .note-card__cta:hover .note-card__cta-line {
+    background: rgba(255, 255, 255, 0.45);
+}
+
+.note-card__cta:hover .note-card__cta-arrow {
+    transform: translateX(4px);
+}
+
+.note-card__pdf {
+    font-size: 0.82rem;
+    color: var(--link-color) !important;
+    text-decoration: none !important;
+    border: none !important;
+    opacity: 0.85;
+}
+
+/* Text-only editorial cards: left-aligned, generous padding, no fake media */
+#posts-container.posts > article.note-item.note-item--text-only {
+    text-align: left;
+    min-height: 0;
+}
+
+#posts-container.posts > article.note-item.note-item--text-only > header,
+#posts-container.posts > article.note-item.note-item--text-only .note-card__meta,
+#posts-container.posts > article.note-item.note-item--text-only .note-card__title,
+#posts-container.posts > article.note-item.note-item--text-only .note-card__excerpt {
+    text-align: left !important;
+}
+
+#posts-container.posts > article.note-item.note-item--has-cover > .note-card__title {
+    margin: 0.35rem 0 0.85rem !important;
+    font-size: clamp(1.25rem, 1.1rem + 0.55vw, 1.65rem);
+    text-align: left !important;
+}
+
+#posts-container.posts > article.note-item.note-item--has-cover .note-card__excerpt {
+    -webkit-line-clamp: 3;
+    margin-bottom: 0.25rem !important;
 }
 
 #posts-container.posts > article.note-item > .card-body > p {
@@ -1523,8 +1716,92 @@ html.paw-cursor-active * {
     max-width: none;
 }
 
-#posts-container.posts > article.note-item {
-    padding-bottom: var(--space-md);
+@media screen and (max-width: 980px) {
+    #posts-container.posts > article.note-item {
+        padding: 1.75rem 1.5rem 1.4rem;
+    }
+    .note-card__index {
+        font-size: 2.75rem;
+        bottom: 3.2rem;
+        opacity: 0.04;
+    }
+}
+
+@media screen and (max-width: 736px) {
+    #posts-container.posts > article.note-item {
+        padding: 1.45rem 1.35rem 1.25rem;
+    }
+    #posts-container.posts > article.note-item.note-item--has-cover {
+        padding: 1.2rem 1.15rem 1.1rem;
+    }
+    .note-card__title {
+        font-size: clamp(1.35rem, 1.2rem + 1.2vw, 1.7rem);
+        line-height: 1.4;
+    }
+    .note-card__excerpt {
+        font-size: 0.98rem;
+        line-height: 1.85;
+        -webkit-line-clamp: 6;
+    }
+    .note-card__index {
+        display: none;
+    }
+    .note-card__footer {
+        margin-top: 1.35rem;
+    }
+}
+
+/* 列表模式：隱藏媒體區 */
+#posts-container.list-view > article.note-item .card-media-zone,
+#posts-container.list-view > article.note-item .card-carousel,
+#posts-container.list-view > article.note-item > a.image.fit,
+#posts-container.list-view > article.note-item .card-text-cover,
+#posts-container.list-view > article.note-item .note-card__index {
+    display: none;
+}
+
+#posts-container.list-view > article.note-item .card-body > p,
+#posts-container.list-view > article.note-item .note-card__excerpt {
+    display: none;
+}
+
+/* 隨想：輕量卡片（短摘要、少裝飾） */
+#posts-container.posts > article.note-item.is-thought .card-media-zone,
+#posts-container.posts > article.note-item.is-thought .card-text-cover,
+#posts-container.posts > article.note-item.is-thought .note-card__index,
+#posts-container.posts > article.note-item.is-thought .note-card__rule {
+    display: none;
+}
+#posts-container.posts > article.note-item.is-thought {
+    padding: 1.25rem 1.3rem 1.15rem;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: none;
+    border: 1px solid rgba(128, 128, 128, 0.18);
+}
+#posts-container.posts > article.note-item.is-thought:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.06);
+}
+#posts-container.posts > article.note-item.is-thought .note-card__title {
+    font-size: 1.2rem;
+    letter-spacing: 0.01em;
+    margin-bottom: 0.45rem !important;
+}
+#posts-container.posts > article.note-item.is-thought .note-card__meta {
+    margin-bottom: 0.75rem;
+}
+#posts-container.posts > article.note-item.is-thought .note-card__excerpt {
+    font-size: 0.94rem;
+    line-height: 1.65;
+    -webkit-line-clamp: 3;
+}
+#posts-container.posts > article.note-item.is-thought .note-card__footer {
+    margin-top: 1rem;
+}
+[data-theme="dark"] #posts-container.posts > article.note-item.is-thought,
+[data-theme="glass"] #posts-container.posts > article.note-item.is-thought {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.12);
 }
 
 /* 內文閱讀區：行長、行距、層級 */
@@ -1600,64 +1877,4 @@ section.post.is-article-reading > header.major p {
         font-size: 1.02rem;
         line-height: 1.88;
     }
-}
-
-/* 列表模式：隱藏媒體區 */
-#posts-container.list-view > article.note-item .card-media-zone,
-#posts-container.list-view > article.note-item .card-carousel,
-#posts-container.list-view > article.note-item > a.image.fit,
-#posts-container.list-view > article.note-item .card-text-cover {
-    display: none;
-}
-
-#posts-container.list-view > article.note-item .card-body > p {
-    display: none;
-}
-
-/* 隨想：輕量卡片（短摘要、少裝飾） */
-#posts-container.posts > article.note-item.is-thought .card-media-zone,
-#posts-container.posts > article.note-item.is-thought .card-text-cover {
-    display: none;
-}
-#posts-container.posts > article.note-item.is-thought {
-    padding: 1.1rem 1.15rem 1rem;
-    background: transparent;
-    box-shadow: none;
-    border: 1px solid rgba(128, 128, 128, 0.22);
-}
-#posts-container.posts > article.note-item.is-thought:hover {
-    transform: none;
-    box-shadow: none;
-    border-color: rgba(128, 128, 128, 0.4);
-}
-#posts-container.posts > article.note-item.is-thought header h2 {
-    font-size: 1.15rem;
-    letter-spacing: 0.01em;
-    margin-bottom: 0.35rem;
-}
-#posts-container.posts > article.note-item.is-thought header .date {
-    opacity: 0.75;
-    font-size: 0.78rem;
-}
-#posts-container.posts > article.note-item.is-thought .card-body > p {
-    font-size: 0.92rem;
-    line-height: 1.55;
-    opacity: 0.88;
-    margin: 0.35rem 0 0.7rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-#posts-container.posts > article.note-item.is-thought .actions {
-    margin: 0;
-}
-#posts-container.posts > article.note-item.is-thought .actions .button {
-    padding: 0.35rem 0.9rem;
-    font-size: 0.82rem;
-}
-[data-theme="dark"] #posts-container.posts > article.note-item.is-thought,
-[data-theme="glass"] #posts-container.posts > article.note-item.is-thought {
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.12);
 }

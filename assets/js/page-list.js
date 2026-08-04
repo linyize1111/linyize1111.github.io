@@ -285,7 +285,7 @@ function initCarousel() {
 }
 
 /**
- * 無封面卡片：補上「簡介主視覺」文字區（舊版「沒圖用標題」結構，文字改為 summary）。
+ * 無封面卡片：改為 editorial typography card（無灰色假圖區）。
  * CMS 動態卡片已自帶；此函式照顧靜態 HTML fallback。
  */
 function enhanceNoCoverCards() {
@@ -298,9 +298,17 @@ function enhanceNoCoverCards() {
         return s.slice(0, maxLen).replace(/\s+\S*$/, '') + '…';
     };
 
-    Array.from(container.querySelectorAll('article.note-item')).forEach((article) => {
-        // 清除舊版字首／漸層佔位
-        article.querySelectorAll('.card-media-zone--placeholder').forEach((zone) => zone.remove());
+    const toDotDate = (raw) => {
+        const s = String(raw || '').trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10).replace(/-/g, '.');
+        return s.replace(/^上傳:\s*/i, '').replace(/-/g, '.');
+    };
+
+    Array.from(container.querySelectorAll('article.note-item')).forEach((article, index) => {
+        article.querySelectorAll('.card-media-zone--placeholder, .card-media-zone--text, .card-text-cover').forEach((zone) => {
+            const parent = zone.closest('.card-media-zone') || zone;
+            parent.remove();
+        });
 
         const hasRealMedia =
             article.querySelector('.card-carousel') ||
@@ -309,58 +317,88 @@ function enhanceNoCoverCards() {
 
         if (hasRealMedia) {
             article.classList.add('note-item--has-cover');
-            article.classList.remove('note-item--no-cover');
+            article.classList.remove('note-item--no-cover', 'note-item--text-only');
             article.setAttribute('data-has-cover', '1');
             return;
         }
 
-        article.classList.add('note-item--no-cover');
+        article.classList.add('note-item--no-cover', 'note-item--text-only');
         article.classList.remove('note-item--has-cover');
         article.setAttribute('data-has-cover', '0');
 
-        const body = article.querySelector('.card-body');
-        const header = article.querySelector('header');
-        if (!body) {
-            const wrap = document.createElement('div');
-            wrap.className = 'card-body';
-            Array.from(article.children).forEach((child) => {
-                if (child === header || child.classList.contains('list-index')) return;
-                if (child.classList && child.classList.contains('card-media-zone')) return;
-                wrap.appendChild(child);
-            });
-            article.appendChild(wrap);
+        if (article.classList.contains('is-thought')) return;
+        if (article.querySelector('.note-card__content')) return;
+
+        const titleLink = article.querySelector('header h2 a, h2 a, .note-card__title a');
+        const href = (titleLink && titleLink.getAttribute('href')) || '#';
+        const titleText = (titleLink && titleLink.textContent) || article.getAttribute('data-title') || '';
+        const oldSummary = article.querySelector('.card-body > p, .note-card__excerpt');
+        const summaryText = clampText(
+            (oldSummary && oldSummary.textContent) || titleText || '閱讀文章',
+            160
+        );
+
+        const catEl = article.querySelector('.meta-cat');
+        const cat = (catEl && catEl.textContent) || article.getAttribute('data-category') || '';
+        const uploadRaw = article.getAttribute('data-upload') || '';
+        const pub = toDotDate(uploadRaw);
+
+        Array.from(article.querySelectorAll('header, .card-body, ul.actions, .note-card__footer')).forEach((n) => n.remove());
+
+        const meta = document.createElement('header');
+        meta.className = 'note-card__meta';
+        if (cat) {
+            const catSpan = document.createElement('span');
+            catSpan.className = 'meta-cat';
+            catSpan.textContent = cat;
+            meta.appendChild(catSpan);
+        }
+        if (pub) {
+            const time = document.createElement('time');
+            time.className = 'meta-pub';
+            if (/^\d{4}\.\d{2}\.\d{2}$/.test(pub)) {
+                time.setAttribute('datetime', pub.replace(/\./g, '-'));
+            }
+            time.textContent = pub;
+            meta.appendChild(time);
         }
 
-        if (article.classList.contains('is-thought')) return;
-        if (article.querySelector('.card-text-cover')) return;
+        const content = document.createElement('div');
+        content.className = 'note-card__content';
+        const h2 = document.createElement('h2');
+        h2.className = 'note-card__title';
+        const a = document.createElement('a');
+        a.href = href;
+        a.textContent = titleText;
+        h2.appendChild(a);
+        const rule = document.createElement('div');
+        rule.className = 'note-card__rule';
+        rule.setAttribute('aria-hidden', 'true');
+        const excerpt = document.createElement('p');
+        excerpt.className = 'note-card__excerpt';
+        excerpt.textContent = summaryText;
+        content.appendChild(h2);
+        content.appendChild(rule);
+        content.appendChild(excerpt);
 
-        const titleLink = article.querySelector('header h2 a');
-        const href = (titleLink && titleLink.getAttribute('href')) || '#';
-        const summaryEl = article.querySelector('.card-body > p');
-        const summaryText =
-            (summaryEl && summaryEl.textContent) ||
-            article.getAttribute('data-title') ||
-            (titleLink && titleLink.textContent) ||
-            '閱讀文章';
+        const idx = document.createElement('span');
+        idx.className = 'note-card__index';
+        idx.setAttribute('aria-hidden', 'true');
+        idx.textContent = index + 1 < 10 ? '0' + (index + 1) : String(index + 1);
 
-        const zone = document.createElement('div');
-        zone.className = 'card-media-zone card-media-zone--text';
-        const link = document.createElement('a');
-        link.href = href;
-        link.className = 'card-text-cover';
-        const span = document.createElement('span');
-        span.className = 'card-text-cover__text';
-        span.textContent = clampText(summaryText, 140);
-        link.appendChild(span);
-        zone.appendChild(link);
+        const footer = document.createElement('div');
+        footer.className = 'note-card__footer';
+        const cta = document.createElement('a');
+        cta.href = href;
+        cta.className = 'note-card__cta';
+        cta.innerHTML =
+            '<span>閱讀文章</span><span class="note-card__cta-line" aria-hidden="true"></span><span class="note-card__cta-arrow" aria-hidden="true">→</span>';
+        footer.appendChild(cta);
 
-        const cardBody = article.querySelector('.card-body');
-        if (cardBody) article.insertBefore(zone, cardBody);
-        else if (header && header.nextSibling) article.insertBefore(zone, header.nextSibling);
-        else article.appendChild(zone);
-
-        // 簡介已進主視覺區，避免 card-body 再重複一段
-        if (summaryEl) summaryEl.remove();
+        article.appendChild(meta);
+        article.appendChild(content);
+        article.appendChild(idx);
+        article.appendChild(footer);
     });
 }
 
