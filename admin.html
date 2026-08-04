@@ -24,7 +24,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;900&display=swap">
-    <link rel="stylesheet" href="assets/css/admin.css" />
+    <link rel="stylesheet" href="assets/css/admin.css?v=editor-cat-1" />
 </head>
 
 <body class="admin">
@@ -143,10 +143,23 @@
                                 <option value="notes">學科筆記 (notes)</option>
                             </select>
                         </div>
+                        <div class="field" style="max-width:160px;">
+                            <label>狀態</label>
+                            <select id="list-status">
+                                <option value="all">全部</option>
+                                <option value="draft">只看草稿</option>
+                                <option value="published">只看已發佈</option>
+                            </select>
+                        </div>
+                        <div class="field" style="max-width:220px;">
+                            <label>搜尋標題</label>
+                            <input id="list-search" type="search" placeholder="輸入關鍵字…" />
+                        </div>
                         <div class="field" style="max-width:160px; flex:0;">
                             <button class="btn primary" id="btn-new">+ 手動新增</button>
                         </div>
                     </div>
+                    <p class="muted" id="list-hint" style="margin:0 0 .75rem;">點「編輯」時，頂部會顯示目前正在改哪一篇。</p>
                     <div id="article-list"></div>
                 </div>
 
@@ -158,7 +171,10 @@
                     <header class="editor-bar">
                         <div class="editor-bar-left">
                             <button type="button" class="btn" id="btn-cancel" title="返回文章列表">← 返回列表</button>
-                            <h3 id="form-title">新增文章</h3>
+                            <div class="editor-identity">
+                                <h3 id="form-title">新增文章</h3>
+                                <p id="form-context" class="editor-context" aria-live="polite">尚未選擇文章</p>
+                            </div>
                         </div>
                         <div class="editor-modes" role="tablist" aria-label="編輯檢視">
                             <button type="button" class="mode-btn active" data-editor-mode="split" title="左右分欄">分欄</button>
@@ -212,14 +228,38 @@
                                 </div>
                             </details>
 
-                            <details class="editor-meta-block">
-                                <summary>分類／標籤</summary>
+                            <details class="editor-meta-block" open>
+                                <summary>分類／標籤（請先確認）</summary>
+                                <p class="muted cat-guide">
+                                    <strong>隨想</strong>＝碎念／抱怨／隨便發　
+                                    <strong>日記</strong>＝當天生活紀錄　
+                                    <strong>隨筆</strong>＝有整理過的散文　
+                                    <strong>心得</strong>＝讀書／作品感想　
+                                    <strong>創作</strong>＝小說／詩／劇本　
+                                    <strong>長文</strong>＝長篇論述
+                                </p>
+                                <div class="field full">
+                                    <label>分類 *</label>
+                                    <div class="chip-row" id="category-quick" aria-label="一鍵分類">
+                                        <button type="button" class="chip" data-cat="隨想" title="碎念、抱怨、突然的想法">隨想</button>
+                                        <button type="button" class="chip" data-cat="日記" title="生活札記、當天紀錄">日記</button>
+                                        <button type="button" class="chip" data-cat="隨筆" title="整理過的散文">隨筆</button>
+                                        <button type="button" class="chip" data-cat="心得" title="閱讀／觀影感想">心得</button>
+                                        <button type="button" class="chip" data-cat="創作" title="小說、詩、劇本">創作</button>
+                                        <button type="button" class="chip" data-cat="長文" title="長篇論述">長文</button>
+                                    </div>
+                                    <input id="f-category" list="category-list" placeholder="點上方或手打：隨想／日記／隨筆…" style="margin-top:.5rem;" />
+                                    <datalist id="category-list"></datalist>
+                                    <p class="muted" id="length-hint"></p>
+                                </div>
                                 <div class="field full">
                                     <label>標籤（選填）</label>
                                     <input id="f-tags" placeholder="不必填；想標再點下方建議" />
                                     <div class="chip-row" id="tag-suggestions" aria-label="標籤建議">
                                         <button type="button" class="chip" data-tag="抱怨">+ 抱怨</button>
                                         <button type="button" class="chip" data-tag="想法">+ 想法</button>
+                                        <button type="button" class="chip" data-tag="生活">+ 生活</button>
+                                        <button type="button" class="chip" data-tag="閱讀">+ 閱讀</button>
                                         <button type="button" class="chip" data-tag="摘錄">+ 摘錄</button>
                                     </div>
                                 </div>
@@ -227,23 +267,6 @@
                                     <label>PDF 連結（選填）</label>
                                     <input id="f-pdf" placeholder="https://… 或留空" />
                                 </div>
-                                <details class="form-advanced" id="organize-details">
-                                    <summary>進階整理（分類可跳過）</summary>
-                                    <p class="muted" style="margin:.6rem 0 .4rem;">抱怨／碎念 →「隨想」；長篇 →「長文」。</p>
-                                    <div class="chip-row" id="category-quick" aria-label="一鍵分類">
-                                        <button type="button" class="chip" data-cat="隨想">隨想</button>
-                                        <button type="button" class="chip" data-cat="長文">長文</button>
-                                        <button type="button" class="chip" data-cat="隨筆">隨筆</button>
-                                        <button type="button" class="chip" data-cat="心得">心得</button>
-                                        <button type="button" class="chip" data-cat="創作">創作</button>
-                                    </div>
-                                    <div class="field" style="margin-top:.75rem;">
-                                        <label>分類（可空白，儲存時自動補）</label>
-                                        <input id="f-category" list="category-list" placeholder="例：隨想 / 長文 / 隨筆" />
-                                        <datalist id="category-list"></datalist>
-                                    </div>
-                                    <p class="muted" id="length-hint"></p>
-                                </details>
                             </details>
 
                             <details class="editor-meta-block">
@@ -382,7 +405,7 @@
     <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/supabase-client.js"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/admin.js"></script>
+    <script src="assets/js/admin.js?v=editor-cat-1"></script>
 </body>
 
 </html>

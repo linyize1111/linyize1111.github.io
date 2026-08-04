@@ -262,11 +262,47 @@ body.admin.editor-open { overflow: hidden; }
   flex-shrink: 0;
 }
 .editor-bar-left {
-  display: flex; align-items: center; gap: 0.75rem; min-width: 0;
+  display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1;
+}
+.editor-identity {
+  min-width: 0; flex: 1;
 }
 .editor-bar-left h3 {
   margin: 0; font-size: 1.05rem; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: min(52vw, 28rem);
+}
+.editor-context {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--a-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: min(52vw, 32rem);
+}
+.list-item.is-active {
+  border-color: rgba(86, 208, 248, 0.55);
+  box-shadow: 0 0 0 1px rgba(86, 208, 248, 0.25);
+  background: rgba(86, 208, 248, 0.06);
+}
+.chip.is-selected {
+  background: rgba(86, 208, 248, 0.22);
+  border-color: rgba(86, 208, 248, 0.55);
+  color: var(--a-accent);
+}
+.badge.cat {
+  background: rgba(86, 208, 248, 0.12);
+  color: var(--a-accent);
+  border: 1px solid rgba(86, 208, 248, 0.28);
+  font-weight: 600;
+}
+.cat-guide {
+  margin: 0.35rem 0 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+.list-item .meta small code {
+  font-size: 0.75em;
+  opacity: 0.75;
 }
 .editor-modes {
   display: inline-flex; gap: 0.25rem;
