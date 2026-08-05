@@ -290,6 +290,36 @@ function initAnalytics() {
     document.body.appendChild(s);
 }
 
+function initAdminNav() {
+    var nodes = document.querySelectorAll(".nav-admin-only");
+    if (!nodes.length) return;
+    Array.prototype.forEach.call(nodes, function (el) {
+        el.hidden = true;
+        el.setAttribute("aria-hidden", "true");
+    });
+    function reveal() {
+        if (!window.SBAuth || typeof window.SBAuth.isAdmin !== "function") return;
+        window.SBAuth.isAdmin()
+            .then(function (ok) {
+                if (!ok) return;
+                Array.prototype.forEach.call(document.querySelectorAll(".nav-admin-only"), function (el) {
+                    el.hidden = false;
+                    el.removeAttribute("aria-hidden");
+                    el.classList.remove("hidden");
+                });
+            })
+            .catch(function () { /* ignore */ });
+    }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", reveal);
+    } else {
+        reveal();
+    }
+    // auth.js 可能比 common.js 晚載入
+    setTimeout(reveal, 600);
+    setTimeout(reveal, 1800);
+}
+
 function initCommon() {
     initTheme();           // Must be first — applies theme before paint
     initHeroSpacer();      // Inject hero spacer before #main on sub-pages
@@ -297,6 +327,7 @@ function initCommon() {
     initMediaControls();
     initSakuraIfPresent();
     initAnalytics();
+    initAdminNav();
 }
 
 initCommon();

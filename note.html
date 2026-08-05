@@ -1,4 +1,4 @@
-﻿<!DOCTYPE HTML>
+<!DOCTYPE HTML>
 <html>
 
 <head>
@@ -21,7 +21,7 @@
         }
 
         /* ── Image styles: these are the DEFINITIVE rules for note page images.
-           They MUST be here (not only in site-custom.css) because they need to
+           They MUST be here (not only in site-custom.css?v=ia-essay-1) because they need to
            beat the base main.css cascade with higher specificity. ── */
         #markdown-container img,
         #markdown-container .markdown-body img,
@@ -87,7 +87,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
     <!-- Site Custom CSS: dark mode + image styles -->
-    <link rel="stylesheet" href="assets/css/site-custom.css?v=bg-glass-2" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=ia-essay-1" />
 </head>
 
 <body class="is-preload">
@@ -119,20 +119,22 @@
     <canvas id="sakura-canvas"
         style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-    <!-- 全域導航器 -->
+        <!-- 全域導航器 -->
     <div id="global-nav"
-        style="position: fixed; top: 20px; right: 20px; z-index: 10000; background: rgba(0, 0, 0, 0.5); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; gap: 15px;">
+        style="position: fixed; top: 20px; right: 20px; z-index: 10000; background: rgba(0, 0, 0, 0.5); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; gap: 15px; flex-wrap: wrap; max-width: min(92vw, 520px); justify-content: flex-end;">
         <a href="index.html"
             style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首頁</a>
         <a href="directory.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">雜記</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">隨筆</a>
         <a href="literature.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">文學</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">文學創作</a>
         <a href="about.html"
             style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">關於我</a>
+        <a href="academic.html" class="nav-admin-only" hidden
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">學科筆記</a>
     </div>
 
-    <!--  右下角影片控制 -->
+<!--  右下角影片控制 -->
     <div id="video-controls">
         <button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
             style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
@@ -148,9 +150,10 @@
         <nav id="nav">
             <ul class="links">
                 <li><a href="index.html">首頁</a></li>
-                <li><a href="directory.html">雜記</a></li>
-                <li><a href="literature.html">文學</a></li>
+                <li><a href="directory.html">隨筆</a></li>
+                <li><a href="literature.html">文學創作</a></li>
                 <li><a href="about.html">關於我</a></li>
+                <li class="nav-admin-only" hidden><a href="academic.html">學科筆記</a></li>
             </ul>
             <ul class="icons">
                 <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
@@ -201,13 +204,14 @@
 
     <script src="assets/js/common.js"></script>
 
-    <!-- Supabase CMS：?id= 動態文章由 cms-public.js 安全渲染（marked + DOMPurify） -->
+    <!-- Supabase CMS：未設定時自動略過；文章頁由 cms-public.js 動態渲染 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
     <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/supabase-client.js"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/cms-public.js"></script>
+    <script src="assets/js/site-sections.js?v=ia-1"></script>
+    <script src="assets/js/cms-public.js?v=ia-essay-1"></script>
 
     <script src="assets/js/page-note.js"></script>
 </body>

@@ -100,15 +100,21 @@
   }
 
   function normalizeCategory(cat) {
+    if (window.SBSections && window.SBSections.normalizeCategory) {
+      return window.SBSections.normalizeCategory(cat);
+    }
     var c = String(cat || "").trim();
     if (c === "短思" || c === "碎念" || c === "短文") return "隨想";
     if (c === "生活札記" || c === "札記" || c === "日常") return "日記";
     if (c === "短感想" || c === "隨感") return "感想";
-    if (c === "閱讀心得" || c === "讀後感") return "心得";
+    if (c === "閱讀心得" || c === "讀後感" || c === "心得感想") return "心得";
     return c;
   }
 
   function isThoughtCategory(cat) {
+    if (window.SBSections && window.SBSections.isThoughtCategory) {
+      return window.SBSections.isThoughtCategory(cat);
+    }
     var n = normalizeCategory(cat);
     return n === "隨想" || n === "日記" || n === "感想";
   }
@@ -282,7 +288,27 @@
 
   async function renderList(container) {
     var section = container.getAttribute("data-section");
+    var listMode = container.getAttribute("data-list-mode") || "";
     var client = window.SB.client();
+
+    if (listMode === "academic") {
+      var isAdmin = false;
+      try {
+        if (window.SBAuth && window.SBAuth.isAdmin) {
+          isAdmin = !!(await window.SBAuth.isAdmin());
+        }
+      } catch (e) {
+        isAdmin = false;
+      }
+      if (!isAdmin) {
+        container.innerHTML =
+          '<div style="text-align:center;padding:48px 16px;opacity:.85;max-width:28rem;margin:0 auto;line-height:1.7;">' +
+          "<p>學科筆記僅管理員可見。</p>" +
+          '<p style="opacity:.75;font-size:.95em;">請先到 <a href="admin.html">後台</a> 以管理員帳號登入後再回來。</p>' +
+          "</div>";
+        return;
+      }
+    }
 
     var res;
     try {
@@ -306,6 +332,9 @@
     }
 
     var rows = res.data || [];
+    if (window.SBSections && window.SBSections.filterByListMode) {
+      rows = window.SBSections.filterByListMode(rows, listMode);
+    }
     container.innerHTML = "";
     if (!rows.length) {
       container.innerHTML =
@@ -348,6 +377,27 @@
     }
 
     var a = res.data[0];
+    if (
+      window.SBSections &&
+      window.SBSections.isAcademicCategory &&
+      window.SBSections.isAcademicCategory(a.category)
+    ) {
+      var isAdmin = false;
+      try {
+        if (window.SBAuth && window.SBAuth.isAdmin) {
+          isAdmin = !!(await window.SBAuth.isAdmin());
+        }
+      } catch (e) {
+        isAdmin = false;
+      }
+      if (!isAdmin) {
+        if (titleEl) titleEl.innerText = "無法檢視";
+        if (statusEl) statusEl.innerText = "管理員限定";
+        contentEl.innerHTML =
+          "<p>這篇學科筆記僅管理員可見。請先到 <a href=\"admin.html\">後台</a> 登入。</p>";
+        return true;
+      }
+    }
     if (titleEl) titleEl.innerText = a.title || "";
     if (statusEl)
       statusEl.innerText =

@@ -1,14 +1,14 @@
-﻿<!DOCTYPE HTML>
+<!DOCTYPE HTML>
 <html>
 
 <head>
-    <title>LYZ's website - 筆記系統</title>
+    <title>LYZ's website - 文學創作</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;" />
     <link rel="stylesheet" href="assets/css/main.css" />
     <style>
-        /* 分頁與列表模式：媒體/輪播樣式見 site-custom.css §N */
+        /* 分頁與列表模式：媒體/輪播樣式見 site-custom.css?v=ia-essay-1 §N */
         #pagination-controls {
             display: flex;
             justify-content: center;
@@ -187,7 +187,7 @@
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
     <!-- Site Custom CSS: dark mode + image styles -->
-    <link rel="stylesheet" href="assets/css/site-custom.css?v=bg-glass-2" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=ia-essay-1" />
 </head>
 
 <body class="is-preload">
@@ -220,20 +220,22 @@
     <canvas id="sakura-canvas"
         style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-    <!-- 全域導航器 -->
+        <!-- 全域導航器 -->
     <div id="global-nav"
-        style="position: fixed; top: 20px; right: 20px; z-index: 10000; background: rgba(0, 0, 0, 0.5); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; gap: 15px;">
+        style="position: fixed; top: 20px; right: 20px; z-index: 10000; background: rgba(0, 0, 0, 0.5); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; gap: 15px; flex-wrap: wrap; max-width: min(92vw, 520px); justify-content: flex-end;">
         <a href="index.html"
             style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首頁</a>
         <a href="directory.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">雜記</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">隨筆</a>
         <a href="literature.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">文學</a>
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">文學創作</a>
         <a href="about.html"
             style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">關於我</a>
+        <a href="academic.html" class="nav-admin-only" hidden
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">學科筆記</a>
     </div>
 
-    <!--  右下角影片控制 -->
+<!--  右下角影片控制 -->
     <div id="video-controls">
         <button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
             style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
@@ -250,9 +252,10 @@
         <nav id="nav">
             <ul class="links">
                 <li><a href="index.html">首頁</a></li>
-                <li><a href="directory.html">雜記</a></li>
-                <li class="active"><a href="literature.html">文學</a></li>
+                <li><a href="directory.html">隨筆</a></li>
+                <li class="active"><a href="literature.html">文學創作</a></li>
                 <li><a href="about.html">關於我</a></li>
+                <li class="nav-admin-only" hidden><a href="academic.html">學科筆記</a></li>
             </ul>
             <ul class="icons">
                 <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
@@ -269,10 +272,10 @@
         <div id="main">
             <article class="post featured">
                 <header class="major">
-                    <span class="date">認真書寫</span>
-                    <h2><a href="#">文學</a></h2>
-                    <p>這裡放比較完整、比較用心的文章：閱讀心得、創作、整理過的隨筆與長文。<br /><br />
-                        碎念、日記、隨手感想請到「雜記」。這區留給願意慢慢讀的文字。
+                    <span class="date">創作</span>
+                    <h2><a href="#">文學創作</a></h2>
+                    <p>小說、詩、劇本與長篇創作。<br /><br />
+                        碎念、日記、閱讀心得請到「隨筆」。這區留給虛構與文學作品。
                     </p>
                 </header>
             </article>
@@ -285,9 +288,7 @@
                         style="display:inline-block; margin-right: 10px; margin-bottom: 0; font-weight: bold;">分類篩選:</label>
                     <select id="filter-category" style="display:inline-block; width: auto; min-width: 150px;">
                         <option value="all">所有分類 (All)</option>
-                        <option value="隨筆">隨筆</option>
-                        <option value="心得">閱讀心得</option>
-                        <option value="創作">文學創作</option>
+                        <option value="創作">創作</option>
                         <option value="長文">長文</option>
                     </select>
                 </div>
@@ -635,9 +636,10 @@
     <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/supabase-client.js"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/cms-public.js?v=sections-zaj-1"></script>
+    <script src="assets/js/site-sections.js?v=ia-1"></script>
+<script src="assets/js/cms-public.js?v=ia-essay-1"></script>
 
-    <script src="assets/js/page-list.js?v=editorial-card-1"></script>
+    <script src="assets/js/page-list.js?v=ia-essay-1"></script>
 </body>
 
 </html>

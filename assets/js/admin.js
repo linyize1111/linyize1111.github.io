@@ -7,23 +7,32 @@
 (function () {
   "use strict";
 
-  // literature = 文學（較完整、認真的書寫）
-  // notes     = 雜記（隨手寫、碎念、感想）— 原「學科筆記」已改用途
+  // literature = 文學創作
+  // notes + essay list = 隨筆（含心得）
+  // notes + academic list = 學科筆記（導覽僅 admin）
+  var ACADEMIC_CATEGORIES = ["資訊安全", "機器學習", "程式語言", "人文"];
   var CATEGORIES = {
-    literature: ["隨筆", "心得", "創作", "長文"],
-    notes: ["隨想", "日記", "感想"],
+    literature: ["創作", "長文"],
+    notes: ["隨想", "日記", "感想", "心得", "隨筆"],
+    academic: ["資訊安全", "機器學習", "程式語言", "人文"],
   };
   var CATEGORY_CHIPS = {
     literature: [
-      { cat: "隨筆", title: "整理過的散文、認真書寫" },
-      { cat: "心得", title: "閱讀／觀影／作品感想" },
       { cat: "創作", title: "小說、詩、劇本" },
-      { cat: "長文", title: "長篇論述" },
+      { cat: "長文", title: "長篇創作／論述" },
     ],
     notes: [
       { cat: "隨想", title: "碎念、抱怨、隨便發" },
       { cat: "日記", title: "當天生活紀錄、札記" },
       { cat: "感想", title: "短感想、隨手記" },
+      { cat: "心得", title: "閱讀／觀影心得（建議放隨筆區）" },
+      { cat: "隨筆", title: "整理過的散文" },
+    ],
+    academic: [
+      { cat: "資訊安全", title: "資安筆記" },
+      { cat: "機器學習", title: "ML 筆記" },
+      { cat: "程式語言", title: "程式學習" },
+      { cat: "人文", title: "其他學科／人文" },
     ],
   };
   var MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -127,9 +136,43 @@
     refreshCategoryChips();
   }
 
+  async function loadArticles() {
+    var uiSection = $("list-section").value;
+    var section = dbSection(uiSection);
+    var listEl = $("article-list");
+    listEl.innerHTML = '<p class="muted"><span class="spinner-inline"></span> 載入中…</p>';
+    var res = await client
+      .from("articles")
+      .select("id,title,slug,category,status,updated_at,section,sort_index")
+      .eq("section", section)
+      .order("sort_index", { ascending: false })
+      .order("updated_at", { ascending: false });
+    if (res.error) { listEl.innerHTML = '<p class="muted">讀取失敗：' + res.error.message + "</p>"; return; }
+    articlesCache = (res.data || []).filter(function (a) {
+      var academic = isAcademicCategory(a.category);
+      if (uiSection === "academic") return academic;
+      if (uiSection === "notes") return !academic;
+      return true;
+    });
+    if (!articlesCache.length) { listEl.innerHTML = '<p class="muted">此分區尚無文章。</p>'; return; }
+    renderArticleList(articlesCache);
+  }
+
   // ---------- 文章清單 ----------
-  function sectionLabel(section) {
-    return section === "notes" ? "雜記" : "文學";
+  function sectionLabel(section, category) {
+    if (section === "notes" && isAcademicCategory(category)) return "學科筆記";
+    if (section === "notes") return "隨筆";
+    if (section === "academic") return "學科筆記";
+    return "文學創作";
+  }
+
+  function dbSection(uiSection) {
+    return uiSection === "academic" ? "notes" : uiSection;
+  }
+
+  function isAcademicCategory(cat) {
+    var c = normalizeCategory(cat);
+    return ACADEMIC_CATEGORIES.indexOf(c) !== -1;
   }
 
   function refreshCategoryChips() {
@@ -153,10 +196,16 @@
         .join("");
     }
     if (guide) {
-      guide.innerHTML =
-        section === "notes"
-          ? "<strong>隨想</strong>＝碎念／隨便發　<strong>日記</strong>＝當天生活　<strong>感想</strong>＝短感想／隨手記<br /><span style=\"opacity:.85\">這區是雜記：輕量、不必完美。</span>"
-          : "<strong>隨筆</strong>＝認真整理的散文　<strong>心得</strong>＝讀書／作品　<strong>創作</strong>＝小說詩劇　<strong>長文</strong>＝長篇<br /><span style=\"opacity:.85\">這區是文學：較完整、較用心的書寫。</span>";
+      if (section === "notes") {
+        guide.innerHTML =
+          "<strong>隨想</strong>＝碎念　<strong>日記</strong>＝當天生活　<strong>感想</strong>＝短感想　<strong>心得</strong>＝閱讀／觀影　<strong>隨筆</strong>＝整理過的散文<br /><span style=\"opacity:.85\">閱讀心得請放「隨筆」區，不要放文學創作。</span>";
+      } else if (section === "academic") {
+        guide.innerHTML =
+          "學科筆記：僅管理員導覽可見。分類選資安／機器學習／程式／人文。";
+      } else {
+        guide.innerHTML =
+          "<strong>創作</strong>＝小說／詩／劇本　<strong>長文</strong>＝長篇創作或文學論述<br /><span style=\"opacity:.85\">讀書心得請改放到「隨筆」。</span>";
+      }
     }
     syncCategoryChips();
   }
@@ -183,7 +232,7 @@
     }
     if (ctxEl) {
       ctxEl.textContent =
-        sectionLabel(section) +
+        sectionLabel(section, cat) +
         " · " +
         (cat || "未分類") +
         " · " +
@@ -248,22 +297,6 @@
       div.appendChild(btn);
       listEl.appendChild(div);
     });
-  }
-
-  async function loadArticles() {
-    var section = $("list-section").value;
-    var listEl = $("article-list");
-    listEl.innerHTML = '<p class="muted"><span class="spinner-inline"></span> 載入中…</p>';
-    var res = await client
-      .from("articles")
-      .select("id,title,slug,category,status,updated_at,section,sort_index")
-      .eq("section", section)
-      .order("sort_index", { ascending: false })
-      .order("updated_at", { ascending: false });
-    if (res.error) { listEl.innerHTML = '<p class="muted">讀取失敗：' + res.error.message + "</p>"; return; }
-    articlesCache = res.data || [];
-    if (!articlesCache.length) { listEl.innerHTML = '<p class="muted">此分區尚無文章。</p>'; return; }
-    renderArticleList(articlesCache);
   }
 
   // ---------- images editor ----------
@@ -508,9 +541,11 @@
       var a = res.data;
       $("f-id").value = a.id;
       editingArticleId = a.id;
-      $("f-section").value = a.section;
+      var catNorm = normalizeCategory(a.category || "");
+      $("f-section").value =
+        a.section === "notes" && isAcademicCategory(catNorm) ? "academic" : a.section;
       $("f-status").value = a.status;
-      $("f-category").value = normalizeCategory(a.category || "");
+      $("f-category").value = catNorm;
       $("f-title").value = a.title || "";
       $("f-slug").value = a.slug || "";
       $("f-summary").value = a.summary || "";
@@ -573,7 +608,7 @@
     if (c === "短思" || c === "碎念" || c === "短文") return "隨想";
     if (c === "生活札記" || c === "札記" || c === "日常") return "日記";
     if (c === "短感想" || c === "隨感") return "感想";
-    if (c === "閱讀心得" || c === "讀後感") return "心得";
+    if (c === "閱讀心得" || c === "讀後感" || c === "心得感想") return "心得";
     if (c === "文學創作" || c === "小說" || c === "詩") return "創作";
     return c;
   }
@@ -587,7 +622,7 @@
     return isThoughtCategory(cat);
   }
 
-  /** 謹慎推測分類（依分區）：雜記偏隨想／日記／感想；文學偏隨筆／心得／創作／長文 */
+  /** 謹慎推測分類 */
   function suggestCategory(title, body, section, existing) {
     var cur = normalizeCategory(existing || "");
     if (cur) return cur;
@@ -596,24 +631,28 @@
     var n = plain.length;
     var sec = section || "literature";
 
+    if (sec === "academic") {
+      if (/資訊安全|資安|security/i.test(text)) return "資訊安全";
+      if (/機器學習|machine\s*learning|\bml\b/i.test(text)) return "機器學習";
+      if (/python|java|程式|程式語言|coding/i.test(text)) return "程式語言";
+      return "人文";
+    }
+
     if (sec === "notes") {
+      if (/閱讀心得|讀後感|書評|觀後感|讀書筆記|如何讀一本書|劇情大綱/.test(text)) {
+        return "心得";
+      }
       if (/日記|生活札記|札記|今天的|凌晨.*(荒謬|平凡|見證)|入學日記|與海對話/.test(text)) {
         return "日記";
       }
-      if (/感想|有感|想到|突然/.test(text) && n > SHORT_CHARS) {
-        return "感想";
-      }
+      if (/感想|有感/.test(text) && n > SHORT_CHARS) return "感想";
+      if (n > SHORT_CHARS && n < LONG_CHARS) return "隨筆";
       return "隨想";
     }
 
-    if (/創作|短篇小說|劇本|詩集|四幕|小說/.test(text) && !/閱讀心得|讀後感/.test(text)) {
-      return "創作";
-    }
-    if (/閱讀心得|讀後感|書評|觀後感|讀書筆記|如何讀一本書|劇情大綱/.test(text)) {
-      return "心得";
-    }
+    if (/創作|短篇小說|劇本|詩集|四幕|小說/.test(text)) return "創作";
     if (n >= LONG_CHARS) return "長文";
-    return "隨筆";
+    return "創作";
   }
 
   function syncCategoryChips() {
@@ -739,8 +778,9 @@
       if (/publish|發佈|发布/i.test(v)) out.status = "published";
       else if (/draft|草稿/i.test(v)) out.status = "draft";
     } else if (k === "section" || k === "分區") {
-      if (/note|筆記|學科|雜記|隨想區/i.test(v)) out.section = "notes";
-      else if (/liter|文學|隨筆/i.test(v)) out.section = "literature";
+      if (/academic|學科/i.test(v)) out.section = "academic";
+      else if (/note|雜記|隨筆|隨想區/i.test(v)) out.section = "notes";
+      else if (/liter|文學|創作區/i.test(v)) out.section = "literature";
     } else if (k === "length" || k === "篇幅" || k === "kind") {
       if (/短|隨想|抱怨|碎念|short|thought/i.test(v)) out.lengthKind = "short";
       else if (/長|long/i.test(v)) out.lengthKind = "long";
@@ -965,8 +1005,9 @@
 
     var category = ensureCategoryOnSave();
     var tags = $("f-tags").value.split(/[,，、]+/).map(function (t) { return t.trim(); }).filter(Boolean);
+    var uiSection = $("f-section").value;
     var payload = {
-      section: $("f-section").value,
+      section: dbSection(uiSection),
       slug: slug,
       title: title,
       summary: $("f-summary").value.trim(),

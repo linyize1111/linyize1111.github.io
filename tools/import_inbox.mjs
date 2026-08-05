@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * import_inbox.mjs — 從 import-inbox/{literature,notes}/*.md 匯入 Supabase articles
+ * import_inbox.mjs — 從 import-inbox/{literature,notes,academic}/*.md 匯入 Supabase articles
  *
  * 檔名 → 預設標題與 slug；可選 YAML frontmatter 覆寫。
+ * academic/ 寫入 DB section=notes，並用學科分類區隔（僅 admin 清單可見）。
  * Service key 僅從環境變數讀取，絕不寫入 repo。
  *
  *   node tools/import_inbox.mjs --dry-run
@@ -40,7 +41,8 @@ function normalizeCategory(cat) {
   if (!c) return "";
   if (["短思", "碎念", "短文"].includes(c)) return "隨想";
   if (["生活札記", "札記", "日常"].includes(c)) return "日記";
-  if (["閱讀心得", "讀後感"].includes(c)) return "心得";
+  if (["短感想", "隨感"].includes(c)) return "感想";
+  if (["閱讀心得", "讀後感", "心得感想"].includes(c)) return "心得";
   if (["文學創作", "小說", "詩"].includes(c)) return "創作";
   return c;
 }
@@ -55,30 +57,36 @@ function plainSummary(text, maxLen = 280) {
     .slice(0, maxLen);
 }
 
-function suggestCategory(title, body, section) {
+const ACADEMIC_CATEGORIES = ["資訊安全", "機器學習", "程式語言", "人文"];
+
+function suggestCategory(title, body, folder) {
   const text = `${title}\n${body}`;
   const plain = text.replace(/\s+/g, "");
   const n = plain.length;
-  const sec = section || "literature";
+  const sec = folder || "literature";
+
+  if (sec === "academic") {
+    if (/資訊安全|資安|security/i.test(text)) return "資訊安全";
+    if (/機器學習|machine\s*learning|\bml\b/i.test(text)) return "機器學習";
+    if (/python|java|程式|程式語言|coding/i.test(text)) return "程式語言";
+    return "人文";
+  }
 
   if (sec === "notes") {
+    if (/閱讀心得|讀後感|書評|觀後感|讀書筆記|如何讀一本書|劇情大綱/.test(text)) {
+      return "心得";
+    }
     if (/日記|生活札記|札記|今天的|凌晨.*(荒謬|平凡|見證)|入學日記|與海對話/.test(text)) {
       return "日記";
     }
-    if (/感想|有感|想到|突然/.test(text) && n > SHORT_CHARS) {
-      return "感想";
-    }
+    if (/感想|有感/.test(text) && n > SHORT_CHARS) return "感想";
+    if (n > SHORT_CHARS && n < LONG_CHARS) return "隨筆";
     return "隨想";
   }
 
-  if (/創作|短篇小說|劇本|詩集|四幕|小說/.test(text) && !/閱讀心得|讀後感/.test(text)) {
-    return "創作";
-  }
-  if (/閱讀心得|讀後感|書評|觀後感|讀書筆記|如何讀一本書|劇情大綱/.test(text)) {
-    return "心得";
-  }
+  if (/創作|短篇小說|劇本|詩集|四幕|小說/.test(text)) return "創作";
   if (n >= LONG_CHARS) return "長文";
-  return "隨筆";
+  return "創作";
 }
 
 function titleFromFilename(filename) {
@@ -122,9 +130,10 @@ function parseFrontmatter(raw) {
   return { meta, body };
 }
 
-function readInboxSection(section) {
-  const dir = path.join(INBOX, section);
+function readInboxSection(folder) {
+  const dir = path.join(INBOX, folder);
   if (!fs.existsSync(dir)) return [];
+  const dbSection = folder === "academic" ? "notes" : folder;
   const rows = [];
   for (const name of fs.readdirSync(dir)) {
     if (!name.toLowerCase().endsWith(".md")) continue;
@@ -138,7 +147,10 @@ function readInboxSection(section) {
     let slug = meta.slug || slugify(fileTitle) || slugify(title) || slugify(name.replace(/\.md$/i, ""));
     if (!slug) slug = "post-" + Date.now().toString(36);
 
-    const category = normalizeCategory(meta.category) || suggestCategory(title, body, section);
+    let category = normalizeCategory(meta.category) || suggestCategory(title, body, folder);
+    if (folder === "academic" && !ACADEMIC_CATEGORIES.includes(category)) {
+      category = suggestCategory(title, body, "academic");
+    }
     const summary = meta.summary || plainSummary(body, 120);
     const tags = meta.tags || [];
     const status = meta.status || (PUBLISH ? "published" : "draft");
@@ -147,7 +159,7 @@ function readInboxSection(section) {
       : null;
 
     rows.push({
-      section,
+      section: dbSection,
       slug,
       title,
       summary,
@@ -161,6 +173,7 @@ function readInboxSection(section) {
       sort_index: 0,
       published_at: status === "published" ? pub : null,
       _file: name,
+      _folder: folder,
     });
   }
   return rows;
@@ -201,17 +214,19 @@ async function main() {
   const rows = [
     ...readInboxSection("literature"),
     ...readInboxSection("notes"),
+    ...readInboxSection("academic"),
   ];
 
   if (!CLEAR_ONLY) {
     console.log(`import-inbox 找到 ${rows.length} 篇 .md：`);
     for (const r of rows) {
+      const label = r._folder === "academic" ? "academic→notes" : r.section;
       console.log(
-        `  [${r.section}] ${r._file}\n    → 標題「${r.title}」 slug=${r.slug} 分類=${r.category} 狀態=${r.status}`
+        `  [${label}] ${r._file}\n    → 標題「${r.title}」 slug=${r.slug} 分類=${r.category} 狀態=${r.status}`
       );
     }
     if (!rows.length) {
-      console.log("\n收件匣是空的。請把 .md 放到 import-inbox/literature/ 或 import-inbox/notes/");
+      console.log("\n收件匣是空的。請把 .md 放到 import-inbox/{literature,notes,academic}/");
     }
   }
 

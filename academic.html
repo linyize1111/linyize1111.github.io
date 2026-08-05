@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>LYZ's website - 隨筆</title>
+    <title>LYZ's website - 學科筆記</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;" />
@@ -249,10 +249,10 @@
         <nav id="nav">
             <ul class="links">
                 <li><a href="index.html">首頁</a></li>
-                <li class="active"><a href="directory.html">隨筆</a></li>
+                <li><a href="directory.html">隨筆</a></li>
                 <li><a href="literature.html">文學創作</a></li>
                 <li><a href="about.html">關於我</a></li>
-                <li class="nav-admin-only" hidden><a href="academic.html">學科筆記</a></li>
+                <li class="active nav-admin-only" hidden><a href="academic.html">學科筆記</a></li>
             </ul>
             <ul class="icons">
                 <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
@@ -269,10 +269,10 @@
         <div id="main">
             <article class="post featured">
                 <header class="major">
-                    <span class="date">生活與閱讀</span>
-                    <h2><a href="#">隨筆</a></h2>
-                    <p>碎念、日記、感想、閱讀心得、整理過的散文都在這裡。<br /><br />
-                        不必完美——只是留下當下的痕跡。小說、詩、劇本請到「文學創作」。
+                    <span class="date">僅管理員</span>
+                    <h2><a href="#">學科筆記</a></h2>
+                    <p>資安、機器學習、程式語言與人文等課程／自學筆記。<br /><br />
+                        此區僅在管理員登入後顯示於導覽；訪客無法從選單進入。
                     </p>
                 </header>
             </article>
@@ -285,11 +285,10 @@
                         style="display:inline-block; margin-right: 10px; margin-bottom: 0; font-weight: bold;">分類篩選:</label>
                     <select id="filter-category" style="display:inline-block; width: auto; min-width: 150px;">
                         <option value="all">所有分類 (All)</option>
-                        <option value="隨想">隨想</option>
-                        <option value="日記">日記</option>
-                        <option value="感想">感想</option>
-                        <option value="心得">心得</option>
-                        <option value="隨筆">隨筆</option>
+                        <option value="資訊安全">資訊安全</option>
+                        <option value="機器學習">機器學習</option>
+                        <option value="程式語言">程式語言</option>
+                        <option value="人文">人文</option>
                     </select>
                 </div>
                 <div>
@@ -307,7 +306,7 @@
                 </div>
             </div>
 
-            <section class="posts" id="posts-container" data-section="notes" data-list-mode="essay">
+            <section class="posts" id="posts-container" data-section="notes" data-list-mode="academic">
                 <article class="note-item" data-category="資訊安全" data-upload="2023-10-01" data-edit="2023-11-20"
                     data-title="資訊安全基礎知識">
                     <header>

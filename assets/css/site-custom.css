@@ -1939,3 +1939,11 @@ section.post.is-article-reading > header.major p {
         line-height: 1.88;
     }
 }
+/* ============================================================
+   Z. Admin-only nav (¾Ç¬ìµ§°O)
+   ============================================================ */
+.nav-admin-only[hidden],
+li.nav-admin-only[hidden],
+a.nav-admin-only[hidden] {
+    display: none !important;
+}
