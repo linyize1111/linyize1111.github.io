@@ -103,12 +103,14 @@
     var c = String(cat || "").trim();
     if (c === "短思" || c === "碎念" || c === "短文") return "隨想";
     if (c === "生活札記" || c === "札記" || c === "日常") return "日記";
+    if (c === "短感想" || c === "隨感") return "感想";
     if (c === "閱讀心得" || c === "讀後感") return "心得";
     return c;
   }
 
   function isThoughtCategory(cat) {
-    return normalizeCategory(cat) === "隨想" || normalizeCategory(cat) === "日記";
+    var n = normalizeCategory(cat);
+    return n === "隨想" || n === "日記" || n === "感想";
   }
 
   function shortSummary(text, maxLen) {

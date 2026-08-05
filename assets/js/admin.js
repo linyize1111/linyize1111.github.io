@@ -7,9 +7,24 @@
 (function () {
   "use strict";
 
+  // literature = 文學（較完整、認真的書寫）
+  // notes     = 雜記（隨手寫、碎念、感想）— 原「學科筆記」已改用途
   var CATEGORIES = {
-    literature: ["隨想", "日記", "隨筆", "心得", "創作", "長文"],
-    notes: ["資訊安全", "機器學習", "程式語言", "人文", "隨想", "日記", "長文"],
+    literature: ["隨筆", "心得", "創作", "長文"],
+    notes: ["隨想", "日記", "感想"],
+  };
+  var CATEGORY_CHIPS = {
+    literature: [
+      { cat: "隨筆", title: "整理過的散文、認真書寫" },
+      { cat: "心得", title: "閱讀／觀影／作品感想" },
+      { cat: "創作", title: "小說、詩、劇本" },
+      { cat: "長文", title: "長篇論述" },
+    ],
+    notes: [
+      { cat: "隨想", title: "碎念、抱怨、隨便發" },
+      { cat: "日記", title: "當天生活紀錄、札記" },
+      { cat: "感想", title: "短感想、隨手記" },
+    ],
   };
   var MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
   var SHORT_CHARS = 450;
@@ -109,11 +124,41 @@
     dl.innerHTML = (CATEGORIES[section] || [])
       .map(function (c) { return '<option value="' + c + '"></option>'; })
       .join("");
+    refreshCategoryChips();
   }
 
   // ---------- 文章清單 ----------
   function sectionLabel(section) {
-    return section === "notes" ? "學科筆記" : "文學";
+    return section === "notes" ? "雜記" : "文學";
+  }
+
+  function refreshCategoryChips() {
+    var row = $("category-quick");
+    var guide = document.querySelector(".cat-guide");
+    var section = ($("f-section") && $("f-section").value) || "literature";
+    var chips = CATEGORY_CHIPS[section] || CATEGORY_CHIPS.literature;
+    if (row) {
+      row.innerHTML = chips
+        .map(function (c) {
+          return (
+            '<button type="button" class="chip" data-cat="' +
+            c.cat +
+            '" title="' +
+            c.title +
+            '">' +
+            c.cat +
+            "</button>"
+          );
+        })
+        .join("");
+    }
+    if (guide) {
+      guide.innerHTML =
+        section === "notes"
+          ? "<strong>隨想</strong>＝碎念／隨便發　<strong>日記</strong>＝當天生活　<strong>感想</strong>＝短感想／隨手記<br /><span style=\"opacity:.85\">這區是雜記：輕量、不必完美。</span>"
+          : "<strong>隨筆</strong>＝認真整理的散文　<strong>心得</strong>＝讀書／作品　<strong>創作</strong>＝小說詩劇　<strong>長文</strong>＝長篇<br /><span style=\"opacity:.85\">這區是文學：較完整、較用心的書寫。</span>";
+    }
+    syncCategoryChips();
   }
 
   function statusLabel(status) {
@@ -527,6 +572,7 @@
     var c = String(cat || "").trim();
     if (c === "短思" || c === "碎念" || c === "短文") return "隨想";
     if (c === "生活札記" || c === "札記" || c === "日常") return "日記";
+    if (c === "短感想" || c === "隨感") return "感想";
     if (c === "閱讀心得" || c === "讀後感") return "心得";
     if (c === "文學創作" || c === "小說" || c === "詩") return "創作";
     return c;
@@ -534,14 +580,14 @@
 
   function isThoughtCategory(cat) {
     var c = normalizeCategory(cat);
-    return c === "隨想" || c === "日記";
+    return c === "隨想" || c === "日記" || c === "感想";
   }
 
   function isLightListCategory(cat) {
     return isThoughtCategory(cat);
   }
 
-  /** 謹慎推測分類：有明確訊號才標，否則短文→隨想、長文→長文、其餘→隨筆 */
+  /** 謹慎推測分類（依分區）：雜記偏隨想／日記／感想；文學偏隨筆／心得／創作／長文 */
   function suggestCategory(title, body, section, existing) {
     var cur = normalizeCategory(existing || "");
     if (cur) return cur;
@@ -550,22 +596,24 @@
     var n = plain.length;
     var sec = section || "literature";
 
+    if (sec === "notes") {
+      if (/日記|生活札記|札記|今天的|凌晨.*(荒謬|平凡|見證)|入學日記|與海對話/.test(text)) {
+        return "日記";
+      }
+      if (/感想|有感|想到|突然/.test(text) && n > SHORT_CHARS) {
+        return "感想";
+      }
+      return "隨想";
+    }
+
     if (/創作|短篇小說|劇本|詩集|四幕|小說/.test(text) && !/閱讀心得|讀後感/.test(text)) {
       return "創作";
     }
     if (/閱讀心得|讀後感|書評|觀後感|讀書筆記|如何讀一本書|劇情大綱/.test(text)) {
       return "心得";
     }
-    if (/日記|生活札記|札記|今天的|凌晨.*(荒謬|平凡|見證)|入學日記|與海對話/.test(text)) {
-      return "日記";
-    }
-    if (/抱怨|碎念|隨便|幹|靠北|煩死|突然想到|隨便發/.test(text) || n <= SHORT_CHARS) {
-      return "隨想";
-    }
-    if (n >= LONG_CHARS) {
-      return sec === "notes" ? "人文" : "長文";
-    }
-    return sec === "notes" ? "人文" : "隨筆";
+    if (n >= LONG_CHARS) return "長文";
+    return "隨筆";
   }
 
   function syncCategoryChips() {
@@ -691,7 +739,7 @@
       if (/publish|發佈|发布/i.test(v)) out.status = "published";
       else if (/draft|草稿/i.test(v)) out.status = "draft";
     } else if (k === "section" || k === "分區") {
-      if (/note|筆記|學科/i.test(v)) out.section = "notes";
+      if (/note|筆記|學科|雜記|隨想區/i.test(v)) out.section = "notes";
       else if (/liter|文學|隨筆/i.test(v)) out.section = "literature";
     } else if (k === "length" || k === "篇幅" || k === "kind") {
       if (/短|隨想|抱怨|碎念|short|thought/i.test(v)) out.lengthKind = "short";

@@ -61,22 +61,24 @@ function suggestCategory(title, body, section) {
   const n = plain.length;
   const sec = section || "literature";
 
+  if (sec === "notes") {
+    if (/日記|生活札記|札記|今天的|凌晨.*(荒謬|平凡|見證)|入學日記|與海對話/.test(text)) {
+      return "日記";
+    }
+    if (/感想|有感|想到|突然/.test(text) && n > SHORT_CHARS) {
+      return "感想";
+    }
+    return "隨想";
+  }
+
   if (/創作|短篇小說|劇本|詩集|四幕|小說/.test(text) && !/閱讀心得|讀後感/.test(text)) {
     return "創作";
   }
   if (/閱讀心得|讀後感|書評|觀後感|讀書筆記|如何讀一本書|劇情大綱/.test(text)) {
     return "心得";
   }
-  if (/日記|生活札記|札記|今天的|凌晨.*(荒謬|平凡|見證)|入學日記|與海對話/.test(text)) {
-    return "日記";
-  }
-  if (/抱怨|碎念|隨便|幹|靠北|煩死|突然想到|隨便發/.test(text) || n <= SHORT_CHARS) {
-    return "隨想";
-  }
-  if (n >= LONG_CHARS) {
-    return sec === "notes" ? "人文" : "長文";
-  }
-  return sec === "notes" ? "人文" : "隨筆";
+  if (n >= LONG_CHARS) return "長文";
+  return "隨筆";
 }
 
 function titleFromFilename(filename) {
