@@ -33,7 +33,7 @@ html[data-theme] table {
     --panel-shadow: 0 2px 16px rgba(0, 0, 0, 0.10);
     --panel-blur: none;
 
-    /* Article cards (must stay theme-aware � never hardcode opaque white) */
+    /* Article cards (must stay theme-aware � never hardcode opaque white) */
     --card-bg: rgba(255, 255, 255, 0.97);
     --card-border: rgba(0, 0, 0, 0.06);
     --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -154,7 +154,7 @@ html[data-theme] table {
    C. STRUCTURAL OVERRIDES PER THEME
    ============================================================ */
 
-/* ?? C1. #main (was solid white #ffffff � must be overridden) ?? */
+/* ?? C1. #main (was solid white #ffffff � must be overridden) ?? */
 [data-theme="dark"] #main,
 [data-theme="glass"] #main {
     background-color: var(--panel-bg);
@@ -170,7 +170,7 @@ html[data-theme] table {
     border-top-color: var(--panel-border);
 }
 
-/* Glass: truly minimal panel � no real background */
+/* Glass: truly minimal panel � no real background */
 [data-theme="glass"] #main {
     background-color: rgba(8, 12, 22, 0.08);
     box-shadow: none;
@@ -690,7 +690,7 @@ html[data-theme] table {
 }
 
 /* ============================================================
-   E. BACKGROUND SCROLL � Requirement 4
+   E. BACKGROUND SCROLL � Requirement 4
    ============================================================ */
 
 /*
@@ -725,7 +725,7 @@ body {
     z-index: 1;
 }
 
-/* Soft tint over the video � keep image/video visible underneath */
+/* Soft tint over the video � keep image/video visible underneath */
 #wrapper > .bg {
     background-attachment: fixed !important;
     background-position: center center !important;
@@ -743,7 +743,7 @@ body {
    F. IMAGE BEAUTIFICATION
    ============================================================ */
 
-/* ?? Markdown images � bigger, centred, quality ?? */
+/* ?? Markdown images � bigger, centred, quality ?? */
 .markdown-body img {
     display: block;
     max-width: min(100%, 960px);
@@ -806,7 +806,7 @@ article.post .image.main img {
 }
 
 /* ============================================================
-   H. HERO SPACER � ??????????
+   H. HERO SPACER � ??????????
    ============================================================ */
 
 #page-hero-spacer {
@@ -925,9 +925,10 @@ body:not(:has(#intro)) #header {
     --font-size-3xl: clamp(2rem, 1.6rem + 1.6vw, 2.85rem);
     --leading-body: 1.85;
     --leading-tight: 1.28;
-    /* ??????????????? 42�48 ?????????? */
+    /* ??????????????? 42�48 ?????????? */
     --measure: min(42rem, 94%);
-    --measure-article: min(48rem, 94%);
+    --measure-article: min(40rem, 61.8vw);
+    --article-pad-inline: clamp(1.35rem, 4.2vw, 3rem);
     --space-xs: 0.35rem;
     --space-sm: 0.65rem;
     --space-md: 1rem;
@@ -1043,7 +1044,7 @@ header.major > p {
 /* ============================================================
    K. ARTICLE CARDS & COVERS
    ============================================================ */
-/* List cards only � do NOT style #main > .post (reading / featured shell) */
+/* List cards only � do NOT style #main > .post (reading / featured shell) */
 .posts article,
 article.note-item,
 #posts-container.posts > article.note-item,
@@ -1866,40 +1867,66 @@ html[data-theme="dark"] #posts-container.posts > article.note-item.is-thought {
     margin-top: 1rem;
 }
 /* ?????????????? */
+/* 文章閱讀頁：左右對稱置中；欄寬貼近正文（避免大片空洞造成視覺偏移） */
 #markdown-container,
 section.post.is-article-reading {
     text-align: left;
 }
 
-/* ???????????????????????????? */
 #main:has(section.post.is-article-reading),
 #main:has(#markdown-container) {
-    max-width: min(90rem, 94vw);
-    width: calc(100% - 2.5rem);
+    /* 外框 = 正文寬 + 左右等寬內距；整塊在視窗水平置中 */
+    width: calc(100% - 2rem);
+    max-width: calc(var(--measure-article) + (2 * var(--article-pad-inline)));
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
 }
 
 #main > section.post.is-article-reading,
 #main > .post.is-article-reading {
-    padding: 4.5rem 3.25rem 3.5rem;
+    padding-top: 3.25rem;
+    padding-bottom: 2.75rem;
+    padding-left: var(--article-pad-inline);
+    padding-right: var(--article-pad-inline);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
 }
 
-@media screen and (max-width: 1280px) {
-    #main > section.post.is-article-reading,
-    #main > .post.is-article-reading {
-        padding: 3.5rem 2.25rem 2.75rem;
-    }
+#main > section.post.is-article-reading > header.major,
+#main > .post.is-article-reading > header.major,
+#main > section.post.is-article-reading > #markdown-container,
+#main > .post.is-article-reading > #markdown-container {
+    width: 100%;
+    max-width: var(--measure-article);
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
 }
 
-@media screen and (max-width: 736px) {
-    #main:has(section.post.is-article-reading),
-    #main:has(#markdown-container) {
-        width: calc(100% - 1rem);
-        max-width: 100%;
-    }
-    #main > section.post.is-article-reading,
-    #main > .post.is-article-reading {
-        padding: 2.5rem 1.15rem 2rem;
-    }
+section.post.is-article-reading > header.major {
+    text-align: center;
+}
+
+section.post.is-article-reading > header.major h1 {
+    font-size: clamp(1.55rem, 1.25rem + 1.1vw, 2.15rem);
+    line-height: 1.3;
+    text-align: center;
+}
+
+section.post.is-article-reading > header.major p {
+    font-size: var(--font-size-sm);
+    opacity: 0.8;
+    letter-spacing: 0.03em;
+    text-align: center;
+}
+
+#markdown-container {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
 }
 
 #markdown-container .markdown-body,
@@ -1907,14 +1934,16 @@ section.post.is-article-reading {
 .markdown-body.article-reading {
     background: transparent !important;
     color: inherit !important;
-    max-width: var(--measure-article);
-    margin-left: auto;
-    margin-right: auto;
-    padding: 0.5rem 0.75rem 2.5rem !important;
-    font-size: clamp(1.02rem, 0.98rem + 0.22vw, 1.12rem);
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0.35rem 0 2.25rem !important;
+    font-size: clamp(1.02rem, 0.98rem + 0.22vw, 1.1rem);
     line-height: 1.9;
     letter-spacing: 0.02em;
     word-break: break-word;
+    box-sizing: border-box;
 }
 
 #markdown-container .markdown-body p,
@@ -1943,35 +1972,32 @@ section.post.is-article-reading {
     letter-spacing: 0.01em;
 }
 
-section.post.is-article-reading > header.major {
-    max-width: var(--measure-article);
-    margin-left: auto;
-    margin-right: auto;
-    text-align: left;
-}
-
-section.post.is-article-reading > header.major h1 {
-    font-size: clamp(1.55rem, 1.25rem + 1.1vw, 2.2rem);
-    line-height: 1.3;
-}
-
-section.post.is-article-reading > header.major p {
-    font-size: var(--font-size-sm);
-    opacity: 0.8;
-    letter-spacing: 0.03em;
-}
-
 @media screen and (max-width: 736px) {
+    #main:has(section.post.is-article-reading),
+    #main:has(#markdown-container) {
+        width: calc(100% - 0.75rem);
+        max-width: 100%;
+    }
+
+    #main > section.post.is-article-reading,
+    #main > .post.is-article-reading {
+        padding-top: 2.25rem;
+        padding-bottom: 2rem;
+        padding-left: 1.1rem;
+        padding-right: 1.1rem;
+    }
+
     #markdown-container .markdown-body,
     #markdown-container .markdown-body.article-reading,
     .markdown-body.article-reading {
-        padding: 0.25rem 0.15rem 2rem !important;
+        padding: 0.15rem 0 1.75rem !important;
         font-size: 1.02rem;
         line-height: 1.88;
     }
 }
+
 /* ============================================================
-   Z. Admin-only nav � hidden from guests (no flash)
+   Z. Admin-only nav � hidden from guests (no flash)
    ============================================================ */
 .nav-admin-only {
     display: none !important;
