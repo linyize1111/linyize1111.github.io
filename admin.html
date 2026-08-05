@@ -24,7 +24,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;900&display=swap">
-    <link rel="stylesheet" href="assets/css/admin.css?v=sections-zaj-1" />
+    <link rel="stylesheet" href="assets/css/admin.css?v=paste-img-1" />
 </head>
 
 <body class="admin">
@@ -306,7 +306,7 @@
                             <div class="editor-pane editor-pane-write" id="editor-pane-write">
                                 <div class="pane-label pane-label-row">
                                     <span>Markdown</span>
-                                    <span class="pane-hint">Tab 縮排 · Ctrl+S 儲存</span>
+                                    <span class="pane-hint">可直接 Ctrl+V 貼上截圖 · Tab 縮排 · Ctrl+S 儲存</span>
                                 </div>
                                 <div class="md-toolbar" id="md-toolbar" role="toolbar" aria-label="Markdown 寫作工具列">
                                     <button type="button" class="md-tool" data-md="h2" title="標題 ##">H2</button>
@@ -316,15 +316,17 @@
                                     <button type="button" class="md-tool" data-md="italic" title="斜體 *"><em>I</em></button>
                                     <span class="md-tool-sep" aria-hidden="true"></span>
                                     <button type="button" class="md-tool" data-md="link" title="連結">連結</button>
-                                    <button type="button" class="md-tool" data-md="image" title="圖片語法">圖片</button>
+                                    <button type="button" class="md-tool" data-md="image" title="上傳圖片到內文（也可直接貼上）">貼圖</button>
+                                    <input type="file" id="body-image-file" accept="image/*" multiple class="hidden" />
                                     <span class="md-tool-sep" aria-hidden="true"></span>
                                     <button type="button" class="md-tool" data-md="ul" title="無序列表">• 列表</button>
                                     <button type="button" class="md-tool" data-md="ol" title="有序列表">1. 列表</button>
                                     <button type="button" class="md-tool" data-md="quote" title="引用">引用</button>
                                     <button type="button" class="md-tool" data-md="hr" title="分隔線">—</button>
                                     <button type="button" class="md-tool" data-md="code" title="行內程式碼">&lt;/&gt;</button>
+                                    <span class="muted" id="body-image-status" style="margin-left:.5rem;font-size:.85em;"></span>
                                 </div>
-                                <textarea id="f-body" placeholder="# 標題&#10;&#10;內文支援 Markdown…&#10;&#10;- 列表&#10;- **粗體**&#10;- [連結](https://…)&#10;&#10;> 引用&#10;&#10;可用上方工具列插入語法；Tab 縮排；Ctrl+S 儲存。" spellcheck="true"></textarea>
+                                <textarea id="f-body" placeholder="# 標題&#10;&#10;內文支援 Markdown…&#10;&#10;可直接 Ctrl+V / 拖曳貼上圖片（自動上傳）。&#10;&#10;- 列表&#10;- **粗體**&#10;- [連結](https://…)&#10;&#10;> 引用&#10;&#10;Tab 縮排；Ctrl+S 儲存。" spellcheck="true"></textarea>
                             </div>
                             <div class="editor-pane editor-pane-preview" id="editor-pane-preview">
                                 <div class="pane-label">即時預覽</div>
@@ -408,7 +410,7 @@
     <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/supabase-client.js"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/admin.js?v=sections-zaj-1"></script>
+    <script src="assets/js/admin.js?v=paste-img-1"></script>
 </body>
 
 </html>

@@ -117,13 +117,66 @@
     if (out.blob.size > MAX_UPLOAD_BYTES) throw new Error("壓縮後仍超過 5MB");
     var bucket = window.SB.config.bucket || "article-images";
     var rand = Math.random().toString(36).slice(2, 8);
-    var path = (section || "misc") + "/" + Date.now() + "-" + rand + "." + out.ext;
+    var sec = typeof dbSection === "function" ? dbSection(section) : section;
+    var path = (sec || "misc") + "/" + Date.now() + "-" + rand + "." + out.ext;
     var up = await client.storage.from(bucket).upload(path, out.blob, {
       contentType: out.type, upsert: false,
     });
     if (up.error) throw up.error;
     var pub = client.storage.from(bucket).getPublicUrl(path);
     return pub.data.publicUrl;
+  }
+
+  function setBodyImageStatus(html, isErr) {
+    var el = $("body-image-status");
+    if (!el) return;
+    el.innerHTML = html || "";
+    el.style.color = isErr ? "#c0392b" : "";
+  }
+
+  function clipboardImageFile(clipboardData) {
+    if (!clipboardData || !clipboardData.items) return null;
+    var items = clipboardData.items;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].kind === "file" && /^image\//.test(items[i].type)) {
+        return items[i].getAsFile();
+      }
+    }
+    return null;
+  }
+
+  function insertMarkdownAtCursor(md) {
+    var ta = $("f-body");
+    if (!ta) return;
+    var start = ta.selectionStart;
+    var end = ta.selectionEnd;
+    var before = ta.value.slice(0, start);
+    var needLead = before.length && !/\n\n$/.test(before) && !/\n$/.test(before);
+    var block = (needLead ? "\n\n" : before.endsWith("\n") && !before.endsWith("\n\n") ? "\n" : "") + md + "\n\n";
+    replaceBodyRange(start, end, block, start + block.length, start + block.length);
+  }
+
+  /** 上傳一或多張圖，插入正文 Markdown（可貼上／拖曳／工具列） */
+  async function uploadImagesIntoBody(files) {
+    files = Array.prototype.filter.call(files || [], function (f) {
+      return f && /^image\//.test(f.type);
+    });
+    if (!files.length) return;
+    setBodyImageStatus('<span class="spinner-inline"></span> 上傳圖片中…');
+    var ok = 0;
+    var errMsg = "";
+    for (var i = 0; i < files.length; i++) {
+      try {
+        var url = await uploadImage(files[i], ($("f-section") && $("f-section").value) || "notes");
+        insertMarkdownAtCursor("![](" + url + ")");
+        ok++;
+      } catch (err) {
+        errMsg = err && err.message ? err.message : String(err);
+      }
+    }
+    if (ok && !errMsg) setBodyImageStatus("已貼上 " + ok + " 張圖 ✔");
+    else if (ok && errMsg) setBodyImageStatus("已貼上 " + ok + " 張；部分失敗：" + errMsg, true);
+    else setBodyImageStatus("上傳失敗：" + (errMsg || "未知錯誤"), true);
   }
 
   // ---------- 分類 datalist ----------
@@ -467,7 +520,11 @@
     else if (action === "bold") wrapSelection("**", "**", "粗體文字");
     else if (action === "italic") wrapSelection("*", "*", "斜體文字");
     else if (action === "link") wrapSelection("[", "](https://)", "連結文字");
-    else if (action === "image") wrapSelection("![", "](https://)", "圖說");
+    else if (action === "image") {
+      var pick = $("body-image-file");
+      if (pick) pick.click();
+      else wrapSelection("![", "](https://)", "圖說");
+    }
     else if (action === "ul") prefixSelectedLines("- ");
     else if (action === "ol") prefixSelectedLines("1. ");
     else if (action === "quote") prefixSelectedLines("> ");
@@ -1544,6 +1601,47 @@
         markFormDirty();
         updateLengthHint();
         scheduleMdPreview();
+      });
+      $("f-body").addEventListener("paste", function (e) {
+        var file = clipboardImageFile(e.clipboardData);
+        if (!file) return;
+        e.preventDefault();
+        uploadImagesIntoBody([file]);
+      });
+    }
+
+    var writePane = $("editor-pane-write");
+    if (writePane) {
+      writePane.addEventListener("dragover", function (e) {
+        if (e.dataTransfer && Array.prototype.some.call(e.dataTransfer.types || [], function (t) {
+          return t === "Files";
+        })) {
+          e.preventDefault();
+          writePane.classList.add("is-drop-target");
+        }
+      });
+      writePane.addEventListener("dragleave", function () {
+        writePane.classList.remove("is-drop-target");
+      });
+      writePane.addEventListener("drop", function (e) {
+        writePane.classList.remove("is-drop-target");
+        var files = e.dataTransfer && e.dataTransfer.files;
+        if (!files || !files.length) return;
+        var imgs = Array.prototype.filter.call(files, function (f) {
+          return /^image\//.test(f.type);
+        });
+        if (!imgs.length) return;
+        e.preventDefault();
+        uploadImagesIntoBody(imgs);
+      });
+    }
+
+    var bodyImageFile = $("body-image-file");
+    if (bodyImageFile) {
+      bodyImageFile.addEventListener("change", function (e) {
+        var files = Array.from(e.target.files || []);
+        if (files.length) uploadImagesIntoBody(files);
+        e.target.value = "";
       });
     }
     ["f-title", "f-slug", "f-summary", "f-tags", "f-pdf", "f-category", "f-cover", "f-sort"].forEach(function (id) {
