@@ -294,21 +294,27 @@ function initAdminNav() {
     var nodes = document.querySelectorAll(".nav-admin-only");
     if (!nodes.length) return;
     Array.prototype.forEach.call(nodes, function (el) {
-        el.hidden = true;
+        el.classList.remove("is-admin-visible");
         el.setAttribute("aria-hidden", "true");
+        el.hidden = true;
     });
     function reveal() {
         if (!window.SBAuth || typeof window.SBAuth.isAdmin !== "function") return;
         window.SBAuth.isAdmin()
             .then(function (ok) {
-                if (!ok) return;
                 Array.prototype.forEach.call(document.querySelectorAll(".nav-admin-only"), function (el) {
-                    el.hidden = false;
-                    el.removeAttribute("aria-hidden");
-                    el.classList.remove("hidden");
+                    if (ok) {
+                        el.hidden = false;
+                        el.removeAttribute("aria-hidden");
+                        el.classList.add("is-admin-visible");
+                    } else {
+                        el.hidden = true;
+                        el.setAttribute("aria-hidden", "true");
+                        el.classList.remove("is-admin-visible");
+                    }
                 });
             })
-            .catch(function () { /* ignore */ });
+            .catch(function () { /* keep hidden */ });
     }
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", reveal);

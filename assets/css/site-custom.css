@@ -25,7 +25,7 @@ html[data-theme] table {
    B. CSS TOKEN SYSTEM
    ============================================================ */
 
-/* ── Light (default) ── */
+/* ?? Light (default) ?? */
 :root {
     --panel-bg: #ffffff;
     --panel-bg-alt: #f5f6f8;
@@ -33,7 +33,7 @@ html[data-theme] table {
     --panel-shadow: 0 2px 16px rgba(0, 0, 0, 0.10);
     --panel-blur: none;
 
-    /* Article cards (must stay theme-aware — never hardcode opaque white) */
+    /* Article cards (must stay theme-aware � never hardcode opaque white) */
     --card-bg: rgba(255, 255, 255, 0.97);
     --card-border: rgba(0, 0, 0, 0.06);
     --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -68,7 +68,7 @@ html[data-theme] table {
     --radius-img: 10px;
 }
 
-/* ── Dark ── */
+/* ?? Dark ?? */
 [data-theme="dark"] {
     --panel-bg: rgba(18, 24, 36, 0.82);
     --panel-bg-alt: rgba(22, 30, 46, 0.75);
@@ -108,7 +108,7 @@ html[data-theme] table {
     --shadow-img: 0 6px 32px rgba(0, 0, 0, 0.55);
 }
 
-/* ── Glass (transparent / no panel mode) ── */
+/* ?? Glass (transparent / no panel mode) ?? */
 [data-theme="glass"] {
     --panel-bg: rgba(8, 12, 22, 0.08);
     --panel-bg-alt: rgba(8, 12, 22, 0.06);
@@ -154,7 +154,7 @@ html[data-theme] table {
    C. STRUCTURAL OVERRIDES PER THEME
    ============================================================ */
 
-/* ── C1. #main (was solid white #ffffff — must be overridden) ── */
+/* ?? C1. #main (was solid white #ffffff � must be overridden) ?? */
 [data-theme="dark"] #main,
 [data-theme="glass"] #main {
     background-color: var(--panel-bg);
@@ -170,13 +170,13 @@ html[data-theme] table {
     border-top-color: var(--panel-border);
 }
 
-/* Glass: truly minimal panel — no real background */
+/* Glass: truly minimal panel � no real background */
 [data-theme="glass"] #main {
     background-color: rgba(8, 12, 22, 0.08);
     box-shadow: none;
 }
 
-/* ── C2. #nav ── */
+/* ?? C2. #nav ?? */
 [data-theme="dark"] #nav {
     background: rgba(15, 20, 30, 0.75);
     backdrop-filter: blur(16px);
@@ -208,7 +208,7 @@ html[data-theme] table {
     color: var(--link-hover) !important;
 }
 
-/* ── C3. #header logo ── */
+/* ?? C3. #header logo ?? */
 [data-theme="dark"] #header .logo {
     background: rgba(10, 15, 25, 0.50);
     backdrop-filter: blur(8px);
@@ -232,7 +232,7 @@ html[data-theme] table {
     color: var(--accent) !important;
 }
 
-/* ── C4. Article / post cards ── */
+/* ?? C4. Article / post cards ?? */
 [data-theme="dark"] article.post,
 [data-theme="dark"] .posts article,
 [data-theme="dark"] article.note-item,
@@ -252,7 +252,7 @@ html[data-theme] table {
     border-top: 1px solid var(--panel-border);
 }
 
-/* ── C5. #navPanel (mobile) ── */
+/* ?? C5. #navPanel (mobile) ?? */
 [data-theme="dark"] #navPanel {
     background: rgba(12, 18, 28, 0.96);
     backdrop-filter: blur(12px);
@@ -265,7 +265,7 @@ html[data-theme] table {
     border-right: 1px solid var(--panel-border);
 }
 
-/* ── C6. Sort/filter, pagination ── */
+/* ?? C6. Sort/filter, pagination ?? */
 [data-theme="dark"] #sort-filter-controls,
 [data-theme="glass"] #sort-filter-controls {
     background: var(--panel-bg-alt);
@@ -296,7 +296,7 @@ html[data-theme] table {
     font-weight: 700;
 }
 
-/* ── C7. Markdown container ── */
+/* ?? C7. Markdown container ?? */
 [data-theme="dark"] .markdown-body,
 [data-theme="glass"] .markdown-body {
     background: transparent !important;
@@ -543,7 +543,7 @@ html[data-theme] table {
     border-top-color: var(--panel-border);
 }
 
-/* ── Markdown body (comprehensive) ── */
+/* ?? Markdown body (comprehensive) ?? */
 [data-theme="dark"] .markdown-body,
 [data-theme="glass"] .markdown-body {
     color: var(--text-primary) !important;
@@ -678,7 +678,7 @@ html[data-theme] table {
     color: var(--text-muted);
 }
 
-/* ── sort/filter labels ── */
+/* ?? sort/filter labels ?? */
 [data-theme="dark"] #sort-filter-controls label,
 [data-theme="dark"] #sort-filter-controls select,
 [data-theme="glass"] #sort-filter-controls label,
@@ -690,7 +690,7 @@ html[data-theme] table {
 }
 
 /* ============================================================
-   E. BACKGROUND SCROLL — Requirement 4
+   E. BACKGROUND SCROLL � Requirement 4
    ============================================================ */
 
 /*
@@ -725,7 +725,7 @@ body {
     z-index: 1;
 }
 
-/* Soft tint over the video — keep image/video visible underneath */
+/* Soft tint over the video � keep image/video visible underneath */
 #wrapper > .bg {
     background-attachment: fixed !important;
     background-position: center center !important;
@@ -743,7 +743,7 @@ body {
    F. IMAGE BEAUTIFICATION
    ============================================================ */
 
-/* ── Markdown images — bigger, centred, quality ── */
+/* ?? Markdown images � bigger, centred, quality ?? */
 .markdown-body img {
     display: block;
     max-width: min(100%, 860px);
@@ -806,13 +806,13 @@ article.post .image.main img {
 }
 
 /* ============================================================
-   H. HERO SPACER — 非主頁背景可見度調整
+   H. HERO SPACER � ??????????
    ============================================================ */
 
 #page-hero-spacer {
     display: block;
     width: 100%;
-    /* 重置高度為 0，消除黑色空白斷層 */
+    /* ????? 0????????? */
     height: 0;
     background: transparent;
     border: none;
@@ -824,7 +824,7 @@ article.post .image.main img {
     z-index: 1;
 }
 
-/* RWD 模式下也將高度重置 */
+/* RWD ????????? */
 @media screen and (max-width: 736px) {
     #page-hero-spacer {
         height: 0;
@@ -837,7 +837,7 @@ article.post .image.main img {
     }
 }
 
-/* 移除分頁 Header 的強制邊距，使其與首頁排版一致 */
+/* ???? Header ??????????????? */
 body:not(:has(#intro)) #header {
     margin-top: 6rem !important;
     height: 20rem;
@@ -911,7 +911,7 @@ body:not(:has(#intro)) #header {
 }
 
 /* ============================================================
-   J. TYPOGRAPHY SCALE (fluid, 中文閱讀優先)
+   J. TYPOGRAPHY SCALE (fluid, ??????)
    ============================================================ */
 :root {
     --font-body: "Merriweather", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", serif;
@@ -925,7 +925,7 @@ body:not(:has(#intro)) #header {
     --font-size-3xl: clamp(2rem, 1.6rem + 1.6vw, 2.85rem);
     --leading-body: 1.85;
     --leading-tight: 1.28;
-    /* 中文舒適行寬約 32–40 字；避免過寬導致視線來回疲勞 */
+    /* ??????? 32�40 ?????????????? */
     --measure: min(40rem, 92%);
     --measure-article: min(38rem, 92%);
     --space-xs: 0.35rem;
@@ -1002,7 +1002,7 @@ article.note-item .note-card__meta .meta-cat {
     border-color: rgba(125, 232, 255, 0.28);
 }
 
-/* 首頁／卡片說明：max-width 必須左右 auto，否則塊會貼左，看起來「沒置中」 */
+/* ????????max-width ???? auto???????????????? */
 .posts article p,
 article.note-item p,
 article.post p,
@@ -1016,7 +1016,7 @@ article.post p,
     text-align: center;
 }
 
-/* 標題列／導言：覆寫全域 p { text-align: justify }，避免視覺偏移 */
+/* ??????????? p { text-align: justify }??????? */
 #intro,
 #intro h1,
 #intro p,
@@ -1043,7 +1043,7 @@ header.major > p {
 /* ============================================================
    K. ARTICLE CARDS & COVERS
    ============================================================ */
-/* List cards only — do NOT style #main > .post (reading / featured shell) */
+/* List cards only � do NOT style #main > .post (reading / featured shell) */
 .posts article,
 article.note-item,
 #posts-container.posts > article.note-item,
@@ -1107,7 +1107,7 @@ html[data-theme="glass"] #main > .posts > article {
 .posts article .image.fit,
 article.note-item .image.fit,
 article.post .image.main {
-    /* 4:3 比舊 3:4 更不易對橫圖產生大片留白；書封仍用 contain */
+    /* 4:3 ?? 3:4 ????????????????? contain */
     aspect-ratio: 4 / 3;
     height: auto !important;
     min-height: 140px;
@@ -1219,7 +1219,7 @@ html.paw-cursor-active * {
     cursor: none !important;
 }
 
-/* Click FX 必須低於貓掌本體（arm ~10005），按下時紅點要被完全蓋住 */
+/* Click FX ?????????arm ~10005????????????? */
 .paw-click-layer {
     position: fixed;
     inset: 0;
@@ -1246,7 +1246,7 @@ html.paw-cursor-active * {
 }
 
 .paw-cursor-dot.is-pressed {
-    /* 按下期間：常駐紅點必須完全看不見（截圖痛點） */
+    /* ?????????????????????? */
     opacity: 0 !important;
     visibility: hidden !important;
     width: 0 !important;
@@ -1265,7 +1265,7 @@ html.paw-cursor-active * {
     z-index: 9996;
 }
 
-/* 舊版曾 spawn 中心紅點；保險起見一律不顯示 */
+/* ??? spawn ?????????????? */
 .paw-click-dot {
     display: none !important;
 }
@@ -1356,8 +1356,8 @@ html.paw-cursor-active * {
 
 /* ============================================================
    N. ARTICLE CARD MEDIA (list pages + carousel isolation)
-   統一策略：媒體區 (.card-media-zone) 與文字區 (.card-body) 分離，
-   避免摘要、按鈕與封面/輪播重疊。未來可擴充 per-article cover_display。
+   ???????? (.card-media-zone) ???? (.card-body) ???
+   ??????????/?????????? per-article cover_display?
    ============================================================ */
 
 #posts-container.posts > article.note-item {
@@ -1379,7 +1379,7 @@ html.paw-cursor-active * {
     margin-top: auto;
 }
 
-/* 無 card-body 包裝的舊卡片：摘要與按鈕仍保持在媒體下方 */
+/* ? card-body ???????????????????? */
 #posts-container.posts > article.note-item > p,
 #posts-container.posts > article.note-item > ul.actions {
     position: relative;
@@ -1498,7 +1498,7 @@ html.paw-cursor-active * {
     to { opacity: 1; }
 }
 
-/* 文章頁：有封面時 hero（選填；無封面不強制佔位） */
+/* ???????? hero????????????? */
 .article-hero {
     position: relative;
     width: min(100%, 720px);
@@ -1531,7 +1531,7 @@ html.paw-cursor-active * {
     pointer-events: none;
 }
 
-/* 無封面：typography-driven editorial card（禁止灰色假圖區） */
+/* ????typography-driven editorial card????????? */
 .card-media-zone--text,
 .card-text-cover {
     display: none !important;
@@ -1805,7 +1805,7 @@ html.paw-cursor-active * {
     }
 }
 
-/* 列表模式：隱藏媒體區 */
+/* ?????????? */
 #posts-container.list-view > article.note-item .card-media-zone,
 #posts-container.list-view > article.note-item .card-carousel,
 #posts-container.list-view > article.note-item > a.image.fit,
@@ -1819,7 +1819,7 @@ html.paw-cursor-active * {
     display: none;
 }
 
-/* 隨想：輕量卡片（短摘要、少裝飾） */
+/* ???????????????? */
 #posts-container.posts > article.note-item.is-thought .card-media-zone,
 #posts-container.posts > article.note-item.is-thought .card-text-cover,
 #posts-container.posts > article.note-item.is-thought .note-card__index,
@@ -1836,7 +1836,7 @@ html.paw-cursor-active * {
     transform: translateY(-2px);
     box-shadow: var(--card-shadow-hover);
 }
-/* Light mode: 隨想稍淡一點，但不蓋掉 glass / dark token */
+/* Light mode: ??????????? glass / dark token */
 html:not([data-theme]) #posts-container.posts > article.note-item.is-thought {
     background: rgba(255, 255, 255, 0.92);
     border-color: rgba(128, 128, 128, 0.18);
@@ -1865,7 +1865,7 @@ html[data-theme="dark"] #posts-container.posts > article.note-item.is-thought {
 #posts-container.posts > article.note-item.is-thought .note-card__footer {
     margin-top: 1rem;
 }
-/* 內文閱讀區：行長、行距、層級 */
+/* ?????????????? */
 #markdown-container,
 section.post.is-article-reading {
     text-align: left;
@@ -1940,10 +1940,22 @@ section.post.is-article-reading > header.major p {
     }
 }
 /* ============================================================
-   Z. Admin-only nav (�Ǭ쵧�O)
+   Z. Admin-only nav � hidden from guests (no flash)
    ============================================================ */
-.nav-admin-only[hidden],
-li.nav-admin-only[hidden],
-a.nav-admin-only[hidden] {
+.nav-admin-only {
     display: none !important;
+}
+a.nav-admin-only.is-admin-visible {
+    display: inline !important;
+}
+li.nav-admin-only.is-admin-visible {
+    display: list-item !important;
+}
+
+/* academic.html: hide whole page until admin confirmed */
+body.admin-gated-page #wrapper {
+    visibility: hidden;
+}
+body.admin-gated-page.admin-gate-ok #wrapper {
+    visibility: visible;
 }

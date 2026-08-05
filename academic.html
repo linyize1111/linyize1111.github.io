@@ -184,10 +184,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
     <!-- Site Custom CSS: dark mode + image styles -->
-    <link rel="stylesheet" href="assets/css/site-custom.css?v=ia-essay-1" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=ia-hide-3" />
 </head>
 
-<body class="is-preload">
+<body class="is-preload admin-gated-page">
     <!-- Theme FOUC prevention: apply saved theme before first paint -->
     <script>
         (function() {
@@ -217,7 +217,7 @@
     <canvas id="sakura-canvas"
         style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-        <!-- 全域導航器 -->
+            <!-- 全域導航器 -->
     <div id="global-nav"
         style="position: fixed; top: 20px; right: 20px; z-index: 10000; background: rgba(0, 0, 0, 0.5); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; gap: 15px; flex-wrap: wrap; max-width: min(92vw, 520px); justify-content: flex-end;">
         <a href="index.html"
@@ -226,10 +226,10 @@
             style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">隨筆</a>
         <a href="literature.html"
             style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">文學創作</a>
+        <a href="academic.html" class="nav-admin-only"
+            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">學科筆記</a>
         <a href="about.html"
             style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">關於我</a>
-        <a href="academic.html" class="nav-admin-only" hidden
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">學科筆記</a>
     </div>
 
 <!--  右下角影片控制 -->
@@ -251,8 +251,8 @@
                 <li><a href="index.html">首頁</a></li>
                 <li><a href="directory.html">隨筆</a></li>
                 <li><a href="literature.html">文學創作</a></li>
+                <li class="active nav-admin-only"><a href="academic.html">學科筆記</a></li>
                 <li><a href="about.html">關於我</a></li>
-                <li class="active nav-admin-only" hidden><a href="academic.html">學科筆記</a></li>
             </ul>
             <ul class="icons">
                 <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
@@ -272,7 +272,7 @@
                     <span class="date">僅管理員</span>
                     <h2><a href="#">學科筆記</a></h2>
                     <p>資安、機器學習、程式語言與人文等課程／自學筆記。<br /><br />
-                        此區僅在管理員登入後顯示於導覽；訪客無法從選單進入。
+                        此區僅管理員登入後才會出現在導覽；訪客無法從選單進入。
                     </p>
                 </header>
             </article>
@@ -307,150 +307,6 @@
             </div>
 
             <section class="posts" id="posts-container" data-section="notes" data-list-mode="academic">
-                <article class="note-item" data-category="資訊安全" data-upload="2023-10-01" data-edit="2023-11-20"
-                    data-title="資訊安全基礎知識">
-                    <header>
-                        <span class="date">
-                            <span class="meta-cat">資訊安全</span>
-                            <span class="meta-up">上傳: 2023-10-01</span>
-                            <span class="meta-ed">編輯: 2023-11-20</span>
-                        </span>
-                        <h2><a href="note.html?file=security_basics">資訊安全基礎知識</a></h2>
-                    </header>
-                    <a href="note.html?file=security_basics" class="image fit"><img loading="lazy" src="images/pic_note1.jpg"
-                            alt="" /></a>
-                    <p>參加資訊安全課程及其他資訊領域的自行探索紀錄。</p>
-                    <ul class="actions special">
-                        <li><a href="note.html?file=security_basics" class="button">閱讀筆記</a></li>
-                        <li><a href="note.html?pdf=%E8%B3%87%E5%AE%89" class="button primary">檢視簡報 (PDF)</a></li>
-                    </ul>
-                </article>
-
-                <article class="note-item" data-category="機器學習" data-upload="2023-09-15" data-edit="2023-10-25"
-                    data-title="機器學習進階理論">
-                    <header>
-                        <span class="date">
-                            <span class="meta-cat">機器學習</span>
-                            <span class="meta-up">上傳: 2023-09-15</span>
-                            <span class="meta-ed">編輯: 2023-10-25</span>
-                        </span>
-                        <h2><a href="note.html?file=machine_learning">機器學習進階理論</a></h2>
-                    </header>
-                    <a href="note.html?file=machine_learning" class="image fit"><img loading="lazy" src="images/pic_note2.jpg"
-                            alt="" /></a>
-                    <p>台大林軒田教授課程「機器學習基石」的學習筆記與重點整理。</p>
-                    <ul class="actions special">
-                        <li><a href="note.html?file=machine_learning" class="button">閱讀筆記</a></li>
-                    </ul>
-                </article>
-
-                <article class="note-item" data-category="程式語言" data-upload="2023-08-10" data-edit="2023-12-05"
-                    data-title="Python 學習紀錄">
-                    <header>
-                        <span class="date">
-                            <span class="meta-cat">程式語言</span>
-                            <span class="meta-up">上傳: 2023-08-10</span>
-                            <span class="meta-ed">編輯: 2023-12-05</span>
-                        </span>
-                        <h2><a href="note.html?file=python_learning">Python 學習紀錄</a></h2>
-                    </header>
-                    <a href="note.html?file=python_learning" class="image fit"><img loading="lazy" src="images/pic_note3.jpg"
-                            alt="" /></a>
-                    <p>自學 Python 程式語言的基礎語法與專案實作紀錄。</p>
-                    <ul class="actions special">
-                        <li><a href="note.html?file=python_learning" class="button">閱讀筆記</a></li>
-                        <li><a href="note.html?pdf=Python" class="button primary">檢視簡報 (PDF)</a></li>
-                    </ul>
-                </article>
-
-                <article class="note-item" data-category="程式語言" data-upload="2026-03-03" data-edit="2026-03-03"
-                    data-title="開發discord聊天機器人">
-                    <header>
-                        <span class="date">
-                            <span class="meta-cat">程式語言</span>
-                            <span class="meta-up">上傳: 2026-03-03</span>
-                            <span class="meta-ed">編輯: 2026-03-03</span>
-                        </span>
-                        <h2><a href="note.html?file=discord_bot">開發 Discord 聊天機器人</a></h2>
-                    </header>
-                    <a href="note.html?file=discord_bot" class="image fit"><img loading="lazy" src="images/pic_note4.jpg" alt="" /></a>
-                    <p>使用 Python 與 discord.py 函式庫，從零開始建構一個具備指令系統與自動回覆功能的 Discord 機器人。</p>
-                    <ul class="actions special">
-                        <li><a href="note.html?file=discord_bot" class="button">閱讀筆記</a></li>
-                        <li><a href="note.html?pdf=%E5%A4%9A%E5%85%83%E8%A1%A8%E7%8F%BE%20%E8%87%AA%E8%A3%BDdiscord%E6%A9%9F%E5%99%A8%E4%BA%BA"
-                                class="button primary">檢視簡報 (PDF)</a></li>
-                    </ul>
-                </article>
-
-                <article class="note-item" data-category="程式語言" data-upload="2026-03-03" data-edit="2026-03-03"
-                    data-title="搭建自己的網站">
-                    <header>
-                        <span class="date">
-                            <span class="meta-cat">程式語言</span>
-                            <span class="meta-up">上傳: 2026-03-03</span>
-                            <span class="meta-ed">編輯: 2026-03-03</span>
-                        </span>
-                        <h2><a href="note.html?file=build_website">搭建自己的網站</a></h2>
-                    </header>
-                    <a href="note.html?file=build_website" class="image fit"><img loading="lazy" src="images/pic_note5.jpg"
-                            alt="" /></a>
-                    <p>從購買網域、設定 GitHub Pages，到設計前端頁面，完整記錄建立個人網站的全過程。</p>
-                    <ul class="actions special">
-                        <li><a href="note.html?file=build_website" class="button">閱讀筆記</a></li>
-                    </ul>
-                </article>
-
-                <article class="note-item" data-category="人文" data-upload="2026-03-03" data-edit="2026-03-03"
-                    data-title="普通心理學筆記">
-                    <header>
-                        <span class="date">
-                            <span class="meta-cat">人文</span>
-                            <span class="meta-up">上傳: 2026-03-03</span>
-                            <span class="meta-ed">編輯: 2026-03-03</span>
-                        </span>
-                        <h2><a href="note.html?file=psychology">普通心理學筆記</a></h2>
-                    </header>
-                    <a href="note.html?file=psychology" class="image fit"><img loading="lazy" src="images/pic_note6.jpg" alt="" /></a>
-                    <p>修習普通心理學課程的學習筆記，涵蓋感知、記憶、情緒、發展心理學等核心理論。</p>
-                    <ul class="actions special">
-                        <li><a href="note.html?file=psychology" class="button">閱讀筆記</a></li>
-                    </ul>
-                </article>
-
-                <article class="note-item" data-category="程式語言" data-upload="2023-06-01" data-edit="2023-06-01"
-                    data-title="高三進階程式設計課程學習成果">
-                    <header>
-                        <span class="date">
-                            <span class="meta-cat">程式語言</span>
-                            <span class="meta-up">上傳: 2023-06-01</span>
-                            <span class="meta-ed">編輯: 2023-06-01</span>
-                        </span>
-                        <h2><a href="note.html?pdf=31711%E9%AB%98%E4%B8%89%E9%80%B2%E9%9A%8E%E7%A8%8B%E5%BC%8F%E8%A8%AD%E8%A8%88%E8%AA%B2%E7%A8%8B%E5%AD%B8%E7%BF%92%E6%88%90%E6%9E%9C">高三進階程式設計課程學習成果</a></h2>
-                    </header>
-                    <a href="note.html?pdf=31711%E9%AB%98%E4%B8%89%E9%80%B2%E9%9A%8E%E7%A8%8B%E5%BC%8F%E8%A8%AD%E8%A8%88%E8%AA%B2%E7%A8%8B%E5%AD%B8%E7%BF%92%E6%88%90%E6%9E%9C" class="image fit"><img loading="lazy" src="images/pic_note1.jpg"
-                            alt="" /></a>
-                    <p>高三時期進階程式設計課程的學習成果簡報，涵蓋各項程式專題與實作紀錄。</p>
-                    <ul class="actions special">
-                        <li><a href="note.html?pdf=31711%E9%AB%98%E4%B8%89%E9%80%B2%E9%9A%8E%E7%A8%8B%E5%BC%8F%E8%A8%AD%E8%A8%88%E8%AA%B2%E7%A8%8B%E5%AD%B8%E7%BF%92%E6%88%90%E6%9E%9C" class="button primary">檢視簡報 (PDF)</a></li>
-                    </ul>
-                </article>
-
-                <article class="note-item" data-category="人文" data-upload="2024-01-01" data-edit="2024-01-01"
-                    data-title="學習歷程117-11">
-                    <header>
-                        <span class="date">
-                            <span class="meta-cat">人文</span>
-                            <span class="meta-up">上傳: 2024-01-01</span>
-                            <span class="meta-ed">編輯: 2024-01-01</span>
-                        </span>
-                        <h2><a href="note.html?pdf=%E5%AD%B8%E7%BF%92%E6%AD%B7%E7%A8%8B117-11">學習歷程 117-11</a></h2>
-                    </header>
-                    <a href="note.html?pdf=%E5%AD%B8%E7%BF%92%E6%AD%B7%E7%A8%8B117-11" class="image fit"><img loading="lazy" src="images/pic_note6.jpg" alt="" /></a>
-                    <p>高中階段的學習歷程檔案，記錄學科成就、課外參與及個人成長軌跡。</p>
-                    <ul class="actions special">
-                        <li><a href="note.html?pdf=%E5%AD%B8%E7%BF%92%E6%AD%B7%E7%A8%8B117-11" class="button primary">檢視簡報 (PDF)</a></li>
-                    </ul>
-                </article>
             </section>
             <!-- 分頁資訊與按鈕 -->
             <div id="pagination-controls"></div>
@@ -484,7 +340,7 @@
 
 
 
-<script src="assets/js/common.js"></script>
+<script src="assets/js/common.js?v=ia-hide-3"></script>
 
     <!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -492,10 +348,10 @@
     <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/supabase-client.js"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/site-sections.js?v=ia-1"></script>
-<script src="assets/js/cms-public.js?v=ia-essay-1"></script>
+    <script src="assets/js/site-sections.js?v=ia-hide-3"></script>
+<script src="assets/js/cms-public.js?v=ia-hide-3"></script>
 
-    <script src="assets/js/page-list.js?v=ia-essay-1"></script>
+    <script src="assets/js/page-list.js?v=ia-hide-3"></script>
 </body>
 
 </html>

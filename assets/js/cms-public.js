@@ -301,13 +301,11 @@
         isAdmin = false;
       }
       if (!isAdmin) {
-        container.innerHTML =
-          '<div style="text-align:center;padding:48px 16px;opacity:.85;max-width:28rem;margin:0 auto;line-height:1.7;">' +
-          "<p>學科筆記僅管理員可見。</p>" +
-          '<p style="opacity:.75;font-size:.95em;">請先到 <a href="admin.html">後台</a> 以管理員帳號登入後再回來。</p>' +
-          "</div>";
+        // 訪客：不提示「學科筆記」存在，靜默離開
+        window.location.replace("index.html");
         return;
       }
+      document.body.classList.add("admin-gate-ok");
     }
 
     var res;
@@ -391,10 +389,9 @@
         isAdmin = false;
       }
       if (!isAdmin) {
-        if (titleEl) titleEl.innerText = "無法檢視";
-        if (statusEl) statusEl.innerText = "管理員限定";
-        contentEl.innerHTML =
-          "<p>這篇學科筆記僅管理員可見。請先到 <a href=\"admin.html\">後台</a> 登入。</p>";
+        if (titleEl) titleEl.innerText = "404 文章未找到";
+        if (statusEl) statusEl.innerText = "Not Found";
+        contentEl.innerHTML = "<p>找不到這篇文章，可能已被移除或尚未發佈。</p>";
         return true;
       }
     }
@@ -473,14 +470,37 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    if (!CONFIGURED) return;
     var container = document.getElementById("posts-container");
-    if (container && container.getAttribute("data-section")) {
-      renderList(container);
+    var listMode = container && container.getAttribute("data-list-mode");
+
+    async function gateAcademicIfNeeded() {
+      if (listMode !== "academic") return true;
+      var isAdmin = false;
+      try {
+        if (window.SBAuth && window.SBAuth.isAdmin) {
+          isAdmin = !!(await window.SBAuth.isAdmin());
+        }
+      } catch (e) {
+        isAdmin = false;
+      }
+      if (!isAdmin) {
+        window.location.replace("index.html");
+        return false;
+      }
+      document.body.classList.add("admin-gate-ok");
+      return true;
     }
-    if (document.getElementById("markdown-container")) {
-      renderArticle();
-    }
-    applySections();
+
+    gateAcademicIfNeeded().then(function (ok) {
+      if (!ok) return;
+      if (!CONFIGURED) return;
+      if (container && container.getAttribute("data-section")) {
+        renderList(container);
+      }
+      if (document.getElementById("markdown-container")) {
+        renderArticle();
+      }
+      applySections();
+    });
   });
 })();
