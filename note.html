@@ -20,8 +20,47 @@
             text-align: left;
         }
 
-        /* ── Image styles: these are the DEFINITIVE rules for note page images.
-           They MUST be here (not only in site-custom.css?v=ia-hide-2"Courier New", monospace;
+        /* Image styles: definitive rules for note page images (beat main.css). */
+        #markdown-container img,
+        #markdown-container .markdown-body img,
+        #markdown-container p > img,
+        #markdown-container figure img,
+        #markdown-container a > img {
+            display: block !important;
+            max-width: min(100%, 960px) !important;
+            max-height: 65vh !important;
+            width: auto !important;
+            height: auto !important;
+            margin: 2.5rem auto !important;
+            border-radius: 10px !important;
+            box-shadow: 0 6px 28px rgba(0, 0, 0, 0.18) !important;
+            object-fit: contain !important;
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        @media screen and (max-width: 736px) {
+            #markdown-container img,
+            #markdown-container .markdown-body img {
+                max-height: 50vh !important;
+                border-radius: 8px !important;
+                margin: 1.75rem auto !important;
+            }
+        }
+
+        #markdown-container pre {
+            background: #212931;
+            color: #ffffff;
+            padding: 1.5em;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 1.5em 0;
+        }
+
+        #markdown-container code {
+            background: rgba(144, 144, 144, 0.25);
+            border-radius: 3px;
+            padding: 0.25em 0.5em;
+            font-family: "Courier New", monospace;
         }
 
         #markdown-container blockquote {
@@ -31,7 +70,6 @@
             margin: 1.5em 0;
         }
 
-        /* figcaption styling */
         #markdown-container figcaption {
             text-align: center;
             font-size: 0.85rem;
@@ -45,7 +83,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
     <!-- Site Custom CSS: dark mode + image styles -->
-    <link rel="stylesheet" href="assets/css/site-custom.css?v=ia-hide-3" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=read-wide-1" />
 </head>
 
 <body class="is-preload">

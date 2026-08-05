@@ -33,7 +33,7 @@ html[data-theme] table {
     --panel-shadow: 0 2px 16px rgba(0, 0, 0, 0.10);
     --panel-blur: none;
 
-    /* Article cards (must stay theme-aware — never hardcode opaque white) */
+    /* Article cards (must stay theme-aware  never hardcode opaque white) */
     --card-bg: rgba(255, 255, 255, 0.97);
     --card-border: rgba(0, 0, 0, 0.06);
     --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -154,7 +154,7 @@ html[data-theme] table {
    C. STRUCTURAL OVERRIDES PER THEME
    ============================================================ */
 
-/* ?? C1. #main (was solid white #ffffff — must be overridden) ?? */
+/* ?? C1. #main (was solid white #ffffff  must be overridden) ?? */
 [data-theme="dark"] #main,
 [data-theme="glass"] #main {
     background-color: var(--panel-bg);
@@ -170,7 +170,7 @@ html[data-theme] table {
     border-top-color: var(--panel-border);
 }
 
-/* Glass: truly minimal panel — no real background */
+/* Glass: truly minimal panel  no real background */
 [data-theme="glass"] #main {
     background-color: rgba(8, 12, 22, 0.08);
     box-shadow: none;
@@ -690,7 +690,7 @@ html[data-theme] table {
 }
 
 /* ============================================================
-   E. BACKGROUND SCROLL — Requirement 4
+   E. BACKGROUND SCROLL  Requirement 4
    ============================================================ */
 
 /*
@@ -725,7 +725,7 @@ body {
     z-index: 1;
 }
 
-/* Soft tint over the video — keep image/video visible underneath */
+/* Soft tint over the video  keep image/video visible underneath */
 #wrapper > .bg {
     background-attachment: fixed !important;
     background-position: center center !important;
@@ -743,10 +743,10 @@ body {
    F. IMAGE BEAUTIFICATION
    ============================================================ */
 
-/* ?? Markdown images — bigger, centred, quality ?? */
+/* ?? Markdown images  bigger, centred, quality ?? */
 .markdown-body img {
     display: block;
-    max-width: min(100%, 860px);
+    max-width: min(100%, 960px);
     max-height: 65vh;
     width: auto;
     height: auto;
@@ -762,7 +762,7 @@ body {
 .markdown-body figure {
     margin: 2.5rem auto;
     text-align: center;
-    max-width: min(100%, 860px);
+    max-width: min(100%, 960px);
 }
 
 /* Consistent gap between consecutive images */
@@ -806,7 +806,7 @@ article.post .image.main img {
 }
 
 /* ============================================================
-   H. HERO SPACER — ??????????
+   H. HERO SPACER  ??????????
    ============================================================ */
 
 #page-hero-spacer {
@@ -925,9 +925,9 @@ body:not(:has(#intro)) #header {
     --font-size-3xl: clamp(2rem, 1.6rem + 1.6vw, 2.85rem);
     --leading-body: 1.85;
     --leading-tight: 1.28;
-    /* ??????? 32–40 ?????????????? */
-    --measure: min(40rem, 92%);
-    --measure-article: min(38rem, 92%);
+    /* ??????????????? 4248 ?????????? */
+    --measure: min(42rem, 94%);
+    --measure-article: min(48rem, 94%);
     --space-xs: 0.35rem;
     --space-sm: 0.65rem;
     --space-md: 1rem;
@@ -1043,7 +1043,7 @@ header.major > p {
 /* ============================================================
    K. ARTICLE CARDS & COVERS
    ============================================================ */
-/* List cards only — do NOT style #main > .post (reading / featured shell) */
+/* List cards only  do NOT style #main > .post (reading / featured shell) */
 .posts article,
 article.note-item,
 #posts-container.posts > article.note-item,
@@ -1871,6 +1871,37 @@ section.post.is-article-reading {
     text-align: left;
 }
 
+/* ???????????????????????????? */
+#main:has(section.post.is-article-reading),
+#main:has(#markdown-container) {
+    max-width: min(90rem, 94vw);
+    width: calc(100% - 2.5rem);
+}
+
+#main > section.post.is-article-reading,
+#main > .post.is-article-reading {
+    padding: 4.5rem 3.25rem 3.5rem;
+}
+
+@media screen and (max-width: 1280px) {
+    #main > section.post.is-article-reading,
+    #main > .post.is-article-reading {
+        padding: 3.5rem 2.25rem 2.75rem;
+    }
+}
+
+@media screen and (max-width: 736px) {
+    #main:has(section.post.is-article-reading),
+    #main:has(#markdown-container) {
+        width: calc(100% - 1rem);
+        max-width: 100%;
+    }
+    #main > section.post.is-article-reading,
+    #main > .post.is-article-reading {
+        padding: 2.5rem 1.15rem 2rem;
+    }
+}
+
 #markdown-container .markdown-body,
 #markdown-container .markdown-body.article-reading,
 .markdown-body.article-reading {
@@ -1940,7 +1971,7 @@ section.post.is-article-reading > header.major p {
     }
 }
 /* ============================================================
-   Z. Admin-only nav — hidden from guests (no flash)
+   Z. Admin-only nav  hidden from guests (no flash)
    ============================================================ */
 .nav-admin-only {
     display: none !important;

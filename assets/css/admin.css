@@ -74,6 +74,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .thumb { width: 84px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--a-border); }
 .img-row { display: flex; align-items: center; gap: .6rem; margin-bottom: .5rem; }
 .img-row input { flex: 1; }
+.img-row.cover-drop.is-drop-target {
+  outline: 2px dashed rgba(86, 208, 248, 0.75);
+  outline-offset: 4px;
+  border-radius: 8px;
+  background: rgba(86, 208, 248, 0.06);
+}
 .muted { color: var(--a-muted); font-size: .85rem; }
 .center { text-align: center; }
 .stack { display: flex; flex-direction: column; gap: .5rem; }

@@ -1680,18 +1680,64 @@
       });
     }
 
+    async function setCoverFromFile(file) {
+      if (!file || !/^image\//.test(file.type)) return;
+      var status = $("cover-status");
+      if (status) status.innerHTML = '<span class="spinner-inline"></span> 上傳封面中…';
+      try {
+        var urlStr = await uploadImage(file, ($("f-section") && $("f-section").value) || "notes");
+        $("f-cover").value = urlStr;
+        $("cover-thumb").src = urlStr;
+        $("cover-thumb").classList.remove("hidden");
+        if (status) status.textContent = "封面已貼上 ✔";
+        markFormDirty();
+      } catch (err) {
+        if (status) status.textContent = "失敗：" + (err.message || err);
+      }
+    }
+
     $("cover-file").addEventListener("change", async function (e) {
       var file = e.target.files[0]; if (!file) return;
-      $("cover-status").innerHTML = '<span class="spinner-inline"></span> 上傳中…';
-      try {
-        var urlStr = await uploadImage(file, $("f-section").value);
-        $("f-cover").value = urlStr;
-        $("cover-thumb").src = urlStr; $("cover-thumb").classList.remove("hidden");
-        $("cover-status").textContent = "已上傳 ✔";
-        markFormDirty();
-      } catch (err) { $("cover-status").textContent = "失敗：" + (err.message || err); }
+      await setCoverFromFile(file);
       e.target.value = "";
     });
+
+    var coverInput = $("f-cover");
+    if (coverInput) {
+      coverInput.addEventListener("paste", function (e) {
+        var file = clipboardImageFile(e.clipboardData);
+        if (!file) return;
+        e.preventDefault();
+        setCoverFromFile(file);
+      });
+    }
+
+    var coverDrop = $("cover-drop");
+    if (coverDrop) {
+      coverDrop.addEventListener("dragover", function (e) {
+        if (e.dataTransfer && Array.prototype.some.call(e.dataTransfer.types || [], function (t) {
+          return t === "Files";
+        })) {
+          e.preventDefault();
+          coverDrop.classList.add("is-drop-target");
+        }
+      });
+      coverDrop.addEventListener("dragleave", function () {
+        coverDrop.classList.remove("is-drop-target");
+      });
+      coverDrop.addEventListener("drop", function (e) {
+        coverDrop.classList.remove("is-drop-target");
+        var files = e.dataTransfer && e.dataTransfer.files;
+        if (!files || !files.length) return;
+        var img = null;
+        for (var i = 0; i < files.length; i++) {
+          if (/^image\//.test(files[i].type)) { img = files[i]; break; }
+        }
+        if (!img) return;
+        e.preventDefault();
+        setCoverFromFile(img);
+      });
+    }
 
     $("more-file").addEventListener("change", async function (e) {
       var files = Array.from(e.target.files || []); if (!files.length) return;

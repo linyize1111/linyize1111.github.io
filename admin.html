@@ -24,7 +24,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;900&display=swap">
-    <link rel="stylesheet" href="assets/css/admin.css?v=paste-img-1" />
+    <link rel="stylesheet" href="assets/css/admin.css?v=paste-cover-1" />
 </head>
 
 <body class="admin">
@@ -276,10 +276,10 @@
                                 <summary>圖片（選填）</summary>
                                 <div class="field full">
                                     <label>主圖／封面（選填）</label>
-                                    <p class="muted" style="margin:0 0 .5rem;">可不設。沒有封面時，列表會以標題字首＋柔和底色呈現，不必每篇找圖或上傳。</p>
-                                    <div class="img-row">
+                                    <p class="muted" style="margin:0 0 .5rem;">可不設。可在下方欄位 <strong>Ctrl+V 貼上截圖</strong>、拖曳圖片，或按上傳。沒有封面時列表用標題字首呈現。</p>
+                                    <div class="img-row cover-drop" id="cover-drop">
                                         <img id="cover-thumb" class="thumb hidden" alt="" />
-                                        <input id="f-cover" placeholder="圖片 URL 或上傳" />
+                                        <input id="f-cover" placeholder="貼上圖片／URL，或右側上傳" />
                                         <label class="btn" style="margin:0;">
                                             上傳
                                             <input type="file" id="cover-file" accept="image/*" class="hidden" />
@@ -410,7 +410,7 @@
     <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/supabase-client.js"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/admin.js?v=paste-img-1"></script>
+    <script src="assets/js/admin.js?v=paste-cover-1"></script>
 </body>
 
 </html>
