@@ -51,30 +51,35 @@
 
 ---
 
-## 想全部重來？不麻煩
+## 想全部重來？用「收件匣」資料夾
 
-**不會很麻煩。** 建議兩種：
+**路徑：** `temp-pages/import-inbox/`
 
-### A. 軟重置（保留文章、先下架）
+```
+import-inbox/
+├── literature/   ← 文學、日記、隨筆、創作…（.md 檔）
+└── notes/        ← 學科筆記
+```
 
-在後台把搞混的篇改成 **草稿**，一篇篇改標題／分類／摘要後再發佈。  
-ID、網址 slug 可維持不變。
+- **檔名 = 預設標題**（例：`該死的咖啡因.md`）
+- 可選在檔案開頭寫 `---` frontmatter 指定分類／標籤／日期
+- `.md` 預設不進 Git，私人草稿可放心貼
 
-### B. 硬重置（清空再重貼）
+貼完跟我說，我執行 `node tools/import_inbox.mjs` 匯入為**草稿**，你後台確認後再發佈。
 
-1. 後台刪除要重做的篇（或請我幫你用 SQL 清 `articles`）  
-2. 你把原文貼給我（或貼進後台）  
-3. 我幫你：**排版（Markdown）、分類、標籤、摘要**  
-4. 你在後台確認後發佈  
+詳見 `temp-pages/import-inbox/README.md`。
 
-**不會動到：** 登入、Google OAuth、Supabase 金鑰、ACG 站。  
-只動文章內容表（必要時連封面 Storage）。
+### 清空資料庫（已執行過可略過）
 
-本地還有 `temp-pages/literature/*.md` 可當來源；站上缺的篇以你貼的全文為準。
-
-若要走 B，跟我說「清空文學區重來」或「只清草稿」，並把文稿一批批貼過來即可。
+```powershell
+cd temp-pages
+node tools/import_inbox.mjs --clear-only
+```
 
 ---
+
+## 舊：軟／硬重置說明
+
 
 ## 疑難
 
