@@ -249,6 +249,7 @@ async function main() {
   for (const r of rows) {
     const payload = { ...r };
     delete payload._file;
+    delete payload._folder;
     const { error } = await supabase.from("articles").upsert(payload, { onConflict: "section,slug" });
     if (error) {
       console.error(`  ✗ ${r.slug}: ${error.message}`);
