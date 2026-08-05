@@ -24,7 +24,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;900&display=swap">
-    <link rel="stylesheet" href="assets/css/admin.css?v=paste-cover-1" />
+    <link rel="stylesheet" href="assets/css/admin.css?v=p0-perfect-1" />
 </head>
 
 <body class="admin">
@@ -82,18 +82,36 @@
 
             <!-- 文章 -->
             <div id="tab-articles">
-                <!-- 零決策匯入：貼上就能存，不必想分類／標籤 -->
+                <!-- 快速匯入：先選分區，再貼上（heuristic 只建議、不覆寫分區） -->
                 <div class="card import-wizard" id="import-wizard">
-                    <h3>快速匯入 · 零決策</h3>
-                    <p class="muted import-promise">抱怨、碎念、突然的想法 → 直接貼上存成<strong>隨想</strong>。不必選分類、不必填標籤；系統會自動整理標題與篇幅。</p>
+                    <h3>快速匯入</h3>
+                    <p class="muted import-promise">第一步先選<strong>分區</strong>。系統只建議標題／分類，不會偷偷改你選的分區。</p>
+                    <div class="field full" style="margin-bottom:.85rem;">
+                        <label>1. 這篇是什麼？ *</label>
+                        <div class="section-pick" id="section-pick" role="radiogroup" aria-label="分區">
+                            <button type="button" class="section-pick__btn is-selected" data-section="notes" aria-pressed="true">
+                                <strong>隨筆</strong>
+                                <span>生活、觀點、閱讀／觀看心得</span>
+                            </button>
+                            <button type="button" class="section-pick__btn" data-section="literature" aria-pressed="false">
+                                <strong>文學創作</strong>
+                                <span>小說、詩、劇本、虛構文本</span>
+                            </button>
+                            <button type="button" class="section-pick__btn" data-section="academic" aria-pressed="false">
+                                <strong>學科筆記</strong>
+                                <span>課堂／研究／程式（僅管理員可見）</span>
+                            </button>
+                        </div>
+                        <input type="hidden" id="import-section" value="notes" />
+                    </div>
                     <ol class="import-steps muted">
-                        <li>貼上文字（Threads／FB／備忘錄／HackMD 都行）</li>
-                        <li>按「存成草稿」——完事</li>
-                        <li>（可選）「進大編輯繼續改」微調標題／排版後再發佈</li>
+                        <li>選分區（上方）</li>
+                        <li>貼上文字 → 預覽建議的標題／分類</li>
+                        <li>存成草稿；確認後再發佈</li>
                     </ol>
                     <div class="field full">
-                        <label>貼上內容</label>
-                        <textarea id="paste-blob" rows="10" placeholder="直接貼想法、抱怨、摘錄…&#10;&#10;不用寫分類／標籤。&#10;短的會自動變成「隨想」；長的會猜「長文／隨筆」。"></textarea>
+                        <label>2. 貼上內容</label>
+                        <textarea id="paste-blob" rows="10" placeholder="貼上全文或 Markdown…&#10;&#10;可含 YAML frontmatter。分區以你在上方的選擇為準。"></textarea>
                     </div>
                     <div class="import-actions">
                         <button type="button" class="btn primary" id="btn-quick-draft">存成草稿</button>
@@ -105,14 +123,6 @@
                     <details class="import-advanced">
                         <summary>進階選項（可跳過）</summary>
                         <div class="row" style="align-items:flex-end; margin-top:.75rem;">
-                            <div class="field" style="max-width:220px;">
-                                <label>預設分區</label>
-                                <select id="import-section">
-                                    <option value="notes">隨筆</option>
-                                    <option value="literature">文學創作</option>
-                                    <option value="academic">學科筆記</option>
-                                </select>
-                            </div>
                             <div class="field" style="max-width:200px;">
                                 <label>篇幅提示（通常自動即可）</label>
                                 <select id="import-length">
@@ -162,6 +172,25 @@
                         </div>
                     </div>
                     <p class="muted" id="list-hint" style="margin:0 0 .75rem;">點「編輯」時，頂部會顯示目前正在改哪一篇。</p>
+                    <div class="bulk-bar" id="bulk-bar">
+                        <label class="bulk-check-all"><input type="checkbox" id="bulk-select-all" /> 全選本頁</label>
+                        <span class="muted" id="bulk-count">已選 0</span>
+                        <select id="bulk-section" title="改分區">
+                            <option value="">改分區…</option>
+                            <option value="notes">→ 隨筆</option>
+                            <option value="literature">→ 文學創作</option>
+                            <option value="academic">→ 學科筆記</option>
+                        </select>
+                        <select id="bulk-category" title="改分類">
+                            <option value="">改分類…</option>
+                        </select>
+                        <select id="bulk-status" title="改狀態">
+                            <option value="">改狀態…</option>
+                            <option value="draft">→ 草稿</option>
+                            <option value="published">→ 發佈</option>
+                        </select>
+                        <button type="button" class="btn" id="btn-bulk-apply" disabled>套用批次</button>
+                    </div>
                     <div id="article-list"></div>
                 </div>
 
@@ -184,6 +213,7 @@
                             <button type="button" class="mode-btn" data-editor-mode="preview" title="只看排版預覽">預覽</button>
                         </div>
                         <div class="editor-bar-actions">
+                            <span id="editor-save-state" class="editor-save-state" aria-live="polite">已同步</span>
                             <label class="editor-status-label">
                                 <span class="sr-only">狀態</span>
                                 <select id="f-status" title="文章狀態">
@@ -234,25 +264,16 @@
                             <details class="editor-meta-block" open>
                                 <summary>分類／標籤（請先確認）</summary>
                                 <p class="muted cat-guide">
-                                    <strong>隨想</strong>＝碎念／抱怨／隨便發　
-                                    <strong>日記</strong>＝當天生活紀錄　
-                                    <strong>隨筆</strong>＝有整理過的散文　
-                                    <strong>心得</strong>＝讀書／作品感想　
-                                    <strong>創作</strong>＝小說／詩／劇本　
-                                    <strong>長文</strong>＝長篇論述
+                                    <strong>隨想</strong>＝碎念　
+                                    <strong>日記</strong>＝當天生活　
+                                    <strong>散文</strong>＝整理過的長文（DB：隨筆）　
+                                    <strong>心得</strong>＝讀書／作品　
+                                    <strong>創作</strong>＝小說／詩／劇本
                                 </p>
                                 <div class="field full">
                                     <label>分類 *</label>
-                                    <div class="chip-row" id="category-quick" aria-label="一鍵分類">
-                                        <button type="button" class="chip" data-cat="隨想" title="碎念、抱怨、突然的想法">隨想</button>
-                                        <button type="button" class="chip" data-cat="日記" title="生活札記、當天紀錄">日記</button>
-                                        <button type="button" class="chip" data-cat="隨筆" title="整理過的散文">隨筆</button>
-                                        <button type="button" class="chip" data-cat="心得" title="閱讀／觀影感想">心得</button>
-                                        <button type="button" class="chip" data-cat="創作" title="小說、詩、劇本">創作</button>
-                                        <button type="button" class="chip" data-cat="長文" title="長篇論述">長文</button>
-                                    </div>
-                                    <input id="f-category" list="category-list" placeholder="點上方或手打：隨想／日記／隨筆…" style="margin-top:.5rem;" />
-                                    <datalist id="category-list"></datalist>
+                                    <div class="chip-row" id="category-quick" aria-label="一鍵分類"></div>
+                                    <select id="f-category" style="margin-top:.5rem;"></select>
                                     <p class="muted" id="length-hint"></p>
                                 </div>
                                 <div class="field full">
@@ -410,7 +431,8 @@
     <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/supabase-client.js"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/admin.js?v=paste-cover-1"></script>
+    <script src="assets/js/site-sections.js?v=p0-perfect-1"></script>
+    <script src="assets/js/admin.js?v=p0-perfect-1"></script>
 </body>
 
 </html>

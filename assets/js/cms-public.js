@@ -104,11 +104,19 @@
       return window.SBSections.normalizeCategory(cat);
     }
     var c = String(cat || "").trim();
-    if (c === "短思" || c === "碎念" || c === "短文") return "隨想";
+    if (c === "短思" || c === "碎念" || c === "短文" || c === "感想" || c === "短感想" || c === "隨感") return "隨想";
     if (c === "生活札記" || c === "札記" || c === "日常") return "日記";
-    if (c === "短感想" || c === "隨感") return "感想";
     if (c === "閱讀心得" || c === "讀後感" || c === "心得感想") return "心得";
+    if (c === "散文" || c === "長隨筆") return "隨筆";
     return c;
+  }
+
+  function displayCategory(cat) {
+    if (window.SBSections && window.SBSections.displayCategory) {
+      return window.SBSections.displayCategory(cat);
+    }
+    var n = normalizeCategory(cat);
+    return n === "隨筆" ? "散文" : n;
   }
 
   function isThoughtCategory(cat) {
@@ -116,7 +124,35 @@
       return window.SBSections.isThoughtCategory(cat);
     }
     var n = normalizeCategory(cat);
-    return n === "隨想" || n === "日記" || n === "感想";
+    return n === "隨想" || n === "日記";
+  }
+
+  function bodyPlainLen(a) {
+    return String((a && a.body) || "")
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+      .replace(/[#>*_`\[\]()!\-]/g, " ")
+      .replace(/\s+/g, "")
+      .length;
+  }
+
+  function imageCount(a) {
+    var n = 0;
+    if (a && a.cover) n++;
+    if (a && Array.isArray(a.images)) n += a.images.length;
+    return n;
+  }
+
+  function isCompactCard(a, cat) {
+    if (normalizeCategory(cat) !== "隨想") return false;
+    var len = bodyPlainLen(a);
+    if (len > 500) return false;
+    if (/^#{2,3}\s/m.test(String((a && a.body) || ""))) return false;
+    return imageCount(a) <= 1;
+  }
+
+  function isPhotoNoteCard(a, cat) {
+    var len = bodyPlainLen(a);
+    return imageCount(a) > 0 && len > 0 && len < 300 && isThoughtCategory(cat);
   }
 
   function shortSummary(text, maxLen) {
@@ -143,8 +179,12 @@
     var uploadDot = fmtDotDate(a.published_at || a.created_at);
     var edit = fmtDate(a.updated_at);
     var cat = normalizeCategory(a.category || "");
+    var catLabel = displayCategory(cat);
     var thought = isThoughtCategory(cat);
-    var slides = thought ? [] : collectSlides(a);
+    var compact = isCompactCard(a, cat);
+    var photoNote = isPhotoNoteCard(a, cat);
+    var slides = thought && !photoNote ? [] : collectSlides(a);
+    if (compact && !photoNote) slides = [];
     var imgStyle = coverDisplayStyle(a);
     var hasCover = slides.length > 0;
     var indexLabel = padIndex((listIndex || 0) + 1);
@@ -154,13 +194,22 @@
       summary = "系列閱讀筆記，共 " + slides.length + " 張預覽圖。";
     }
     if (!summary) summary = cardVisualText(a, "");
-    if (thought) summary = shortSummary(summary, 96);
+    if (compact) {
+      var bodyPlain = String(a.body || "")
+        .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+        .replace(/[#>*_`\[\]()]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      summary = shortSummary(bodyPlain || summary, 220);
+    } else if (thought) summary = shortSummary(summary, 96);
     else if (!hasCover) summary = shortSummary(summary, 160);
 
     var art = document.createElement("article");
     art.className =
       "note-item" +
       (thought ? " is-thought" : "") +
+      (compact ? " is-compact" : "") +
+      (photoNote ? " is-photo-note" : "") +
       (hasCover ? " note-item--has-cover" : " note-item--no-cover note-item--text-only");
     art.setAttribute("data-category", cat);
     art.setAttribute("data-upload", upload);
@@ -171,7 +220,7 @@
     var metaHtml =
       '<header class="note-card__meta">' +
       '<span class="meta-cat">' +
-      esc(cat || (thought ? "隨想" : "")) +
+      esc(catLabel || (thought ? "隨想" : "")) +
       "</span>" +
       (uploadDot
         ? '<time class="meta-pub" datetime="' +
@@ -186,7 +235,7 @@
       "</header>";
 
     var pdfLink = "";
-    var safePdf = safeHttpsUrl(a.pdf_url);
+    var safePdf = resolvePdfUrl(a.pdf_url);
     if (safePdf && !thought) {
       pdfLink =
         '<a href="' +
@@ -204,7 +253,7 @@
         '">' +
         esc(a.title) +
         "</a></h2>" +
-        '<div class="note-card__rule" aria-hidden="true"></div>' +
+        (compact ? "" : '<div class="note-card__rule" aria-hidden="true"></div>') +
         (summary
           ? '<p class="note-card__excerpt">' + esc(summary) + "</p>"
           : "") +
@@ -215,7 +264,7 @@
             "</span>"
           : "") +
         '<div class="note-card__footer">' +
-        editorialCta(url, thought ? "閱讀" : "閱讀文章") +
+        editorialCta(url, compact ? "閱讀" : thought ? "閱讀" : "閱讀文章") +
         pdfLink +
         "</div>";
       return art;
@@ -267,15 +316,105 @@
     return art;
   }
 
-  function safeHttpsUrl(url) {
+  /** Accept https absolute URLs and same-origin / relative PDF paths (e.g. pdfs/foo.pdf). */
+  function resolvePdfUrl(url) {
     if (!url) return "";
+    var raw = String(url).trim();
+    if (!raw) return "";
     try {
-      var u = new URL(String(url), window.location.origin);
-      if (u.protocol !== "https:") return "";
-      return u.href;
+      var u = new URL(raw, window.location.href);
+      if (u.protocol === "https:") return u.href;
+      if (u.protocol === "http:" && u.hostname === window.location.hostname) return u.href;
+      if (u.protocol === "http:" || u.protocol === "https:") return "";
     } catch (e) {
       return "";
     }
+    return "";
+  }
+
+  function safeHttpsUrl(url) {
+    return resolvePdfUrl(url);
+  }
+
+  function slugifyHeading(text, used) {
+    var base = String(text || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^\w\u4e00-\u9fff-]/g, "")
+      .slice(0, 48) || "section";
+    var id = base;
+    var n = 2;
+    while (used[id]) {
+      id = base + "-" + n;
+      n++;
+    }
+    used[id] = true;
+    return id;
+  }
+
+  function buildArticleToc(root, bodyText) {
+    if (!root) return null;
+    var heads = root.querySelectorAll("h2, h3");
+    var bodyLen = String(bodyText || "").replace(/\s+/g, "").length;
+    if (heads.length < 3 && bodyLen < 2500) return null;
+    var used = {};
+    var items = [];
+    Array.prototype.forEach.call(heads, function (h) {
+      var text = (h.textContent || "").trim();
+      if (!text) return;
+      var id = h.id || slugifyHeading(text, used);
+      h.id = id;
+      items.push({ id: id, text: text, level: h.tagName.toLowerCase() });
+    });
+    if (items.length < 2) return null;
+    var nav = document.createElement("nav");
+    nav.className = "article-toc";
+    nav.setAttribute("aria-label", "文章大綱");
+    var html =
+      '<details class="article-toc__panel" open>' +
+      "<summary>大綱</summary><ol class=\"article-toc__list\">";
+    items.forEach(function (it) {
+      html +=
+        '<li class="toc-' +
+        it.level +
+        '"><a href="#' +
+        esc(it.id) +
+        '">' +
+        esc(it.text) +
+        "</a></li>";
+    });
+    html += "</ol></details>";
+    nav.innerHTML = html;
+    return nav;
+  }
+
+  function enhanceArticleFigures(root) {
+    if (!root) return;
+    Array.prototype.forEach.call(root.querySelectorAll("img"), function (img) {
+      if (img.closest("figure")) return;
+      var figure = document.createElement("figure");
+      figure.className = "article-figure";
+      img.parentNode.insertBefore(figure, img);
+      figure.appendChild(img);
+      var alt = (img.getAttribute("alt") || "").trim();
+      if (alt) {
+        var cap = document.createElement("figcaption");
+        cap.textContent = alt;
+        figure.appendChild(cap);
+      }
+      if (img.naturalWidth && img.naturalWidth >= 1200) {
+        figure.classList.add("is-breakout");
+      } else {
+        img.addEventListener(
+          "load",
+          function () {
+            if (img.naturalWidth >= 1200) figure.classList.add("is-breakout");
+          },
+          { once: true }
+        );
+      }
+    });
   }
 
   function initListWidgets() {
@@ -308,12 +447,15 @@
       document.body.classList.add("admin-gate-ok");
     }
 
+    container.innerHTML =
+      '<div class="cms-loading" style="text-align:center;padding:40px 0;opacity:.7;">載入文章中…</div>';
+
     var res;
     try {
       res = await client
         .from("articles")
         .select(
-          "id,section,slug,title,summary,cover,images,category,tags,pdf_url,status,published_at,created_at,updated_at,sort_index"
+          "id,section,slug,title,summary,body,cover,images,category,tags,pdf_url,status,published_at,created_at,updated_at,sort_index"
         )
         .eq("section", section)
         .eq("status", "published")
@@ -324,8 +466,10 @@
     }
 
     if (res.error) {
-      console.warn("[cms] 讀取文章失敗，改用靜態內容：", res.error.message || res.error);
-      initListWidgets();
+      console.warn("[cms] 讀取文章失敗：", res.error.message || res.error);
+      // CMS 啟用時不回退靜態幽靈內容
+      container.innerHTML =
+        '<div style="text-align:center;padding:40px 0;opacity:.75;">文章載入失敗，請稍後再試。</div>';
       return;
     }
 
@@ -398,7 +542,7 @@
     if (titleEl) titleEl.innerText = a.title || "";
     if (statusEl)
       statusEl.innerText =
-        (a.category ? normalizeCategory(a.category) + " · " : "") +
+        (a.category ? displayCategory(a.category) + " · " : "") +
         "更新於 " +
         fmtDate(a.updated_at || a.published_at);
 
@@ -426,11 +570,30 @@
     contentEl.innerHTML =
       '<div class="markdown-body article-reading">' + html + "</div>";
     if (postSection) postSection.classList.add("is-article-reading");
+    document.body.classList.add("reading-page", "reading-focus");
 
     var firstH1 = contentEl.querySelector("h1");
     if (firstH1 && titleEl && !a.title) {
       titleEl.innerText = firstH1.textContent;
       firstH1.remove();
+    }
+
+    var bodyRoot = contentEl.querySelector(".markdown-body");
+    enhanceArticleFigures(bodyRoot);
+    var toc = buildArticleToc(bodyRoot, a.body || "");
+    if (toc && postSection) {
+      var oldToc = postSection.querySelector(".article-toc");
+      if (oldToc) oldToc.remove();
+      postSection.classList.add("has-toc");
+      var md = postSection.querySelector("#markdown-container");
+      if (md) postSection.insertBefore(toc, md);
+      else postSection.appendChild(toc);
+    } else if (postSection) {
+      postSection.classList.remove("has-toc");
+    }
+
+    if (typeof window.applyReadingFocus === "function") {
+      window.applyReadingFocus(true);
     }
 
     if (window.renderMathInElement) {
@@ -472,6 +635,12 @@
   document.addEventListener("DOMContentLoaded", function () {
     var container = document.getElementById("posts-container");
     var listMode = container && container.getAttribute("data-list-mode");
+
+    // CMS 啟用：立刻清掉靜態幽靈卡片，避免閃爍
+    if (CONFIGURED && container && container.getAttribute("data-section")) {
+      container.innerHTML =
+        '<div class="cms-loading" style="text-align:center;padding:40px 0;opacity:.7;">載入文章中…</div>';
+    }
 
     async function gateAcademicIfNeeded() {
       if (listMode !== "academic") return true;

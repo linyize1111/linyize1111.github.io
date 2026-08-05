@@ -13,26 +13,25 @@
   var ACADEMIC_CATEGORIES = ["資訊安全", "機器學習", "程式語言", "人文"];
   var CATEGORIES = {
     literature: ["創作", "長文"],
-    notes: ["隨想", "日記", "感想", "心得", "隨筆"],
+    notes: ["隨想", "日記", "心得", "隨筆"],
     academic: ["資訊安全", "機器學習", "程式語言", "人文"],
   };
   var CATEGORY_CHIPS = {
     literature: [
-      { cat: "創作", title: "小說、詩、劇本" },
-      { cat: "長文", title: "長篇創作／論述" },
+      { cat: "創作", title: "小說、詩、劇本", label: "創作" },
+      { cat: "長文", title: "長篇創作／論述", label: "長文" },
     ],
     notes: [
-      { cat: "隨想", title: "碎念、抱怨、隨便發" },
-      { cat: "日記", title: "當天生活紀錄、札記" },
-      { cat: "感想", title: "短感想、隨手記" },
-      { cat: "心得", title: "閱讀／觀影心得（建議放隨筆區）" },
-      { cat: "隨筆", title: "整理過的散文" },
+      { cat: "隨想", title: "碎念、抱怨、隨便發", label: "隨想" },
+      { cat: "日記", title: "當天生活紀錄、札記", label: "日記" },
+      { cat: "心得", title: "閱讀／觀影心得", label: "心得" },
+      { cat: "隨筆", title: "整理過的散文（UI：散文）", label: "散文" },
     ],
     academic: [
-      { cat: "資訊安全", title: "資安筆記" },
-      { cat: "機器學習", title: "ML 筆記" },
-      { cat: "程式語言", title: "程式學習" },
-      { cat: "人文", title: "其他學科／人文" },
+      { cat: "資訊安全", title: "資安筆記", label: "資訊安全" },
+      { cat: "機器學習", title: "ML 筆記", label: "機器學習" },
+      { cat: "程式語言", title: "程式學習", label: "程式語言" },
+      { cat: "人文", title: "其他學科／人文", label: "人文" },
     ],
   };
   var MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -53,6 +52,8 @@
   var sectionsCache = [];
   var activeSectionKey = null;
   var sectionDirty = false;
+  var mediaUploadedUnsaved = false;
+  var selectedIds = {};
 
   var SECTION_META = {
     "home.intro.title": { title: "首頁 · 歡迎標題", desc: "首頁 hero 主標題（短句）", mode: "text" },
@@ -134,6 +135,41 @@
     el.style.color = isErr ? "#c0392b" : "";
   }
 
+  function displayCategoryLabel(cat) {
+    if (window.SBSections && window.SBSections.displayCategory) {
+      return window.SBSections.displayCategory(cat);
+    }
+    var n = normalizeCategory(cat);
+    return n === "隨筆" ? "散文" : n;
+  }
+
+  function updateSaveStateUi() {
+    var el = $("editor-save-state");
+    if (!el) return;
+    if (formDirty || mediaUploadedUnsaved) {
+      var parts = [];
+      if (mediaUploadedUnsaved) parts.push("✓ 圖片已上傳");
+      parts.push("● 文章尚未儲存");
+      el.textContent = parts.join(" · ");
+      el.classList.add("is-dirty");
+    } else {
+      el.textContent = "已同步";
+      el.classList.remove("is-dirty");
+    }
+  }
+
+  function selectedIdList() {
+    return Object.keys(selectedIds).filter(function (id) { return selectedIds[id]; });
+  }
+
+  function updateBulkUi() {
+    var n = selectedIdList().length;
+    var count = $("bulk-count");
+    if (count) count.textContent = "已選 " + n;
+    var apply = $("btn-bulk-apply");
+    if (apply) apply.disabled = n === 0;
+  }
+
   function clipboardImageFile(clipboardData) {
     if (!clipboardData || !clipboardData.items) return null;
     var items = clipboardData.items;
@@ -174,18 +210,47 @@
         errMsg = err && err.message ? err.message : String(err);
       }
     }
-    if (ok && !errMsg) setBodyImageStatus("已貼上 " + ok + " 張圖 ✔");
+    if (ok) {
+      mediaUploadedUnsaved = true;
+      markFormDirty();
+    }
+    if (ok && !errMsg) setBodyImageStatus("✓ 圖片已上傳（" + ok + "）· ● 文章尚未儲存");
     else if (ok && errMsg) setBodyImageStatus("已貼上 " + ok + " 張；部分失敗：" + errMsg, true);
     else setBodyImageStatus("上傳失敗：" + (errMsg || "未知錯誤"), true);
   }
 
   // ---------- 分類 datalist ----------
   function refreshCategoryList() {
-    var section = $("f-section").value;
-    var dl = $("category-list");
-    dl.innerHTML = (CATEGORIES[section] || [])
-      .map(function (c) { return '<option value="' + c + '"></option>'; })
-      .join("");
+    var section = ($("f-section") && $("f-section").value) || ($("list-section") && $("list-section").value) || "notes";
+    var cats = CATEGORIES[section] || [];
+    var sel = $("f-category");
+    var cur = sel ? normalizeCategory(sel.value) : "";
+    if (sel && sel.tagName === "SELECT") {
+      sel.innerHTML = cats
+        .map(function (c) {
+          return '<option value="' + c + '">' + displayCategoryLabel(c) + "</option>";
+        })
+        .join("");
+      if (cur && cats.indexOf(cur) !== -1) sel.value = cur;
+      else if (cats.length) sel.value = cats[0];
+    } else if (sel) {
+      var dl = $("category-list");
+      if (dl) {
+        dl.innerHTML = cats.map(function (c) { return '<option value="' + c + '"></option>'; }).join("");
+      }
+    }
+    var bulkCat = $("bulk-category");
+    if (bulkCat) {
+      var keep = bulkCat.value;
+      bulkCat.innerHTML =
+        '<option value="">改分類…</option>' +
+        cats
+          .map(function (c) {
+            return '<option value="' + c + '">' + displayCategoryLabel(c) + "</option>";
+          })
+          .join("");
+      if (keep) bulkCat.value = keep;
+    }
     refreshCategoryChips();
   }
 
@@ -242,7 +307,7 @@
             '" title="' +
             c.title +
             '">' +
-            c.cat +
+            (c.label || displayCategoryLabel(c.cat)) +
             "</button>"
           );
         })
@@ -251,7 +316,7 @@
     if (guide) {
       if (section === "notes") {
         guide.innerHTML =
-          "<strong>隨想</strong>＝碎念　<strong>日記</strong>＝當天生活　<strong>感想</strong>＝短感想　<strong>心得</strong>＝閱讀／觀影　<strong>隨筆</strong>＝整理過的散文<br /><span style=\"opacity:.85\">閱讀心得請放「隨筆」區，不要放文學創作。</span>";
+          "<strong>隨想</strong>＝碎念　<strong>日記</strong>＝當天生活　<strong>心得</strong>＝閱讀／觀影　<strong>散文</strong>＝整理過的長文（DB：隨筆）<br /><span style=\"opacity:.85\">「感想」已退場。閱讀心得請放隨筆區。</span>";
       } else if (section === "academic") {
         guide.innerHTML =
           "學科筆記：僅管理員導覽可見。分類選資安／機器學習／程式／人文。";
@@ -287,7 +352,7 @@
       ctxEl.textContent =
         sectionLabel(section, cat) +
         " · " +
-        (cat || "未分類") +
+        (cat ? displayCategoryLabel(cat) : "未分類") +
         " · " +
         statusLabel(status) +
         (slug ? " · " + slug : "") +
@@ -321,10 +386,11 @@
       hint.textContent =
         "共 " + (rows || []).length + " 篇" +
         (filtered.length !== (rows || []).length ? "（目前顯示 " + filtered.length + " 篇）" : "") +
-        "。編輯時頂部會顯示你正在改哪一篇。";
+        "。可勾選後批次改分區／分類／狀態。";
     }
     if (!filtered.length) {
       listEl.innerHTML = '<p class="muted">沒有符合條件的文章。</p>';
+      updateBulkUi();
       return;
     }
     listEl.innerHTML = "";
@@ -335,21 +401,74 @@
       if (editingArticleId && String(editingArticleId) === String(a.id)) {
         div.classList.add("is-active");
       }
-      div.innerHTML =
-        '<div class="meta"><h4>' + window.SB.escapeText(a.title) + "</h4>" +
+      var check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "bulk-check";
+      check.checked = !!selectedIds[a.id];
+      check.addEventListener("change", function () {
+        if (check.checked) selectedIds[a.id] = true;
+        else delete selectedIds[a.id];
+        updateBulkUi();
+      });
+      var meta = document.createElement("div");
+      meta.className = "meta";
+      meta.innerHTML =
+        "<h4>" + window.SB.escapeText(a.title) + "</h4>" +
         "<small>" +
-        '<span class="badge cat">' + window.SB.escapeText(normalizeCategory(a.category) || "未分類") + "</span> · " +
+        '<span class="badge cat">' + window.SB.escapeText(displayCategoryLabel(a.category) || "未分類") + "</span> · " +
         window.SB.escapeText((a.updated_at || "").slice(0, 10)) + " · " +
         '<span class="badge ' + a.status + '">' + statusLabel(a.status) + "</span>" +
         (a.slug ? " · <code>" + window.SB.escapeText(a.slug) + "</code>" : "") +
-        "</small></div>";
+        "</small>";
       var btn = document.createElement("button");
       btn.className = "btn";
       btn.textContent = "編輯";
       btn.addEventListener("click", function () { openForm(a.id); });
+      div.appendChild(check);
+      div.appendChild(meta);
       div.appendChild(btn);
       listEl.appendChild(div);
     });
+    updateBulkUi();
+  }
+
+  async function applyBulkMetadata() {
+    var ids = selectedIdList();
+    if (!ids.length) return;
+    var nextSection = ($("bulk-section") && $("bulk-section").value) || "";
+    var nextCat = ($("bulk-category") && $("bulk-category").value) || "";
+    var nextStatus = ($("bulk-status") && $("bulk-status").value) || "";
+    if (!nextSection && !nextCat && !nextStatus) {
+      msg("global-msg", "請先選擇要改的分區／分類／狀態", "err");
+      return;
+    }
+    var lines = [ids.length + " selected"];
+    if (nextSection) lines.push("section → " + nextSection);
+    if (nextCat) lines.push("category → " + displayCategoryLabel(nextCat));
+    if (nextStatus) lines.push("status → " + nextStatus);
+    if (!window.confirm("將套用以下變更？\n\n" + lines.join("\n"))) return;
+
+    var payload = {};
+    if (nextSection) payload.section = dbSection(nextSection);
+    if (nextCat) payload.category = normalizeCategory(nextCat);
+    if (nextStatus) payload.status = nextStatus;
+
+    msg("global-msg", '<span class="spinner-inline"></span> 批次更新中…', "ok");
+    var done = 0;
+    var err = "";
+    for (var i = 0; i < ids.length; i++) {
+      var res = await client.from("articles").update(payload).eq("id", ids[i]);
+      if (res.error) { err = res.error.message || String(res.error); break; }
+      done++;
+    }
+    if (err) msg("global-msg", "批次部分失敗（成功 " + done + "）：" + err, "err");
+    else msg("global-msg", "已更新 " + done + " 篇 ✔", "ok");
+    selectedIds = {};
+    if ($("bulk-section")) $("bulk-section").value = "";
+    if ($("bulk-category")) $("bulk-category").value = "";
+    if ($("bulk-status")) $("bulk-status").value = "";
+    if ($("bulk-select-all")) $("bulk-select-all").checked = false;
+    await loadArticles();
   }
 
   // ---------- images editor ----------
@@ -427,10 +546,13 @@
       images: currentImages,
     });
     formDirty = false;
+    mediaUploadedUnsaved = false;
+    updateSaveStateUi();
   }
 
   function markFormDirty() {
     formDirty = true;
+    updateSaveStateUi();
   }
 
   function confirmLeaveEditor() {
@@ -661,18 +783,22 @@
   }
 
   function normalizeCategory(cat) {
+    if (window.SBSections && window.SBSections.normalizeCategory) {
+      return window.SBSections.normalizeCategory(cat);
+    }
     var c = String(cat || "").trim();
     if (c === "短思" || c === "碎念" || c === "短文") return "隨想";
     if (c === "生活札記" || c === "札記" || c === "日常") return "日記";
-    if (c === "短感想" || c === "隨感") return "感想";
+    if (c === "短感想" || c === "隨感" || c === "感想") return "隨想";
     if (c === "閱讀心得" || c === "讀後感" || c === "心得感想") return "心得";
     if (c === "文學創作" || c === "小說" || c === "詩") return "創作";
+    if (c === "散文" || c === "長隨筆") return "隨筆";
     return c;
   }
 
   function isThoughtCategory(cat) {
     var c = normalizeCategory(cat);
-    return c === "隨想" || c === "日記" || c === "感想";
+    return c === "隨想" || c === "日記";
   }
 
   function isLightListCategory(cat) {
@@ -702,7 +828,6 @@
       if (/日記|生活札記|札記|今天的|凌晨.*(荒謬|平凡|見證)|入學日記|與海對話/.test(text)) {
         return "日記";
       }
-      if (/感想|有感/.test(text) && n > SHORT_CHARS) return "感想";
       if (n > SHORT_CHARS && n < LONG_CHARS) return "隨筆";
       return "隨想";
     }
@@ -960,13 +1085,19 @@
 
     if (out.category) out.category = normalizeCategory(out.category);
 
-    if (!out.category) {
-      var sectionGuess = out.section || opts.section || ($("import-section") && $("import-section").value) || ($("f-section") && $("f-section").value) || "literature";
-      out.category = suggestCategory(out.title, out.body, sectionGuess, "");
-    }
+    // 使用者在匯入第一步選的分區永遠優先；heuristic / frontmatter 不可覆寫
+    var lockedSection = opts.section || ($("import-section") && $("import-section").value) || "";
+    if (lockedSection) out.section = lockedSection;
+    else if (!out.section) out.section = "notes";
 
-    if (!out.section) {
-      out.section = opts.section || ($("import-section") && $("import-section").value) || "literature";
+    var sectionForCat = out.section || "notes";
+    if (!out.category) {
+      out.category = suggestCategory(out.title, out.body, sectionForCat, "");
+    }
+    var allowed = CATEGORIES[sectionForCat] || CATEGORIES.notes;
+    if (allowed.indexOf(out.category) === -1) {
+      out.category = suggestCategory(out.title, out.body, sectionForCat, "");
+      if (allowed.indexOf(out.category) === -1) out.category = allowed[0];
     }
     if (!out.status) out.status = "draft";
     ensureThoughtTitle(out);
@@ -986,7 +1117,7 @@
     badge.className = "badge length-" + (parsed.lengthKind || "medium");
     $("preview-meta").textContent =
       "分區 " + (parsed.section || "—") +
-      " · 分類 " + (parsed.category || "自動") +
+      " · 分類 " + (parsed.category ? displayCategoryLabel(parsed.category) : "自動") +
       " · 標籤 " + ((parsed.tags && parsed.tags.length) ? parsed.tags.join(", ") : "空白（可選）") +
       " · slug " + (parsed.slug || "—") +
       (parsed.cover ? " · 已抓到封面圖" : "") +
@@ -1096,6 +1227,8 @@
     $("f-id").value = res.data.id;
     editingArticleId = res.data.id;
     $("btn-delete").classList.remove("hidden");
+    mediaUploadedUnsaved = false;
+    setBodyImageStatus("");
     captureFormSnapshot();
     updateFormChrome();
     loadArticles();
@@ -1566,9 +1699,58 @@
       });
     }
 
-    if ($("import-section") && $("list-section")) {
+    function setImportSection(sec) {
+      if (!sec) return;
+      if ($("import-section")) $("import-section").value = sec;
+      if ($("list-section")) $("list-section").value = sec;
+      var pick = $("section-pick");
+      if (pick) {
+        Array.prototype.forEach.call(pick.querySelectorAll("[data-section]"), function (btn) {
+          var on = btn.getAttribute("data-section") === sec;
+          btn.classList.toggle("is-selected", on);
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+      }
+      refreshCategoryList();
+    }
+
+    var sectionPick = $("section-pick");
+    if (sectionPick) {
+      sectionPick.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-section]");
+        if (!btn) return;
+        setImportSection(btn.getAttribute("data-section"));
+        loadArticles();
+      });
+      setImportSection(($("import-section") && $("import-section").value) || "notes");
+    } else if ($("import-section") && $("list-section")) {
       $("import-section").addEventListener("change", function () {
         $("list-section").value = $("import-section").value;
+      });
+    }
+
+    if ($("bulk-select-all")) {
+      $("bulk-select-all").addEventListener("change", function () {
+        var on = !!$("bulk-select-all").checked;
+        Array.prototype.forEach.call(document.querySelectorAll(".bulk-check"), function (cb) {
+          cb.checked = on;
+          var row = cb.closest(".list-item");
+          var id = row && row.getAttribute("data-id");
+          if (!id) return;
+          if (on) selectedIds[id] = true;
+          else delete selectedIds[id];
+        });
+        updateBulkUi();
+      });
+    }
+    if ($("btn-bulk-apply")) {
+      $("btn-bulk-apply").addEventListener("click", function () { applyBulkMetadata(); });
+    }
+    if ($("list-section")) {
+      $("list-section").addEventListener("change", function () {
+        selectedIds = {};
+        if ($("bulk-select-all")) $("bulk-select-all").checked = false;
+        refreshCategoryList();
       });
     }
 
@@ -1644,6 +1826,11 @@
         e.target.value = "";
       });
     }
+    if ($("f-category")) $("f-category").addEventListener("change", function () {
+      markFormDirty();
+      syncCategoryChips();
+      updateFormChrome();
+    });
     ["f-title", "f-slug", "f-summary", "f-tags", "f-pdf", "f-category", "f-cover", "f-sort"].forEach(function (id) {
       var el = $(id);
       if (el) el.addEventListener("input", function () {
@@ -1689,7 +1876,8 @@
         $("f-cover").value = urlStr;
         $("cover-thumb").src = urlStr;
         $("cover-thumb").classList.remove("hidden");
-        if (status) status.textContent = "封面已貼上 ✔";
+        mediaUploadedUnsaved = true;
+        if (status) status.textContent = "✓ 封面已上傳 · ● 文章尚未儲存";
         markFormDirty();
       } catch (err) {
         if (status) status.textContent = "失敗：" + (err.message || err);

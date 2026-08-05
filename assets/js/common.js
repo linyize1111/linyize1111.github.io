@@ -326,6 +326,51 @@ function initAdminNav() {
     setTimeout(reveal, 1800);
 }
 
+function applyReadingFocus(on) {
+    var enable = on !== false;
+    document.body.classList.toggle("reading-focus", enable);
+    document.body.classList.add("reading-page");
+    var video = document.getElementById("bg-video");
+    var canvas = document.getElementById("sakura-canvas");
+    if (enable) {
+        if (video) {
+            try { video.pause(); } catch (e) {}
+            video.style.visibility = "hidden";
+        }
+        if (canvas) canvas.style.visibility = "hidden";
+    } else {
+        if (video) {
+            video.style.visibility = "";
+            if (sessionStorage.getItem("mediaPaused") !== "true") {
+                video.play().catch(function () {});
+            }
+        }
+        if (canvas) canvas.style.visibility = "";
+    }
+    var btn = document.getElementById("reading-focus-toggle");
+    if (btn) btn.textContent = enable ? "顯示動態背景" : "專注閱讀";
+}
+
+window.applyReadingFocus = applyReadingFocus;
+
+function initReadingFocusUi() {
+    if (!document.getElementById("markdown-container")) return;
+    document.body.classList.add("reading-page");
+    if (!document.getElementById("reading-focus-toggle")) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.id = "reading-focus-toggle";
+        btn.className = "reading-focus-toggle";
+        btn.textContent = "專注閱讀";
+        btn.addEventListener("click", function () {
+            applyReadingFocus(!document.body.classList.contains("reading-focus"));
+        });
+        document.body.appendChild(btn);
+    }
+    // 文章頁預設專注（cms-public 載入後也會再呼叫）
+    applyReadingFocus(true);
+}
+
 function initCommon() {
     initTheme();           // Must be first — applies theme before paint
     initHeroSpacer();      // Inject hero spacer before #main on sub-pages
@@ -334,6 +379,7 @@ function initCommon() {
     initSakuraIfPresent();
     initAnalytics();
     initAdminNav();
+    initReadingFocusUi();
 }
 
 initCommon();
