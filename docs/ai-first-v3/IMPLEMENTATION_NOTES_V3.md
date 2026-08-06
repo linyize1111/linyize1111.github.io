@@ -5,8 +5,9 @@ Spec source: `docs/ai-first-v3/*` (from `LYZ_SITE_AI_FIRST_V3_2026-08-06.zip`)
 
 ## What shipped on this branch
 
-### Schema (NOT applied to production)
-- `supabase/migrations/0007_ai_first_content_model.sql` — reviewed, nullable `presentation`, `visibility`, `ai_editorial`, etc.
+### Schema (applied to production 2026-08-06)
+- `supabase/migrations/0007_ai_first_content_model.sql` — applied via `tools/apply_sql_all_regions.mjs` (pooler `ap-southeast-2:5432`)
+- Columns live: `presentation`, `visibility`, `show_title`, `show_summary`, `series`, `needs_ai_analysis`, `ai_editorial`, …
 - `supabase/MIGRATION_0007_REVIEW.md` — safety notes vs live columns.
 
 ### AI analyzer (server-side)
@@ -38,20 +39,31 @@ Spec source: `docs/ai-first-v3/*` (from `LYZ_SITE_AI_FIRST_V3_2026-08-06.zip`)
 ### Privacy / source-of-truth
 - Static `note-item` fallbacks stripped from `directory.html` / `literature.html`
 
-### Migration proposals (not applied)
+### Migration proposals (metadata applied 2026-08-06)
 - `docs/ai-first-v3/AI_MIGRATION_REVIEW_V3.md`
-- `docs/ai-first-v3/AI_MIGRATION_PROPOSALS_V3.json` (`accepted: false`)
+- `docs/ai-first-v3/AI_MIGRATION_PROPOSALS_V3.json` — 53/53 metadata updates via `tools/apply_v3_metadata_backfill.mjs` (`accepted: true`)
+- Result: 45 public / 8 academic `private`; anon RLS smoke: 0 private rows, 0 academic category rows
 
 ### Tests
 ```bash
 node tests/ai_editorial_v3.test.mjs
 ```
 
-## Deploy Edge Function (when ready)
+## Deploy Edge Function (blocked until credentials)
+Still **not deployed** (404). Needs:
+1. `SUPABASE_ACCESS_TOKEN` from https://supabase.com/dashboard/account/tokens
+2. `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`)
+
+Then:
 ```bash
+# load MAIN_SUPABASE_REF from .handoff/main_secrets.env
+node tools/deploy_editorial_analyze.mjs
+# or:
 supabase functions deploy editorial-analyze --project-ref ypyiqysgfwgxcmmsylob
 supabase secrets set OPENAI_API_KEY=... --project-ref ypyiqysgfwgxcmmsylob
 ```
 
-## Apply 0007 (manual, after backup)
-See `supabase/MIGRATION_0007_REVIEW.md`. Do not auto-apply presentation from length.
+Public site + metadata backfill work without the Edge Function; only admin 「AI 整理」 needs it.
+
+## Apply 0007
+Done. Re-run helper: `node tools/apply_sql_all_regions.mjs supabase/migrations/0007_ai_first_content_model.sql` (idempotent).
