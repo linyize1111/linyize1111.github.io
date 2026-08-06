@@ -1,0 +1,2396 @@
+{
+  "meta": {
+    "generated_at": "2026-08-06T14:48:24.761Z",
+    "count": 53,
+    "note": "accepted:false — do not apply until human review"
+  },
+  "proposals": [
+    {
+      "id": "38181215-f37d-449d-bd10-708419c6e58d",
+      "title": "Python 學習紀錄",
+      "before": {
+        "section": "notes",
+        "category": "程式語言",
+        "status": "published",
+        "summary": "自學 Python 的基礎語法、模組、OOP 與常用套件紀錄，完整資料另有 PDF。",
+        "tags": [
+          "Python",
+          "程式設計"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "Python 學習紀錄",
+        "show_title": true,
+        "summary": "Python 自學索引，涵蓋語法、模組、OOP 與常用套件；完整筆記與專案內容尚待補齊。",
+        "show_summary": true,
+        "category": "程式語言",
+        "content_type": "academic-note",
+        "presentation": "reference",
+        "tags": [
+          "Python",
+          "程式設計"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "整理成「索引／待補」格式，避免 stub 被當成完整文章。",
+        "flags": [
+          "stub"
+        ],
+        "human_review_required": true,
+        "visibility": "private"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "12248c6a-6d38-47fc-878f-c1210dedc98f",
+      "title": "普通心理學筆記",
+      "before": {
+        "section": "notes",
+        "category": "人文",
+        "status": "published",
+        "summary": "普通心理學課程筆記的入口頁，完整內容尚待補入。",
+        "tags": [
+          "心理學",
+          "課堂筆記"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "普通心理學筆記",
+        "show_title": true,
+        "summary": "普通心理學課程索引，預計整理知覺、記憶、情緒與發展等主題；現階段僅保留入口與待補內容。",
+        "show_summary": true,
+        "category": "人文",
+        "content_type": "academic-note",
+        "presentation": "reference",
+        "tags": [
+          "心理學",
+          "課堂筆記"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "把「只有卡片入口」說清楚，避免看起來像完整文章。",
+        "flags": [
+          "stub"
+        ],
+        "human_review_required": true,
+        "visibility": "private"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "c6a3c68d-8f90-43f9-b3f4-8e2ec62280cd",
+      "title": "資訊安全基礎知識",
+      "before": {
+        "section": "notes",
+        "category": "資訊安全",
+        "status": "published",
+        "summary": "資訊安全基礎主題的學習索引，包含 CIA、常見攻擊、密碼學與網路安全等內容。",
+        "tags": [
+          "資訊安全",
+          "網路安全"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "資訊安全基礎知識",
+        "show_title": true,
+        "summary": "資訊安全基礎筆記的工作大綱，預計涵蓋 CIA、常見 Web 攻擊、密碼學、網路安全與管理。",
+        "show_summary": true,
+        "category": "資訊安全",
+        "content_type": "academic-note",
+        "presentation": "reference",
+        "tags": [
+          "資訊安全",
+          "網路安全"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "整理成明確的待辦大綱，保持 private draft。",
+        "flags": [
+          "outline"
+        ],
+        "human_review_required": true,
+        "visibility": "private"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "b928be8f-b0e1-4586-a7fa-f893888e545c",
+      "title": "機器學習基石課程筆記",
+      "before": {
+        "section": "notes",
+        "category": "機器學習",
+        "status": "published",
+        "summary": "台大林軒田教授《機器學習基石》相關課程筆記，涵蓋 PLA、VC dimension、線性與邏輯迴歸等內容。",
+        "tags": [
+          "機器學習",
+          "PLA",
+          "VC dimension",
+          "迴歸"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "機器學習基石課程筆記",
+        "show_title": true,
+        "summary": "《機器學習基石》課程的原始學習筆記，包含 PLA、VC dimension、線性與邏輯迴歸等；目前仍需系統性校訂。",
+        "show_summary": true,
+        "category": "機器學習",
+        "content_type": "academic-note",
+        "presentation": "reference",
+        "tags": [
+          "機器學習",
+          "PLA",
+          "VC dimension",
+          "迴歸"
+        ],
+        "series": null,
+        "edit_level": "major",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "只做基本排版與拼字清潔，不把這份原始技術筆記假裝成完成稿；內容含多處概念／公式／英文錯誤，需另做一輪技術校訂。",
+        "flags": [
+          "technical_errors",
+          "raw_notes"
+        ],
+        "human_review_required": true,
+        "visibility": "private"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "a3ce235a-9dc0-422f-a9f3-01466275ab32",
+      "title": "高三進階程式設計課程學習成果",
+      "before": {
+        "section": "notes",
+        "category": "程式語言",
+        "status": "published",
+        "summary": "高中進階程式設計課程的學習成果索引，完整內容收錄於附檔 PDF。",
+        "tags": [
+          "程式設計",
+          "學習成果"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "高三進階程式設計課程學習成果",
+        "show_title": true,
+        "summary": "高中進階程式設計課程的學習成果索引；完整專題與實作紀錄收錄於附檔 PDF。",
+        "show_summary": true,
+        "category": "程式語言",
+        "content_type": "academic-note",
+        "presentation": "reference",
+        "tags": [
+          "程式設計",
+          "學習成果"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "整理成課程成果 PDF 入口。",
+        "flags": [
+          "pdf_stub"
+        ],
+        "human_review_required": true,
+        "visibility": "private"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "90835079-36e4-4c55-9601-36d56424e901",
+      "title": "開發 Discord 聊天機器人",
+      "before": {
+        "section": "notes",
+        "category": "程式語言",
+        "status": "published",
+        "summary": "使用 Python 與 discord.py 製作 Discord 機器人的學習成果索引，完整內容以附檔 PDF 為主。",
+        "tags": [
+          "Discord",
+          "Python",
+          "discord.py"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "開發 Discord 聊天機器人",
+        "show_title": true,
+        "summary": "以 Python 與 discord.py 製作 Discord 機器人的學習成果索引；完整內容以附檔 PDF 為主。",
+        "show_summary": true,
+        "category": "程式語言",
+        "content_type": "academic-note",
+        "presentation": "reference",
+        "tags": [
+          "Discord",
+          "Python",
+          "discord.py"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "整理成 PDF 學習成果入口。",
+        "flags": [
+          "pdf_stub"
+        ],
+        "human_review_required": true,
+        "visibility": "private"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "ee221034-3aad-415b-804e-d253eb6f7d29",
+      "title": "學習歷程 117-11",
+      "before": {
+        "section": "notes",
+        "category": "人文",
+        "status": "published",
+        "summary": "高中階段學習歷程檔案的索引頁，完整內容以附檔 PDF 為主。",
+        "tags": [
+          "學習歷程",
+          "高中"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "學習歷程 117-11",
+        "show_title": true,
+        "summary": "高中階段「117-11」學習歷程檔案的索引頁，完整內容以附檔 PDF 為主。",
+        "show_summary": true,
+        "category": "人文",
+        "content_type": "academic-note",
+        "presentation": "reference",
+        "tags": [
+          "學習歷程",
+          "高中"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "改成明確 PDF／學習歷程索引，不假裝是文章正文。",
+        "flags": [
+          "pdf_stub"
+        ],
+        "human_review_required": true,
+        "visibility": "private"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "a0ff6534-16ee-49cb-98dc-6008652a55b7",
+      "title": "搭建自己的網站",
+      "before": {
+        "section": "notes",
+        "category": "程式語言",
+        "status": "published",
+        "summary": "個人網站建置經驗的概要頁，從 GitHub Pages 到前端設計的完整稿尚待補入。",
+        "tags": [
+          "GitHub Pages",
+          "網站"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "搭建自己的網站",
+        "show_title": true,
+        "summary": "個人網站建置紀錄的入口頁，預計整理 GitHub Pages、前端實作與後續 CMS 演進。",
+        "show_summary": true,
+        "category": "程式語言",
+        "content_type": "academic-note",
+        "presentation": "reference",
+        "tags": [
+          "GitHub Pages",
+          "網站"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "整理成網站建置筆記入口，後續可拆成版本演進紀錄。",
+        "flags": [
+          "stub"
+        ],
+        "human_review_required": true,
+        "visibility": "private"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "1f2ca188-1e49-4285-b268-cdb892cca0fd",
+      "title": "進擊的巨人與北歐神話",
+      "before": {
+        "section": "notes",
+        "category": "心得",
+        "status": "published",
+        "summary": "整理《進擊的巨人》與北歐神話之間可能存在的名稱、角色與末日意象對照，作為待查證的觀察筆記。",
+        "tags": [
+          "進擊的巨人",
+          "北歐神話",
+          "動畫"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "《進擊的巨人》與北歐神話：13 個可能的對照",
+        "show_title": true,
+        "summary": "整理《進擊的巨人》與北歐神話之間 13 組可能的名稱、角色與末日意象對照；這是一份待查證的作品筆記，不是官方設定表。",
+        "show_summary": true,
+        "category": "作品筆記",
+        "content_type": "reference-note",
+        "presentation": "reference",
+        "tags": [
+          "進擊的巨人",
+          "北歐神話",
+          "動畫"
+        ],
+        "series": "進擊的巨人",
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "在開頭加入「可能對照／待查證」限定；不要把影響關係寫成官方確定設定。",
+        "flags": [
+          "speculative_correspondence",
+          "sources_required"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "399e7b27-378a-452c-8637-188b5fe6040b",
+      "title": "個體才是最重要的",
+      "before": {
+        "section": "notes",
+        "category": "隨筆",
+        "status": "published",
+        "summary": "從多數、文明與不合群者談起，試著把價值重心重新放回個體，而不是抽象的「進步」。",
+        "tags": [
+          "個體",
+          "文明",
+          "自由"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "個體才是最重要的",
+        "show_title": true,
+        "summary": "從「不合群」與文明進步的敘事出發，質疑多數、菁英與成功標準，試著把價值重心重新放回具體個體。",
+        "show_summary": true,
+        "category": "觀點",
+        "content_type": "opinion",
+        "presentation": "article-lite",
+        "tags": [
+          "個體",
+          "文明",
+          "自由"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "保留價值立場，但把「民主必然放大暴力／資本社會就是階級制度」等斷言改成可辯論的條件式說法。",
+        "flags": [
+          "overgeneralization"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "28a5ee3f-5fda-4709-97f5-7cc1f7b53b9b",
+      "title": "海面的霓虹",
+      "before": {
+        "section": "notes",
+        "category": "日記",
+        "status": "published",
+        "summary": "海面霓虹、鹽分水氣與眼淚交疊的一個瞬間，搭配三張夜海照片。",
+        "tags": [
+          "海",
+          "日記",
+          "攝影"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "海面的霓虹",
+        "show_title": true,
+        "summary": "海面霓虹、鹽分水氣與眼淚疊在一起的一瞬間；文字只留下照片之外的那一點感受。",
+        "show_summary": false,
+        "category": "日記",
+        "content_type": "journal",
+        "presentation": "photo-note",
+        "tags": [
+          "海",
+          "日記",
+          "攝影"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "照片型短記；保留文字原貌，不加多餘文章結構。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "38138e80-8d0e-44d4-9fa4-ab257ca79948",
+      "title": "困在數字遊戲裡",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "我們替自己掛上成就、流量、金錢與人際關係的吊牌，最後是否只是被困進一場數字遊戲？",
+        "tags": [
+          "價值",
+          "成就",
+          "荒謬"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "困在數字遊戲裡",
+        "show_title": false,
+        "summary": "我們替自己掛上成就、流量、金錢與人際關係的吊牌，最後是否只是困進一場自己設計的數字遊戲？",
+        "show_summary": false,
+        "category": "隨想",
+        "content_type": "fragment",
+        "presentation": "fragment",
+        "tags": [
+          "價值",
+          "成就",
+          "荒謬"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "保留作 canonical；#1 刪除。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "8a6a10f9-4946-4d11-bee7-5a2d41245e10",
+      "title": "不願妥協，也是一種純真",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "看見孩子的笑後，重新想到不願妥協也許不是幼稚，而是一種仍未被世界磨掉的清醒。",
+        "tags": [
+          "成長",
+          "自由",
+          "初心"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "不願妥協，也是一種純真",
+        "show_title": false,
+        "summary": "看到孩子的笑後，重新想到：不願妥協未必只是幼稚，也可能是尚未被世界磨平的一部分。",
+        "show_summary": false,
+        "category": "隨想",
+        "content_type": "fragment",
+        "presentation": "fragment",
+        "tags": [
+          "成長",
+          "自由",
+          "初心"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "只做省略號與空白整理。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "ef219e76-e57f-4e89-bf1e-be5ce977e643",
+      "title": "生命與法律的重量",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "從生命與法律的拉扯出發，追問司法是否可能真正衡量每個靈魂的重量。",
+        "tags": [
+          "法律",
+          "正義",
+          "生命"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "生命與法律的重量",
+        "show_title": true,
+        "summary": "從生命與法律的拉扯出發，追問制度是否可能真正衡量每個具體生命的重量。",
+        "show_summary": false,
+        "category": "隨想",
+        "content_type": "fragment",
+        "presentation": "photo-note",
+        "tags": [
+          "法律",
+          "正義",
+          "生命"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "修正重複字；圖片若來自 Pixiv，需保留作者名稱＋原作 URL／授權資訊，否則不建議公開。",
+        "flags": [
+          "external_art_source"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "eef311f2-51f6-4c3b-8d8c-083db7bc83be",
+      "title": "夜裡的忠烈祠",
+      "before": {
+        "section": "notes",
+        "category": "日記",
+        "status": "published",
+        "summary": "從海邊走上忠烈祠，在夜景、貓與歷史記憶之間慢慢把低落的情緒放下。",
+        "tags": [
+          "日記",
+          "忠烈祠",
+          "記憶"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "夜裡的忠烈祠",
+        "show_title": true,
+        "summary": "心情低落時一路從海邊走到忠烈祠；夜景、貓與歷史感，讓情緒慢慢沉下來。",
+        "show_summary": true,
+        "category": "日記",
+        "content_type": "journal",
+        "presentation": "journal",
+        "tags": [
+          "日記",
+          "忠烈祠",
+          "記憶"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "修正「牠們／沉重／背後是」等字詞；對忠烈祠人物的歷史動機不以一句話概括，改成較審慎的表述。",
+        "flags": [
+          "historical_claims"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "e7f9595c-8963-49d2-93d2-57d285ae1bd2",
+      "title": "抽離意義的性",
+      "before": {
+        "section": "notes",
+        "category": "隨筆",
+        "status": "published",
+        "summary": "我真正排斥的不是性本身，而是當性被抽離情感、尊重與意義後，人如何被還原為純粹生理機制。",
+        "tags": [
+          "性",
+          "倫理",
+          "人性"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "我為什麼排斥「抽離意義的性」",
+        "show_title": true,
+        "summary": "我排斥的不是性本身，而是某些把親密完全抽離情感、尊重與意義的敘事；這篇記錄的是我的倫理直覺，而不是替所有人下定義。",
+        "show_summary": true,
+        "category": "觀點",
+        "content_type": "opinion",
+        "presentation": "article-lite",
+        "tags": [
+          "性",
+          "倫理",
+          "人性"
+        ],
+        "series": null,
+        "edit_level": "major",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "將普遍化的道德判斷改寫成第一人稱倫理偏好；保留立場，但明確承認不是替所有親密關係下定義。",
+        "flags": [
+          "universal_normative_claims"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "7a289d29-10ed-4613-b0f4-4198fefc6cbf",
+      "title": "紙本書與精神調律",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "從《心靈判官》中關於紙本閱讀的段落出發，思考閱讀是否也是一種對自身狀態的「精神調律」。",
+        "tags": [
+          "心靈判官",
+          "閱讀",
+          "紙本書"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "紙本書與「精神調律」",
+        "show_title": false,
+        "summary": "從《PSYCHO-PASS 心靈判官》的一段紙本閱讀談「精神調律」：閱讀也許不只吸收內容，也是在檢查自己此刻的狀態。",
+        "show_summary": false,
+        "category": "摘錄",
+        "content_type": "quote-note",
+        "presentation": "quote",
+        "tags": [
+          "心靈判官",
+          "閱讀",
+          "紙本書"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "改成摘錄型內容；需要標示作品／集數或原始來源，且卡片不應再另造摘要包裝成正式文章。",
+        "flags": [
+          "source_required",
+          "copyright_quote"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "e582e260-6d95-4fef-bf9c-23f24e8ca0b3",
+      "title": "時間或許只是幻覺？",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "從時間、熵、決定論與量子不確定性延伸出的宇宙隨想；目前仍是一則待查證與繼續推演的草稿。",
+        "tags": [
+          "時間",
+          "決定論",
+          "量子力學"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "時間或許只是幻覺？",
+        "show_title": false,
+        "summary": "一則從時間箭頭、決定論與量子不確定性延伸出的物理哲學隨想；更適合當問題，而不是物理結論。",
+        "show_summary": false,
+        "category": "隨想",
+        "content_type": "fragment",
+        "presentation": "fragment",
+        "tags": [
+          "時間",
+          "決定論",
+          "量子力學"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "移除正文開頭日期，改成 metadata；加上「物理哲學隨想，不是物理結論」的限定，避免把負時間座標等直覺當成時間倒流。",
+        "flags": [
+          "physics_caveat"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "09204f40-49d4-4c29-9e31-f4424a09a02e",
+      "title": "音樂可以拯救靈魂",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "從不同年代陪伴自己的歌出發，記下音樂如何跨越世代，也如何在某些時刻拯救人的靈魂。",
+        "tags": [
+          "音樂",
+          "隨想"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "音樂可以拯救靈魂",
+        "show_title": false,
+        "summary": "從不同年代陪伴自己的幾首歌出發，記下一個很單純的確信：音樂有時真的能把人從低處拉回來。",
+        "show_summary": false,
+        "category": "隨想",
+        "content_type": "fragment",
+        "presentation": "fragment",
+        "tags": [
+          "音樂",
+          "隨想"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "統一歌曲名稱書名號／篇名號呈現；保留短感觸。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "ed30b152-0c98-416f-b167-d1ce79f80f6a",
+      "title": "感情，或許是一張素紙",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "把感情比作一張素紙：彼此留下痕跡、暈開邊界，卻仍保留各自呼吸的留白。",
+        "tags": [
+          "感情",
+          "隨想"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "感情，或許是一張素紙",
+        "show_title": false,
+        "summary": "把感情想成一張素紙：彼此留下痕跡、暈開邊界，卻仍替對方保留可以呼吸的留白。",
+        "show_summary": false,
+        "category": "隨想",
+        "content_type": "fragment",
+        "presentation": "fragment",
+        "tags": [
+          "感情",
+          "隨想"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "保留原始比喻；版型以 fragment 呈現。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "b6d2d0b1-7f9a-433b-ad23-9d14f76d112d",
+      "title": "臺灣政治不該只剩二元對立",
+      "before": {
+        "section": "notes",
+        "category": "隨筆",
+        "status": "published",
+        "summary": "我對臺灣政治最厭倦的不是立場差異，而是所有問題被壓成二元對立，最後讓思辨與實際韌性一起被犧牲。",
+        "tags": [
+          "臺灣政治",
+          "公共議題",
+          "媒體識讀"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "臺灣政治不該只剩二元對立",
+        "show_title": true,
+        "summary": "我反感的不是立場差異，而是臺灣政治把複雜問題壓成二元標籤後，連政策、社會韌性與彼此自由都被對立吞掉。",
+        "show_summary": true,
+        "category": "時事",
+        "content_type": "opinion",
+        "presentation": "article-lite",
+        "tags": [
+          "臺灣政治",
+          "公共議題",
+          "媒體識讀"
+        ],
+        "series": null,
+        "edit_level": "major",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "把「大部分臺灣人」與「只是棋子」等過度概括改成可檢驗、保留主體性的說法；若要寫民意趨勢需補民調來源。",
+        "flags": [
+          "poll_source",
+          "political_overgeneralization"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "112b5008-2e45-44ee-9390-7d380ec0203c",
+      "title": "簡談文筆",
+      "before": {
+        "section": "notes",
+        "category": "隨筆",
+        "status": "published",
+        "summary": "從白話、模仿、技能一路想到藝術與品味，記下一則我目前對「文筆」的理解。",
+        "tags": [
+          "寫作",
+          "文筆",
+          "品味"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "簡談文筆",
+        "show_title": false,
+        "summary": "從白話、模仿、技能到藝術與品味，記下我目前對「文筆」層次與分寸感的理解。",
+        "show_summary": false,
+        "category": "觀點",
+        "content_type": "opinion",
+        "presentation": "fragment",
+        "tags": [
+          "寫作",
+          "文筆",
+          "品味"
+        ],
+        "series": "寫作／文筆",
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "保留短論點；分類改「觀點」，但 presentation 仍是 fragment。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "142f76ca-ca66-480f-93b8-5704c5b2ae50",
+      "title": "活著真好啊。",
+      "before": {
+        "section": "notes",
+        "category": "日記",
+        "status": "published",
+        "summary": "原本要回去讀期末，卻被路上的景色攔了下來；有時只是停下來看一眼，就會覺得活著真好。",
+        "tags": [
+          "日記",
+          "攝影"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "活著真好啊。",
+        "show_title": true,
+        "summary": "原本要回去讀期末，卻被路上的景色攔了下來；有時只是停下來看一會兒，就會覺得活著真好。",
+        "show_summary": false,
+        "category": "日記",
+        "content_type": "journal",
+        "presentation": "photo-note",
+        "tags": [
+          "日記",
+          "攝影"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "照片日記；不要用正式長文卡片。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "4617b60e-5cb5-4028-b4b3-e1576bebcf12",
+      "title": "夢被枕頭悶殺",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "小時候想用清醒造夢，長大後卻在安穩睡眠裡失去夢；一則關於成長與妥協的短想。",
+        "tags": [
+          "成長",
+          "夢",
+          "隨想"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "夢被枕頭悶殺",
+        "show_title": false,
+        "summary": "小時候用清醒造夢，長大後卻在安穩睡眠裡逐漸失去夢；一則關於成長與妥協的短想。",
+        "show_summary": false,
+        "category": "隨想",
+        "content_type": "fragment",
+        "presentation": "fragment",
+        "tags": [
+          "成長",
+          "夢",
+          "隨想"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "保留原句意象；只處理標點與段落。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "891a4ef5-2e7f-4202-9c2c-e84a2a3ce0ff",
+      "title": "我們會開始對一切產生「恐怖谷」嗎？",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "如果 AI 讓我們開始懷疑創作的真實性，未來的恐怖谷或許會從人工智慧一路蔓延到音樂、文字、藝術，甚至人類本身。",
+        "tags": [
+          "AI",
+          "恐怖谷",
+          "藝術"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "我們會開始對一切產生「恐怖谷」嗎？",
+        "show_title": false,
+        "summary": "AI 讓「真假難辨」變成日常後，恐怖谷會不會從圖像一路蔓延到文字、音樂，甚至人本身？",
+        "show_summary": false,
+        "category": "隨想",
+        "content_type": "fragment",
+        "presentation": "fragment",
+        "tags": [
+          "AI",
+          "恐怖谷",
+          "藝術"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "保留兩句式 fragment；不要顯示大 Hero、摘要與「閱讀文章」CTA。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "60a89582-6d2b-4dfa-a810-b405e527c84a",
+      "title": "咖啡的風味從哪裡來？談影響咖啡風味的變量",
+      "before": {
+        "section": "notes",
+        "category": "隨筆",
+        "status": "published",
+        "summary": "從品種、產地、處理、烘焙、水質到萃取，整理一杯咖啡的風味究竟是如何被一步步塑造出來。",
+        "tags": [
+          "咖啡",
+          "風味",
+          "咖啡入門"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "咖啡的風味從哪裡來？影響一杯咖啡的 11 個變因",
+        "show_title": true,
+        "summary": "從物種、產地與處理法一路到烘焙、水質與萃取，整理一杯咖啡的風味如何被一連串變因共同塑造。",
+        "show_summary": true,
+        "category": "專題",
+        "content_type": "feature",
+        "presentation": "longform",
+        "tags": [
+          "咖啡",
+          "風味",
+          "咖啡入門"
+        ],
+        "series": "咖啡入門",
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "修補明顯殘缺小標；長文用專題版型，建議之後替技術性咖啡知識補資料來源。",
+        "flags": [
+          "broken_heading",
+          "sources_recommended"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "8aa75604-8b6b-4730-97f6-eb7f9a953fc6",
+      "title": "贖回自由",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "人總是在懂得自由之後，才開始用往後的時間試圖把它贖回來。",
+        "tags": [
+          "自由",
+          "時間"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "贖回自由",
+        "show_title": false,
+        "summary": "人也許總是在懂得自由之後，才開始用往後的時間試圖把它贖回來。",
+        "show_summary": false,
+        "category": "隨想",
+        "content_type": "fragment",
+        "presentation": "fragment",
+        "tags": [
+          "自由",
+          "時間"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "一句式 fragment；不需要 title + summary + CTA 三次重複同一句意思。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "04be00a5-45d7-4e17-a7f5-b9e53ba29b63",
+      "title": "十四夜月與一隻貓",
+      "before": {
+        "section": "notes",
+        "category": "日記",
+        "status": "published",
+        "summary": "十四夜月、雲縫與一隻突然闖進畫面的貓；一則帶照片的短札記。",
+        "tags": [
+          "日記",
+          "月亮",
+          "貓"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "十四夜月與一隻貓",
+        "show_title": true,
+        "summary": "十四夜月、雲縫與突然闖進畫面的貓；這篇更像兩張照片旁的一句註記。",
+        "show_summary": false,
+        "category": "日記",
+        "content_type": "journal",
+        "presentation": "photo-note",
+        "tags": [
+          "日記",
+          "月亮",
+          "貓"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "刪除五行孤立句點；保留「照片＋一句話」的 photo-note 性質。",
+        "flags": [
+          "paste_noise"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "57b0a61e-0545-4f3c-a4e3-60c48e6902ce",
+      "title": "我真的很喜歡卡繆",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "我喜歡卡繆，不是因為他的思想完美，而是因為那些未竟與衝突總能逼我繼續思考。",
+        "tags": [
+          "卡繆",
+          "哲學"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "我真的很喜歡卡繆",
+        "show_title": false,
+        "summary": "喜歡卡繆，不是因為他給了完整答案，而是因為那些未竟與矛盾總會逼我繼續思考。",
+        "show_summary": false,
+        "category": "隨想",
+        "content_type": "fragment",
+        "presentation": "fragment",
+        "tags": [
+          "卡繆",
+          "哲學"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "不補長，讓它維持短感想；版型應小而安靜。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "77551a9e-c122-43a6-9436-2da45e2a3302",
+      "title": "科學不該成為新的教條",
+      "before": {
+        "section": "notes",
+        "category": "隨想",
+        "status": "published",
+        "summary": "科學真正可貴的地方在於可被質疑與修正；若把它變成不可懷疑的唯一權威，也可能只是另一種教條。",
+        "tags": [
+          "科學哲學",
+          "科學主義"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "科學不該成為新的教條",
+        "show_title": false,
+        "summary": "科學的力量來自可被質疑與修正；一旦把它變成不可懷疑的唯一權威，理性也可能長成新的教條。",
+        "show_summary": false,
+        "category": "觀點",
+        "content_type": "opinion",
+        "presentation": "fragment",
+        "tags": [
+          "科學哲學",
+          "科學主義"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "只修段落與標點；改用「觀點」語意分類，不因字數短就被當成隨想。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "0ac06d81-ae5f-4538-9e71-60a454f85bdf",
+      "title": "記憶與遺忘的鬥爭",
+      "before": {
+        "section": "notes",
+        "category": "隨筆",
+        "status": "published",
+        "summary": "從白色恐怖與六四談「必要之惡」的誘惑，最後回到記憶、自由與拒絕遺忘。",
+        "tags": [
+          "歷史記憶",
+          "白色恐怖",
+          "六四",
+          "自由"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "記憶與遺忘的鬥爭",
+        "show_title": true,
+        "summary": "從白色恐怖與六四重新檢視「必要之惡」的誘惑，最後回到一個更基本的立場：自由社會必須保留記憶，也不能把普通人的生活當成可犧牲成本。",
+        "show_summary": true,
+        "category": "時事",
+        "content_type": "opinion",
+        "presentation": "article-lite",
+        "tags": [
+          "歷史記憶",
+          "白色恐怖",
+          "六四",
+          "自由"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "文章立場可保留，但白色恐怖、六四與卡繆引文都屬可核實資訊，正式發佈前應補來源。",
+        "flags": [
+          "historical_sources",
+          "quote_check"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "7b953c20-c9d5-49b6-9485-39221e8397aa",
+      "title": "一些有關《無職轉生》的想法",
+      "before": {
+        "section": "notes",
+        "category": "心得",
+        "status": "published",
+        "summary": "以《無職轉生》的爭議為例，討論虛構描寫、作品倫理與社群道德審判之間應如何區分。",
+        "tags": [
+          "無職轉生",
+          "動畫",
+          "作品倫理"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "談《無職轉生》：虛構描寫與道德判斷的界線",
+        "show_title": true,
+        "summary": "以《無職轉生》的爭議為例，討論虛構描寫、作品倫理與對作者／觀眾的道德判斷之間，究竟應如何劃線。",
+        "show_summary": true,
+        "category": "作品評論",
+        "content_type": "review",
+        "presentation": "review",
+        "tags": [
+          "無職轉生",
+          "動畫",
+          "作品倫理"
+        ],
+        "series": null,
+        "edit_level": "major",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "重寫推測批評者「真正動機」的段落；把焦點從人格／道德表演拉回作品如何敘事、合理化與反思。",
+        "flags": [
+          "motive_attribution",
+          "overgeneralization"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "f929a42e-b267-4f5d-8d64-20702daf5a5a",
+      "title": "該死的咖啡因",
+      "before": {
+        "section": "literature",
+        "category": "創作",
+        "status": "published",
+        "summary": "一個被咖啡因弄到失眠的凌晨，一包第一次買的菸，與一位陌生女人，把夜晚推向意料之外的邂逅。",
+        "tags": [
+          "短篇小說",
+          "咖啡",
+          "邂逅"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "該死的咖啡因",
+        "show_title": true,
+        "summary": "一個被咖啡因弄到失眠的凌晨，一包第一次買的菸，與超商外的一位陌生女人，把夜晚推向一場意料之外的邂逅。",
+        "show_summary": true,
+        "category": "短篇小說",
+        "content_type": "fiction",
+        "presentation": "fiction",
+        "tags": [
+          "短篇小說",
+          "咖啡",
+          "邂逅"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "移除開頭多餘水平線，修正「沒有沒有／嘀咕」等明顯錯字；不改小說情節。",
+        "flags": [
+          "typo"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "5d8e944f-e3a2-4fec-94ed-6ea71aa1ad8a",
+      "title": "取材",
+      "before": {
+        "section": "literature",
+        "category": "創作",
+        "status": "published",
+        "summary": "一名自認唯一真正藝術家的老師，為了掌握作品的一切開始「親自取材」，直到學生也形成了自己的美學。",
+        "tags": [
+          "短篇小說",
+          "謀殺",
+          "藝術",
+          "黑色美學"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "取材",
+        "show_title": true,
+        "summary": "一名近乎病態追求「純粹創作」的老師開始親自取材，直到他的學生也形成了自己的美學。",
+        "show_summary": true,
+        "category": "短篇小說",
+        "content_type": "fiction",
+        "presentation": "fiction",
+        "tags": [
+          "短篇小說",
+          "謀殺",
+          "藝術",
+          "黑色美學"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "移除後談第一句重複提示、修正中文問號；小說正文不改聲音。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "d006ad0b-a74c-4566-875b-81c6dec78458",
+      "title": "「美」究竟是怎麼出現的？",
+      "before": {
+        "section": "notes",
+        "category": "隨筆",
+        "status": "published",
+        "summary": "文字、音符、數學與風景只是不同排列，卻能讓人產生美感；我想追問的，是這份感受究竟從哪裡來。",
+        "tags": [
+          "美學",
+          "藝術",
+          "哲學"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "「美」究竟是怎麼出現的？",
+        "show_title": true,
+        "summary": "文字、音符、數學與風景只是不同排列，卻能讓人感到「美」；我想追問的是，這份感受究竟從哪裡來。",
+        "show_summary": true,
+        "category": "觀點",
+        "content_type": "opinion",
+        "presentation": "article-lite",
+        "tags": [
+          "美學",
+          "藝術",
+          "哲學"
+        ],
+        "series": "美學",
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "短哲學文章已完整；只做機械校讀。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "c94ce8a9-3cea-4b16-904c-e4978905fe7b",
+      "title": "嘉義咖啡節",
+      "before": {
+        "section": "notes",
+        "category": "日記",
+        "status": "published",
+        "summary": "意外撞上嘉義咖啡節，一天試喝約二十種咖啡，也再次發現自己其實才剛站在咖啡世界的門口。",
+        "tags": [
+          "咖啡",
+          "嘉義",
+          "日記"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "嘉義咖啡節",
+        "show_title": true,
+        "summary": "意外撞上嘉義咖啡節，一天試喝約二十種咖啡，也再次發現自己其實才剛站在咖啡世界的門口。",
+        "show_summary": true,
+        "category": "日記",
+        "content_type": "journal",
+        "presentation": "journal",
+        "tags": [
+          "咖啡",
+          "嘉義",
+          "日記"
+        ],
+        "series": "咖啡",
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "修正數字單位與語病；公開版不要直接招呼陌生讀者到宿舍，可改成「熟人想試可以私訊」。",
+        "flags": [
+          "location_privacy"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "93d5b260-aa20-45fb-945b-6310a41b017d",
+      "title": "感受與思考主義",
+      "before": {
+        "section": "notes",
+        "category": "隨筆",
+        "status": "published",
+        "summary": "如果不把反抗當成義務，我更願意用「感受與思考」回應荒謬；這是我目前最接近自己的生命觀。",
+        "tags": [
+          "荒謬主義",
+          "哲學",
+          "感受與思考"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "感受與思考主義",
+        "show_title": true,
+        "summary": "如果反抗也可能變成義務，我更願意把生命的核心放在「感受與思考」：不逃避荒謬，也不讓荒謬規定全部人生。",
+        "show_summary": true,
+        "category": "觀點",
+        "content_type": "opinion",
+        "presentation": "article-lite",
+        "tags": [
+          "荒謬主義",
+          "哲學",
+          "感受與思考"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "整體完整；只做標點與空白整理。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "6eeeda2e-292d-4eda-b674-42648b256064",
+      "title": "贖回時間、自由與愛",
+      "before": {
+        "section": "notes",
+        "category": "隨筆",
+        "status": "published",
+        "summary": "我真正想要的並不宏大，只是時間、自由、愛與一個平凡的午後；可現代生活卻讓這些變成最難贖回的東西。",
+        "tags": [
+          "自由",
+          "時間",
+          "愛",
+          "資本主義"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "贖回時間、自由與愛",
+        "show_title": true,
+        "summary": "我真正想要的並不宏大，只是時間、自由、愛與一個平凡午後；可現代生活偏偏讓這些變成最難贖回的東西。",
+        "show_summary": true,
+        "category": "散文",
+        "content_type": "essay",
+        "presentation": "article-lite",
+        "tags": [
+          "自由",
+          "時間",
+          "愛",
+          "資本主義"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "把社群貼上造成的句點後空格改回自然段落，修正「一再地」等語法。",
+        "flags": [
+          "paste_spacing"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "9f1f2b8d-4cc1-43ae-86f6-94e933fa3366",
+      "title": "四幕短詩：告白、分手、死亡、重逢",
+      "before": {
+        "section": "literature",
+        "category": "創作",
+        "status": "published",
+        "summary": "四則極短詩，分別以告白、分手、死亡與重逢為題，在不直接說出題目的限制下描出輪廓。",
+        "tags": [
+          "現代詩",
+          "文字實驗"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "四幕短詩：告白、分手、死亡、重逢",
+        "show_title": true,
+        "summary": "四則極短詩，用告白、分手、死亡與重逢作題，在不直說題目的限制下留下四種時間感。",
+        "show_summary": false,
+        "category": "詩",
+        "content_type": "poem",
+        "presentation": "poetry",
+        "tags": [
+          "現代詩",
+          "文字實驗"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "詩保留行分；不顯示摘要。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "7e426bee-03a5-407d-b728-f3cc40e38d65",
+      "title": "酒紅宴下",
+      "before": {
+        "section": "literature",
+        "category": "創作",
+        "status": "published",
+        "summary": "以《進擊的巨人》與《百年孤寂》等意象交疊，寫歷史、血、自由與循環的二次創作詩。",
+        "tags": [
+          "現代詩",
+          "進擊的巨人",
+          "二次創作"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "酒紅宴下",
+        "show_title": true,
+        "summary": "以《進擊的巨人》與《百年孤寂》的意象交疊，寫牆、血、自由與歷史循環的一首二次創作詩。",
+        "show_summary": false,
+        "category": "詩",
+        "content_type": "poem",
+        "presentation": "poetry",
+        "tags": [
+          "現代詩",
+          "進擊的巨人",
+          "二次創作"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "詩／二創只做機械清潔；若公開可補作品來源標籤，不需正文解說。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "b7450161-74d1-4abf-80c3-f63129e41e22",
+      "title": "下雨的夜晚",
+      "before": {
+        "section": "literature",
+        "category": "創作",
+        "status": "published",
+        "summary": "一場雨夜裡，透明雨絲像針線縫住少年的視線，也把孤獨與疼痛一併縫進身體。",
+        "tags": [
+          "現代詩",
+          "雨",
+          "孤獨"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "下雨的夜晚",
+        "show_title": true,
+        "summary": "雨絲像針線垂下，把少年、孤獨與疼痛一起縫進夜裡。",
+        "show_summary": false,
+        "category": "詩",
+        "content_type": "poem",
+        "presentation": "poetry",
+        "tags": [
+          "現代詩",
+          "雨",
+          "孤獨"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "詩只做機械清潔。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "e0422ffb-fca1-4082-aebd-6a4105f8f2b9",
+      "title": "大眾心理學其實不適合大眾讀",
+      "before": {
+        "section": "notes",
+        "category": "隨筆",
+        "status": "published",
+        "summary": "大眾心理學可以提供理解自己的語言，但若把分類與書中解法直接當成處方，也可能反過來限制自己。",
+        "tags": [
+          "心理學",
+          "MBTI",
+          "閱讀"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "大眾心理學，真的適合拿來自我診斷嗎？",
+        "show_title": true,
+        "summary": "大眾心理學可以提供理解自己的語言，但如果把人格標籤或書中解法直接當成診斷與處方，工具也可能反過來限制人。",
+        "show_summary": true,
+        "category": "觀點",
+        "content_type": "opinion",
+        "presentation": "article-lite",
+        "tags": [
+          "心理學",
+          "MBTI",
+          "閱讀"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "把「大眾心理學不適合大眾讀」改成對「拿來自我診斷」的批判，避免把心理學本身與通俗心理讀物混為一談。",
+        "flags": [
+          "terminology_precision"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "ff3a52b9-8c57-4cf0-a380-5c429baab317",
+      "title": "忌日快樂",
+      "before": {
+        "section": "literature",
+        "category": "創作",
+        "status": "published",
+        "summary": "以「忌日」反寫生日與母親節，描寫一個孩子如何在母親日復一日的自我讓渡中長大。",
+        "tags": [
+          "現代詩",
+          "母親",
+          "母親節"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "忌日快樂",
+        "show_title": true,
+        "summary": "把生日與母親節反寫成一場持續一生的「謀殺」，寫孩子如何在母親的自我讓渡中長大。",
+        "show_summary": false,
+        "category": "詩",
+        "content_type": "poem",
+        "presentation": "poetry",
+        "tags": [
+          "現代詩",
+          "母親",
+          "母親節"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "詩只清理不可見字元與多餘空行，不主動改詞。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "208db295-d7ec-4d8b-8360-56346655fcfb",
+      "title": "看海隨想",
+      "before": {
+        "section": "notes",
+        "category": "日記",
+        "status": "published",
+        "summary": "一個人坐在海堤吃早餐、看浪、回想大一生活，也重新確認自己對當下生活的滿足。",
+        "tags": [
+          "日記",
+          "海",
+          "大一"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "看海隨想",
+        "show_title": true,
+        "summary": "在海堤吃早餐、看浪，也回頭看了一眼即將結束的大一；有些選擇無法重來，但當下仍然可以滿足。",
+        "show_summary": true,
+        "category": "日記",
+        "content_type": "journal",
+        "presentation": "journal",
+        "tags": [
+          "日記",
+          "海",
+          "大一"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "修正「已經明天」等明顯錯字與副詞用法；不動原本口語節奏。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "3e4b19ac-84b1-4ea6-8c06-f9025056bd03",
+      "title": "凌晨三點半的幸福",
+      "before": {
+        "section": "notes",
+        "category": "日記",
+        "status": "published",
+        "summary": "凌晨三點半的一杯抹茶、一包洋芋片與一首歌，構成我此刻對幸福最具體的答案。",
+        "tags": [
+          "日記",
+          "幸福",
+          "存在主義"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "凌晨三點半的幸福",
+        "show_title": true,
+        "summary": "凌晨三點半，一杯抹茶、一包洋芋片與一首歌，讓「幸福」突然變得非常具體。",
+        "show_summary": true,
+        "category": "日記",
+        "content_type": "journal",
+        "presentation": "journal",
+        "tags": [
+          "日記",
+          "幸福",
+          "存在主義"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "修正「甚麼／?」；歌詞段落需注意引用長度與來源，網站可改成較短節錄＋作品名。",
+        "flags": [
+          "lyrics_quote"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "c26807a9-1431-45ba-bfcc-e879e0198dea",
+      "title": "嗜血的邂逅",
+      "before": {
+        "section": "literature",
+        "category": "創作",
+        "status": "published",
+        "summary": "一場凌晨宿舍裡的獵奇邂逅，以曖昧敘事一路把讀者引向真正的「她」。",
+        "tags": [
+          "短篇小說",
+          "獵奇",
+          "黑色幽默"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "嗜血的邂逅",
+        "show_title": true,
+        "summary": "一場看似偶然的邂逅，讓獵人與獵物的位置逐漸失去界線；真正嗜血的，未必是最先露出獠牙的人。",
+        "show_summary": true,
+        "category": "短篇小說",
+        "content_type": "fiction",
+        "presentation": "fiction",
+        "tags": [
+          "短篇小說",
+          "獵奇",
+          "黑色幽默"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "小說以作者語氣為主，只做隱形字元、標點與段落清潔。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "249d13b2-4150-4c50-b155-5f3a4eb383b6",
+      "title": "《活俠傳》六周目心得",
+      "before": {
+        "section": "notes",
+        "category": "心得",
+        "status": "published",
+        "summary": "六周目、約一百小時的《活俠傳》遊玩心得：為了保住在乎的人，一次次讀檔、重來，也重新理解平凡人的「俠」。",
+        "tags": [
+          "遊戲",
+          "活俠傳",
+          "遊玩心得"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "《活俠傳》六周目心得",
+        "show_title": true,
+        "summary": "六周目、約一百小時後，從一次次讀檔與救人談《活俠傳》最打動我的地方：平凡的人如何活成自己的「俠」。",
+        "show_summary": true,
+        "category": "作品心得",
+        "content_type": "review",
+        "presentation": "review",
+        "tags": [
+          "遊戲",
+          "活俠傳",
+          "遊玩心得"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "complete",
+        "confidence": 0.82,
+        "reason": "正文已相對完整；只做機械式排版校讀，不改遊戲心得的個人口氣。",
+        "flags": [],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "e4335dde-05e4-4c67-be9c-2ff021a2b9a8",
+      "title": "《無窮盡的交響曲》閱讀心得與批判",
+      "before": {
+        "section": "notes",
+        "category": "心得",
+        "status": "published",
+        "summary": "讀完朋友的哲學文本《無窮盡的交響曲》後，從經驗論、宿命論、形上學與美學提出幾點批判。",
+        "tags": [
+          "哲學",
+          "閱讀心得",
+          "批判"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "《無窮盡的交響曲》閱讀心得與批判",
+        "show_title": true,
+        "summary": "以經驗論、決定論、計算不可化約性與美學為軸，回應朋友的哲學文本；著重指出模型類比的啟發與界線。",
+        "show_summary": true,
+        "category": "作品評論",
+        "content_type": "review",
+        "presentation": "review",
+        "tags": [
+          "哲學",
+          "閱讀心得",
+          "批判"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "修正重複詞、錯字與問號；把「計算不可化約性＝宿命論」相關內容明確寫成批判與條件式判斷，不當作已證實結論。",
+        "flags": [
+          "technical_claims",
+          "philosophy_precision"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "5e9bf718-95e7-48ff-b7f1-d6ccbfe6e382",
+      "title": "《如何閱讀一本書》閱讀筆記",
+      "before": {
+        "section": "notes",
+        "category": "心得",
+        "status": "published",
+        "summary": "整理《如何閱讀一本書》的閱讀層次與分析規則，作為之後閱讀不同類型文本的操作筆記。",
+        "tags": [
+          "閱讀方法",
+          "閱讀心得"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "《如何閱讀一本書》閱讀筆記",
+        "show_title": true,
+        "summary": "依《如何閱讀一本書》的四層閱讀架構整理方法、提問與評論規則，作為之後重讀與主題閱讀的工作筆記。",
+        "show_summary": true,
+        "category": "閱讀筆記",
+        "content_type": "reference-note",
+        "presentation": "reference",
+        "tags": [
+          "閱讀方法",
+          "閱讀心得"
+        ],
+        "series": "閱讀方法",
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "修正多處明顯錯字、標點與章節編號；把「如何閱讀想像文學」補成第十四章，並調整第十八／十九章順序。",
+        "flags": [
+          "typos",
+          "structure"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "9a822c00-0d35-4f52-a789-c8b5b29c2a20",
+      "title": "《百年孤寂》閱讀心得",
+      "before": {
+        "section": "notes",
+        "category": "心得",
+        "status": "published",
+        "summary": "從波恩地亞家族、殖民、戰爭、失憶與愛無能，整理《百年孤寂》中反覆回返的孤獨與歷史。",
+        "tags": [
+          "閱讀心得",
+          "馬奎斯",
+          "百年孤寂"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "《百年孤寂》閱讀心得",
+        "show_title": true,
+        "summary": "從家族名字、亂倫、戰爭、香蕉公司與失憶，讀《百年孤寂》如何把波恩地亞家族的孤寂寫成拉丁美洲的歷史寓言。",
+        "show_summary": true,
+        "category": "作品評論",
+        "content_type": "review",
+        "presentation": "longform",
+        "tags": [
+          "閱讀心得",
+          "馬奎斯",
+          "百年孤寂"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "保留核心閱讀感受；拉丁美洲歷史與現代事件類比需補來源，避免文學心得被誤讀成歷史論文。",
+        "flags": [
+          "historical_claims",
+          "quote_check"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "35434d68-7f23-427e-bb06-d4835f80a522",
+      "title": "《盲目》閱讀心得",
+      "before": {
+        "section": "notes",
+        "category": "心得",
+        "status": "published",
+        "summary": "從白色失明、敘事形式、體制崩解與醫生太太的角色，思考《盲目》如何描寫人性的失明。",
+        "tags": [
+          "閱讀心得",
+          "薩拉馬戈",
+          "盲目"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "《盲目》閱讀心得",
+        "show_title": true,
+        "summary": "從失明後的制度崩解與人性滑坡出發，討論《盲目》如何把善惡、依附、慾望與「看見」重新放回同一場社會實驗。",
+        "show_summary": true,
+        "category": "作品評論",
+        "content_type": "review",
+        "presentation": "longform",
+        "tags": [
+          "閱讀心得",
+          "薩拉馬戈",
+          "盲目"
+        ],
+        "series": null,
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "保留原有閱讀論述；建議之後替歷史／政治類比補來源或改成「我聯想到」。",
+        "flags": [
+          "citation_review"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "f2bbc2ad-6423-4f22-bb1b-14657a7e732a",
+      "title": "論《鼠疫》中的責任、自由與感受",
+      "before": {
+        "section": "notes",
+        "category": "心得",
+        "status": "published",
+        "summary": "以《鼠疫》為起點，討論荒謬、責任、自由，以及人在制度與災難中如何保存感受與思考的主體性。",
+        "tags": [
+          "閱讀心得",
+          "卡繆",
+          "鼠疫",
+          "存在主義"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "論《鼠疫》中的責任、自由與感受",
+        "show_title": true,
+        "summary": "以責任、自由與主體性重讀《鼠疫》：反抗不是終點，而是為了守住感受、思考與不被客體化的能力。",
+        "show_summary": true,
+        "category": "作品評論",
+        "content_type": "review",
+        "presentation": "longform",
+        "tags": [
+          "閱讀心得",
+          "卡繆",
+          "鼠疫",
+          "存在主義"
+        ],
+        "series": "卡繆／荒謬主義",
+        "edit_level": "light",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "整體結構成熟；僅做空白、標點與 Markdown 一致化。正式長文可保留參考書目與註記。",
+        "flags": [
+          "citation_review"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    },
+    {
+      "id": "ce077857-9a02-4975-89c1-9f6999714e1b",
+      "title": "《變形記》閱讀心得",
+      "before": {
+        "section": "notes",
+        "category": "心得",
+        "status": "published",
+        "summary": "從異化、家庭與官僚體制切入《變形記》，思考葛雷戈在變形前後如何被逐步物化。",
+        "tags": [
+          "閱讀心得",
+          "卡夫卡",
+          "變形記"
+        ],
+        "presentation": null,
+        "visibility": null,
+        "show_title": null,
+        "show_summary": null
+      },
+      "ai_proposal": {
+        "title": "《變形記》閱讀心得",
+        "show_title": true,
+        "summary": "從葛雷戈的變形切入，讀卡夫卡如何把勞動異化、家庭功利與父權陰影壓進一具逐漸失去「人」資格的身體。",
+        "show_summary": true,
+        "category": "作品評論",
+        "content_type": "review",
+        "presentation": "review",
+        "tags": [
+          "閱讀心得",
+          "卡夫卡",
+          "變形記"
+        ],
+        "series": null,
+        "edit_level": "medium",
+        "clean_body": null,
+        "editorial_state": "needs_review",
+        "confidence": 0.82,
+        "reason": "修正引號、年代間距與「鐫刻」等字詞；作者生平與名言摘錄需逐條核對來源，避免把網路流傳語錄當卡夫卡原話。",
+        "flags": [
+          "source_check",
+          "quote_check"
+        ],
+        "human_review_required": true,
+        "visibility": "public"
+      },
+      "accepted": false,
+      "source": "v2_refined_semantic_pack"
+    }
+  ]
+}

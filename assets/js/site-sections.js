@@ -1,11 +1,11 @@
 /**
- * Site section model (UI):
- *   notes + essay mode     → 隨筆（隨想／日記／心得／隨筆〔UI：散文〕）
- *   literature             → 文學創作（創作／長文）
- *   notes + academic mode  → 學科筆記（僅 admin 導覽；分類：資安／ML／程式／人文）
+ * Site section model (UI) — V3:
+ * Semantic presentation comes from stored article.presentation (AI/human).
+ * This module only handles IA buckets + category aliases, NOT runtime classification by length.
  *
- * 「感想」已退場：讀取時 alias 成隨想；後台不再提供新建。
- * DB 值「隨筆」保留；UI 顯示為「散文」。
+ *   notes + essay mode     → 隨筆
+ *   literature             → 文學創作
+ *   notes + academic mode  → 學科筆記（admin）
  */
 (function () {
   "use strict";

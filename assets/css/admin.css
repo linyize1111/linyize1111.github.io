@@ -647,3 +647,19 @@ body.admin.editor-open { overflow: hidden; }
 @media (max-width: 820px) {
   .section-pick { grid-template-columns: 1fr; }
 }
+
+.inline-check { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0.45rem 0.85rem 0 0; font-size: 0.82rem; color: var(--a-muted); }
+.inline-check input { width: auto; margin: 0; }
+.ai-review-panel {
+  margin-top: 0.75rem; padding: 0.85rem; border: 1px solid var(--a-border);
+  border-radius: 10px; background: rgba(0,0,0,0.18);
+}
+.ai-review-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem 0.75rem; margin: 0.6rem 0;
+}
+.ai-review-grid .full { grid-column: 1 / -1; }
+.ai-review-grid dt { font-size: 0.72rem; color: var(--a-muted); margin: 0; }
+.ai-review-grid dd { margin: 0.1rem 0 0; font-size: 0.9rem; word-break: break-word; }
+#ai-r-body {
+  min-height: 160px; font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem;
+}

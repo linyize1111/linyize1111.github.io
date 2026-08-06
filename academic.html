@@ -184,7 +184,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
     <!-- Site Custom CSS: dark mode + image styles -->
-    <link rel="stylesheet" href="assets/css/site-custom.css?v=p0-perfect-1" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=ai-v3-1" />
+    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=ai-v3-1" />
 </head>
 
 <body class="is-preload admin-gated-page">
@@ -271,8 +272,7 @@
                 <header class="major">
                     <span class="date">僅管理員</span>
                     <h2><a href="#">學科筆記</a></h2>
-                    <p>資安、機器學習、程式語言與人文等課程／自學筆記。<br /><br />
-                        此區僅管理員登入後才會出現在導覽；訪客無法從選單進入。
+                    <p>管理員專用區。
                     </p>
                 </header>
             </article>
@@ -307,6 +307,7 @@
             </div>
 
             <section class="posts" id="posts-container" data-section="notes" data-list-mode="academic">
+                <!-- CMS-only: no static article fallback (V3) -->
             </section>
             <!-- 分頁資訊與按鈕 -->
             <div id="pagination-controls"></div>
@@ -340,7 +341,7 @@
 
 
 
-<script src="assets/js/common.js?v=p0-perfect-1"></script>
+<script src="assets/js/common.js?v=ai-v3-1"></script>
 
     <!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -348,10 +349,11 @@
     <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/supabase-client.js"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/site-sections.js?v=p0-perfect-1"></script>
-<script src="assets/js/cms-public.js?v=p0-perfect-1"></script>
+    <script src="assets/js/site-sections.js?v=ai-v3-1"></script>
+    <script src="assets/js/presentation-registry.js?v=ai-v3-1"></script>
+<script src="assets/js/cms-public.js?v=ai-v3-1"></script>
 
-    <script src="assets/js/page-list.js?v=p0-perfect-1"></script>
+    <script src="assets/js/page-list.js?v=ai-v3-1"></script>
 </body>
 
 </html>

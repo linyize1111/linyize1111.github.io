@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LYZ AI Editorial Analysis V3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title", "show_title", "summary", "show_summary", "category", "content_type",
+    "presentation", "tags", "series", "edit_level", "clean_body", "editorial_state",
+    "confidence", "reason", "flags", "human_review_required"
+  ],
+  "properties": {
+    "title": {"type": "string"},
+    "show_title": {"type": "boolean"},
+    "summary": {"type": "string"},
+    "show_summary": {"type": "boolean"},
+    "category": {"type": "string"},
+    "content_type": {"type": "string"},
+    "presentation": {
+      "type": "string",
+      "enum": ["fragment", "photo-note", "journal", "article-lite", "longform", "review", "reference", "quote", "fiction", "poetry"]
+    },
+    "tags": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "series": {"type": ["string", "null"]},
+    "edit_level": {
+      "type": "string",
+      "enum": ["preserve", "format_only", "proofread", "light_edit", "structural_edit", "editorial_review"]
+    },
+    "clean_body": {"type": "string"},
+    "editorial_state": {
+      "type": "string",
+      "enum": ["complete", "fragmentary", "needs_review", "incomplete"]
+    },
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "reason": {"type": "string", "maxLength": 280},
+    "flags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "possible_title_in_body", "duplicate_title", "formatting_damage", "copy_paste_noise",
+          "typo", "duplicate_content", "source_needed", "fact_check", "overgeneralization",
+          "argument_gap", "copyright_quote", "image_rights", "spoiler", "incomplete_body"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "human_review_required": {"type": "boolean"}
+  }
+}

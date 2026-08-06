@@ -1,0 +1,37 @@
+/* V3 presentation modifiers (list + article). Semantic look comes from stored presentation only. */
+.note-item.is-fragment .note-card__title,
+.note-item.is-quote .note-card__title.note-card__title--sr {
+  /* title may be visually hidden via .visually-hidden */
+}
+
+.note-item.is-fragment,
+.note-item.is-quote {
+  max-width: 36rem;
+}
+
+.note-item.is-poetry .note-card__excerpt {
+  white-space: pre-wrap;
+}
+
+body.presentation-poetry #markdown-container .markdown-body,
+body.presentation-fiction #markdown-container .markdown-body {
+  max-width: var(--article-measure);
+}
+
+body.presentation-poetry #markdown-container .markdown-body p {
+  margin-bottom: 0.35em;
+}
+
+body.presentation-fragment #markdown-container .markdown-body,
+body.presentation-quote #markdown-container .markdown-body {
+  font-size: 1.05rem;
+}
+
+.visually-hidden,
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}

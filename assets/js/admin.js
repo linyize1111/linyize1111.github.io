@@ -35,8 +35,8 @@
     ],
   };
   var MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-  var SHORT_CHARS = 450;
-  var LONG_CHARS = 2200;
+  // V3: no SHORT_CHARS / LONG_CHARS semantic thresholds
+  var lastAiAnalysis = null;
   var editingArticleId = null;
   var articlesCache = [];
 
@@ -701,6 +701,17 @@
     $("f-cover").value = "";
     $("cover-thumb").classList.add("hidden");
     $("f-body").value = "";
+    if ($("f-content-type")) $("f-content-type").value = "";
+    if ($("f-presentation")) $("f-presentation").value = "";
+    if ($("f-visibility")) {
+      $("f-visibility").value = $("list-section").value === "academic" ? "private" : "public";
+    }
+    if ($("f-series")) $("f-series").value = "";
+    if ($("f-show-title")) $("f-show-title").checked = true;
+    if ($("f-show-summary")) $("f-show-summary").checked = true;
+    lastAiAnalysis = null;
+    if ($("ai-review-panel")) $("ai-review-panel").classList.add("hidden");
+    if ($("ai-status")) $("ai-status").textContent = "";
     currentImages = [];
     renderImagesEditor();
     refreshCategoryList();
@@ -725,6 +736,14 @@
         a.section === "notes" && isAcademicCategory(catNorm) ? "academic" : a.section;
       $("f-status").value = a.status;
       $("f-category").value = catNorm;
+      if ($("f-content-type")) $("f-content-type").value = a.content_type || "";
+      if ($("f-presentation")) $("f-presentation").value = a.presentation || "";
+      if ($("f-visibility")) {
+        $("f-visibility").value = a.visibility || (isAcademicCategory(catNorm) ? "private" : "public");
+      }
+      if ($("f-series")) $("f-series").value = a.series || "";
+      if ($("f-show-title")) $("f-show-title").checked = a.show_title !== false;
+      if ($("f-show-summary")) $("f-show-summary").checked = !!a.show_summary;
       $("f-title").value = a.title || "";
       $("f-slug").value = a.slug || "";
       $("f-summary").value = a.summary || "";
@@ -741,6 +760,7 @@
       updateLengthHint();
       syncCategoryChips();
       updateFormChrome();
+      if (!a.presentation) setAiStatus("此篇尚無 presentation，建議執行 AI 整理與判斷", false);
     } else {
       syncCategoryChips();
       updateFormChrome();
@@ -768,12 +788,9 @@
   }
 
   function detectLengthKind(body, forced) {
-    if (forced === "short") return "short";
-    if (forced === "long") return "long";
-    var n = String(body || "").replace(/\s+/g, "").length;
-    if (n <= SHORT_CHARS) return "short";
-    if (n >= LONG_CHARS) return "long";
-    return "medium";
+    // V3: length is a reference signal only — never a semantic class.
+    if (forced === "short" || forced === "long") return forced;
+    return "unknown";
   }
 
   function lengthLabel(kind) {
@@ -807,34 +824,9 @@
 
   /** 謹慎推測分類 */
   function suggestCategory(title, body, section, existing) {
-    var cur = normalizeCategory(existing || "");
-    if (cur) return cur;
-    var text = String(title || "") + "\n" + String(body || "");
-    var plain = text.replace(/\s+/g, "");
-    var n = plain.length;
-    var sec = section || "literature";
-
-    if (sec === "academic") {
-      if (/資訊安全|資安|security/i.test(text)) return "資訊安全";
-      if (/機器學習|machine\s*learning|\bml\b/i.test(text)) return "機器學習";
-      if (/python|java|程式|程式語言|coding/i.test(text)) return "程式語言";
-      return "人文";
-    }
-
-    if (sec === "notes") {
-      if (/閱讀心得|讀後感|書評|觀後感|讀書筆記|如何讀一本書|劇情大綱/.test(text)) {
-        return "心得";
-      }
-      if (/日記|生活札記|札記|今天的|凌晨.*(荒謬|平凡|見證)|入學日記|與海對話/.test(text)) {
-        return "日記";
-      }
-      if (n > SHORT_CHARS && n < LONG_CHARS) return "隨筆";
-      return "隨想";
-    }
-
-    if (/創作|短篇小說|劇本|詩集|四幕|小說/.test(text)) return "創作";
-    if (n >= LONG_CHARS) return "長文";
-    return "創作";
+    // V3: semantic classification is AI/human only. Regex/length must not decide.
+    void title; void body; void section;
+    return normalizeCategory(existing || "") || "";
   }
 
   function syncCategoryChips() {
@@ -866,28 +858,18 @@
   }
 
   function ensureThoughtTitle(out) {
-    var title = String(out.title || "").trim();
-    var weak = !title || title === "未命名匯入" || /^https?:\/\//i.test(title);
-    if (!weak) return;
-    if (out.lengthKind === "short" || isThoughtCategory(out.category)) {
-      var fromBody = firstSentenceTitle(out.body || out.summary || "");
-      out.title = fromBody || todayThoughtTitle(out.category);
-    } else if (!title) {
-      out.title = firstSentenceTitle(out.body) || todayThoughtTitle(out.category);
-    }
+    // V3: never invent title from first sentence / length.
+    void out;
   }
 
   function updateLengthHint() {
     var el = $("length-hint");
     if (!el) return;
     var body = ($("f-body") && $("f-body").value) || "";
-    var title = ($("f-title") && $("f-title").value) || "";
-    var kind = detectLengthKind(body, "auto");
     var n = String(body).replace(/\s+/g, "").length;
-    var suggested = suggestCategory(title, body, ($("f-section") && $("f-section").value) || "literature", "");
     el.textContent = n
-      ? ("約 " + n + " 字（" + lengthLabel(kind) + "）。若空白儲存，系統傾向標成「" + suggested + "」。碎念→隨想；當天生活→日記；讀書感想→心得；小說詩→創作。")
-      : "可貼上後再選分類；不確定時先選「隨想」。";
+      ? ("約 " + n + " 字（僅供參考）。分類／presentation 請用「AI 整理與判斷」或手動選擇。")
+      : "貼上後請按「AI 整理與判斷」，或手動填分類。AI 失敗時不會用字數規則猜。";
   }
 
   function addTagSuggestion(tag) {
@@ -917,13 +899,8 @@
       $("f-category").value = cat;
       return cat;
     }
-    var body = ($("f-body") && $("f-body").value) || "";
-    var title = ($("f-title") && $("f-title").value) || "";
-    var section = ($("f-section") && $("f-section").value) || "literature";
-    cat = suggestCategory(title, body, section, "");
-    $("f-category").value = cat;
-    syncCategoryChips();
-    return cat;
+    msg("form-msg", "請先選擇分類，或執行「AI 整理與判斷」後確認。", "err");
+    return "";
   }
 
   function isJunkSocialLine(line) {
@@ -1034,10 +1011,9 @@
         bodyStart = i;
         break;
       }
-      if (!out.title && line.length < 120) {
-        out.title = line.replace(/^["「『]|["」』]$/g, "");
-        bodyStart = i + 1;
-        break;
+      // V3: first non-empty line is only a title candidate; keep it in body
+      if (!out.title && !out._titleCandidate) {
+        out._titleCandidate = line.replace(/^["「『]|["」』]$/g, "");
       }
       break;
     }
@@ -1091,19 +1067,17 @@
     else if (!out.section) out.section = "notes";
 
     var sectionForCat = out.section || "notes";
-    if (!out.category) {
-      out.category = suggestCategory(out.title, out.body, sectionForCat, "");
-    }
-    var allowed = CATEGORIES[sectionForCat] || CATEGORIES.notes;
-    if (allowed.indexOf(out.category) === -1) {
-      out.category = suggestCategory(out.title, out.body, sectionForCat, "");
-      if (allowed.indexOf(out.category) === -1) out.category = allowed[0];
+    if (out.category) {
+      var allowed = CATEGORIES[sectionForCat] || CATEGORIES.notes;
+      if (allowed.indexOf(out.category) === -1) out.category = "";
     }
     if (!out.status) out.status = "draft";
     ensureThoughtTitle(out);
     if (!out.slug && out.title) out.slug = slugify(out.title);
-    if (!out.slug) out.slug = "import-" + Date.now().toString(36);
-    if (!out.summary) out.summary = plainSummary(out.body).slice(0, 120);
+    if (!out.slug) out.slug = "draft-" + Date.now().toString(36);
+    if (!out.summary) out.summary = "";
+    out.needs_ai_analysis = true;
+    out.human_review_required = true;
     return out;
   }
 
@@ -1181,17 +1155,13 @@
     var id = $("f-id").value;
     var bodyVal = ($("f-body") && $("f-body").value) || "";
     var title = $("f-title").value.trim();
-    if (!title) {
-      var kind = detectLengthKind(bodyVal, "auto");
-      title = (kind === "short" ? firstSentenceTitle(bodyVal) : "") || todayThoughtTitle();
-      $("f-title").value = title;
-    }
-    var slug = $("f-slug").value.trim() || slugify(title);
-    if (!title) { msg("form-msg", "請填標題", "err"); return; }
+    var slug = $("f-slug").value.trim() || (title ? slugify(title) : "");
+    if (!title) { msg("form-msg", "請填標題（或先跑 AI 整理並確認）。系統不會再用首句／字數自動命名。", "err"); return; }
     if (!slug) { msg("form-msg", "請填 slug", "err"); return; }
     $("f-slug").value = slug;
 
     var category = ensureCategoryOnSave();
+    if (!category) return;
     var tags = $("f-tags").value.split(/[,，、]+/).map(function (t) { return t.trim(); }).filter(Boolean);
     var uiSection = $("f-section").value;
     var payload = {
@@ -1207,13 +1177,42 @@
       pdf_url: $("f-pdf").value.trim() || null,
       status: $("f-status").value,
       sort_index: parseInt($("f-sort").value, 10) || 0,
+      content_type: ($("f-content-type") && $("f-content-type").value) || null,
+      presentation: ($("f-presentation") && $("f-presentation").value) || null,
+      visibility: ($("f-visibility") && $("f-visibility").value) || "public",
+      series: ($("f-series") && $("f-series").value.trim()) || null,
+      show_title: $("f-show-title") ? !!$("f-show-title").checked : null,
+      show_summary: $("f-show-summary") ? !!$("f-show-summary").checked : null,
+      needs_ai_analysis: !(($("f-presentation") && $("f-presentation").value)),
     };
+    if (uiSection === "academic") {
+      payload.visibility = ($("f-visibility") && $("f-visibility").value) || "private";
+    }
+    // Drop unknown columns until 0007 applied (retry without V3 fields on schema error)
+    payload._v3 = true;
 
     $("btn-save").disabled = true;
     msg("form-msg", '<span class="spinner-inline"></span> 儲存中…', "ok");
     var res;
+    delete payload._v3;
     if (id) res = await client.from("articles").update(payload).eq("id", id).select().single();
     else res = await client.from("articles").insert(payload).select().single();
+
+    if (res.error && /column|does not exist|42703/i.test(res.error.message || "")) {
+      delete payload.content_type;
+      delete payload.presentation;
+      delete payload.visibility;
+      delete payload.series;
+      delete payload.show_title;
+      delete payload.show_summary;
+      delete payload.needs_ai_analysis;
+      if (id) res = await client.from("articles").update(payload).eq("id", id).select().single();
+      else res = await client.from("articles").insert(payload).select().single();
+      if (!res.error) {
+        msg("form-msg", "已儲存（資料庫尚未套用 0007，V3 metadata 未寫入）。", "ok");
+      }
+    }
+
     $("btn-save").disabled = false;
 
     if (res.error) {
@@ -1671,7 +1670,30 @@
         $("paste-status").textContent = "已進大編輯；左側寫 Markdown，右側看排版，改完再儲存";
       });
     }
-    var quickDraft = $("btn-quick-draft");
+    
+    if ($("btn-ai-analyze")) {
+      $("btn-ai-analyze").addEventListener("click", function () { runAiAnalyze("analyze_and_format"); });
+    }
+    if ($("btn-ai-meta-only")) {
+      $("btn-ai-meta-only").addEventListener("click", function () { runAiAnalyze("metadata_only"); });
+    }
+    if ($("btn-ai-apply-all")) {
+      $("btn-ai-apply-all").addEventListener("click", function () { applyAiAnalysis("all"); });
+    }
+    if ($("btn-ai-apply-meta")) {
+      $("btn-ai-apply-meta").addEventListener("click", function () { applyAiAnalysis("meta"); });
+    }
+    if ($("btn-ai-apply-body")) {
+      $("btn-ai-apply-body").addEventListener("click", function () { applyAiAnalysis("body"); });
+    }
+    if ($("btn-ai-discard")) {
+      $("btn-ai-discard").addEventListener("click", function () {
+        lastAiAnalysis = null;
+        if ($("ai-review-panel")) $("ai-review-panel").classList.add("hidden");
+        setAiStatus("已放棄 AI 建議");
+      });
+    }
+var quickDraft = $("btn-quick-draft");
     if (quickDraft) {
       quickDraft.addEventListener("click", async function () {
         var parsed = runParse(true);
@@ -1943,7 +1965,114 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  
+
+  // ---------- V3 AI editorial review ----------
+  function setAiStatus(text, isErr) {
+    var el = $("ai-status");
+    if (!el) return;
+    el.textContent = text || "";
+    el.style.color = isErr ? "#f4708a" : "";
+  }
+
+  function renderAiReview(analysis, meta) {
+    lastAiAnalysis = analysis;
+    var panel = $("ai-review-panel");
+    if (!panel) return;
+    panel.classList.remove("hidden");
+    function setText(id, v) { var el = $(id); if (el) el.textContent = v == null ? "—" : String(v); }
+    setText("ai-r-title", analysis.title);
+    setText("ai-r-show-title", analysis.show_title ? "顯示" : "隱藏");
+    setText("ai-r-summary", analysis.summary || "（空）");
+    setText("ai-r-show-summary", analysis.show_summary ? "顯示" : "隱藏");
+    setText("ai-r-category", analysis.category);
+    setText("ai-r-content-type", analysis.content_type);
+    setText("ai-r-presentation", analysis.presentation);
+    setText("ai-r-tags", (analysis.tags || []).join(", ") || "（無）");
+    setText("ai-r-series", analysis.series || "（無）");
+    setText("ai-r-edit-level", analysis.edit_level);
+    setText("ai-r-state", analysis.editorial_state);
+    setText("ai-r-confidence", String(analysis.confidence));
+    setText("ai-r-reason", analysis.reason || "");
+    setText("ai-r-flags", (analysis.flags || []).join(", ") || "（無）");
+    setText("ai-r-review", analysis.human_review_required ? "需要人工確認" : "可快速採用");
+    setText("ai-r-meta", meta ? ((meta.provider || "") + " / " + (meta.model || "") + " / " + (meta.analyzed_at || "")) : "");
+    var bodyDiff = $("ai-r-body");
+    if (bodyDiff) bodyDiff.value = analysis.clean_body || "";
+    var warn = $("ai-r-warn");
+    if (warn) {
+      warn.textContent = analysis.human_review_required
+        ? "此結果標記為需要人工確認，請逐項檢查後再採用。不會自動發佈。"
+        : "請確認後再採用。AI 不會自動發佈。";
+    }
+  }
+
+  function applyAiAnalysis(mode) {
+    if (!lastAiAnalysis) {
+      setAiStatus("沒有可採用的 AI 結果", true);
+      return;
+    }
+    var a = lastAiAnalysis;
+    if (mode === "all" || mode === "meta" || mode === "taxonomy") {
+      if (a.title != null) $("f-title").value = a.title;
+      if ($("f-show-title")) $("f-show-title").checked = !!a.show_title;
+      if (a.summary != null) $("f-summary").value = a.summary;
+      if ($("f-show-summary")) $("f-show-summary").checked = !!a.show_summary;
+      if (a.category) {
+        $("f-category").value = normalizeCategory(a.category);
+        syncCategoryChips();
+      }
+      if ($("f-content-type")) $("f-content-type").value = a.content_type || "";
+      if ($("f-presentation")) $("f-presentation").value = a.presentation || "";
+      if (a.tags && $("f-tags")) $("f-tags").value = a.tags.join(", ");
+      if ($("f-series")) $("f-series").value = a.series || "";
+    }
+    if ((mode === "all" || mode === "body") && a.clean_body != null) {
+      $("f-body").value = a.clean_body;
+      scheduleMdPreview();
+    }
+    if (a.ai_editorial || true) {
+      // provenance stamped on next successful save via fields
+    }
+    markFormDirty();
+    updateFormChrome();
+    updateLengthHint();
+    setAiStatus("已套用 AI 建議（" + mode + "）。請再按「儲存」；不會自動發佈。");
+  }
+
+  async function runAiAnalyze(mode) {
+    if (!window.SBAiEditorial) {
+      setAiStatus("AI 模組未載入", true);
+      return;
+    }
+    setAiStatus("AI 分析中…");
+    var article = {
+      id: ($("f-id") && $("f-id").value) || null,
+      title: ($("f-title") && $("f-title").value) || "",
+      body: ($("f-body") && $("f-body").value) || "",
+      category: ($("f-category") && $("f-category").value) || "",
+      tags: (($("f-tags") && $("f-tags").value) || "").split(/[,，、]+/).map(function (t) { return t.trim(); }).filter(Boolean),
+      cover: ($("f-cover") && $("f-cover").value) || null,
+      images: currentImages,
+      section: ($("f-section") && $("f-section").value) || "",
+      summary: ($("f-summary") && $("f-summary").value) || "",
+    };
+    if (!article.body.trim()) {
+      setAiStatus("請先貼上或填寫正文", true);
+      return;
+    }
+    var res = await window.SBAiEditorial.analyzeArticle(article, mode || "analyze_and_format");
+    if (!res.ok) {
+      setAiStatus((res.unavailable ? "AI unavailable — " : "") + (res.error || "失敗") + "。請改為手動填寫，系統不會用字數規則猜測。", true);
+      lastAiAnalysis = null;
+      return;
+    }
+    renderAiReview(res.analysis, res.meta);
+    setAiStatus("AI 分析完成。請審核後選擇採用方式。");
+  }
+
+
+document.addEventListener("DOMContentLoaded", function () {
     bind();
     refreshView();
     if (window.SBAuth && window.SB && window.SB.isConfigured()) {

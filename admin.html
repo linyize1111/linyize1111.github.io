@@ -24,7 +24,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;900&display=swap">
-    <link rel="stylesheet" href="assets/css/admin.css?v=p0-perfect-1" />
+    <link rel="stylesheet" href="assets/css/admin.css?v=ai-v3-1" />
 </head>
 
 <body class="admin">
@@ -249,15 +249,97 @@
                                 </div>
                                 <div class="field full">
                                     <label>標題 *</label>
-                                    <input id="f-title" placeholder="可留空由系統取首句／日期隨想" />
+                                    <input id="f-title" placeholder="請填標題，或按「AI 整理與判斷」後確認" />
                                 </div>
                                 <div class="field full">
                                     <label>slug（網址代稱）*</label>
                                     <input id="f-slug" placeholder="可自動產生" />
                                 </div>
                                 <div class="field full">
-                                    <label>摘要（卡片顯示，可留空）</label>
-                                    <input id="f-summary" placeholder="一句話簡介" />
+                                    <label>摘要（語意摘要；短文可不顯示）</label>
+                                    <input id="f-summary" placeholder="一句話；勿用「本文探討…」報告腔" />
+                                    <label class="inline-check"><input type="checkbox" id="f-show-title" checked /> 前台顯示標題</label>
+                                    <label class="inline-check"><input type="checkbox" id="f-show-summary" checked /> 前台顯示摘要</label>
+                                </div>
+                            </details>
+
+                            <details class="editor-meta-block" open>
+                                <summary>V3 呈現／可見性</summary>
+                                <div class="row">
+                                    <div class="field">
+                                        <label>presentation</label>
+                                        <select id="f-presentation">
+                                            <option value="">（未設定 → article-lite）</option>
+                                            <option value="fragment">fragment</option>
+                                            <option value="photo-note">photo-note</option>
+                                            <option value="journal">journal</option>
+                                            <option value="article-lite">article-lite</option>
+                                            <option value="longform">longform</option>
+                                            <option value="review">review</option>
+                                            <option value="reference">reference</option>
+                                            <option value="quote">quote</option>
+                                            <option value="fiction">fiction</option>
+                                            <option value="poetry">poetry</option>
+                                        </select>
+                                    </div>
+                                    <div class="field">
+                                        <label>content_type</label>
+                                        <input id="f-content-type" placeholder="例如 fragment / review / fiction" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="field">
+                                        <label>visibility</label>
+                                        <select id="f-visibility">
+                                            <option value="public">public（列表可見）</option>
+                                            <option value="unlisted">unlisted（僅網址）</option>
+                                            <option value="private">private（僅管理員）</option>
+                                        </select>
+                                    </div>
+                                    <div class="field">
+                                        <label>series</label>
+                                        <input id="f-series" placeholder="系列名稱（選填）" />
+                                    </div>
+                                </div>
+                                <p class="muted">前端只讀已存的 presentation；不會用字數重新猜測文類。</p>
+                            </details>
+
+                            <details class="editor-meta-block" open>
+                                <summary>AI 整理與判斷（需人工確認）</summary>
+                                <p class="muted">AI 像編輯、不像代筆。結果只會出現在下方審核區，不會自動發佈或覆寫，除非你按採用。</p>
+                                <div class="import-actions" style="margin:.5rem 0 0;">
+                                    <button type="button" class="btn primary" id="btn-ai-analyze">AI 整理與判斷</button>
+                                    <button type="button" class="btn" id="btn-ai-meta-only">只重分析 metadata</button>
+                                    <span class="muted" id="ai-status"></span>
+                                </div>
+                                <div id="ai-review-panel" class="ai-review-panel hidden">
+                                    <p id="ai-r-warn" class="muted"></p>
+                                    <p class="muted" id="ai-r-meta"></p>
+                                    <dl class="ai-review-grid">
+                                        <div><dt>title</dt><dd id="ai-r-title">—</dd></div>
+                                        <div><dt>show_title</dt><dd id="ai-r-show-title">—</dd></div>
+                                        <div><dt>summary</dt><dd id="ai-r-summary">—</dd></div>
+                                        <div><dt>show_summary</dt><dd id="ai-r-show-summary">—</dd></div>
+                                        <div><dt>category</dt><dd id="ai-r-category">—</dd></div>
+                                        <div><dt>content_type</dt><dd id="ai-r-content-type">—</dd></div>
+                                        <div><dt>presentation</dt><dd id="ai-r-presentation">—</dd></div>
+                                        <div><dt>tags</dt><dd id="ai-r-tags">—</dd></div>
+                                        <div><dt>series</dt><dd id="ai-r-series">—</dd></div>
+                                        <div><dt>edit_level</dt><dd id="ai-r-edit-level">—</dd></div>
+                                        <div><dt>editorial_state</dt><dd id="ai-r-state">—</dd></div>
+                                        <div><dt>confidence</dt><dd id="ai-r-confidence">—</dd></div>
+                                        <div class="full"><dt>reason</dt><dd id="ai-r-reason">—</dd></div>
+                                        <div class="full"><dt>flags</dt><dd id="ai-r-flags">—</dd></div>
+                                        <div class="full"><dt>review</dt><dd id="ai-r-review">—</dd></div>
+                                    </dl>
+                                    <label>建議正文 clean_body（採用前請對照）</label>
+                                    <textarea id="ai-r-body" rows="8" readonly></textarea>
+                                    <div class="import-actions">
+                                        <button type="button" class="btn primary" id="btn-ai-apply-all">全部採用</button>
+                                        <button type="button" class="btn" id="btn-ai-apply-meta">只採用分類與呈現</button>
+                                        <button type="button" class="btn" id="btn-ai-apply-body">只採用排版修正</button>
+                                        <button type="button" class="btn" id="btn-ai-discard">放棄 AI 建議</button>
+                                    </div>
                                 </div>
                             </details>
 
@@ -431,8 +513,11 @@
     <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/supabase-client.js"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/site-sections.js?v=p0-perfect-1"></script>
-    <script src="assets/js/admin.js?v=p0-perfect-1"></script>
+    <script src="assets/js/site-sections.js?v=ai-v3-1"></script>
+    <script src="assets/js/presentation-registry.js?v=ai-v3-1"></script>
+    <script src="assets/js/ai-editorial-schema.js?v=ai-v3-1"></script>
+    <script src="assets/js/ai-editorial-client.js?v=ai-v3-1"></script>
+    <script src="assets/js/admin.js?v=ai-v3-1"></script>
 </body>
 
 </html>
