@@ -245,41 +245,69 @@ function initCarousel() {
         const slides = carousel.querySelectorAll('.carousel-slide');
         if (slides.length <= 1) return;
 
-        const prevBtn = document.createElement('a');
-        prevBtn.href = '#';
-        prevBtn.className = 'carousel-prev';
-        prevBtn.innerHTML = '&#10094;';
+        if (!carousel.querySelector('.carousel-prev')) {
+            const prevBtn = document.createElement('button');
+            prevBtn.type = 'button';
+            prevBtn.className = 'carousel-prev';
+            prevBtn.setAttribute('aria-label', '上一張');
+            prevBtn.innerHTML = '&#10094;';
 
-        const nextBtn = document.createElement('a');
-        nextBtn.href = '#';
-        nextBtn.className = 'carousel-next';
-        nextBtn.innerHTML = '&#10095;';
+            const nextBtn = document.createElement('button');
+            nextBtn.type = 'button';
+            nextBtn.className = 'carousel-next';
+            nextBtn.setAttribute('aria-label', '下一張');
+            nextBtn.innerHTML = '&#10095;';
 
-        carousel.appendChild(prevBtn);
-        carousel.appendChild(nextBtn);
+            carousel.appendChild(prevBtn);
+            carousel.appendChild(nextBtn);
+        }
+
+        let dots = carousel.querySelectorAll('.carousel-dot');
+        if (!dots.length) {
+            const dotsWrap = document.createElement('div');
+            dotsWrap.className = 'carousel-dots';
+            slides.forEach((_, i) => {
+                const d = document.createElement('button');
+                d.type = 'button';
+                d.className = 'carousel-dot' + (i === 0 ? ' is-active' : '');
+                d.setAttribute('aria-label', '第 ' + (i + 1) + ' 張');
+                dotsWrap.appendChild(d);
+            });
+            carousel.appendChild(dotsWrap);
+            dots = carousel.querySelectorAll('.carousel-dot');
+        }
 
         let slideIndex = 0;
+        slides.forEach(s => s.classList.remove('active'));
         slides[slideIndex].classList.add('active');
 
         function showSlide(index) {
-            slides.forEach(s => s.classList.remove('active'));
             if (index >= slides.length) slideIndex = 0;
-            if (index < 0) slideIndex = slides.length - 1;
+            else if (index < 0) slideIndex = slides.length - 1;
+            else slideIndex = index;
+            slides.forEach(s => s.classList.remove('active'));
             slides[slideIndex].classList.add('active');
+            dots.forEach((d, i) => d.classList.toggle('is-active', i === slideIndex));
         }
 
+        const prevBtn = carousel.querySelector('.carousel-prev');
+        const nextBtn = carousel.querySelector('.carousel-next');
         prevBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            slideIndex--;
-            showSlide(slideIndex);
+            showSlide(slideIndex - 1);
         });
-
         nextBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            slideIndex++;
-            showSlide(slideIndex);
+            showSlide(slideIndex + 1);
+        });
+        dots.forEach((d, i) => {
+            d.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showSlide(i);
+            });
         });
     });
 }

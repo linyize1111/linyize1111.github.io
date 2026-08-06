@@ -110,6 +110,10 @@ function parseFrontmatter(raw) {
   const end = raw.indexOf("\n---", 3);
   if (end === -1) return { meta, body };
   const block = raw.slice(3, end);
+  // Only treat as YAML frontmatter when block has key: value lines.
+  // Literary scene dividers (--- ... ---) must not consume prose.
+  const looksYaml = /^\s*[A-Za-z0-9_\u4e00-\u9fff][\w\u4e00-\u9fff.-]*\s*[:：]/m.test(block);
+  if (!looksYaml) return { meta, body };
   body = raw.slice(end + 4).replace(/^\n/, "");
   block.split("\n").forEach((line) => {
     const m = line.match(/^([^\s:#]+)\s*[:：]\s*(.+)$/);

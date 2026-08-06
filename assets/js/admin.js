@@ -967,13 +967,20 @@
     }
 
     if (text.indexOf("---") === 0) {
-      var end = text.indexOf("\n---", 3);
-      if (end !== -1) {
-        text.slice(3, end).split("\n").forEach(function (line) {
-          var m = line.match(/^([^\s:#]+)\s*[:：]\s*(.+)$/);
-          if (m) parseMetaLine(m[1], m[2].replace(/^["']|["']$/g, ""), out);
+      var close = text.search(/\r?\n---\s*(?:\r?\n|$)/);
+      if (close !== -1) {
+        var between = text.slice(3, close);
+        var yamlLines = between.split(/\r?\n/).filter(function (line) {
+          return /^\s*[A-Za-z0-9_\u4e00-\u9fff][\w\u4e00-\u9fff.-]*\s*[:：]/.test(line);
         });
-        text = text.slice(end + 4).trim();
+        var sentenceMarks = (between.match(/[。！？]/g) || []).length;
+        if (yamlLines.length && !(sentenceMarks >= 2 && yamlLines.length < 2)) {
+          between.split("\n").forEach(function (line) {
+            var m = line.match(/^([^\s:#]+)\s*[:：]\s*(.+)$/);
+            if (m) parseMetaLine(m[1], m[2].replace(/^["']|["']$/g, ""), out);
+          });
+          text = text.slice(close).replace(/^\r?\n---\s*/, "").trim();
+        }
       }
     }
 

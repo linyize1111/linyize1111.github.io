@@ -66,11 +66,21 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(markdownText => {
                 let cleanMarkdown = markdownText.trim();
 
-                // robust frontmatter parsing (only if at very start of file)
+                // Only strip real YAML frontmatter (key: value), not literary --- dividers
                 if (cleanMarkdown.startsWith('---')) {
-                    const nextDashIndex = cleanMarkdown.indexOf('---', 3);
-                    if (nextDashIndex !== -1) {
-                        cleanMarkdown = cleanMarkdown.slice(nextDashIndex + 3).trimStart();
+                    const close = cleanMarkdown.search(/\r?\n---\s*(?:\r?\n|$)/);
+                    if (close !== -1) {
+                        const between = cleanMarkdown.slice(3, close);
+                        const yamlLines = between.split(/\r?\n/).filter((line) =>
+                            /^\s*[A-Za-z0-9_\u4e00-\u9fff][\w\u4e00-\u9fff.-]*\s*:/.test(line)
+                        );
+                        const sentenceMarks = (between.match(/[。！？]/g) || []).length;
+                        if (yamlLines.length && !(sentenceMarks >= 2 && yamlLines.length < 2)) {
+                            cleanMarkdown = cleanMarkdown
+                                .slice(close)
+                                .replace(/^\r?\n---\s*/, '')
+                                .trimStart();
+                        }
                     }
                 }
 

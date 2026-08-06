@@ -92,14 +92,34 @@
     return "public";
   }
 
-  function coverDisplayStyle(a) {
+  function coverConfig(a) {
+    if (window.SBArticleMedia && window.SBArticleMedia.resolveCoverDisplay) {
+      return window.SBArticleMedia.resolveCoverDisplay(a);
+    }
     var fit = "contain";
     var position = "center center";
+    var style = "inline";
+    var ratio = "16/9";
     if (a && a.cover_display && typeof a.cover_display === "object") {
       if (a.cover_display.fit) fit = a.cover_display.fit;
       if (a.cover_display.position) position = a.cover_display.position;
+      if (a.cover_display.style) style = a.cover_display.style;
+      if (a.cover_display.ratio) ratio = a.cover_display.ratio;
     }
-    return "object-fit:" + esc(fit) + ";object-position:" + esc(position) + ";";
+    return { style: style, ratio: ratio, fit: fit, position: position };
+  }
+
+  function coverDisplayStyle(a) {
+    var c = coverConfig(a);
+    return "object-fit:" + esc(c.fit) + ";object-position:" + esc(c.position) + ";";
+  }
+
+  function cardMediaStrategy(metaKey) {
+    // Presentation-driven card image policy (not body-length heuristics)
+    if (metaKey === "fragment" || metaKey === "quote") return "none";
+    if (metaKey === "photo-note") return "photo-priority";
+    if (metaKey === "review" || metaKey === "longform") return "editorial";
+    return "standard";
   }
 
   function collectSlides(a) {
@@ -158,11 +178,20 @@
     var edit = fmtDate(a.updated_at);
     var cat = normalizeCategory(a.category || "");
     var catLabel = displayCategory(cat);
-    var slides =
-      meta.key === "fragment" || meta.key === "quote" ? [] : collectSlides(a);
-    if (meta.key === "photo-note" && !slides.length) slides = collectSlides(a);
+    var mediaStrategy = cardMediaStrategy(meta.key);
+    var slides = mediaStrategy === "none" ? [] : collectSlides(a);
+    var coverCfg = coverConfig(a);
+    if (coverCfg.style === "none") slides = [];
     var hasCover = slides.length > 0;
     var indexLabel = padIndex((listIndex || 0) + 1);
+    var ratioStyle =
+      coverCfg.ratio && coverCfg.ratio !== "auto"
+        ? "aspect-ratio:" + esc(coverCfg.ratio) + ";"
+        : mediaStrategy === "editorial"
+          ? "aspect-ratio:16/9;"
+          : mediaStrategy === "photo-priority"
+            ? "aspect-ratio:4/3;"
+            : "aspect-ratio:3/2;";
     var summary = String(a.summary || "").trim();
     if (CAROUSEL_HINT.test(summary) && slides.length > 1) {
       summary = "系列閱讀筆記，共 " + slides.length + " 張預覽圖。";
@@ -235,7 +264,11 @@
     var mediaHtml = "";
     if (slides.length === 1) {
       mediaHtml =
-        '<div class="card-media-zone"><a href="' +
+        '<div class="card-media-zone card-media-zone--' +
+        esc(mediaStrategy) +
+        '" style="' +
+        ratioStyle +
+        '"><a href="' +
         url +
         '" class="image fit"><img loading="lazy" src="' +
         esc(slides[0].src) +
@@ -243,10 +276,17 @@
         coverDisplayStyle(a) +
         '" /></a></div>';
     } else {
-      mediaHtml = '<div class="card-media-zone"><div class="card-carousel">';
-      slides.forEach(function (s) {
+      mediaHtml =
+        '<div class="card-media-zone card-media-zone--' +
+        esc(mediaStrategy) +
+        '"><div class="card-carousel" style="' +
+        ratioStyle +
+        '">';
+      slides.forEach(function (s, si) {
         mediaHtml +=
-          '<div class="carousel-slide"><a href="' +
+          '<div class="carousel-slide' +
+          (si === 0 ? " active" : "") +
+          '"><a href="' +
           url +
           '" class="image fit"><img loading="lazy" src="' +
           esc(s.src) +
@@ -256,7 +296,12 @@
           (s.caption ? '<span class="carousel-caption">' + esc(s.caption) + "</span>" : "") +
           "</a></div>";
       });
-      mediaHtml += "</div></div>";
+      mediaHtml += '<div class="carousel-dots" aria-hidden="true">';
+      slides.forEach(function (_, si) {
+        mediaHtml +=
+          '<span class="carousel-dot' + (si === 0 ? " is-active" : "") + '"></span>';
+      });
+      mediaHtml += "</div></div></div>";
     }
 
     art.innerHTML =
@@ -325,6 +370,10 @@
   }
 
   function enhanceArticleFigures(root) {
+    if (window.SBArticleMedia && window.SBArticleMedia.enhanceMarkdownMedia) {
+      window.SBArticleMedia.enhanceMarkdownMedia(root);
+      return;
+    }
     if (!root) return;
     Array.prototype.forEach.call(root.querySelectorAll("img"), function (img) {
       if (img.closest("figure")) return;
@@ -504,12 +553,18 @@
       statusEl.innerText = bits.join(" · ");
     }
 
-    if (postSection && a.cover && meta.key !== "fragment" && meta.key !== "quote") {
+    var coverCfg = coverConfig(a);
+    var existingHero = postSection && postSection.querySelector(".article-hero, .article-cover-inline");
+    if (existingHero) existingHero.remove();
+    postSection && postSection.classList.remove("has-article-hero", "has-article-cover-inline");
+
+    if (postSection && a.cover && coverCfg.style === "hero") {
       postSection.classList.add("has-article-hero");
-      var existingHero = postSection.querySelector(".article-hero");
-      if (existingHero) existingHero.remove();
       var hero = document.createElement("div");
       hero.className = "article-hero";
+      if (coverCfg.ratio && coverCfg.ratio !== "auto") {
+        hero.style.aspectRatio = coverCfg.ratio;
+      }
       hero.innerHTML =
         '<img src="' + esc(a.cover) + '" alt="" style="' + coverDisplayStyle(a) + '" />';
       var header = postSection.querySelector("header.major");
@@ -521,6 +576,20 @@
     contentEl.innerHTML = '<div class="markdown-body article-reading">' + html + "</div>";
 
     var bodyRoot = contentEl.querySelector(".markdown-body");
+
+    if (postSection && a.cover && coverCfg.style === "inline") {
+      postSection.classList.add("has-article-cover-inline");
+      var inlineCover = document.createElement("figure");
+      inlineCover.className = "article-cover-inline";
+      if (coverCfg.ratio && coverCfg.ratio !== "auto") {
+        inlineCover.style.aspectRatio = coverCfg.ratio;
+      }
+      inlineCover.innerHTML =
+        '<img src="' + esc(a.cover) + '" alt="" style="' + coverDisplayStyle(a) + '" />';
+      if (bodyRoot && bodyRoot.firstChild) bodyRoot.insertBefore(inlineCover, bodyRoot.firstChild);
+      else if (bodyRoot) bodyRoot.appendChild(inlineCover);
+    }
+
     enhanceArticleFigures(bodyRoot);
     var toc = buildArticleToc(bodyRoot, meta.allowToc);
     if (toc && postSection) {
