@@ -82,6 +82,241 @@ function checkFilesExistAndRender() {
     });
 }
 
+/**
+ * V6.1 — source-order shortest-column masonry for #posts-container.
+ * Packing only — never re-sorts articles by height.
+ */
+(function () {
+    const BP = 960;
+    const COLS = 2;
+    let masonryFrame = null;
+    let cardObserver = null;
+    let containerObserver = null;
+    let lastContainerWidth = 0;
+    let lastHeights = new WeakMap();
+    let firstLayoutDone = false;
+    let layingOut = false;
+
+    function getContainer() {
+        return document.getElementById('posts-container');
+    }
+
+    function isListView(container) {
+        return !!(container && container.classList.contains('list-view'));
+    }
+
+    function isMobile() {
+        return window.matchMedia('(max-width: ' + (BP - 1) + 'px)').matches;
+    }
+
+    function readGap(container) {
+        const raw = getComputedStyle(container).getPropertyValue('--masonry-gap').trim();
+        const n = parseFloat(raw);
+        return Number.isFinite(n) ? n : 16;
+    }
+
+    function visibleCards(container) {
+        return Array.from(container.querySelectorAll('article.note-item')).filter((card) => {
+            if (card.hidden) return false;
+            if (card.style.display === 'none') return false;
+            const cs = getComputedStyle(card);
+            return cs.display !== 'none' && cs.visibility !== 'hidden';
+        });
+    }
+
+    function clearCardPlacement(card) {
+        card.style.transform = '';
+        card.style.width = '';
+        card.style.removeProperty('--masonry-x');
+        card.style.removeProperty('--masonry-y');
+        card.style.top = '';
+        card.style.left = '';
+    }
+
+    function destroyArticleMasonry() {
+        const container = getContainer();
+        if (!container) return;
+        container.classList.remove('masonry-active', 'masonry-ready', 'masonry-measuring');
+        container.style.height = '';
+        container.style.removeProperty('--masonry-column-width');
+        Array.from(container.querySelectorAll('article.note-item')).forEach(clearCardPlacement);
+        if (cardObserver) {
+            cardObserver.disconnect();
+            cardObserver = null;
+        }
+        // keep containerObserver for width; only tear card observers
+        firstLayoutDone = false;
+        lastHeights = new WeakMap();
+    }
+
+    function bindCardObservers(container) {
+        if (typeof ResizeObserver === 'undefined') return;
+        if (cardObserver) cardObserver.disconnect();
+        cardObserver = new ResizeObserver((entries) => {
+            if (layingOut) return;
+            let changed = false;
+            for (const entry of entries) {
+                const h = entry.contentRect.height;
+                const prev = lastHeights.get(entry.target);
+                if (prev == null || Math.abs(prev - h) > 0.5) {
+                    lastHeights.set(entry.target, h);
+                    changed = true;
+                }
+            }
+            if (changed) scheduleArticleMasonry();
+        });
+        visibleCards(container).forEach((card) => cardObserver.observe(card));
+    }
+
+    function ensureContainerObserver(container) {
+        if (typeof ResizeObserver === 'undefined' || containerObserver) return;
+        containerObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const w = entry.contentRect.width;
+                if (Math.abs(w - lastContainerWidth) < 0.5) continue;
+                lastContainerWidth = w;
+                scheduleArticleMasonry();
+            }
+        });
+        containerObserver.observe(container);
+        lastContainerWidth = container.clientWidth;
+    }
+
+    function layoutArticleMasonry() {
+        const container = getContainer();
+        if (!container) return;
+
+        if (isListView(container) || isMobile()) {
+            destroyArticleMasonry();
+            // Mobile still wants flow; ensure no leftover absolute styles
+            if (!isListView(container) && isMobile()) {
+                container.classList.add('masonry-active'); // CSS switches to relative flow
+                container.style.height = '';
+                visibleCards(container).forEach(clearCardPlacement);
+            }
+            return;
+        }
+
+        layingOut = true;
+        const gap = readGap(container);
+        const cards = visibleCards(container);
+
+        if (!cards.length) {
+            container.classList.add('masonry-active');
+            container.classList.remove('masonry-measuring');
+            container.classList.add('masonry-ready');
+            container.style.height = '0px';
+            layingOut = false;
+            return;
+        }
+
+        const wasReady = container.classList.contains('masonry-ready');
+        const cardSig = cards.map((c) => c.id || c.getAttribute('data-title') || '').join('|');
+        if (cardSig !== container.__masonryCardSig) {
+            firstLayoutDone = false;
+            container.__masonryCardSig = cardSig;
+        }
+        if (!firstLayoutDone) {
+            container.classList.add('masonry-measuring');
+            container.classList.remove('masonry-ready');
+        }
+
+        container.classList.add('masonry-active');
+
+        const containerWidth = container.clientWidth;
+        const columnWidth = (containerWidth - gap) / COLS;
+        container.style.setProperty('--masonry-column-width', columnWidth + 'px');
+
+        // Phase 1 — prepare natural height measurement at column width
+        cards.forEach((card) => {
+            card.style.width = columnWidth + 'px';
+            card.style.transform = 'translate3d(0,0,0)';
+        });
+
+        // Force layout once
+        void container.offsetHeight;
+
+        // Phase 1b — read heights
+        const heights = cards.map((card) => {
+            const h = card.offsetHeight;
+            lastHeights.set(card, h);
+            return h;
+        });
+
+        // Phase 2 — shortest-column packing (source order preserved)
+        const columnHeight = [0, 0];
+        const placements = [];
+        let nextTie = 0;
+
+        cards.forEach((card, i) => {
+            const h = heights[i];
+            let target;
+            const diff = Math.abs(columnHeight[0] - columnHeight[1]);
+            if (diff < 8) {
+                target = nextTie % 2;
+                nextTie++;
+            } else {
+                target = columnHeight[0] <= columnHeight[1] ? 0 : 1;
+            }
+            const x = target === 0 ? 0 : columnWidth + gap;
+            const y = columnHeight[target];
+            placements.push({ card, x, y });
+            columnHeight[target] += h + gap;
+        });
+
+        // Phase 3 — write transforms
+        placements.forEach(({ card, x, y }) => {
+            card.style.setProperty('--masonry-x', x + 'px');
+            card.style.setProperty('--masonry-y', y + 'px');
+            card.style.transform = 'translate3d(' + x + 'px, ' + y + 'px, 0)';
+            card.style.width = columnWidth + 'px';
+        });
+
+        // Hide off-page cards stay display:none; clear their transform leftovers
+        Array.from(container.querySelectorAll('article.note-item')).forEach((card) => {
+            if (cards.indexOf(card) === -1) clearCardPlacement(card);
+        });
+
+        const totalH = Math.max(columnHeight[0], columnHeight[1], 0);
+        // Remove trailing gap from the taller column
+        container.style.height = Math.max(0, totalH - gap) + 'px';
+
+        container.classList.remove('masonry-measuring');
+        container.classList.add('masonry-ready');
+        firstLayoutDone = true;
+        if (!wasReady) {
+            // first paint: no fly-in — already applied without relying on transition class timing
+        }
+
+        bindCardObservers(container);
+        ensureContainerObserver(container);
+        layingOut = false;
+    }
+
+    function scheduleArticleMasonry() {
+        if (masonryFrame) return;
+        masonryFrame = requestAnimationFrame(() => {
+            masonryFrame = null;
+            layoutArticleMasonry();
+        });
+    }
+
+    function initArticleMasonry() {
+        const container = getContainer();
+        if (!container) return;
+        ensureContainerObserver(container);
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => scheduleArticleMasonry()).catch(() => {});
+        }
+        scheduleArticleMasonry();
+    }
+
+    window.layoutArticleMasonry = layoutArticleMasonry;
+    window.scheduleArticleMasonry = scheduleArticleMasonry;
+    window.destroyArticleMasonry = destroyArticleMasonry;
+    window.initArticleMasonry = initArticleMasonry;
+})();
+
 function initSortingAndFiltering() {
     const filterCategory = document.getElementById('filter-category');
     const sortBy = document.getElementById('sort-by');
@@ -177,9 +412,18 @@ function initSortingAndFiltering() {
         // Toggle list mode css classes
         if (sortBy.value === 'list') {
             container.classList.add('list-view');
+            if (typeof window.destroyArticleMasonry === 'function') {
+                window.destroyArticleMasonry();
+            }
         } else {
             container.classList.remove('list-view');
+            if (typeof window.initArticleMasonry === 'function') {
+                window.initArticleMasonry();
+            } else if (typeof window.scheduleArticleMasonry === 'function') {
+                window.scheduleArticleMasonry();
+            }
         }
+        container.__v6Page = currentPage;
 
         if (pageInfo) {
             pageInfo.textContent = activeItems.length > 0
@@ -189,36 +433,36 @@ function initSortingAndFiltering() {
 
         if (paginationControls) {
             paginationControls.innerHTML = '';
-            if (totalPages <= 1) return;
+            if (totalPages > 1) {
+                const btnFirst = makeBtn('<<', 1, currentPage === 1, false);
+                paginationControls.appendChild(btnFirst);
 
-            const btnFirst = makeBtn('<<', 1, currentPage === 1, false);
-            paginationControls.appendChild(btnFirst);
+                const btnPrev = makeBtn('<', currentPage - 1, currentPage === 1, false);
+                paginationControls.appendChild(btnPrev);
 
-            const btnPrev = makeBtn('<', currentPage - 1, currentPage === 1, false);
-            paginationControls.appendChild(btnPrev);
-
-            for (let p = 1; p <= totalPages; p++) {
-                if (totalPages > 7) {
-                    if (p !== 1 && p !== totalPages && Math.abs(p - currentPage) > 1) {
-                        if (p === 2 || p === totalPages - 1) {
-                            const ellipsis = document.createElement('span');
-                            ellipsis.textContent = '...';
-                            ellipsis.style.color = '#fff';
-                            ellipsis.style.margin = '0 5px';
-                            paginationControls.appendChild(ellipsis);
+                for (let p = 1; p <= totalPages; p++) {
+                    if (totalPages > 7) {
+                        if (p !== 1 && p !== totalPages && Math.abs(p - currentPage) > 1) {
+                            if (p === 2 || p === totalPages - 1) {
+                                const ellipsis = document.createElement('span');
+                                ellipsis.textContent = '...';
+                                ellipsis.style.color = '#fff';
+                                ellipsis.style.margin = '0 5px';
+                                paginationControls.appendChild(ellipsis);
+                            }
+                            continue;
                         }
-                        continue;
                     }
+                    const pBtn = makeBtn(p.toString(), p, false, p === currentPage);
+                    paginationControls.appendChild(pBtn);
                 }
-                const pBtn = makeBtn(p.toString(), p, false, p === currentPage);
-                paginationControls.appendChild(pBtn);
+
+                const btnNext = makeBtn('>', currentPage + 1, currentPage === totalPages, false);
+                paginationControls.appendChild(btnNext);
+
+                const btnLast = makeBtn('>>', totalPages, currentPage === totalPages, false);
+                paginationControls.appendChild(btnLast);
             }
-
-            const btnNext = makeBtn('>', currentPage + 1, currentPage === totalPages, false);
-            paginationControls.appendChild(btnNext);
-
-            const btnLast = makeBtn('>>', totalPages, currentPage === totalPages, false);
-            paginationControls.appendChild(btnLast);
         }
     }
 
@@ -489,4 +733,5 @@ document.addEventListener('DOMContentLoaded', function () {
     enhanceNoCoverCards();
     initSortingAndFiltering();
     initCarousel();
+    if (typeof window.initArticleMasonry === 'function') window.initArticleMasonry();
 });
