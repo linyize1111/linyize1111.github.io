@@ -1,385 +1,359 @@
 /**
- * common.js
- *
- * Shared logic for LYZ's website:
- * 1. Loading screen
- * 2. Media controls (video + audio)
- * 3. Sakura canvas animation
- * 4. Three-mode theme system: light / dark / glass
+ * common.js — V5 runtime
+ * Fast first paint, resilient background, three themes, lightweight effects.
  */
+(function () {
+  "use strict";
 
-/* ─── 1. Loading Screen ─────────────────────────────────────── */
-function initLoadingScreen() {
-    var loader = document.getElementById('loading-screen');
-    if (!loader) return;
+  var THEMES = ["light", "dark", "glass"];
+  var THEME_META = {
+    light: { icon: '<i class="fas fa-sun"></i>', label: "亮色模式", next: "dark" },
+    dark: { icon: '<i class="fas fa-moon"></i>', label: "暗色模式", next: "glass" },
+    glass: { icon: '<i class="fas fa-eye"></i>', label: "玻璃模式", next: "light" }
+  };
 
-    window.addEventListener('load', function () {
-        setTimeout(function () {
-            loader.classList.add('fade-out');
-            setTimeout(function () {
-                loader.style.display = 'none';
-                var v = document.getElementById('bg-video');
-                if (v && sessionStorage.getItem('mediaPaused') !== 'true') {
-                    v.play().catch(function () { });
-                }
-            }, 700);
-        }, 400);
-    });
-}
+  function afterPaint(fn) {
+    requestAnimationFrame(function () { requestAnimationFrame(fn); });
+  }
 
-/* ─── 2. Media Controls ─────────────────────────────────────── */
-function initMediaControls() {
-    document.addEventListener('DOMContentLoaded', function () {
-        var video = document.getElementById('bg-video');
-        var music = document.getElementById('bg-music');
-        var btnMute = document.getElementById('btn-mute');
-        var btnPlay = document.getElementById('btn-play');
+  function idle(fn, timeout) {
+    if ("requestIdleCallback" in window) window.requestIdleCallback(fn, { timeout: timeout || 1200 });
+    else setTimeout(fn, Math.min(timeout || 600, 600));
+  }
 
-        if (!video || !music || !btnMute || !btnPlay) return;
+  /* Loading overlay must never wait for every CDN/media request. */
+  function dismissLoader() {
+    var loader = document.getElementById("loading-screen");
+    if (!loader || loader.dataset.dismissed === "1") return;
+    loader.dataset.dismissed = "1";
+    loader.classList.add("fade-out");
+    setTimeout(function () { loader.style.display = "none"; }, 260);
+  }
 
-        video.muted = true;
-        var isMuted = (sessionStorage.getItem('mediaMuted') === 'true');
-        music.muted = isMuted;
+  function initLoadingScreen() {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function () { afterPaint(dismissLoader); }, { once: true });
+    } else {
+      afterPaint(dismissLoader);
+    }
+    /* absolute safety cap */
+    setTimeout(dismissLoader, 900);
+  }
 
-        function updateMuteBtn() {
-            btnMute.innerHTML = music.muted
-                ? '<i class="fas fa-volume-mute"></i>'
-                : '<i class="fas fa-volume-up"></i>';
-        }
+  function applyTheme(theme) {
+    var t = THEMES.indexOf(theme) !== -1 ? theme : "light";
+    if (t === "light") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+  }
+
+  function currentTheme() {
+    return document.documentElement.getAttribute("data-theme") || "light";
+  }
+
+  function initTheme() {
+    var saved = localStorage.getItem("colorTheme");
+    applyTheme(saved || "light");
+
+    function mount() {
+      var controls = document.getElementById("video-controls");
+      if (document.getElementById("btn-theme")) return;
+      var btn = document.createElement("button");
+      btn.id = "btn-theme";
+      btn.type = "button";
+      btn.style.cssText = "position:relative;";
+
+      function refresh() {
+        var meta = THEME_META[currentTheme()] || THEME_META.light;
+        btn.innerHTML = meta.icon;
+        btn.title = meta.label + " → " + THEME_META[meta.next].label;
+        btn.setAttribute("aria-label", meta.label);
+      }
+      refresh();
+      btn.addEventListener("click", function () {
+        var meta = THEME_META[currentTheme()] || THEME_META.light;
+        applyTheme(meta.next);
+        localStorage.setItem("colorTheme", meta.next);
+        refresh();
+      });
+
+      if (!controls) {
+        controls = document.createElement("div");
+        controls.id = "video-controls";
+        document.body.appendChild(controls);
+      }
+      controls.insertBefore(btn, controls.firstChild);
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
+    else mount();
+  }
+
+  function startBackgroundVideo(video) {
+    if (!video) return;
+    video.muted = true;
+    video.play().catch(function () {});
+  }
+
+  function initMediaControls() {
+    function mount() {
+      var video = document.getElementById("bg-video");
+      var music = document.getElementById("bg-music");
+      var btnMute = document.getElementById("btn-mute");
+      var btnPlay = document.getElementById("btn-play");
+
+      /* Background video is decorative: start after first paint, never block it. */
+      if (video) idle(function () { startBackgroundVideo(video); }, 800);
+      if (!music || !btnMute || !btnPlay) return;
+
+      var isMuted = sessionStorage.getItem("mediaMuted") === "true";
+      music.muted = isMuted;
+      music.pause();
+
+      function updateMuteBtn() {
+        btnMute.innerHTML = music.muted
+          ? '<i class="fas fa-volume-mute"></i>'
+          : '<i class="fas fa-volume-up"></i>';
+      }
+      function updatePlayBtn() {
+        btnPlay.innerHTML = music.paused
+          ? '<i class="fas fa-play"></i>'
+          : '<i class="fas fa-pause"></i>';
+      }
+      updateMuteBtn();
+      updatePlayBtn();
+
+      var savedTime = Number(sessionStorage.getItem("musicCurrentTime") || 0);
+      if (savedTime > 0) {
+        var setTime = function () { try { music.currentTime = savedTime; } catch (e) {} };
+        if (music.readyState >= 1) setTime();
+        else music.addEventListener("loadedmetadata", setTime, { once: true });
+      }
+
+      btnMute.addEventListener("click", function (e) {
+        e.stopPropagation();
+        music.muted = !music.muted;
+        sessionStorage.setItem("mediaMuted", String(music.muted));
         updateMuteBtn();
+      });
 
-        var savedTime = sessionStorage.getItem('musicCurrentTime');
-        if (savedTime && !isNaN(savedTime)) {
-            var timeToSet = parseFloat(savedTime);
-            // 由於 preload="none" ，在音樂還沒載入 metadata 前無法設定 currentTime
-            if (music.readyState >= 1) { // HAVE_METADATA or higher
-                music.currentTime = timeToSet;
-            } else {
-                music.addEventListener('loadedmetadata', function () {
-                    music.currentTime = timeToSet;
-                }, { once: true });
-            }
+      btnPlay.addEventListener("click", function () {
+        if (music.paused) {
+          if (video) startBackgroundVideo(video);
+          music.play().catch(function () {});
+        } else {
+          music.pause();
         }
+        updatePlayBtn();
+      });
 
-        // Default: music never autoplays. User must press play explicitly.
-        // Video still autoplays (muted) via initLoadingScreen.
-        music.pause();
-        btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-        sessionStorage.setItem('musicPaused', 'true');
+      window.addEventListener("pagehide", function () {
+        sessionStorage.setItem("mediaMuted", String(music.muted));
+        sessionStorage.setItem("musicCurrentTime", String(music.currentTime || 0));
+      });
+    }
 
-        btnMute.addEventListener('click', function (e) {
-            e.stopPropagation();
-            music.muted = !music.muted;
-            updateMuteBtn();
-            sessionStorage.setItem('mediaMuted', music.muted);
-        });
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
+    else mount();
+  }
 
-        btnPlay.addEventListener('click', function () {
-            if (music.paused) {
-                if (video.paused) video.play().catch(function () { });
-                music.play().catch(function () { });
-                btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
-                sessionStorage.setItem('musicPaused', 'false');
-                sessionStorage.setItem('mediaPaused', 'false');
-            } else {
-                music.pause();
-                btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-                sessionStorage.setItem('musicPaused', 'true');
-            }
-        });
-
-        window.addEventListener('beforeunload', function () {
-            sessionStorage.setItem('mediaMuted', music.muted);
-            sessionStorage.setItem('mediaPaused', video.paused);
-            sessionStorage.setItem('musicPaused', music.paused);
-            sessionStorage.setItem('musicCurrentTime', music.currentTime);
-        });
-    });
-}
-
-/* ─── 3. Sakura Canvas ──────────────────────────────────────── */
-function initSakuraIfPresent() {
-    var canvas = document.getElementById('sakura-canvas');
+  function initSakuraIfPresent() {
+    var canvas = document.getElementById("sakura-canvas");
     if (!canvas) return;
-    var ctx = canvas.getContext('2d');
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      canvas.style.display = "none";
+      return;
+    }
+    var ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    resize();
-    window.addEventListener('resize', resize);
-
-    var COLORS = [[255, 183, 197], [255, 160, 180], [255, 200, 210], [250, 140, 165], [255, 218, 225]];
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    var count = window.innerWidth < 736 ? 22 : 38;
+    var COLORS = [[255,183,197],[255,160,180],[255,200,210],[250,140,165],[255,218,225]];
     var petals = [];
+    var running = true;
+    var frame = 0;
+
+    function resize() {
+      var w = window.innerWidth, h = window.innerHeight;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
 
     function makePetal(top) {
-        var c = COLORS[Math.floor(Math.random() * COLORS.length)];
-        return {
-            x: Math.random() * canvas.width,
-            y: top ? -20 - Math.random() * 100 : Math.random() * canvas.height,
-            size: 8 + Math.random() * 14,
-            speedY: 0.25 + Math.random() * 0.45,
-            speedX: -0.1 + Math.random() * 0.3,
-            angle: Math.random() * Math.PI * 2,
-            spin: (Math.random() - 0.5) * 0.025,
-            sway: Math.random() * Math.PI * 2,
-            swaySpeed: 0.005 + Math.random() * 0.01,
-            swayAmp: 0.2 + Math.random() * 0.4,
-            alpha: 0.5 + Math.random() * 0.5,
-            r: c[0], g: c[1], b: c[2]
-        };
+      var c = COLORS[Math.floor(Math.random() * COLORS.length)];
+      return {
+        x: Math.random() * window.innerWidth,
+        y: top ? -30 - Math.random() * 100 : Math.random() * window.innerHeight,
+        size: 7 + Math.random() * 12,
+        speedY: 0.22 + Math.random() * 0.38,
+        speedX: -0.08 + Math.random() * 0.22,
+        angle: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.022,
+        sway: Math.random() * Math.PI * 2,
+        alpha: 0.48 + Math.random() * 0.42,
+        c: c
+      };
     }
 
-    for (var i = 0; i < 80; i++) petals.push(makePetal(false));
-
-    function drawPetal(p) {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.angle);
-        var w = p.size * 0.55, h = p.size;
-        ctx.beginPath();
-        ctx.moveTo(0, -h / 2);
-        ctx.bezierCurveTo(w, -h * 0.1, w, h * 0.4, 0, h / 2);
-        ctx.bezierCurveTo(-w, h * 0.4, -w, -h * 0.1, 0, -h / 2);
-        var g = ctx.createRadialGradient(0, -h * 0.1, 0, 0, 0, h / 2);
-        g.addColorStop(0, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + Math.min(1, p.alpha + 0.2).toFixed(2) + ')');
-        g.addColorStop(1, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + (p.alpha * 0.3).toFixed(2) + ')');
-        ctx.fillStyle = g;
-        ctx.fill();
-        ctx.restore();
+    function draw(p) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      var w = p.size * 0.55, h = p.size;
+      ctx.beginPath();
+      ctx.moveTo(0, -h / 2);
+      ctx.bezierCurveTo(w, -h * 0.1, w, h * 0.4, 0, h / 2);
+      ctx.bezierCurveTo(-w, h * 0.4, -w, -h * 0.1, 0, -h / 2);
+      ctx.fillStyle = "rgba(" + p.c.join(",") + "," + p.alpha.toFixed(2) + ")";
+      ctx.fill();
+      ctx.restore();
     }
 
-    var rid;
     function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        petals.forEach(function (p, i) {
-            p.sway += p.swaySpeed;
-            p.x += p.speedX + Math.sin(p.sway) * p.swayAmp;
-            p.y += p.speedY;
-            p.angle += p.spin;
-            if (p.y > canvas.height + 30 || p.x < -60 || p.x > canvas.width + 60) {
-                petals[i] = makePetal(true);
-                petals[i].x = Math.random() * canvas.width;
-            }
-            drawPetal(petals[i]);
-        });
-        rid = requestAnimationFrame(animate);
+      if (!running) return;
+      frame = requestAnimationFrame(animate);
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      petals.forEach(function (p, i) {
+        p.sway += 0.009;
+        p.x += p.speedX + Math.sin(p.sway) * 0.28;
+        p.y += p.speedY;
+        p.angle += p.spin;
+        if (p.y > window.innerHeight + 35 || p.x < -50 || p.x > window.innerWidth + 50) petals[i] = makePetal(true);
+        draw(petals[i]);
+      });
     }
-    if (window._sakuraAnimId) cancelAnimationFrame(window._sakuraAnimId);
+
+    resize();
+    for (var i = 0; i < count; i++) petals.push(makePetal(false));
     animate();
-    window._sakuraAnimId = rid;
-}
+    window.addEventListener("resize", resize, { passive: true });
+    document.addEventListener("visibilitychange", function () {
+      running = !document.hidden;
+      if (running) animate();
+      else cancelAnimationFrame(frame);
+    });
+  }
 
-/* ─── 4. Three-Mode Theme System ───────────────────────────── */
-/**
- * Themes:
- *   'light' (default) — normal light panels
- *   'dark'            — dark glass panels
- *   'glass'           — transparent/no panel, text protected by shadows
- *
- * Applied via data-theme="" on <html>:
- *   light → attribute absent (default CSS)
- *   dark  → data-theme="dark"
- *   glass → data-theme="glass"
- */
-
-var THEMES = ['light', 'dark', 'glass'];
-
-var THEME_META = {
-    light: { icon: '<i class="fas fa-sun"></i>', label: '亮色模式 (Light)', next: 'dark' },
-    dark: { icon: '<i class="fas fa-moon"></i>', label: '暗色模式 (Dark)', next: 'glass' },
-    glass: { icon: '<i class="fas fa-eye"></i>', label: '透明模式 (Glass)', next: 'light' }
-};
-
-function applyTheme(theme) {
-    if (!theme || theme === 'light') {
-        document.documentElement.removeAttribute('data-theme');
-    } else {
-        document.documentElement.setAttribute('data-theme', theme);
+  function initHeroSpacer() {
+    function mount() {
+      if (document.getElementById("intro") || document.getElementById("page-hero-spacer")) return;
+      var main = document.getElementById("main");
+      if (!main || !main.parentNode) return;
+      var spacer = document.createElement("div");
+      spacer.id = "page-hero-spacer";
+      main.parentNode.insertBefore(spacer, main);
     }
-}
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
+    else mount();
+  }
 
-function currentTheme() {
-    return document.documentElement.getAttribute('data-theme') || 'light';
-}
+  function injectFooterStatsHost() {
+    if (document.getElementById("site-stats")) return;
+    var cr = document.getElementById("copyright");
+    var ul = cr && cr.querySelector("ul");
+    if (!ul) return;
+    var li = document.createElement("li");
+    li.className = "site-stats-li";
+    li.innerHTML = '<span id="site-stats" class="site-stats-wrap" aria-label="網站瀏覽統計"></span>';
+    ul.appendChild(li);
+  }
 
-function initTheme() {
-    var saved = localStorage.getItem('colorTheme');
-    var theme = (saved && THEMES.indexOf(saved) !== -1) ? saved : 'light';
-    applyTheme(theme);
-
-    document.addEventListener('DOMContentLoaded', function () {
-        var controls = document.getElementById('video-controls');
-        var btn = document.createElement('button');
-        btn.id = 'btn-theme';
-        btn.style.cssText = 'position:relative;';
-
-        function updateBtn() {
-            var t = currentTheme();
-            var meta = THEME_META[t];
-            btn.innerHTML = meta.icon;
-            btn.title = '切換：' + meta.label + ' → ' + THEME_META[meta.next].label;
-            btn.setAttribute('aria-label', meta.label);
-        }
-        updateBtn();
-
-        btn.addEventListener('click', function () {
-            var t = currentTheme();
-            var next = THEME_META[t].next;
-            applyTheme(next);
-            localStorage.setItem('colorTheme', next);
-            updateBtn();
-        });
-
-        if (controls) {
-            controls.insertBefore(btn, controls.firstChild);
-        } else {
-            var panel = document.createElement('div');
-            panel.id = 'video-controls';
-            panel.appendChild(btn);
-            document.body.appendChild(panel);
-        }
-    });
-}
-
-/* ─── Hero Spacer for Non-Index pages ───────────────────────
- * Index has a tall #intro section that lets background show.
- * All other pages go straight header→nav→#main, covering bg.
- * Fix: inject a transparent spacer div BEFORE #main on sub-pages.
- * The spacer is z-index 1 (above bg, below content) and fully
- * transparent so only the fixed background is visible through it.
- */
-function initHeroSpacer() {
-    document.addEventListener('DOMContentLoaded', function () {
-        // Only run on pages without #intro (sub-pages)
-        var intro = document.getElementById('intro');
-        if (intro) return; // Index — leave alone
-
-        var main = document.getElementById('main');
-        if (!main) return;
-
-        // Create the spacer
-        var spacer = document.createElement('div');
-        spacer.id = 'page-hero-spacer';
-        main.parentNode.insertBefore(spacer, main);
-    });
-}
-
-/* ─── Init ───────────────────────────────────────────────────── */
-function injectFooterStatsHost() {
-    document.addEventListener('DOMContentLoaded', function () {
-        if (document.getElementById('site-stats')) return;
-        var cr = document.getElementById('copyright');
-        if (!cr) return;
-        var ul = cr.querySelector('ul');
-        if (!ul) return;
-        var li = document.createElement('li');
-        li.className = 'site-stats-li';
-        li.innerHTML = '<span id="site-stats" class="site-stats-wrap" aria-label="網站瀏覽統計"></span>';
-        ul.appendChild(li);
-    });
-}
-
-function initAnalytics() {
+  function initAnalytics() {
     if (!window.SB || !window.SB.isConfigured || !window.SB.isConfigured()) return;
-    injectFooterStatsHost();
-    if (document.querySelector('script[data-site-analytics]')) return;
-    var s = document.createElement('script');
-    s.src = 'assets/js/analytics.js';
-    s.defer = true;
-    s.setAttribute('data-site-analytics', '1');
-    document.body.appendChild(s);
-}
+    idle(function () {
+      injectFooterStatsHost();
+      if (document.querySelector("script[data-site-analytics]")) return;
+      var s = document.createElement("script");
+      s.src = "assets/js/analytics.js";
+      s.defer = true;
+      s.setAttribute("data-site-analytics", "1");
+      document.body.appendChild(s);
+    }, 1600);
+  }
 
-function initAdminNav() {
-    var nodes = document.querySelectorAll(".nav-admin-only");
-    if (!nodes.length) return;
-    Array.prototype.forEach.call(nodes, function (el) {
-        el.classList.remove("is-admin-visible");
-        el.setAttribute("aria-hidden", "true");
+  function initAdminNav() {
+    function hide() {
+      Array.prototype.forEach.call(document.querySelectorAll(".nav-admin-only"), function (el) {
         el.hidden = true;
-    });
+        el.setAttribute("aria-hidden", "true");
+        el.classList.remove("is-admin-visible");
+      });
+    }
     function reveal() {
-        if (!window.SBAuth || typeof window.SBAuth.isAdmin !== "function") return;
-        window.SBAuth.isAdmin()
-            .then(function (ok) {
-                Array.prototype.forEach.call(document.querySelectorAll(".nav-admin-only"), function (el) {
-                    if (ok) {
-                        el.hidden = false;
-                        el.removeAttribute("aria-hidden");
-                        el.classList.add("is-admin-visible");
-                    } else {
-                        el.hidden = true;
-                        el.setAttribute("aria-hidden", "true");
-                        el.classList.remove("is-admin-visible");
-                    }
-                });
-            })
-            .catch(function () { /* keep hidden */ });
+      if (!window.SBAuth || typeof window.SBAuth.isAdmin !== "function") return;
+      window.SBAuth.isAdmin().then(function (ok) {
+        Array.prototype.forEach.call(document.querySelectorAll(".nav-admin-only"), function (el) {
+          el.hidden = !ok;
+          if (ok) {
+            el.removeAttribute("aria-hidden");
+            el.classList.add("is-admin-visible");
+          } else {
+            el.setAttribute("aria-hidden", "true");
+            el.classList.remove("is-admin-visible");
+          }
+        });
+      }).catch(function () {});
     }
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", reveal);
-    } else {
-        reveal();
-    }
-    // auth.js 可能比 common.js 晚載入
-    setTimeout(reveal, 600);
-    setTimeout(reveal, 1800);
-}
+    hide();
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", reveal, { once: true });
+    else reveal();
+    setTimeout(reveal, 900);
+  }
 
-function applyReadingFocus(on) {
-    var enable = on !== false;
+  function applyReadingFocus(requested) {
+    /* CMS used to force true after every render. V5 treats focus as a user preference. */
+    var stored = localStorage.getItem("readingFocus") === "true";
+    var enable = requested === false ? false : (requested === true ? stored : stored);
     document.body.classList.toggle("reading-focus", enable);
     document.body.classList.add("reading-page");
+
     var video = document.getElementById("bg-video");
     var canvas = document.getElementById("sakura-canvas");
-    if (enable) {
-        if (video) {
-            try { video.pause(); } catch (e) {}
-            video.style.visibility = "hidden";
-        }
-        if (canvas) canvas.style.visibility = "hidden";
-    } else {
-        if (video) {
-            video.style.visibility = "";
-            if (sessionStorage.getItem("mediaPaused") !== "true") {
-                video.play().catch(function () {});
-            }
-        }
-        if (canvas) canvas.style.visibility = "";
+    if (video) {
+      video.style.visibility = enable ? "hidden" : "";
+      if (enable) video.pause();
+      else idle(function () { startBackgroundVideo(video); }, 500);
     }
+    if (canvas) canvas.style.visibility = enable ? "hidden" : "";
+
     var btn = document.getElementById("reading-focus-toggle");
-    if (btn) btn.textContent = enable ? "顯示動態背景" : "專注閱讀";
-}
+    if (btn) btn.textContent = enable ? "顯示背景" : "專注閱讀";
+    return enable;
+  }
+  window.applyReadingFocus = applyReadingFocus;
 
-window.applyReadingFocus = applyReadingFocus;
-
-function initReadingFocusUi() {
+  function initReadingFocusUi() {
     if (!document.getElementById("markdown-container")) return;
     document.body.classList.add("reading-page");
-    if (!document.getElementById("reading-focus-toggle")) {
-        var btn = document.createElement("button");
-        btn.type = "button";
-        btn.id = "reading-focus-toggle";
-        btn.className = "reading-focus-toggle";
-        btn.textContent = "專注閱讀";
-        btn.addEventListener("click", function () {
-            applyReadingFocus(!document.body.classList.contains("reading-focus"));
-        });
-        document.body.appendChild(btn);
+    var btn = document.getElementById("reading-focus-toggle");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "reading-focus-toggle";
+      btn.className = "reading-focus-toggle";
+      document.body.appendChild(btn);
     }
-    // 文章頁預設專注（cms-public 載入後也會再呼叫）
-    applyReadingFocus(true);
-}
+    btn.addEventListener("click", function () {
+      var next = !document.body.classList.contains("reading-focus");
+      localStorage.setItem("readingFocus", String(next));
+      applyReadingFocus(next);
+    });
+    applyReadingFocus();
+  }
 
-function initCommon() {
-    initTheme();           // Must be first — applies theme before paint
-    initHeroSpacer();      // Inject hero spacer before #main on sub-pages
+  function initCommon() {
+    initTheme();
     initLoadingScreen();
+    initHeroSpacer();
     initMediaControls();
     initSakuraIfPresent();
-    initAnalytics();
     initAdminNav();
     initReadingFocusUi();
-}
+    initAnalytics();
+  }
 
-initCommon();
+  initCommon();
+})();

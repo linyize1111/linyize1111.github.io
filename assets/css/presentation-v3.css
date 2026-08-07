@@ -1,37 +1,424 @@
-/* V3 presentation modifiers (list + article). Semantic look comes from stored presentation only. */
-.note-item.is-fragment .note-card__title,
-.note-item.is-quote .note-card__title.note-card__title--sr {
-  /* title may be visually hidden via .visually-hidden */
+/*
+ * presentation-v3.css — V5 visual layer
+ * One override layer only. Stored presentation decides semantics; CSS decides appearance.
+ */
+
+.visually-hidden,
+.sr-only,
+.note-card__title--sr {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
-.note-item.is-fragment,
-.note-item.is-quote {
-  max-width: 36rem;
+/* ---------- Background + glass resilience ---------- */
+html,
+body {
+  min-height: 100%;
 }
 
-.note-item.is-poetry .note-card__excerpt {
+body {
+  background-color: #151b24 !important;
+  background-image: url("../../images/bg.jpg") !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+
+#bg-video {
+  z-index: 0 !important;
+  opacity: 1;
+  visibility: visible;
+  background: #151b24 url("../../images/bg.jpg") center / cover no-repeat;
+}
+
+#wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-theme="glass"] #main {
+  background: rgba(7, 11, 18, 0.07) !important;
+  border-color: rgba(255,255,255,.12) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(1.5px) !important;
+  -webkit-backdrop-filter: blur(1.5px) !important;
+}
+
+html[data-theme="glass"] #main > *,
+html[data-theme="glass"] article.note-item,
+html[data-theme="glass"] #main > .post,
+html[data-theme="glass"] #main > section.post {
+  background: rgba(5, 8, 14, 0.10) !important;
+  border-color: rgba(255,255,255,.13) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="glass"] #nav,
+html[data-theme="glass"] #global-nav {
+  background: rgba(3, 6, 11, 0.24) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+/* Reading focus is opt-in. Even in focus, glass stays recognisably glass. */
+html[data-theme="glass"] body.reading-focus #main > section.post.is-article-reading,
+html[data-theme="glass"] body.reading-focus #main > .post.is-article-reading {
+  background: rgba(5, 8, 14, 0.28) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* ---------- Card system ---------- */
+#posts-container.posts {
+  gap: clamp(1rem, 2.2vw, 1.75rem) !important;
+  align-items: stretch;
+}
+
+#posts-container.posts > article.note-item {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  padding: clamp(1.15rem, 2vw, 1.65rem) !important;
+  border-radius: 22px !important;
+  border: 1px solid var(--card-border) !important;
+  background: var(--card-bg) !important;
+  box-shadow: 0 12px 34px rgba(0,0,0,.08) !important;
+  content-visibility: auto;
+  contain-intrinsic-size: 520px;
+  transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease !important;
+}
+
+#posts-container.posts > article.note-item:hover {
+  transform: translateY(-3px) !important;
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--card-border)) !important;
+  box-shadow: 0 18px 46px rgba(0,0,0,.15) !important;
+}
+
+html[data-theme="glass"] #posts-container.posts > article.note-item {
+  background: linear-gradient(145deg, rgba(8,12,20,.17), rgba(8,12,20,.07)) !important;
+  border-color: rgba(255,255,255,.16) !important;
+  box-shadow: 0 12px 38px rgba(0,0,0,.12) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+.note-card__meta {
+  margin: 0 0 .9rem !important;
+}
+
+.note-card__meta .meta-cat {
+  font-size: .70rem !important;
+  letter-spacing: .07em !important;
+}
+
+.note-card__meta .meta-pub {
+  opacity: .76;
+  font-variant-numeric: tabular-nums;
+}
+
+.note-card__title {
+  margin: .15rem 0 .75rem !important;
+  font-size: clamp(1.32rem, 1.1rem + .7vw, 1.82rem) !important;
+  line-height: 1.38 !important;
+  text-align: left !important;
+  letter-spacing: .01em !important;
+}
+
+.note-card__excerpt {
+  max-width: none !important;
+  margin: 0 !important;
+  text-align: left !important;
+  line-height: 1.75 !important;
+  opacity: .86;
+}
+
+.note-card__footer {
+  margin-top: 1.15rem !important;
+}
+
+.note-card__cta {
+  font-size: .84rem !important;
+  opacity: .9;
+}
+
+/* Micro posts: visually distinct memo cards, never blank mystery tiles. */
+#posts-container.posts > article.note-item[data-presentation="fragment"],
+#posts-container.posts > article.note-item[data-presentation="quote"] {
+  min-height: 11rem;
+  padding: 1.1rem 1.25rem 1.05rem !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(125,232,255,.10), transparent 42%),
+    var(--card-bg) !important;
+}
+
+html[data-theme="glass"] #posts-container.posts > article.note-item[data-presentation="fragment"],
+html[data-theme="glass"] #posts-container.posts > article.note-item[data-presentation="quote"] {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(125,232,255,.12), transparent 44%),
+    linear-gradient(145deg, rgba(6,10,18,.20), rgba(6,10,18,.08)) !important;
+}
+
+#posts-container.posts > article.note-item[data-presentation="fragment"] .meta-cat::after {
+  content: " · 小廢文";
+  opacity: .82;
+}
+
+#posts-container.posts > article.note-item[data-presentation="quote"] .meta-cat::after {
+  content: " · 摘錄";
+  opacity: .82;
+}
+
+#posts-container.posts > article.note-item[data-presentation="fragment"] .note-card__content::before,
+#posts-container.posts > article.note-item[data-presentation="quote"] .note-card__content::before {
+  display: block;
+  margin: .25rem 0 .55rem;
+  color: var(--text-heading);
+  font-family: var(--font-body);
+  font-size: clamp(1.12rem, 1rem + .4vw, 1.38rem);
+  line-height: 1.5;
+  font-weight: 600;
+  text-align: left;
+}
+
+#posts-container.posts > article.note-item[data-presentation="fragment"] .note-card__content::before {
+  content: "一則小廢文";
+}
+#posts-container.posts > article.note-item[data-presentation="quote"] .note-card__content::before {
+  content: "一則摘錄";
+}
+
+#posts-container.posts > article.note-item[data-presentation="fragment"] .note-card__rule,
+#posts-container.posts > article.note-item[data-presentation="quote"] .note-card__rule,
+#posts-container.posts > article.note-item[data-presentation="fragment"] .note-card__index,
+#posts-container.posts > article.note-item[data-presentation="quote"] .note-card__index {
+  display: none !important;
+}
+
+/* ---------- Image-aware stage ---------- */
+.card-media-zone,
+.article-hero,
+.article-gallery,
+.article-gallery__slide,
+.article-figure.media-ambient {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 18px !important;
+  background: rgba(7,10,16,.60) !important;
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+.media-ambient__backdrop {
+  position: absolute;
+  inset: -8%;
+  z-index: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  filter: blur(20px) saturate(.9) brightness(.68);
+  transform: scale(1.08);
+  opacity: .62;
+  pointer-events: none;
+}
+
+.card-media-zone::after,
+.article-hero::after,
+.article-gallery__slide::after,
+.article-figure.media-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(3,5,9,.02) 45%, rgba(3,5,9,.22));
+  pointer-events: none;
+}
+
+.card-media-zone > *,
+.article-hero > img,
+.article-gallery__slide > *,
+.article-figure.media-ambient > * {
+  position: relative;
+  z-index: 2;
+}
+
+#posts-container.posts > article.note-item .card-media-zone {
+  width: 100%;
+  aspect-ratio: var(--media-stage-ratio, 16 / 10) !important;
+  min-height: 11rem;
+  max-height: 30rem !important;
+  margin: .15rem 0 1rem !important;
+  padding: 0 !important;
+}
+
+#posts-container.posts > article.note-item .card-media-zone .image.fit,
+#posts-container.posts > article.note-item .card-carousel .carousel-slide .image.fit {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
+  margin: 0 !important;
+  padding: clamp(.4rem, 1vw, .7rem) !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+#posts-container.posts > article.note-item .card-media-zone img,
+#posts-container.posts > article.note-item .card-carousel img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  border-radius: 11px !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,.24) !important;
+  background: transparent !important;
+  transform: none !important;
+}
+
+.media-ratio-tall,
+.media-ratio-portrait { --media-stage-ratio: 4 / 5; }
+.media-ratio-square { --media-stage-ratio: 1 / 1; }
+.media-ratio-landscape { --media-stage-ratio: 16 / 10; }
+.media-ratio-panorama { --media-stage-ratio: 16 / 9; }
+
+.card-carousel {
+  aspect-ratio: var(--media-stage-ratio, 16 / 10) !important;
+  min-height: 11rem !important;
+  max-height: none !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  background: transparent !important;
+}
+
+.card-carousel .carousel-prev,
+.card-carousel .carousel-next,
+.article-gallery__nav {
+  display: grid !important;
+  place-items: center;
+  width: 42px !important;
+  height: 42px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255,255,255,.22) !important;
+  background: rgba(3,6,11,.48) !important;
+  color: #fff !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ---------- Article page ---------- */
+.article-hero {
+  width: min(100%, 60rem) !important;
+  max-width: 60rem !important;
+  aspect-ratio: var(--media-stage-ratio, 16 / 10) !important;
+  max-height: min(72vh, 46rem) !important;
+  margin: 0 auto clamp(1.5rem, 3vw, 2.4rem) !important;
+}
+
+#main > section.post.is-article-reading > .article-hero,
+#main > .post.is-article-reading > .article-hero {
+  grid-column: 1 / -1 !important;
+  justify-self: center;
+}
+
+.article-hero img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: clamp(.45rem, 1.2vw, .8rem) !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+#markdown-container figure.article-figure {
+  width: min(100%, 58rem);
+  max-width: 100%;
+  margin: clamp(1.4rem, 3vw, 2.35rem) auto !important;
+}
+
+#markdown-container figure.article-figure img,
+#markdown-container .markdown-body figure.article-figure img {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 78vh !important;
+  margin: 0 auto !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  border-radius: 12px !important;
+}
+
+#markdown-container figure.article-figure.media-ambient {
+  padding: clamp(.45rem, 1.2vw, .8rem);
+}
+
+.article-gallery {
+  width: min(100%, 58rem) !important;
+  aspect-ratio: var(--media-stage-ratio, 16 / 10) !important;
+  max-height: min(72vh, 44rem) !important;
+  margin: clamp(1.4rem, 3vw, 2.35rem) auto !important;
+}
+
+.article-gallery__slide {
+  padding: clamp(.45rem, 1.2vw, .8rem) !important;
+}
+
+.article-gallery__slide img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: calc(100% - 1.8rem) !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+/* Preserve literary whitespace. */
+.note-item.is-poetry .note-card__excerpt,
+body.presentation-poetry #markdown-container .markdown-body {
   white-space: pre-wrap;
 }
-
 body.presentation-poetry #markdown-container .markdown-body,
 body.presentation-fiction #markdown-container .markdown-body {
   max-width: var(--article-measure);
 }
-
-body.presentation-poetry #markdown-container .markdown-body p {
-  margin-bottom: 0.35em;
-}
-
+body.presentation-poetry #markdown-container .markdown-body p { margin-bottom: .35em; }
 body.presentation-fragment #markdown-container .markdown-body,
-body.presentation-quote #markdown-container .markdown-body {
-  font-size: 1.05rem;
+body.presentation-quote #markdown-container .markdown-body { font-size: 1.05rem; }
+
+@media (max-width: 736px) {
+  body { background-attachment: scroll !important; }
+  #posts-container.posts > article.note-item {
+    padding: 1.05rem !important;
+    border-radius: 17px !important;
+  }
+  #posts-container.posts > article.note-item .card-media-zone,
+  .card-carousel { min-height: 10rem !important; }
+  .article-hero { border-radius: 15px !important; }
+  .media-ambient__backdrop { filter: blur(15px) saturate(.88) brightness(.68); }
 }
 
-.visually-hidden,
-.sr-only {
-  position: absolute !important;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0,0,0,0);
-  white-space: nowrap; border: 0;
+@media (prefers-reduced-motion: reduce) {
+  #posts-container.posts > article.note-item,
+  .card-carousel .carousel-slide { transition: none !important; animation: none !important; }
 }

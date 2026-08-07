@@ -603,7 +603,8 @@
       postSection.classList.remove("has-toc");
     }
 
-    if (typeof window.applyReadingFocus === "function") window.applyReadingFocus(true);
+    // V5: reading focus is opt-in (localStorage), never force on every article render
+    if (typeof window.applyReadingFocus === "function") window.applyReadingFocus();
 
     if (window.renderMathInElement) {
       try {
