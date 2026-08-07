@@ -2,15 +2,15 @@
 <html lang="zh-Hant">
 
 <head>
-    <title>LYZ's website - 隨筆</title>
+    <title>LYZ's website - ?��?</title>
     <meta charset="utf-8" />
-    <meta name="description" content="隨筆、日記與短想 — LYZ 個人網站" />
+    <meta name="description" content="?��??�日記�??�想 ??LYZ ?�人網�?" />
     <link rel="canonical" href="https://linyize1111.github.io/directory.html" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;" />
     <link rel="stylesheet" href="assets/css/main.css" />
     <style>
-        /* 媒體/卡片排版見 site-custom.css；此處僅保留分頁與列表模式 */
+        /* 媒�?/?��??��?�?site-custom.css；此?��?保�??��??��?表模�?*/
         #pagination-controls {
             display: flex;
             justify-content: center;
@@ -56,7 +56,7 @@
             margin-bottom: 0.5rem;
         }
 
-        /* 列表模式檢視 */
+        /* ?�表模�?檢�? */
         #posts-container.list-view {
             display: flex;
             flex-direction: column;
@@ -109,10 +109,10 @@
             align-self: center;
         }
 
-        /* 將 metadata (分類、日期) 從 .date 中分離並分配到 grid 欄位 */
+        /* �?metadata (?��??�日?? �?.date 中�??�並?��???grid 欄�? */
         #posts-container.list-view>article.note-item header .date {
             display: contents;
-            /* 讓內部的 span 可以參與 grid 排版 */
+            /* 讓內?��? span ?�以?��? grid ?��? */
             font-size: 0.9em;
         }
 
@@ -186,8 +186,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
     <!-- Site Custom CSS: dark mode + image styles -->
-    <link rel="stylesheet" href="assets/css/site-custom.css?v=v6-masonry-2" />
-    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v6-masonry-2" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=v6-masonry-3" />
+    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v6-masonry-3" />
 </head>
 
 <body class="is-preload">
@@ -195,17 +195,17 @@
     <script>
         (function() {
             var saved = localStorage.getItem('colorTheme');
-            // Default is 'light' — only apply if saved is 'dark' or 'glass'
+            // Default is 'light' ??only apply if saved is 'dark' or 'glass'
             if (saved === 'dark' || saved === 'glass') {
                 document.documentElement.setAttribute('data-theme', saved);
             }
         })();
     </script>
 
-    <!-- 真正的 Loading Screen -->
+    <!-- ?�正??Loading Screen -->
     <div id="loading-screen"></div>
 
-    <!--  影片與音樂背景 -->
+    <!--  影�??�音樂�???-->
     <video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="none">
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
@@ -216,24 +216,24 @@
     
 
 
-    <!--  櫻花特效透明層（固定在最上層，不影響互動） -->
+    <!--  櫻花?��??��?層�??��??��?上層，�?影響互�?�?-->
     <canvas id="sakura-canvas"
         style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-            <!-- 全域導航器 -->
-        <nav id="global-nav" aria-label="主要導覽">
-        <a href="index.html">首頁</a>
-        <a href="directory.html">隨筆</a>
-        <a href="literature.html">文學創作</a>
-        <a href="about.html">關於我</a>
+            <!-- ?��?導航??-->
+        <nav id="global-nav" aria-label="主�?導覽">
+        <a href="index.html">首�?</a>
+        <a href="directory.html">?��?</a>
+        <a href="literature.html">?�學?��?</a>
+        <a href="about.html">?�於??/a>
     </nav>
 
-<!--  右下角影片控制 -->
+<!--  ?��?角影?�控??-->
     <div id="video-controls">
-        <button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
+        <button id="btn-top" title="?�到?�部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
             style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
-        <button id="btn-mute" title="音效開/關"><i class="fas fa-volume-mute"></i></button>
-        <button id="btn-play" title="暫停/播放"><i class="fas fa-pause"></i></button>
+        <button id="btn-mute" title="?��?????><i class="fas fa-volume-mute"></i></button>
+        <button id="btn-play" title="?��?/?�放"><i class="fas fa-pause"></i></button>
     </div>
 
     <div id="wrapper" class="fade-in">
@@ -244,10 +244,10 @@
 
         <nav id="nav">
             <ul class="links">
-                <li><a href="index.html">首頁</a></li>
-                <li class="active"><a href="directory.html">隨筆</a></li>
-                <li><a href="literature.html">文學創作</a></li>
-                <li><a href="about.html">關於我</a></li>
+                <li><a href="index.html">首�?</a></li>
+                <li class="active"><a href="directory.html">?��?</a></li>
+                <li><a href="literature.html">?�學?��?</a></li>
+                <li><a href="about.html">?�於??/a></li>
             </ul>
             <ul class="icons">
                 <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
@@ -264,31 +264,31 @@
         <div id="main">
             <article class="post featured">
                 <header class="major">
-                    <span class="date">生活與閱讀</span>
-                    <h2><a href="#">隨筆</a></h2>
-                    <p>碎念、日記、感想、閱讀心得、整理過的散文都在這裡。<br /><br />
-                        不必完美——只是留下當下的痕跡。小說、詩、劇本請到「文學創作」。
+                    <span class="date">?�活?�閱讀</span>
+                    <h2><a href="#">?��?</a></h2>
+                    <p>碎念?�日記、�??�、閱讀心�??�整?��??�散?�都?�這裡??br /><br />
+                        不�?完�??�—只?��?下當下�??�跡?��?說、詩?��??��??�「�?學創作」�?
                     </p>
                 </header>
             </article>
 
-            <!-- 篩選與排序控制面板 -->
+            <!-- 篩選?��?序控?�面??-->
             <div id="sort-filter-controls" class="sort-filter-controls">
                 <div class="sort-filter-controls__group">
-                    <label for="filter-category">分類篩選</label>
+                    <label for="filter-category">?��?篩選</label>
                     <select id="filter-category">
-                        <option value="all">所有分類</option>
+                        <option value="all">?�?��?�?/option>
                     </select>
                 </div>
                 <div class="sort-filter-controls__group">
-                    <label for="sort-by">排序方式</label>
+                    <label for="sort-by">?��??��?</label>
                     <select id="sort-by">
-                        <option value="upload-desc" selected>上傳時間 (新到舊)</option>
-                        <option value="upload-asc">上傳時間 (舊到新)</option>
-                        <option value="edit-desc">最後編輯 (新到舊)</option>
-                        <option value="title-asc">名稱 (A-Z)</option>
-                        <option value="title-desc">名稱 (Z-A)</option>
-                        <option value="list">列表檢視 (僅標題)</option>
+                        <option value="upload-desc" selected>上傳?��? (?�到??</option>
+                        <option value="upload-asc">上傳?��? (?�到??</option>
+                        <option value="edit-desc">?�後編�?(?�到??</option>
+                        <option value="title-asc">?�稱 (A-Z)</option>
+                        <option value="title-desc">?�稱 (Z-A)</option>
+                        <option value="list">?�表檢�? (?��?�?</option>
                     </select>
                 </div>
             </div>
@@ -296,7 +296,7 @@
             <section class="posts" id="posts-container" data-section="notes" data-list-mode="essay">
                 <!-- CMS-only: no static article fallback (V3) -->
             </section>
-            <!-- 分頁資訊與按鈕 -->
+            <!-- ?��?資�??��???-->
             <div id="pagination-controls"></div>
             <p id="page-info" style="margin-top: 1.5rem;"></p>
         </div>
@@ -319,7 +319,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
-    <!-- 櫻花特效由 common.js?v=v5-runtime-1 的 initSakuraIfPresent() 統一初始化 -->
+    <!-- 櫻花?��???common.js?v=v5-runtime-1 ??initSakuraIfPresent() 統�??��???-->
 
     
 
@@ -330,7 +330,7 @@
 
 <script src="assets/js/common.js?v=v6-consolidated-1"></script>
 
-    <!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->
+    <!-- Supabase CMS：未設�??�自?�略?��?維�??��??��??�容 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
     <script src="assets/js/supabase-config.js"></script>
@@ -341,7 +341,7 @@
 <script src="assets/js/article-media.js?v=v6-consolidated-1"></script>
     <script src="assets/js/cms-public.js?v=v6-consolidated-1"></script>
 
-    <script src="assets/js/page-list.js?v=v6-masonry-2"></script>
+    <script src="assets/js/page-list.js?v=v6-masonry-3"></script>
 </body>
 
 </html>

@@ -170,6 +170,11 @@ html[data-theme="glass"] body.reading-focus #main > .post.is-article-reading {
     opacity .2s ease;
 }
 
+/* During measure/write: never animate transforms (avoids mid-flight unique-x / overlap) */
+#posts-container.posts.masonry-active.masonry-laying-out:not(.list-view) > article.note-item {
+  transition: none !important;
+}
+
 /* Hover must preserve masonry translate — use CSS vars set by JS */
 #posts-container.posts.masonry-active:not(.list-view) > article.note-item:hover {
   transform: translate3d(var(--masonry-x, 0px), calc(var(--masonry-y, 0px) - 3px), 0) !important;

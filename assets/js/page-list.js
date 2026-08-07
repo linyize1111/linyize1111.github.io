@@ -112,7 +112,23 @@ function checkFilesExistAndRender() {
     function readGap(container) {
         const raw = getComputedStyle(container).getPropertyValue('--masonry-gap').trim();
         const n = parseFloat(raw);
-        return Number.isFinite(n) ? n : 16;
+        if (Number.isFinite(n) && !raw.startsWith('clamp') && !raw.includes('var(')) {
+            // unit-less or px-prefixed numeric custom props
+            if (/^-?[\d.]+px$/i.test(raw) || /^-?[\d.]+$/.test(raw)) return n;
+            if (/^-?[\d.]+rem$/i.test(raw)) {
+                const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+                return n * rootPx;
+            }
+        }
+        // Resolve clamp()/calc() custom properties via a probe element
+        const probe = document.createElement('div');
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText =
+            'position:absolute;visibility:hidden;pointer-events:none;height:0;width:var(--masonry-gap);';
+        container.appendChild(probe);
+        const resolved = probe.offsetWidth;
+        probe.remove();
+        return resolved > 0 ? resolved : 16;
     }
 
     function visibleCards(container) {
@@ -136,7 +152,7 @@ function checkFilesExistAndRender() {
     function destroyArticleMasonry() {
         const container = getContainer();
         if (!container) return;
-        container.classList.remove('masonry-active', 'masonry-ready', 'masonry-measuring');
+        container.classList.remove('masonry-active', 'masonry-ready', 'masonry-measuring', 'masonry-laying-out');
         container.style.height = '';
         container.style.removeProperty('--masonry-column-width');
         Array.from(container.querySelectorAll('article.note-item')).forEach(clearCardPlacement);
@@ -203,14 +219,13 @@ function checkFilesExistAndRender() {
 
         if (!cards.length) {
             container.classList.add('masonry-active');
-            container.classList.remove('masonry-measuring');
+            container.classList.remove('masonry-measuring', 'masonry-laying-out');
             container.classList.add('masonry-ready');
             container.style.height = '0px';
             layingOut = false;
             return;
         }
 
-        const wasReady = container.classList.contains('masonry-ready');
         const cardSig = cards.map((c) => c.id || c.getAttribute('data-title') || '').join('|');
         if (cardSig !== container.__masonryCardSig) {
             firstLayoutDone = false;
@@ -221,29 +236,27 @@ function checkFilesExistAndRender() {
             container.classList.remove('masonry-ready');
         }
 
-        container.classList.add('masonry-active');
+        // Kill transitions during measure/write so we never sample mid-flight x/y
+        container.classList.add('masonry-active', 'masonry-laying-out');
 
         const containerWidth = container.clientWidth;
         const columnWidth = (containerWidth - gap) / COLS;
         container.style.setProperty('--masonry-column-width', columnWidth + 'px');
 
-        // Phase 1 — prepare natural height measurement at column width
+        // Phase 1 — READ: set column width only (do NOT reset transform to 0 —
+        // that animates through intermediate x and breaks measurement/tests)
         cards.forEach((card) => {
             card.style.width = columnWidth + 'px';
-            card.style.transform = 'translate3d(0,0,0)';
         });
-
-        // Force layout once
         void container.offsetHeight;
 
-        // Phase 1b — read heights
         const heights = cards.map((card) => {
             const h = card.offsetHeight;
             lastHeights.set(card, h);
             return h;
         });
 
-        // Phase 2 — shortest-column packing (source order preserved)
+        // Phase 2 — CALCULATE: shortest-column packing (source order preserved)
         const columnHeight = [0, 0];
         const placements = [];
         let nextTie = 0;
@@ -264,7 +277,7 @@ function checkFilesExistAndRender() {
             columnHeight[target] += h + gap;
         });
 
-        // Phase 3 — write transforms (inline; higher than non-!important CSS)
+        // Phase 3 — WRITE: transforms + container height
         placements.forEach(({ card, x, y }) => {
             card.style.setProperty('--masonry-x', x + 'px');
             card.style.setProperty('--masonry-y', y + 'px');
@@ -272,21 +285,16 @@ function checkFilesExistAndRender() {
             card.style.width = columnWidth + 'px';
         });
 
-        // Hide off-page cards stay display:none; clear their transform leftovers
         Array.from(container.querySelectorAll('article.note-item')).forEach((card) => {
             if (cards.indexOf(card) === -1) clearCardPlacement(card);
         });
 
         const totalH = Math.max(columnHeight[0], columnHeight[1], 0);
-        // Remove trailing gap from the taller column
         container.style.height = Math.max(0, totalH - gap) + 'px';
 
-        container.classList.remove('masonry-measuring');
+        container.classList.remove('masonry-measuring', 'masonry-laying-out');
         container.classList.add('masonry-ready');
         firstLayoutDone = true;
-        if (!wasReady) {
-            // first paint: no fly-in — already applied without relying on transition class timing
-        }
 
         bindCardObservers(container);
         ensureContainerObserver(container);
