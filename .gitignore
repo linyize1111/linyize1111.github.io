@@ -3,3 +3,6 @@ node_modules/
 # Local/live dumps ¡X do not publish on Pages
 docs/content-repair/LIVE_ARTICLES_EXPORT.json
 
+
+artifacts/
+

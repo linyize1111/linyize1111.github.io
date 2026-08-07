@@ -95,8 +95,36 @@ function initSortingAndFiltering() {
     const initialOrder = allItems.slice();
     // 6–10 區間取 8：桌機一屏可掃完、手機仍不至於過長
     const ITEMS_PER_PAGE = 8;
-    let currentPage = 1;
+    let currentPage = container.__v6Page || 1;
     let activeItems = [];
+
+    function rebuildCategoryOptions() {
+        const prev = filterCategory.value || 'all';
+        const cats = new Set();
+        allItems.forEach((item) => {
+            const c = (item.dataset.category || '').trim();
+            if (c) cats.add(c);
+        });
+        const ordered = Array.from(cats).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+        filterCategory.innerHTML = '';
+        const allOpt = document.createElement('option');
+        allOpt.value = 'all';
+        allOpt.textContent = '所有分類';
+        filterCategory.appendChild(allOpt);
+        ordered.forEach((c) => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            filterCategory.appendChild(opt);
+        });
+        if (Array.from(filterCategory.options).some((o) => o.value === prev)) {
+            filterCategory.value = prev;
+        } else {
+            filterCategory.value = 'all';
+        }
+    }
+
+    rebuildCategoryOptions();
 
     function getFilteredSorted() {
         const category = filterCategory.value;
@@ -120,7 +148,6 @@ function initSortingAndFiltering() {
                 return 0;
             });
         } else {
-            // Restore initial order for these specific filtered elements
             filtered = initialOrder.filter(item => filtered.includes(item));
         }
         return filtered;
@@ -238,6 +265,27 @@ function initSortingAndFiltering() {
     // Provide initial view
     updateView();
 }
+
+/* Prevent stacking listeners when cms-public re-inits after fetch */
+const _origInitSortingAndFiltering = initSortingAndFiltering;
+initSortingAndFiltering = function () {
+    const filterCategory = document.getElementById('filter-category');
+    const sortBy = document.getElementById('sort-by');
+    if (filterCategory && filterCategory.dataset.v6Bound === '1') {
+        // Soft re-init: clone selects to drop old listeners, then bind once
+        const fc = filterCategory.cloneNode(true);
+        const sb = sortBy.cloneNode(true);
+        filterCategory.parentNode.replaceChild(fc, filterCategory);
+        sortBy.parentNode.replaceChild(sb, sortBy);
+        fc.dataset.v6Bound = '0';
+        sb.dataset.v6Bound = '0';
+    }
+    _origInitSortingAndFiltering();
+    const fc2 = document.getElementById('filter-category');
+    const sb2 = document.getElementById('sort-by');
+    if (fc2) fc2.dataset.v6Bound = '1';
+    if (sb2) sb2.dataset.v6Bound = '1';
+};
 
 function initCarousel() {
     const carousels = document.querySelectorAll('.card-carousel');

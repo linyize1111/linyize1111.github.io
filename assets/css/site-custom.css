@@ -63,9 +63,12 @@ html[data-theme] table {
     --btn-hover-bg: rgba(24, 191, 239, 0.08);
     --hr-color: #dde1e6;
 
-    /* Images */
+    /* Images / shadow tokens */
     --shadow-img: 0 6px 28px rgba(0, 0, 0, 0.16);
     --radius-img: 10px;
+
+    /* V6 shared content shell */
+    --site-shell: min(92vw, 1380px);
 }
 
 /* ?? Dark ?? */
@@ -736,7 +739,26 @@ body {
 
 /* Push #main down so there's room to scroll and see bg below */
 #main {
+    width: var(--site-shell);
+    max-width: var(--site-shell);
+    margin-left: auto;
+    margin-right: auto;
     margin-bottom: 3rem;
+}
+
+/* Primary nav = floating glass pill. Hide duplicate HTML5 UP #nav links. */
+#nav ul.links {
+    display: none;
+}
+#nav ul.icons {
+    justify-content: center;
+}
+@media screen and (min-width: 981px) {
+    #nav {
+        /* Keep social strip compact; primary IA is #global-nav */
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
 }
 
 /* ============================================================
@@ -1062,26 +1084,47 @@ body:not(:has(#intro)) #header {
 }
 
 #video-controls {
-    border-radius: 14px !important;
-    background: rgba(8, 12, 22, 0.48) !important;
-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32) !important;
-    padding: 6px !important;
+    border-radius: 999px;
+    background: rgba(8, 12, 22, 0.48);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32);
+    padding: 4px;
+    gap: 4px;
 }
 
 #video-controls button,
 #video-controls #btn-theme,
 #video-controls #btn-paw {
-    border-radius: 10px !important;
-    transition: background 0.2s ease, transform 0.12s ease, border-color 0.2s ease !important;
+    width: 2.4rem;
+    height: 2.4rem;
+    min-width: 2.4rem;
+    font-size: 0.95rem;
+    border-radius: 999px;
+    transition: background 0.2s ease, transform 0.12s ease, border-color 0.2s ease;
+}
+
+#video-controls #btn-top.is-hidden,
+#video-controls #btn-top[hidden] {
+    display: none;
+}
+
+@media screen and (max-width: 736px) {
+    #video-controls button,
+    #video-controls #btn-theme,
+    #video-controls #btn-paw {
+        width: 2.15rem;
+        height: 2.15rem;
+        min-width: 2.15rem;
+        font-size: 0.85rem;
+    }
 }
 
 #video-controls button:hover,
 #video-controls #btn-theme:hover,
 #video-controls #btn-paw:hover {
-    background: rgba(125, 232, 255, 0.14) !important;
+    background: rgba(125, 232, 255, 0.14);
     transform: translateY(-1px);
 }
 
@@ -1774,7 +1817,7 @@ html.paw-cursor-active * {
 }
 
 #posts-container.posts {
-    align-items: stretch;
+    /* display/grid owned by presentation-v3.css */
 }
 
 #posts-container.posts > article.note-item {
@@ -1782,7 +1825,7 @@ html.paw-cursor-active * {
     flex-direction: column;
     overflow: hidden;
     position: relative;
-    padding: 2.6rem 2.75rem 2rem;
+    /* padding / width / max-width owned by presentation-v3 editorial grid */
 }
 
 #posts-container.posts > article.note-item.note-item--has-cover {
@@ -2029,12 +2072,17 @@ html.paw-cursor-active * {
     }
 }
 
-/* ?????????? */
+/* Thought/memo presentation styling moved to presentation-v3.css via data-presentation.
+   Do not hide media based on legacy .is-thought (photo-note / journal also carried that class). */
+
+/* List view (title-only mode) */
 #posts-container.list-view > article.note-item .card-media-zone,
 #posts-container.list-view > article.note-item .card-carousel,
 #posts-container.list-view > article.note-item > a.image.fit,
 #posts-container.list-view > article.note-item .card-text-cover,
-#posts-container.list-view > article.note-item .note-card__index {
+#posts-container.list-view > article.note-item .note-card__index,
+#posts-container.list-view > article.note-item .note-card__label,
+#posts-container.list-view > article.note-item .note-card__excerpt--body {
     display: none;
 }
 
@@ -2043,52 +2091,6 @@ html.paw-cursor-active * {
     display: none;
 }
 
-/* ???????????????? */
-#posts-container.posts > article.note-item.is-thought .card-media-zone,
-#posts-container.posts > article.note-item.is-thought .card-text-cover,
-#posts-container.posts > article.note-item.is-thought .note-card__index,
-#posts-container.posts > article.note-item.is-thought .note-card__rule {
-    display: none;
-}
-#posts-container.posts > article.note-item.is-thought {
-    padding: 1.25rem 1.3rem 1.15rem;
-    background: var(--card-bg);
-    box-shadow: none;
-    border: 1px solid var(--card-border);
-}
-#posts-container.posts > article.note-item.is-thought:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--card-shadow-hover);
-}
-/* Light mode: ??????????? glass / dark token */
-html:not([data-theme]) #posts-container.posts > article.note-item.is-thought {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(128, 128, 128, 0.18);
-}
-html[data-theme="glass"] #posts-container.posts > article.note-item.is-thought {
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.12);
-}
-html[data-theme="dark"] #posts-container.posts > article.note-item.is-thought {
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.12);
-}
-#posts-container.posts > article.note-item.is-thought .note-card__title {
-    font-size: 1.2rem;
-    letter-spacing: 0.01em;
-    margin-bottom: 0.45rem !important;
-}
-#posts-container.posts > article.note-item.is-thought .note-card__meta {
-    margin-bottom: 0.75rem;
-}
-#posts-container.posts > article.note-item.is-thought .note-card__excerpt {
-    font-size: 0.94rem;
-    line-height: 1.65;
-    -webkit-line-clamp: 3;
-}
-#posts-container.posts > article.note-item.is-thought .note-card__footer {
-    margin-top: 1rem;
-}
 /* 文章閱讀頁：寬 shell + 窄正文（68ch）；標題靠左與正文對齊 */
 #markdown-container,
 section.post.is-article-reading {
@@ -2313,24 +2315,16 @@ section.post.is-article-reading > header.major p {
     opacity: 0.85;
 }
 
+/* Legacy class names may still appear from presentation-registry for BC,
+   but V6 layout / width / media visibility is driven only by data-presentation. */
 #posts-container.posts > article.note-item.is-compact {
+    /* max-width intentionally removed — was causing half-empty directory rows */
     padding: 1rem 1.15rem 0.9rem;
-    max-width: 36rem;
 }
 
-#posts-container.posts > article.note-item.is-compact .note-card__title {
-    font-size: 1.05rem;
-    margin-bottom: 0.35rem;
-}
-
-#posts-container.posts > article.note-item.is-compact .note-card__excerpt {
-    font-size: 0.95rem;
-    line-height: 1.65;
-    display: block;
-}
-
-#posts-container.posts > article.note-item.is-photo-note .card-media-zone {
-    max-height: 14rem;
+#posts-container.posts > article.note-item.is-photo-note .card-media-zone,
+#posts-container.posts > article.note-item[data-presentation="photo-note"] .card-media-zone {
+    max-height: none;
 }
 
 body.reading-focus #bg-video,
@@ -2396,19 +2390,49 @@ html:not([data-theme]) body.reading-focus #main > section.post.is-article-readin
     }
 }
 
-/* ============================================================
-   Z. Admin-only nav � hidden from guests (no flash)
-   ============================================================ */
-.nav-admin-only {
-    display: none !important;
-}
-a.nav-admin-only.is-admin-visible {
-    display: inline !important;
-}
-li.nav-admin-only.is-admin-visible {
-    display: list-item !important;
+.sort-filter-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
+.sort-filter-controls__group {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.sort-filter-controls__group label {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.sort-filter-controls__group select {
+    width: auto;
+    min-width: 9rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #sakura-canvas {
+        display: none !important;
+    }
+    #posts-container.posts > article.note-item,
+    #posts-container.posts > article.note-item:hover {
+        transition: none !important;
+        transform: none !important;
+    }
+    .card-carousel .carousel-slide {
+        transition: none !important;
+    }
+}
+
+/* ============================================================
+   Z. Admin nav inject + academic gate
+   ============================================================ */
 /* academic.html: hide whole page until admin confirmed */
 body.admin-gated-page #wrapper {
     visibility: hidden;

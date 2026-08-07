@@ -2280,7 +2280,7 @@ input[type="button"].large,
 button.large,
 .button.large {
 	font-size: 0.9rem;
-	height: 3.5rem;
+	height: 2.4rem;
 	line-height: 3.5rem;
 	padding: 0 2.75rem;
 }
@@ -3402,8 +3402,7 @@ table.alt tbody tr td {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 3.5rem;
-	/* Increase size to make them more prominent than social icons */
+	width: 2.4rem; /* V6 compact */
 	height: 3.5rem;
 	border-radius: 50%;
 	border: none;

@@ -76,47 +76,119 @@ html[data-theme="glass"] body.reading-focus #main > .post.is-article-reading {
   -webkit-backdrop-filter: blur(12px) !important;
 }
 
-/* ---------- Card system ---------- */
-#posts-container.posts {
-  gap: clamp(1rem, 2.2vw, 1.75rem) !important;
+/* ---------- V6 Editorial Grid (authoritative; resets HTML5 UP .posts flex) ---------- */
+#posts-container.posts:not(.list-view) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 2vw, 1.75rem);
+  align-items: start;
+  width: 100%;
+  text-align: left;
+  /* neutralize HTML5 UP flex packing */
+  flex-wrap: unset;
+}
+
+#posts-container.posts:not(.list-view) > * {
+  width: auto;
+  max-width: none;
+  flex: none;
+  flex-grow: 0;
+  flex-shrink: 0;
+  flex-basis: auto;
+  padding: 0;
+}
+
+#posts-container.posts:not(.list-view) > article.note-item {
+  position: relative;
+  overflow: hidden;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  height: auto;
+  margin: 0;
+  align-self: start;
+  flex: none;
+  flex-basis: auto;
+  border-style: solid;
+  border-left-width: 1px;
+  border-top-width: 1px;
+  padding: clamp(1.15rem, 2vw, 1.65rem);
+  border-radius: 22px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: 0 12px 34px rgba(0,0,0,.08);
+  content-visibility: auto;
+  contain-intrinsic-size: 420px;
+  transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
+  text-align: left;
+}
+
+/* Longform / reference may span full row; text measure stays readable */
+#posts-container.posts:not(.list-view) > article.note-item[data-presentation="longform"],
+#posts-container.posts:not(.list-view) > article.note-item[data-presentation="reference"] {
+  grid-column: 1 / -1;
+}
+
+#posts-container.posts:not(.list-view) > article.note-item[data-presentation="longform"] .note-card__content,
+#posts-container.posts:not(.list-view) > article.note-item[data-presentation="reference"] .note-card__content,
+#posts-container.posts:not(.list-view) > article.note-item[data-presentation="longform"] .note-card__excerpt,
+#posts-container.posts:not(.list-view) > article.note-item[data-presentation="reference"] .note-card__excerpt {
+  max-width: 72ch;
+}
+
+/* List view must stay single-column (not grid) */
+#posts-container.posts.list-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
   align-items: stretch;
+  width: 100%;
+}
+
+#posts-container.posts.list-view > article.note-item {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0.85rem 1rem;
+}
+
+@media screen and (max-width: 959px) {
+  #posts-container.posts:not(.list-view) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #posts-container.posts:not(.list-view) > article.note-item[data-presentation="longform"],
+  #posts-container.posts:not(.list-view) > article.note-item[data-presentation="reference"] {
+    grid-column: auto;
+  }
 }
 
 #posts-container.posts > article.note-item {
   position: relative;
   overflow: hidden;
   min-width: 0;
-  padding: clamp(1.15rem, 2vw, 1.65rem) !important;
-  border-radius: 22px !important;
-  border: 1px solid var(--card-border) !important;
-  background: var(--card-bg) !important;
-  box-shadow: 0 12px 34px rgba(0,0,0,.08) !important;
-  content-visibility: auto;
-  contain-intrinsic-size: 520px;
-  transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease !important;
 }
 
 #posts-container.posts > article.note-item:hover {
-  transform: translateY(-3px) !important;
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--card-border)) !important;
-  box-shadow: 0 18px 46px rgba(0,0,0,.15) !important;
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--card-border));
+  box-shadow: 0 18px 46px rgba(0,0,0,.15);
 }
 
 html[data-theme="glass"] #posts-container.posts > article.note-item {
-  background: linear-gradient(145deg, rgba(8,12,20,.17), rgba(8,12,20,.07)) !important;
-  border-color: rgba(255,255,255,.16) !important;
-  box-shadow: 0 12px 38px rgba(0,0,0,.12) !important;
-  backdrop-filter: blur(6px) !important;
-  -webkit-backdrop-filter: blur(6px) !important;
+  background: linear-gradient(145deg, rgba(8,12,20,.17), rgba(8,12,20,.07));
+  border-color: rgba(255,255,255,.16);
+  box-shadow: 0 12px 38px rgba(0,0,0,.12);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .note-card__meta {
-  margin: 0 0 .9rem !important;
+  margin: 0 0 .9rem;
 }
 
 .note-card__meta .meta-cat {
-  font-size: .70rem !important;
-  letter-spacing: .07em !important;
+  font-size: .70rem;
+  letter-spacing: .07em;
 }
 
 .note-card__meta .meta-pub {
@@ -125,45 +197,55 @@ html[data-theme="glass"] #posts-container.posts > article.note-item {
 }
 
 .note-card__title {
-  margin: .15rem 0 .75rem !important;
-  font-size: clamp(1.32rem, 1.1rem + .7vw, 1.82rem) !important;
-  line-height: 1.38 !important;
-  text-align: left !important;
-  letter-spacing: .01em !important;
+  margin: .15rem 0 .75rem;
+  font-size: clamp(1.32rem, 1.1rem + .7vw, 1.82rem);
+  font-weight: 650;
+  line-height: 1.38;
+  text-align: left;
+  letter-spacing: .01em;
 }
 
 .note-card__excerpt {
-  max-width: none !important;
-  margin: 0 !important;
-  text-align: left !important;
-  line-height: 1.75 !important;
+  max-width: none;
+  margin: 0;
+  text-align: left;
+  line-height: 1.75;
   opacity: .86;
 }
 
 .note-card__footer {
-  margin-top: 1.15rem !important;
+  margin-top: 1.15rem;
 }
 
 .note-card__cta {
-  font-size: .84rem !important;
+  font-size: .84rem;
   opacity: .9;
 }
 
-/* Micro posts: visually distinct memo cards, never blank mystery tiles. */
+/* Micro posts: memo rhythm — presentation is source of truth, not .is-compact */
 #posts-container.posts > article.note-item[data-presentation="fragment"],
 #posts-container.posts > article.note-item[data-presentation="quote"] {
   min-height: 11rem;
-  padding: 1.1rem 1.25rem 1.05rem !important;
+  padding: 1.1rem 1.25rem 1.05rem;
   background:
     radial-gradient(circle at 8% 0%, rgba(125,232,255,.10), transparent 42%),
-    var(--card-bg) !important;
+    var(--card-bg);
 }
 
 html[data-theme="glass"] #posts-container.posts > article.note-item[data-presentation="fragment"],
 html[data-theme="glass"] #posts-container.posts > article.note-item[data-presentation="quote"] {
   background:
     radial-gradient(circle at 8% 0%, rgba(125,232,255,.12), transparent 44%),
-    linear-gradient(145deg, rgba(6,10,18,.20), rgba(6,10,18,.08)) !important;
+    linear-gradient(145deg, rgba(6,10,18,.20), rgba(6,10,18,.08));
+}
+
+#posts-container.posts > article.note-item[data-presentation="fragment"] .note-card__excerpt,
+#posts-container.posts > article.note-item[data-presentation="quote"] .note-card__excerpt,
+#posts-container.posts > article.note-item[data-presentation="fragment"] .note-card__label,
+body.presentation-fragment #markdown-container .markdown-body,
+body.presentation-quote #markdown-container .markdown-body {
+  text-align: left;
+  text-justify: auto;
 }
 
 /* Semantic cards: topic comes from JS (AI display metadata), never CSS 「一則小廢文」. */

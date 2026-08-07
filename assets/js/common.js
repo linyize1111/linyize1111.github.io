@@ -275,38 +275,90 @@
   }
 
   function initAdminNav() {
-    function hide() {
-      Array.prototype.forEach.call(document.querySelectorAll(".nav-admin-only"), function (el) {
-        el.hidden = true;
-        el.setAttribute("aria-hidden", "true");
-        el.classList.remove("is-admin-visible");
+    var PUBLIC_LINKS = [
+      { href: "index.html", label: "首頁" },
+      { href: "directory.html", label: "隨筆" },
+      { href: "literature.html", label: "文學創作" },
+      { href: "about.html", label: "關於我" },
+    ];
+    var ADMIN_LINK = { href: "academic.html", label: "學科筆記" };
+
+    function ensureGlobalNavShell() {
+      var nav = document.getElementById("global-nav");
+      if (!nav) {
+        nav = document.createElement("nav");
+        nav.id = "global-nav";
+        nav.setAttribute("aria-label", "主要導覽");
+        document.body.appendChild(nav);
+      }
+      nav.removeAttribute("style");
+      return nav;
+    }
+
+    function renderPublicNav() {
+      var nav = ensureGlobalNavShell();
+      var path = (location.pathname || "").split("/").pop() || "index.html";
+      nav.innerHTML = "";
+      PUBLIC_LINKS.forEach(function (item) {
+        var a = document.createElement("a");
+        a.href = item.href;
+        a.textContent = item.label;
+        if (path === item.href) a.setAttribute("aria-current", "page");
+        nav.appendChild(a);
       });
+      return nav;
     }
-    function reveal() {
+
+    function injectAdminLink(nav) {
+      if (!nav || nav.querySelector('[data-admin-nav="academic"]')) return;
+      var a = document.createElement("a");
+      a.href = ADMIN_LINK.href;
+      a.textContent = ADMIN_LINK.label;
+      a.setAttribute("data-admin-nav", "academic");
+      var about = nav.querySelector('a[href="about.html"]');
+      if (about) nav.insertBefore(a, about);
+      else nav.appendChild(a);
+    }
+
+    function stripStaticAdminHints() {
+      Array.prototype.forEach.call(
+        document.querySelectorAll('a[href="academic.html"], li.nav-admin-only'),
+        function (el) {
+          if (el.getAttribute("data-admin-nav") === "academic") return;
+          el.remove();
+        }
+      );
+    }
+
+    stripStaticAdminHints();
+    var nav = renderPublicNav();
+
+    function revealIfAdmin() {
       if (!window.SBAuth || typeof window.SBAuth.isAdmin !== "function") return;
-      window.SBAuth.isAdmin().then(function (ok) {
-        Array.prototype.forEach.call(document.querySelectorAll(".nav-admin-only"), function (el) {
-          el.hidden = !ok;
-          if (ok) {
-            el.removeAttribute("aria-hidden");
-            el.classList.add("is-admin-visible");
-          } else {
-            el.setAttribute("aria-hidden", "true");
-            el.classList.remove("is-admin-visible");
-          }
-        });
-      }).catch(function () {});
+      window.SBAuth
+        .isAdmin()
+        .then(function (ok) {
+          if (ok) injectAdminLink(nav);
+        })
+        .catch(function () {});
     }
-    hide();
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", reveal, { once: true });
-    else reveal();
-    setTimeout(reveal, 900);
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", revealIfAdmin, { once: true });
+    } else {
+      revealIfAdmin();
+    }
+    setTimeout(revealIfAdmin, 900);
   }
 
   function applyReadingFocus(requested) {
-    /* CMS used to force true after every render. V5 treats focus as a user preference. */
+    /* Never force focus on render — only localStorage preference. */
     var stored = localStorage.getItem("readingFocus") === "true";
-    var enable = requested === false ? false : (requested === true ? stored : stored);
+    var enable =
+      requested === true ? true : requested === false ? false : stored;
+    if (requested === true || requested === false) {
+      /* explicit toggle path already wrote localStorage */
+    }
     document.body.classList.toggle("reading-focus", enable);
     document.body.classList.add("reading-page");
 
@@ -344,6 +396,19 @@
     applyReadingFocus();
   }
 
+  function initScrollTopButton() {
+    var btn = document.getElementById("btn-top");
+    if (!btn) return;
+    var threshold = 420;
+    function sync() {
+      var show = window.scrollY > threshold;
+      btn.hidden = !show;
+      btn.classList.toggle("is-hidden", !show);
+    }
+    sync();
+    window.addEventListener("scroll", sync, { passive: true });
+  }
+
   function initCommon() {
     initTheme();
     initLoadingScreen();
@@ -352,6 +417,7 @@
     initSakuraIfPresent();
     initAdminNav();
     initReadingFocusUi();
+    initScrollTopButton();
     initAnalytics();
   }
 

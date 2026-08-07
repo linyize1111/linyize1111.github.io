@@ -702,7 +702,7 @@
 
     var meta = presentationMeta(a);
     document.body.dataset.presentation = meta.key;
-    document.body.classList.add("reading-page", "reading-focus", meta.articleClass);
+    document.body.classList.add("reading-page", meta.articleClass);
     if (postSection) {
       postSection.classList.add("is-article-reading", meta.articleClass);
       postSection.setAttribute("data-presentation", meta.key);
