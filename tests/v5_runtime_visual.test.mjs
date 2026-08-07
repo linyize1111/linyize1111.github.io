@@ -15,6 +15,6 @@ assert.ok(media.includes("openLightbox"), "lightbox retained");
 assert.ok(media.includes('loading", "lazy"') || media.includes("loading = \"lazy\"") || media.includes('loading = "lazy"') || media.includes("loading\",\"lazy") || /loading/.test(media));
 assert.ok(css.includes("media-ambient"), "css ambient");
 assert.ok(css.includes('data-theme="glass"'), "glass theme css");
-assert.ok(css.includes("is-fragment"), "fragment card identity");
+assert.ok(css.includes('data-presentation="fragment"'), "fragment card identity");
 
 console.log("v5 runtime visual smoke tests passed");
