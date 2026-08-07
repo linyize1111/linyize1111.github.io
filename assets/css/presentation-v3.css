@@ -166,39 +166,47 @@ html[data-theme="glass"] #posts-container.posts > article.note-item[data-present
     linear-gradient(145deg, rgba(6,10,18,.20), rgba(6,10,18,.08)) !important;
 }
 
-#posts-container.posts > article.note-item[data-presentation="fragment"] .meta-cat::after {
-  content: " · 小廢文";
-  opacity: .82;
+/* Semantic cards: topic comes from JS (AI display metadata), never CSS 「一則小廢文」. */
+.note-card__meta .meta-dot {
+  margin: 0 .35em;
+  opacity: .55;
 }
 
-#posts-container.posts > article.note-item[data-presentation="quote"] .meta-cat::after {
-  content: " · 摘錄";
-  opacity: .82;
+.note-card__meta .meta-topic {
+  font-weight: 500;
+  letter-spacing: .04em;
+  opacity: .92;
 }
 
-#posts-container.posts > article.note-item[data-presentation="fragment"] .note-card__content::before,
-#posts-container.posts > article.note-item[data-presentation="quote"] .note-card__content::before {
-  display: block;
-  margin: .25rem 0 .55rem;
-  color: var(--text-heading);
-  font-family: var(--font-body);
-  font-size: clamp(1.12rem, 1rem + .4vw, 1.38rem);
-  line-height: 1.5;
+.note-card__label {
+  margin: .1rem 0 .55rem !important;
+  font-size: clamp(1.02rem, .95rem + .28vw, 1.22rem) !important;
   font-weight: 600;
-  text-align: left;
+  line-height: 1.45 !important;
+  letter-spacing: .01em;
+  color: var(--text-heading);
 }
 
-#posts-container.posts > article.note-item[data-presentation="fragment"] .note-card__content::before {
-  content: "一則小廢文";
+.note-card__label a {
+  color: inherit;
+  text-decoration: none;
 }
-#posts-container.posts > article.note-item[data-presentation="quote"] .note-card__content::before {
-  content: "一則摘錄";
+
+.note-card__excerpt--body {
+  opacity: .82;
+  font-size: .95em;
+}
+
+#posts-container.posts > article.note-item.note-item--semantic .note-card__title:not(.note-card__title--sr) {
+  display: none !important;
 }
 
 #posts-container.posts > article.note-item[data-presentation="fragment"] .note-card__rule,
 #posts-container.posts > article.note-item[data-presentation="quote"] .note-card__rule,
 #posts-container.posts > article.note-item[data-presentation="fragment"] .note-card__index,
-#posts-container.posts > article.note-item[data-presentation="quote"] .note-card__index {
+#posts-container.posts > article.note-item[data-presentation="quote"] .note-card__index,
+#posts-container.posts > article.note-item[data-presentation="photo-note"] .note-card__index,
+#posts-container.posts > article.note-item[data-presentation="journal"] .note-card__index {
   display: none !important;
 }
 

@@ -26,6 +26,7 @@ const REQUIRED = [
   "presentation", "tags", "series", "edit_level", "clean_body", "editorial_state",
   "confidence", "reason", "flags", "human_review_required",
 ];
+const OPTIONAL = ["card_topic", "card_label", "show_card_label"];
 
 const SYSTEM_PROMPT = `你是 LYZ 個人網站的編輯助手。你的工作不是代筆，而是理解作者已經寫出的內容，幫忙分類、整理、校對與決定呈現方式。
 
@@ -38,17 +39,30 @@ const SYSTEM_PROMPT = `你是 LYZ 個人網站的編輯助手。你的工作不�
 4. 判斷正文需要哪個 edit_level。
 5. 只做該層級必要的修改。
 6. 產生真正的 semantic summary、tags、series 建議。
-7. 檢查匯入污染、標題誤吃、排版錯誤、事實／來源／論證風險。
-8. 對改稿做 AI-ism check；若變得比原文更制式、更漂亮但不像作者，回退。
+7. 為 fragment / photo-note / quote / journal 產生語意卡片辨識（card_topic / card_label）。
+8. 檢查匯入污染、標題誤吃、排版錯誤、事實／來源／論證風險。
+9. 對改稿做 AI-ism check；若變得比原文更制式、更漂亮但不像作者，回退。
 
 ## 禁止用門檻代替理解
 不得使用「少於 N 字就是 fragment」「多於 N 字就是 longform」「第一行少於 N 字就是標題」等規則做語意判定。篇幅、圖片數、heading 數只能作參考訊號，不能作決策條件。
+也不得用：字數判定、regex、第一個名詞、出現次數最多的詞、tags 拼接、title 截斷、body 第一行直接當標題，來產生 card_topic / card_label。
 
-## 標題
+## 標題（author title）
 - frontmatter title 或明確 H1：高可信。
 - 普通第一行只能是「疑似標題」，除非語意結構明顯支持，不得從正文刪除。
 - fragment / quote / poetry 可以 show_title=false。
 - 不要為每個短感觸硬生成漂亮標題。
+- card_label ≠ title。絕對不要把 AI card_label 寫進 title 欄位。
+
+## Semantic card label（列表辨識，不是文章標題）
+回答：「如果朋友問你這則短文在講什麼，你會用幾個字怎麼說？」不是「請生成專業標題」。
+
+對 presentation 為 fragment / photo-note / quote / journal 的內容：
+- card_topic：一個最能辨識的主題詞（必要時最多「卡繆與自由」這種複合），不是 tag cloud。
+- card_label：約 6～18 中文字的自然口語辨識句；句型必須多樣，禁止整站都套「關於X的一則小廢文」。
+- show_card_label：若正文本身已夠短、硬產 label 反而變醜，設為 false（仍可給 card_topic）。
+- 可借用作者正文裡自然適合作辨識的短句，但不要機械取第一句。
+- 禁止 AI 式標題：在…中尋找、從…重新審視、當…遇上、關於…的深刻反思。
 
 ## 正文修改
 允許：空行、Markdown、heading、list、blockquote、圖片 caption；明顯 typo／重複字；複製貼上污染；必要時非常小幅語病修正。
@@ -59,6 +73,8 @@ const SYSTEM_PROMPT = `你是 LYZ 個人網站的編輯助手。你的工作不�
 
 ## Output
 只能輸出符合 schema 的 JSON（不要 markdown fence）。clean_body 必須是完整 Markdown 正文。
+必填鍵：title, show_title, summary, show_summary, category, content_type, presentation, tags, series, edit_level, clean_body, editorial_state, confidence, reason, flags, human_review_required
+選填鍵：card_topic, card_label, show_card_label
 presentation enum: fragment, photo-note, journal, article-lite, longform, review, reference, quote, fiction, poetry
 edit_level enum: preserve, format_only, proofread, light_edit, structural_edit, editorial_review
 editorial_state enum: complete, fragmentary, needs_review, incomplete
@@ -81,11 +97,12 @@ function json(status: number, body: unknown, origin: string | null) {
 
 function validateAnalysis(raw: Record<string, unknown>) {
   const errors: string[] = [];
+  const allowed = new Set([...REQUIRED, ...OPTIONAL]);
   for (const k of REQUIRED) {
     if (!(k in raw)) errors.push("missing:" + k);
   }
   for (const k of Object.keys(raw)) {
-    if (!REQUIRED.includes(k)) errors.push("additional:" + k);
+    if (!allowed.has(k)) errors.push("additional:" + k);
   }
   if (typeof raw.title !== "string") errors.push("title");
   if (typeof raw.show_title !== "boolean") errors.push("show_title");
@@ -109,6 +126,11 @@ function validateAnalysis(raw: Record<string, unknown>) {
   if (typeof raw.human_review_required !== "boolean") errors.push("human_review_required");
   if (typeof raw.confidence === "number" && raw.confidence < 0.55 && raw.human_review_required !== true) {
     errors.push("low_confidence_requires_review");
+  }
+  if ("card_topic" in raw && typeof raw.card_topic !== "string") errors.push("card_topic");
+  if ("card_label" in raw && typeof raw.card_label !== "string") errors.push("card_label");
+  if ("show_card_label" in raw && typeof raw.show_card_label !== "boolean") {
+    errors.push("show_card_label");
   }
   return errors;
 }
@@ -198,6 +220,7 @@ Deno.serve(async (req) => {
     },
     reference_signals_only: signals,
     required_json_keys: REQUIRED,
+    optional_json_keys: OPTIONAL,
   });
 
   let modelText = "";

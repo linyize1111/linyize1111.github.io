@@ -709,6 +709,10 @@
     if ($("f-series")) $("f-series").value = "";
     if ($("f-show-title")) $("f-show-title").checked = true;
     if ($("f-show-summary")) $("f-show-summary").checked = true;
+    if ($("f-card-topic")) $("f-card-topic").value = "";
+    if ($("f-card-label")) $("f-card-label").value = "";
+    if ($("f-show-card-label")) $("f-show-card-label").checked = true;
+    window.__lastOpenedAiEditorial = {};
     lastAiAnalysis = null;
     if ($("ai-review-panel")) $("ai-review-panel").classList.add("hidden");
     if ($("ai-status")) $("ai-status").textContent = "";
@@ -731,6 +735,8 @@
       var a = res.data;
       $("f-id").value = a.id;
       editingArticleId = a.id;
+      window.__lastOpenedAiEditorial =
+        a.ai_editorial && typeof a.ai_editorial === "object" ? a.ai_editorial : {};
       var catNorm = normalizeCategory(a.category || "");
       $("f-section").value =
         a.section === "notes" && isAcademicCategory(catNorm) ? "academic" : a.section;
@@ -744,6 +750,25 @@
       if ($("f-series")) $("f-series").value = a.series || "";
       if ($("f-show-title")) $("f-show-title").checked = a.show_title !== false;
       if ($("f-show-summary")) $("f-show-summary").checked = !!a.show_summary;
+      (function fillCardDisplay() {
+        var ae = a.ai_editorial && typeof a.ai_editorial === "object" ? a.ai_editorial : {};
+        var d = ae.display && typeof ae.display === "object" ? ae.display : {};
+        if ($("f-card-topic")) {
+          $("f-card-topic").value = d.card_topic || ae.card_topic || "";
+        }
+        if ($("f-card-label")) {
+          $("f-card-label").value = d.card_label || ae.card_label || "";
+        }
+        if ($("f-show-card-label")) {
+          var show =
+            typeof d.show_card_label === "boolean"
+              ? d.show_card_label
+              : typeof ae.show_card_label === "boolean"
+                ? ae.show_card_label
+                : true;
+          $("f-show-card-label").checked = show;
+        }
+      })();
       $("f-title").value = a.title || "";
       $("f-slug").value = a.slug || "";
       $("f-summary").value = a.summary || "";
@@ -1192,6 +1217,40 @@
       show_summary: $("f-show-summary") ? !!$("f-show-summary").checked : null,
       needs_ai_analysis: !(($("f-presentation") && $("f-presentation").value)),
     };
+    // Merge semantic card display into ai_editorial (never overwrites article.title)
+    (function stampCardDisplay() {
+      if (!$("f-card-topic") && !$("f-card-label")) return;
+      var topic = $("f-card-topic") ? $("f-card-topic").value.trim() : "";
+      var label = $("f-card-label") ? $("f-card-label").value.trim() : "";
+      var showLabel = $("f-show-card-label") ? !!$("f-show-card-label").checked : !!label;
+      var prev =
+        window.__lastOpenedAiEditorial && typeof window.__lastOpenedAiEditorial === "object"
+          ? window.__lastOpenedAiEditorial
+          : {};
+      var display = Object.assign({}, prev.display || {}, {
+        card_topic: topic,
+        card_label: label,
+        show_card_label: showLabel && !!label,
+      });
+      var next = Object.assign({}, prev, {
+        display: display,
+        card_topic: topic,
+        card_label: label,
+        show_card_label: display.show_card_label,
+      });
+      if (lastAiAnalysis) {
+        next.analyzed_at = new Date().toISOString();
+        next.source = next.source || "admin_ai_confirm";
+        next.confidence = lastAiAnalysis.confidence;
+        next.reason = lastAiAnalysis.reason;
+        next.flags = lastAiAnalysis.flags || next.flags || [];
+        next.edit_level = lastAiAnalysis.edit_level || next.edit_level;
+        next.human_review_required = !!lastAiAnalysis.human_review_required;
+        next.semantic_card_version = "v1";
+      }
+      payload.ai_editorial = next;
+      window.__lastOpenedAiEditorial = next;
+    })();
     if (uiSection === "academic") {
       payload.visibility = ($("f-visibility") && $("f-visibility").value) || "private";
     }
@@ -1995,6 +2054,18 @@ var quickDraft = $("btn-quick-draft");
     setText("ai-r-category", analysis.category);
     setText("ai-r-content-type", analysis.content_type);
     setText("ai-r-presentation", analysis.presentation);
+    setText("ai-r-card-topic", analysis.card_topic || "（無）");
+    setText("ai-r-card-label", analysis.card_label || "（無）");
+    setText(
+      "ai-r-show-card-label",
+      typeof analysis.show_card_label === "boolean"
+        ? analysis.show_card_label
+          ? "顯示"
+          : "隱藏"
+        : analysis.card_label
+          ? "顯示"
+          : "—"
+    );
     setText("ai-r-tags", (analysis.tags || []).join(", ") || "（無）");
     setText("ai-r-series", analysis.series || "（無）");
     setText("ai-r-edit-level", analysis.edit_level);
@@ -2033,6 +2104,12 @@ var quickDraft = $("btn-quick-draft");
       if ($("f-presentation")) $("f-presentation").value = a.presentation || "";
       if (a.tags && $("f-tags")) $("f-tags").value = a.tags.join(", ");
       if ($("f-series")) $("f-series").value = a.series || "";
+      // Semantic card label ≠ author title — never write card_label into f-title
+      if ($("f-card-topic") && a.card_topic != null) $("f-card-topic").value = a.card_topic;
+      if ($("f-card-label") && a.card_label != null) $("f-card-label").value = a.card_label;
+      if ($("f-show-card-label") && typeof a.show_card_label === "boolean") {
+        $("f-show-card-label").checked = a.show_card_label;
+      }
     }
     if ((mode === "all" || mode === "body") && a.clean_body != null) {
       $("f-body").value = a.clean_body;

@@ -169,6 +169,63 @@
     return s.slice(0, maxLen).replace(/\s+\S*$/, "") + "…";
   }
 
+  function firstBodyExcerpt(body, maxLen) {
+    var raw = String(body || "")
+      .replace(/^---[\s\S]*?---\s*/m, "")
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+      .replace(/\[[^\]]*\]\([^)]+\)/g, "$1")
+      .replace(/^#+\s+/gm, "")
+      .trim();
+    var blocks = raw.split(/\n\s*\n/).map(function (b) {
+      return b.replace(/\s+/g, " ").trim();
+    }).filter(function (b) {
+      return b && !/^(Pixiv|來源|Source)\b/i.test(b) && !/^https?:\/\//i.test(b);
+    });
+    if (!blocks.length) return "";
+    return shortSummary(blocks[0], maxLen || 90);
+  }
+
+  /** Stored AI display metadata only — never invent at render time. */
+  function semanticCardDisplay(a) {
+    var ae = (a && a.ai_editorial) || {};
+    var d = ae.display && typeof ae.display === "object" ? ae.display : {};
+    var topic = String(d.card_topic || ae.card_topic || "").trim();
+    var label = String(d.card_label || ae.card_label || "").trim();
+    var showLabel =
+      typeof d.show_card_label === "boolean"
+        ? d.show_card_label
+        : typeof ae.show_card_label === "boolean"
+          ? ae.show_card_label
+          : !!label;
+    return { topic: topic, label: label, showLabel: showLabel && !!label };
+  }
+
+  function usesSemanticCard(presentationKey) {
+    return (
+      presentationKey === "fragment" ||
+      presentationKey === "quote" ||
+      presentationKey === "photo-note" ||
+      presentationKey === "journal"
+    );
+  }
+
+  function semanticKindLabel(presentationKey, catLabel) {
+    if (presentationKey === "photo-note") return "照片隨記";
+    if (presentationKey === "quote") return "摘錄";
+    if (presentationKey === "journal") return "日記";
+    return catLabel || "隨想";
+  }
+
+  function formatCardDateFallback(ts) {
+    if (!ts) return "一則小廢文";
+    try {
+      var d = new Date(ts);
+      return d.getMonth() + 1 + " 月 " + d.getDate() + " 日的小廢文";
+    } catch (e) {
+      return "一則小廢文";
+    }
+  }
+
   /** List/card renderer driven by stored presentation only. */
   function buildCard(a, listIndex) {
     var meta = presentationMeta(a);
@@ -198,17 +255,132 @@
     }
     var renderSummary = showSummary(a) && !!summary;
     var renderTitle = showTitle(a);
+    var semantic = usesSemanticCard(meta.key);
+    var cardDisplay = semantic ? semanticCardDisplay(a) : null;
 
     var art = document.createElement("article");
     art.className =
       ("note-item " + (meta.listClass || "")).trim() +
-      (hasCover ? " note-item--has-cover" : " note-item--no-cover note-item--text-only");
+      (hasCover ? " note-item--has-cover" : " note-item--no-cover note-item--text-only") +
+      (semantic ? " note-item--semantic" : "");
     art.setAttribute("data-category", cat);
     art.setAttribute("data-presentation", meta.key);
     art.setAttribute("data-upload", upload);
     art.setAttribute("data-edit", edit);
     art.setAttribute("data-title", a.title || "");
     art.setAttribute("data-has-cover", hasCover ? "1" : "0");
+    if (cardDisplay && cardDisplay.topic) {
+      art.setAttribute("data-card-topic", cardDisplay.topic);
+    }
+
+    if (semantic) {
+      var kind = semanticKindLabel(meta.key, catLabel);
+      var metaLine =
+        esc(kind) +
+        (cardDisplay.topic ? '<span class="meta-dot" aria-hidden="true">·</span><span class="meta-topic">' + esc(cardDisplay.topic) + "</span>" : "");
+      var metaHtml =
+        '<header class="note-card__meta">' +
+        '<span class="meta-cat">' +
+        metaLine +
+        "</span>" +
+        (uploadDot
+          ? '<time class="meta-pub" datetime="' + esc(upload) + '">' + esc(uploadDot) + "</time>"
+          : "") +
+        "</header>";
+
+      var labelText = "";
+      if (cardDisplay.showLabel && cardDisplay.label) labelText = cardDisplay.label;
+      else {
+        var excerpt = firstBodyExcerpt(a.body, 72);
+        if (excerpt) labelText = ""; // show excerpt only below
+        else labelText = formatCardDateFallback(a.published_at || a.created_at);
+      }
+      var labelHtml = labelText
+        ? '<p class="note-card__label"><a href="' + url + '">' + esc(labelText) + "</a></p>"
+        : "";
+      // Accessibility: keep a hidden title for screen readers
+      var srTitle =
+        '<h2 class="note-card__title note-card__title--sr"><a href="' +
+        url +
+        '"><span class="visually-hidden">' +
+        esc(cardDisplay.label || cardDisplay.topic || a.title || kind) +
+        "</span></a></h2>";
+
+      var bodyExcerpt = firstBodyExcerpt(a.body, 110);
+      var excerptHtml = bodyExcerpt
+        ? '<p class="note-card__excerpt note-card__excerpt--body">' + esc(bodyExcerpt) + "</p>"
+        : renderSummary
+          ? '<p class="note-card__excerpt">' + esc(shortSummary(summary, 160)) + "</p>"
+          : "";
+
+      // Avoid duplicating the same line as both label and excerpt
+      if (
+        labelText &&
+        bodyExcerpt &&
+        shortSummary(labelText, 40) === shortSummary(bodyExcerpt, 40)
+      ) {
+        if (cardDisplay.showLabel && cardDisplay.label) excerptHtml = "";
+        else labelHtml = "";
+      }
+
+      var mediaHtml = "";
+      if (hasCover) {
+        if (slides.length === 1) {
+          mediaHtml =
+            '<div class="card-media-zone card-media-zone--' +
+            esc(mediaStrategy) +
+            '" style="' +
+            ratioStyle +
+            '"><a href="' +
+            url +
+            '" class="image fit"><img loading="lazy" src="' +
+            esc(slides[0].src) +
+            '" alt="" style="' +
+            coverDisplayStyle(a) +
+            '" /></a></div>';
+        } else {
+          mediaHtml =
+            '<div class="card-media-zone card-media-zone--' +
+            esc(mediaStrategy) +
+            '"><div class="card-carousel" style="' +
+            ratioStyle +
+            '">';
+          slides.forEach(function (s, si) {
+            mediaHtml +=
+              '<div class="carousel-slide' +
+              (si === 0 ? " active" : "") +
+              '"><a href="' +
+              url +
+              '" class="image fit"><img loading="lazy" src="' +
+              esc(s.src) +
+              '" alt="" style="' +
+              coverDisplayStyle(a) +
+              '" />' +
+              (s.caption ? '<span class="carousel-caption">' + esc(s.caption) + "</span>" : "") +
+              "</a></div>";
+          });
+          mediaHtml += '<div class="carousel-dots" aria-hidden="true">';
+          slides.forEach(function (_, si) {
+            mediaHtml +=
+              '<span class="carousel-dot' + (si === 0 ? " is-active" : "") + '"></span>';
+          });
+          mediaHtml += "</div></div></div>";
+        }
+      }
+
+      art.innerHTML =
+        metaHtml +
+        srTitle +
+        '<div class="note-card__content">' +
+        labelHtml +
+        mediaHtml +
+        excerptHtml +
+        "</div>" +
+        '<div class="note-card__footer">' +
+        editorialCta(url, meta.cardCta) +
+        "</div>";
+      return art;
+    }
 
     var metaHtml =
       '<header class="note-card__meta">' +
@@ -246,9 +418,7 @@
         metaHtml +
         '<div class="note-card__content">' +
         titleHtml +
-        (meta.key === "fragment" || meta.key === "quote"
-          ? ""
-          : '<div class="note-card__rule" aria-hidden="true"></div>') +
+        '<div class="note-card__rule" aria-hidden="true"></div>' +
         excerptHtml +
         "</div>" +
         (meta.key === "longform" || meta.key === "review" || meta.key === "reference"

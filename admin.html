@@ -1,4 +1,4 @@
-<!DOCTYPE HTML>
+﻿<!DOCTYPE HTML>
 <html lang="zh-Hant">
 
 <head>
@@ -302,6 +302,22 @@
                                     </div>
                                 </div>
                                 <p class="muted">前端只讀已存的 presentation；不會用字數重新猜測文類。</p>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>card_topic（列表辨識主題，≠ 標題）</label>
+                                        <input id="f-card-topic" placeholder="例如：卡繆" />
+                                    </div>
+                                    <div class="field">
+                                        <label class="chk">
+                                            <input type="checkbox" id="f-show-card-label" checked />
+                                            顯示 card_label
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="field full">
+                                    <label>card_label（列表口語辨識，不要寫進 title）</label>
+                                    <input id="f-card-label" placeholder="例如：最近又想到卡繆" />
+                                </div>
                             </details>
 
                             <details class="editor-meta-block" open>
@@ -323,6 +339,9 @@
                                         <div><dt>category</dt><dd id="ai-r-category">—</dd></div>
                                         <div><dt>content_type</dt><dd id="ai-r-content-type">—</dd></div>
                                         <div><dt>presentation</dt><dd id="ai-r-presentation">—</dd></div>
+                                        <div><dt>card_topic</dt><dd id="ai-r-card-topic">—</dd></div>
+                                        <div><dt>card_label</dt><dd id="ai-r-card-label">—</dd></div>
+                                        <div><dt>show_card_label</dt><dd id="ai-r-show-card-label">—</dd></div>
                                         <div><dt>tags</dt><dd id="ai-r-tags">—</dd></div>
                                         <div><dt>series</dt><dd id="ai-r-series">—</dd></div>
                                         <div><dt>edit_level</dt><dd id="ai-r-edit-level">—</dd></div>
@@ -515,7 +534,7 @@
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/site-sections.js?v=ai-v3-1"></script>
     <script src="assets/js/presentation-registry.js?v=media-repair-3"></script>
-    <script src="assets/js/ai-editorial-schema.js?v=ai-v3-1"></script>
+    <script src="assets/js/ai-editorial-schema.js?v=semantic-card-1"></script>
     <script src="assets/js/ai-editorial-client.js?v=ai-v3-1"></script>
     <script src="assets/js/admin.js?v=ai-v3-1"></script>
 </body>

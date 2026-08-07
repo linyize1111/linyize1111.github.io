@@ -1,0 +1,190 @@
+{
+  "meta": {
+    "generated_at": "2026-08-07T10:00:00.000Z",
+    "note": "Metadata-only semantic card backfill. Does NOT modify title/body/summary/category/presentation/status/published_at. Varied natural phrasing — not one template.",
+    "source": "human+editorial_reading_full_body",
+    "version": "semantic-card-v1"
+  },
+  "proposals": [
+    {
+      "id": "57b0a61e-0545-4f3c-a4e3-60c48e6902ce",
+      "title": "我真的很喜歡卡繆",
+      "card_topic": "卡繆",
+      "card_label": "最近又想到卡繆",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:53:56.247Z"
+    },
+    {
+      "id": "8aa75604-8b6b-4730-97f6-eb7f9a953fc6",
+      "title": "贖回自由",
+      "card_topic": "自由",
+      "card_label": "又在想自由這件事",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:53:56.751Z"
+    },
+    {
+      "id": "09204f40-49d4-4c29-9e31-f4424a09a02e",
+      "title": "音樂可以拯救靈魂",
+      "card_topic": "音樂",
+      "card_label": "音樂有時真的能救人",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:53:57.258Z"
+    },
+    {
+      "id": "4617b60e-5cb5-4028-b4b3-e1576bebcf12",
+      "title": "夢被枕頭悶殺",
+      "card_topic": "夢",
+      "card_label": "長大後夢被枕頭悶殺了",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:53:57.751Z"
+    },
+    {
+      "id": "891a4ef5-2e7f-4202-9c2c-e84a2a3ce0ff",
+      "title": "我們會開始對一切產生「恐怖谷」嗎？",
+      "card_topic": "恐怖谷",
+      "card_label": "以後會不會對一切都恐怖谷",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:53:58.249Z"
+    },
+    {
+      "id": "8a6a10f9-4946-4d11-bee7-5a2d41245e10",
+      "title": "不願妥協，也是一種純真",
+      "card_topic": "純真",
+      "card_label": "不願妥協也是一種純真",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:53:58.734Z"
+    },
+    {
+      "id": "38138e80-8d0e-44d4-9fa4-ab257ca79948",
+      "title": "困在數字遊戲裡",
+      "card_topic": "數字遊戲",
+      "card_label": "我們都在替自己掛吊牌嗎",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:53:59.222Z"
+    },
+    {
+      "id": "112b5008-2e45-44ee-9390-7d380ec0203c",
+      "title": "簡談文筆",
+      "card_topic": "文筆",
+      "card_label": "文筆大概長成這樣",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:53:59.720Z"
+    },
+    {
+      "id": "ed30b152-0c98-416f-b167-d1ce79f80f6a",
+      "title": "感情，或許是一張素紙",
+      "card_topic": "感情",
+      "card_label": "感情像一張素紙",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:00.191Z"
+    },
+    {
+      "id": "77551a9e-c122-43a6-9436-2da45e2a3302",
+      "title": "科學不該成為新的教條",
+      "card_topic": "科學",
+      "card_label": "科學不該變成新教條",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:00.670Z"
+    },
+    {
+      "id": "e582e260-6d95-4fef-bf9c-23f24e8ca0b3",
+      "title": "時間或許只是幻覺？",
+      "card_topic": "時間",
+      "card_label": "時間會不會只是幻覺",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:01.149Z"
+    },
+    {
+      "id": "7a289d29-10ed-4613-b0f4-4198fefc6cbf",
+      "title": "紙本書與精神調律",
+      "card_topic": "紙本書",
+      "card_label": "關於「精神調律」的一段話",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:01.619Z"
+    },
+    {
+      "id": "ef219e76-e57f-4e89-bf1e-be5ce977e643",
+      "title": "生命與法律的重量",
+      "card_topic": "生命與法律",
+      "card_label": "每個靈魂都不該被輕視",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:02.105Z"
+    },
+    {
+      "id": "04be00a5-45d7-4e17-a7f5-b9e53ba29b63",
+      "title": "十四夜月與一隻貓",
+      "card_topic": "十四夜月",
+      "card_label": "月與一隻貓",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:02.604Z"
+    },
+    {
+      "id": "142f76ca-ca66-480f-93b8-5704c5b2ae50",
+      "title": "活著真好啊。",
+      "card_topic": "活著",
+      "card_label": "",
+      "show_card_label": false,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:03.102Z"
+    },
+    {
+      "id": "28a5ee3f-5fda-4709-97f5-7cc1f7b53b9b",
+      "title": "海面的霓虹",
+      "card_topic": "海面霓虹",
+      "card_label": "",
+      "show_card_label": false,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:03.604Z"
+    },
+    {
+      "id": "eef311f2-51f6-4c3b-8d8c-083db7bc83be",
+      "title": "夜裡的忠烈祠",
+      "card_topic": "忠烈祠",
+      "card_label": "夜裡走到忠烈祠",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:04.098Z"
+    },
+    {
+      "id": "c94ce8a9-3cea-4b16-904c-e4978905fe7b",
+      "title": "嘉義咖啡節",
+      "card_topic": "嘉義咖啡節",
+      "card_label": "嘉義咖啡節喝了二十杯",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:04.570Z"
+    },
+    {
+      "id": "208db295-d7ec-4d8b-8360-56346655fcfb",
+      "title": "看海隨想",
+      "card_topic": "海邊",
+      "card_label": "今天去看海",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:05.043Z"
+    },
+    {
+      "id": "3e4b19ac-84b1-4ea6-8c06-f9025056bd03",
+      "title": "凌晨三點半的幸福",
+      "card_topic": "幸福",
+      "card_label": "凌晨三點半的一點幸福",
+      "show_card_label": true,
+      "accepted": true,
+      "accepted_at": "2026-08-07T09:54:05.530Z"
+    }
+  ]
+}

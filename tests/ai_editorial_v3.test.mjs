@@ -154,6 +154,81 @@ test("0007 migration keeps presentation nullable", () => {
   assert.equal(/presentation text not null/i.test(s), false);
 });
 
+test("schema accepts optional card fields", () => {
+  const sample = {
+    title: "t",
+    show_title: false,
+    summary: "",
+    show_summary: false,
+    category: "隨想",
+    content_type: "fragment",
+    presentation: "fragment",
+    tags: [],
+    series: null,
+    edit_level: "preserve",
+    clean_body: "正文",
+    editorial_state: "complete",
+    confidence: 0.9,
+    reason: "ok",
+    flags: [],
+    human_review_required: false,
+    card_topic: "卡繆",
+    card_label: "最近又想到卡繆",
+    show_card_label: true,
+  };
+  const v = schema.validateAnalysis(sample);
+  assert.equal(v.ok, true);
+});
+
+test("schema warns on polished AI card_label", () => {
+  const sample = {
+    title: "t",
+    show_title: false,
+    summary: "",
+    show_summary: false,
+    category: "隨想",
+    content_type: "fragment",
+    presentation: "fragment",
+    tags: [],
+    series: null,
+    edit_level: "preserve",
+    clean_body: "正文",
+    editorial_state: "complete",
+    confidence: 0.9,
+    reason: "ok",
+    flags: [],
+    human_review_required: false,
+    card_label: "在荒謬世界中尋找存在的微光",
+  };
+  const v = schema.validateAnalysis(sample);
+  assert.equal(v.ok, true);
+  assert.ok(v.warnings.some((w) => /card_label|AI headline/i.test(w)));
+});
+
+test("cms-public uses stored semantic display metadata", () => {
+  const s = read("assets/js/cms-public.js");
+  assert.ok(s.includes("semanticCardDisplay"));
+  assert.ok(s.includes("card_topic"));
+  assert.ok(s.includes("card_label"));
+  assert.ok(s.includes("show_card_label"));
+  assert.ok(s.includes("firstBodyExcerpt"));
+  assert.equal(s.includes('content: "一則小廢文"'), false);
+});
+
+test("presentation CSS no longer hardcodes 一則小廢文", () => {
+  const s = read("assets/css/presentation-v3.css");
+  assert.equal(s.includes('content: "一則小廢文"'), false);
+  assert.ok(s.includes("note-card__label"));
+  assert.ok(s.includes("meta-topic"));
+});
+
+test("edge function allows optional card fields", () => {
+  const s = read("supabase/functions/editorial-analyze/index.ts");
+  assert.ok(s.includes("card_topic"));
+  assert.ok(s.includes("OPTIONAL"));
+  assert.ok(s.includes("Semantic card label"));
+});
+
 test("presentation registry fallback is article-lite", () => {
   // Execute registry in a fake window
   const code = read("assets/js/presentation-registry.js");

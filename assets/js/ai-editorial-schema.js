@@ -30,8 +30,11 @@
     "presentation", "tags", "series", "edit_level", "clean_body", "editorial_state",
     "confidence", "reason", "flags", "human_review_required",
   ];
+  // Optional semantic card display fields (never overwrite author title)
+  var OPTIONAL = ["card_topic", "card_label", "show_card_label"];
 
   var BANNED_SUMMARY_PREFIX = /^(本文|作者|旨在|本文探討|作者透過)/;
+  var BANNED_CARD_LABEL = /^(在.*中尋找|從.*重新審視|當.*遇上|關於.*的深刻反思)/;
 
   function isObject(v) {
     return v && typeof v === "object" && !Array.isArray(v);
@@ -42,8 +45,10 @@
     if (!isObject(raw)) {
       return { ok: false, errors: ["output must be a JSON object"], value: null };
     }
+    var allowed = {};
+    REQUIRED.concat(OPTIONAL).forEach(function (k) { allowed[k] = true; });
     var extra = Object.keys(raw).filter(function (k) {
-      return REQUIRED.indexOf(k) === -1;
+      return !allowed[k];
     });
     if (extra.length) errors.push("additionalProperties: " + extra.join(", "));
 
@@ -87,10 +92,22 @@
       errors.push("human_review_required must be boolean");
     }
 
-    // Soft voice checks (warnings, not schema failures)
+    if ("card_topic" in raw && typeof raw.card_topic !== "string") {
+      errors.push("card_topic must be string");
+    }
+    if ("card_label" in raw && typeof raw.card_label !== "string") {
+      errors.push("card_label must be string");
+    }
+    if ("show_card_label" in raw && typeof raw.show_card_label !== "boolean") {
+      errors.push("show_card_label must be boolean");
+    }
+
     var warnings = [];
     if (typeof raw.summary === "string" && BANNED_SUMMARY_PREFIX.test(raw.summary.trim())) {
       warnings.push("summary looks like report-tone (本文/作者/旨在)");
+    }
+    if (typeof raw.card_label === "string" && BANNED_CARD_LABEL.test(raw.card_label.trim())) {
+      warnings.push("card_label looks like polished AI headline");
     }
     if (typeof raw.confidence === "number" && raw.confidence < 0.55) {
       warnings.push("low confidence");
@@ -125,6 +142,7 @@
     EDITORIAL_STATES: EDITORIAL_STATES,
     FLAGS: FLAGS,
     REQUIRED: REQUIRED,
+    OPTIONAL: OPTIONAL,
     validateAnalysis: validateAnalysis,
     parseModelJson: parseModelJson,
   };
