@@ -59,9 +59,9 @@ async function visibleRects(page) {
     if (!Number.isFinite(gap) || gapRaw.includes("clamp") || gapRaw.includes("var(")) {
       const probe = document.createElement("div");
       probe.style.cssText =
-        "position:absolute;visibility:hidden;pointer-events:none;height:0;width:var(--masonry-gap);";
+        "position:absolute;visibility:hidden;pointer-events:none;margin:0;padding:0;border:0;height:0;width:0;margin-left:var(--masonry-gap)";
       container.appendChild(probe);
-      gap = probe.offsetWidth || 16;
+      gap = parseFloat(getComputedStyle(probe).marginLeft) || 16;
       probe.remove();
     } else if (/rem$/i.test(gapRaw)) {
       gap *= parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;

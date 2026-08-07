@@ -110,25 +110,25 @@ function checkFilesExistAndRender() {
     }
 
     function readGap(container) {
-        const raw = getComputedStyle(container).getPropertyValue('--masonry-gap').trim();
-        const n = parseFloat(raw);
-        if (Number.isFinite(n) && !raw.startsWith('clamp') && !raw.includes('var(')) {
-            // unit-less or px-prefixed numeric custom props
-            if (/^-?[\d.]+px$/i.test(raw) || /^-?[\d.]+$/.test(raw)) return n;
-            if (/^-?[\d.]+rem$/i.test(raw)) {
-                const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-                return n * rootPx;
-            }
-        }
-        // Resolve clamp()/calc() custom properties via a probe element
+        // Resolve clamp()/calc() via margin — width:var(--gap) can be overridden by
+        // legacy .posts > * width rules and return a bogus pixel size.
         const probe = document.createElement('div');
         probe.setAttribute('aria-hidden', 'true');
         probe.style.cssText =
-            'position:absolute;visibility:hidden;pointer-events:none;height:0;width:var(--masonry-gap);';
+            'position:absolute;visibility:hidden;pointer-events:none;margin:0;padding:0;border:0;height:0;width:0;margin-left:var(--masonry-gap)';
         container.appendChild(probe);
-        const resolved = probe.offsetWidth;
+        const resolved = parseFloat(getComputedStyle(probe).marginLeft);
         probe.remove();
-        return resolved > 0 ? resolved : 16;
+        if (Number.isFinite(resolved) && resolved > 0) return resolved;
+
+        const raw = getComputedStyle(container).getPropertyValue('--masonry-gap').trim();
+        const n = parseFloat(raw);
+        if (Number.isFinite(n) && /rem$/i.test(raw)) {
+            const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+            return n * rootPx;
+        }
+        if (Number.isFinite(n) && /px$/i.test(raw)) return n;
+        return 16;
     }
 
     function visibleCards(container) {
