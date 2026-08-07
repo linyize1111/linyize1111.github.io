@@ -32,9 +32,9 @@ const browser = await chromium.launch({ headless: true });
 
 await test("1440 directory: 2-col grid, equal cards, balanced gutters", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.waitForSelector("article.note-item", { timeout: 45000 });
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(1200);
 
   const metrics = await page.evaluate(() => {
     const container = document.getElementById("posts-container");
@@ -83,9 +83,9 @@ await test("1440 directory: 2-col grid, equal cards, balanced gutters", async ()
 
 await test("390 directory: single column, no horizontal overflow", async () => {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.waitForSelector("article.note-item", { timeout: 45000 });
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(1000);
   const m = await page.evaluate(() => {
     const container = document.getElementById("posts-container");
     const cs = getComputedStyle(container);
@@ -114,18 +114,31 @@ await test("glass article: no forced reading-focus on first paint", async () => 
     localStorage.setItem("readingFocus", "false");
   });
   // pick a public note from directory
-  await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "networkidle", timeout: 60000 });
-  await page.waitForSelector("article.note-item a", { timeout: 45000 });
+  await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.waitForFunction(() => {
+    const cards = Array.from(document.querySelectorAll("article.note-item")).filter(
+      (el) => el.offsetParent !== null && getComputedStyle(el).display !== "none"
+    );
+    return cards.some((c) => c.querySelector("a[href*='note.html']"));
+  }, { timeout: 45000 });
   const href = await page.evaluate(() => {
-    const a = document.querySelector("article.note-item a[href*='note.html']");
-    return a ? a.getAttribute("href") : null;
+    const cards = Array.from(document.querySelectorAll("article.note-item")).filter(
+      (el) => el.offsetParent !== null && getComputedStyle(el).display !== "none"
+    );
+    for (const c of cards) {
+      const a = c.querySelector("a[href*='note.html']");
+      if (a) return a.getAttribute("href");
+    }
+    return null;
   });
   assert.ok(href, "need article link");
-  await page.goto(`${BASE}/${href.replace(/^\//, "")}${href.includes("?") ? "&" : "?"}${bust}`, {
+  const url = href.startsWith("http") ? href : `${BASE}/${href.replace(/^\//, "")}`;
+  await page.goto(url.includes("?") ? `${url}&${bust}` : `${url}?${bust}`, {
     waitUntil: "domcontentloaded",
     timeout: 60000,
   });
-  await page.waitForTimeout(400);
+  await page.waitForSelector("#markdown-container, .markdown-body, body.reading-page", { timeout: 45000 });
+  await page.waitForTimeout(800);
   const state = await page.evaluate(() => ({
     theme: document.documentElement.getAttribute("data-theme"),
     focus: document.body.classList.contains("reading-focus"),
@@ -145,7 +158,9 @@ await test("glass article: no forced reading-focus on first paint", async () => 
 
 await test("anon smoke: private academic rows not in public HTML source of directory", async () => {
   const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });
-  await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.waitForSelector("article.note-item", { timeout: 45000 });
+  await page.waitForTimeout(800);
   const html = await page.content();
   assert.ok(!/學科筆記/.test(html), "raw HTML must not advertise 學科筆記");
   // common private academic titles should not appear as static markup before JS;
