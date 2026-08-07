@@ -2,9 +2,9 @@
 <html lang="zh-Hant">
 
 <head>
-    <title>LYZ's website - 筆�?系統</title>
+    <title>LYZ's website - 筆記系統</title>
     <meta charset="utf-8" />
-    <meta name="description" content="LYZ ?�人網�? ???�活?�閱讀?�創�? />
+    <meta name="description" content="LYZ 個人網站 — 生活、閱讀與創作" />
     <link rel="canonical" href="https://linyize1111.github.io/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;" />
@@ -13,14 +13,14 @@
         <link rel="stylesheet" href="assets/css/noscript.css" />
     </noscript>
     <style>
-        /* 統�?主�??��??�尺寸並裁�? */
+        /* 統一主圖的圖片尺寸並裁切 */
         .post.featured .image.main {
             height: 400px;
             display: flex;
             justify-content: center;
             align-items: center;
             background: rgba(0, 0, 0, 0.8);
-            /* 深色?�景襯�??�填滿�???*/
+            /* 深色背景襯托未填滿區域 */
         }
 
         .post.featured .image.main img {
@@ -32,7 +32,7 @@
             object-position: center;
         }
 
-        /* 統�?小卡?��??��?尺寸並�???*/
+        /* 統一小卡片圖片的尺寸並裁切 */
         .posts article .image.fit {
             height: 250px;
             display: flex;
@@ -64,17 +64,17 @@
     <script>
         (function() {
             var saved = localStorage.getItem('colorTheme');
-            // Default is 'light' ??only apply if saved is 'dark' or 'glass'
+            // Default is 'light' — only apply if saved is 'dark' or 'glass'
             if (saved === 'dark' || saved === 'glass') {
                 document.documentElement.setAttribute('data-theme', saved);
             }
         })();
     </script>
 
-    <!-- ?�正??Loading Screen -->
+    <!-- 真正的 Loading Screen -->
     <div id="loading-screen"></div>
 
-    <!--  影�??�音樂�???-->
+    <!--  影片與音樂背景 -->
     <video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="none">
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
@@ -84,24 +84,24 @@
 
     
 
-    <!--  櫻花?��??��?層�??��??��?上層，�?影響互�?�?-->
+    <!--  櫻花特效透明層（固定在最上層，不影響互動） -->
     <canvas id="sakura-canvas"
         style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-                <!-- ?��?導航??-->
-        <nav id="global-nav" aria-label="主�?導覽">
-        <a href="index.html">首�?</a>
-        <a href="directory.html">?��?</a>
-        <a href="literature.html">?�學?��?</a>
-        <a href="about.html">?�於??/a>
+                <!-- 全域導航器 -->
+        <nav id="global-nav" aria-label="主要導覽">
+        <a href="index.html">首頁</a>
+        <a href="directory.html">隨筆</a>
+        <a href="literature.html">文學創作</a>
+        <a href="about.html">關於我</a>
     </nav>
 
-<!--  ?��?角影?�控??-->
+<!--  右下角影片控制 -->
     <div id="video-controls">
-        <button id="btn-top" title="?�到?�部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
+        <button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
             style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
-        <button id="btn-mute" title="?��?????><i class="fas fa-volume-mute"></i></button>
-        <button id="btn-play" title="?��?/?�放"><i class="fas fa-pause"></i></button>
+        <button id="btn-mute" title="音效開/關"><i class="fas fa-volume-mute"></i></button>
+        <button id="btn-play" title="暫停/播放"><i class="fas fa-pause"></i></button>
     </div>
 
     <div id="wrapper" class="fade-in">
@@ -119,10 +119,10 @@
 
         <nav id="nav">
             <ul class="links">
-                <li class="active"><a href="index.html">首�?</a></li>
-                <li><a href="directory.html">?��?</a></li>
-                <li><a href="literature.html">?�學?��?</a></li>
-                <li><a href="about.html">?�於??/a></li>
+                <li class="active"><a href="index.html">首頁</a></li>
+                <li><a href="directory.html">隨筆</a></li>
+                <li><a href="literature.html">文學創作</a></li>
+                <li><a href="about.html">關於我</a></li>
             </ul>
             <ul class="icons">
                 <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
@@ -140,42 +140,42 @@
             <article class="post featured">
                 <header class="major">
                     <span class="date">HELLO WORLD</span>
-                    <h2><a href="about.html" data-section-key="home.featured.title">?�於?��??��?</a></h2>
-                    <p data-section-key="home.featured.body">?�是?�佾?��??��?就�??��?立中山大學�?訊工程學系�?年�???br /><br />
-                        ?�網站於 2020 �?12 ?��?試啼?��?????��??��?資�?社學?��??��?，�??��?以搭建出?��?屬於?��??��?空�??��??�當?��??��?形�??��??�為?��??�學習歷程�??�貴起�???br /><br />
-                        ?��?大�?後�??��??�在程�?語�??��?訊�?學�??��?精進�??��??�拾起閱讀?��????�??涉獵?�學?��?術、音樂�??�啡等�??��??�。基?��?美學?��?術�??��?追�?，�??��??��??��?網�??��??�方位�?翻新?�優?�。未來�??�裡將�?續蛻變為?��??��?術�?記�??�活?�想?��?謐天?��?歡�??��?駐足?�閱覽�?
+                    <h2><a href="about.html" data-section-key="home.featured.title">關於本站與我</a></h2>
+                    <p data-section-key="home.featured.body">我是林佾則，目前就讀於國立中山大學資訊工程學系二年級。<br /><br />
+                        本網站於 2020 年 12 月初試啼聲，那時十分感謝資訊社學長的指導，讓我得以搭建出這專屬於我的數位空間。雖然當時僅具雛形，卻也成為我記錄學習歷程的珍貴起點。<br /><br />
+                        升上大二後，我不僅在程式語言與資訊科學上持續精進，更重新拾起閱讀的習慣，廣泛涉獵文學、藝術、音樂與咖啡等多元領域。基於對美學與技術的雙重追求，我於近期著手將網站進行全方位的翻新與優化。未來，這裡將持續蛻變為我記錄技術筆記與生活思想的靜謐天地，歡迎您的駐足與閱覽。
                     </p>
                 </header>
                 <a href="about.html" class="image main"><img loading="lazy" src="images/pic1.jpg" alt="About Me" /></a>
                 <ul class="actions special">
-                    <li><a href="about.html" class="button large">了解?��??�於??/a></li>
+                    <li><a href="about.html" class="button large">了解更多關於我</a></li>
                 </ul>
             </article>
 
             <section class="posts">
                 <article>
                     <header>
-                        <span class="date">?�活?�閱讀</span>
-                        <h2><a href="directory.html">?��?</a></h2>
+                        <span class="date">生活與閱讀</span>
+                        <h2><a href="directory.html">隨筆</a></h2>
                     </header>
-                    <a href="directory.html" class="image fit"><img loading="lazy" src="images/pic2.jpg" alt="?��?" /></a>
-                    <p>碎念?�日記、�??�、閱讀心�??�整?��??�散?�。�?必�?美——只?��?下當下�??�跡??
+                    <a href="directory.html" class="image fit"><img loading="lazy" src="images/pic2.jpg" alt="隨筆" /></a>
+                    <p>碎念、日記、感想、閱讀心得與整理過的散文。不必完美——只是留下當下的痕跡。
                     </p>
                     <ul class="actions special">
-                        <li><a href="directory.html" class="button primary large">?��??��?</a></li>
+                        <li><a href="directory.html" class="button primary large">查看隨筆</a></li>
                     </ul>
                 </article>
 
                 <article>
                     <header>
-                        <span class="date">?��?</span>
-                        <h2><a href="literature.html">?�學?��?</a></h2>
+                        <span class="date">創作</span>
+                        <h2><a href="literature.html">文學創作</a></h2>
                     </header>
-                    <a href="literature.html" class="image fit"><img loading="lazy" src="images/pic3.jpg" alt="?�學?��?" /></a>
-                    <p>小說?�詩?��??��??��??��??��?構�??�學作�??�這裡；�?得�??��??�隨筆�?
+                    <a href="literature.html" class="image fit"><img loading="lazy" src="images/pic3.jpg" alt="文學創作" /></a>
+                    <p>小說、詩、劇本與長篇創作。虛構與文學作品放這裡；心得感想請到隨筆。
                     </p>
                     <ul class="actions special">
-                        <li><a href="literature.html" class="button primary large">?��??�學?��?</a></li>
+                        <li><a href="literature.html" class="button primary large">查看文學創作</a></li>
                     </ul>
                 </article>
             </section>
@@ -200,7 +200,7 @@
     <script src="https://cdn.jsdelivr.net/npm/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
 
-<!-- Supabase CMS：未設�??�自?�略?��?維�??��??��??�容 -->
+<!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>

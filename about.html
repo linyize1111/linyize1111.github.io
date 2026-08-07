@@ -2,9 +2,9 @@
 <html lang="zh-Hant">
 
 <head>
-	<title>?�於??- LYZ's website</title>
+	<title>關於我 - LYZ's website</title>
 	<meta charset="utf-8" />
-    <meta name="description" content="?�於 LYZ" />
+    <meta name="description" content="關於 LYZ" />
     <link rel="canonical" href="https://linyize1111.github.io/about.html" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;" />
@@ -26,17 +26,17 @@
     <script>
         (function() {
             var saved = localStorage.getItem('colorTheme');
-            // Default is 'light' ??only apply if saved is 'dark' or 'glass'
+            // Default is 'light' — only apply if saved is 'dark' or 'glass'
             if (saved === 'dark' || saved === 'glass') {
                 document.documentElement.setAttribute('data-theme', saved);
             }
         })();
     </script>
 
-    <!-- ?�正??Loading Screen -->
+    <!-- 真正的 Loading Screen -->
     <div id="loading-screen"></div>
 
-	<!--  影�??�音樂�???-->
+	<!--  影片與音樂背景 -->
 	<video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="none">
 		<source src="images/bg-video.mp4" type="video/mp4">
 	</video>
@@ -46,24 +46,24 @@
 
 	
 
-	<!--  櫻花?��??��?層�??��??��?上層，�?影響互�?�?-->
+	<!--  櫻花特效透明層（固定在最上層，不影響互動） -->
 	<canvas id="sakura-canvas"
 		style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-	            <!-- ?��?導航??-->
-        <nav id="global-nav" aria-label="主�?導覽">
-        <a href="index.html">首�?</a>
-        <a href="directory.html">?��?</a>
-        <a href="literature.html">?�學?��?</a>
-        <a href="about.html">?�於??/a>
+	            <!-- 全域導航器 -->
+        <nav id="global-nav" aria-label="主要導覽">
+        <a href="index.html">首頁</a>
+        <a href="directory.html">隨筆</a>
+        <a href="literature.html">文學創作</a>
+        <a href="about.html">關於我</a>
     </nav>
 
-<!--  ?��?角影?�控??-->
+<!--  右下角影片控制 -->
 	<div id="video-controls">
-		<button id="btn-top" title="?�到?�部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
+		<button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
 			style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
-		<button id="btn-mute" title="?��?????><i class="fas fa-volume-mute"></i></button>
-		<button id="btn-play" title="?��?/?�放"><i class="fas fa-pause"></i></button>
+		<button id="btn-mute" title="音效開/關"><i class="fas fa-volume-mute"></i></button>
+		<button id="btn-play" title="暫停/播放"><i class="fas fa-pause"></i></button>
 	</div>
 
 	<div id="wrapper" class="fade-in">
@@ -74,10 +74,10 @@
 
 		<nav id="nav">
 			<ul class="links">
-                <li><a href="index.html">首�?</a></li>
-                <li><a href="directory.html">?��?</a></li>
-                <li><a href="literature.html">?�學?��?</a></li>
-                <li class="active"><a href="about.html">?�於??/a></li>
+                <li><a href="index.html">首頁</a></li>
+                <li><a href="directory.html">隨筆</a></li>
+                <li><a href="literature.html">文學創作</a></li>
+                <li class="active"><a href="about.html">關於我</a></li>
             </ul>
 			<ul class="icons">
 				<li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
@@ -94,8 +94,8 @@
 		<div id="main">
 			<article class="post featured">
 				<header class="major" style="text-align: center; padding: 0 1em;">
-					<span class="date">?�近更?�日?? 2026/03</span>
-					<h2 style="text-align: left;"><a href="#">?�於??/a></h2>
+					<span class="date">最近更新日期: 2026/03</span>
+					<h2 style="text-align: left;"><a href="#">關於我</a></h2>
 				</header>
 				<div style="text-align: left; padding: 0 1em;">
 					<span class="image right"
@@ -105,22 +105,22 @@
 					</span>
 
 					<h3 style="text-align: left;" data-section-key="about.heading">
-						?�季?��?�????br>
-						說起來�??�花?��?就是?��??��??��?
+						月季花四季盛放<br>
+						說起來，落花時節就是花開時節呢。
 					</h3>
 
 					<p style="text-align: left; margin-top: 2em; line-height: 2;" data-section-key="about.body">
-						<strong>?�好，�??��?佾�???/strong>?��?就�??��?立中山大學�?訊工程學系�?br /><br />
-						?�熱?�撰寫�?式、�?浸於?�學，�??�歡?��??��?享�?一?�好?�啡?�音樂。這個網站�??�是?�在 2020
-						年建置�??�形，隨?�學習歷程逐漸豐�?，�??��??��?它進�?了全?��?翻修?��??�能?�由?�個空?��?記�?並�?享�??��?術追求�??�活?�索?��??�種?�花??
+						<strong>您好，我是林佾則。</strong>目前就讀於國立中山大學資訊工程學系。<br /><br />
+						我熱愛撰寫程式、沉浸於文學，也喜歡在閒暇時享受一杯好咖啡與音樂。這個網站最初是我在 2020
+						年建置的雛形，隨著學習歷程逐漸豐富，我於近期對它進行了全面的翻修。希望能藉由這個空間，記錄並分享我在技術追求與生活思索間的各種火花。
 					</p>
 
-					<h3 style="text-align: left; margin-top: 3em;">?�術�?學�?軌跡�?/h3>
+					<h3 style="text-align: left; margin-top: 3em;">技術與學習軌跡：</h3>
 					<ul style="text-align: left; line-height: 2;">
-						<li><strong>程�?語�?�?/strong>C++ (APCS 實�?3 觀�?)?�Python ?�發</li>
-						<li><strong>網�??�端�?/strong>HTML/CSS ?��?設�??�JavaScript ?��?渲�? (CSR) 實�?</li>
-						<li><strong>系統?�工?��?</strong>Git ?��??�本?�制?�GitHub Pages ?�署</li>
-						<li><strong>?��??��?�?/strong>機器學�??��??��??��??��?訊�??�基礎知�?/li>
+						<li><strong>程式語言：</strong>C++ (APCS 實作3 觀念4)、Python 開發</li>
+						<li><strong>網頁前端：</strong>HTML/CSS 架構設計、JavaScript 動態渲染 (CSR) 實作</li>
+						<li><strong>系統與工具：</strong>Git 基礎版本控制、GitHub Pages 部署</li>
+						<li><strong>進階理論：</strong>機器學習進階理論知識、資訊安全基礎知識</li>
 					</ul>
 				</div>
 			</article>
@@ -146,7 +146,7 @@
 	<script src="https://cdn.jsdelivr.net/npm/zdog@1/dist/zdog.dist.min.js"></script>
 	<script src="assets/js/mouse-effect.js"></script>
 
-<!-- Supabase CMS：未設�??�自?�略?��?維�??��??��??�容 -->
+<!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
