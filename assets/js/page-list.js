@@ -125,7 +125,7 @@ function checkFilesExistAndRender() {
     }
 
     function clearCardPlacement(card) {
-        card.style.transform = '';
+        card.style.removeProperty('transform');
         card.style.width = '';
         card.style.removeProperty('--masonry-x');
         card.style.removeProperty('--masonry-y');
@@ -264,11 +264,11 @@ function checkFilesExistAndRender() {
             columnHeight[target] += h + gap;
         });
 
-        // Phase 3 — write transforms
+        // Phase 3 — write transforms (inline; higher than non-!important CSS)
         placements.forEach(({ card, x, y }) => {
             card.style.setProperty('--masonry-x', x + 'px');
             card.style.setProperty('--masonry-y', y + 'px');
-            card.style.transform = 'translate3d(' + x + 'px, ' + y + 'px, 0)';
+            card.style.setProperty('transform', 'translate3d(' + x + 'px, ' + y + 'px, 0)', 'important');
             card.style.width = columnWidth + 'px';
         });
 

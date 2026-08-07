@@ -63,8 +63,16 @@ async function visibleRects(page) {
 
 const browser = await chromium.launch({ headless: true });
 
+async function newPage(viewport) {
+  return browser.newPage({
+    viewport,
+    colorScheme: "light",
+    reducedMotion: "no-preference",
+  });
+}
+
 await test("1440 masonry: two columns, no overlap, gap packing", async () => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const page = await newPage({ width: 1440, height: 900 });
   await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await waitMasonry(page);
   const m = await visibleRects(page);
@@ -95,7 +103,7 @@ await test("1440 masonry: two columns, no overlap, gap packing", async () => {
 });
 
 await test("1600 masonry screenshot", async () => {
-  const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+  const page = await newPage({ width: 1600, height: 900 });
   await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await waitMasonry(page);
   await page.evaluate(() => document.getElementById("posts-container")?.scrollIntoView());
@@ -105,7 +113,7 @@ await test("1600 masonry screenshot", async () => {
 });
 
 await test("1024 masonry still two columns", async () => {
-  const page = await browser.newPage({ viewport: { width: 1024, height: 768 } });
+  const page = await newPage({ width: 1024, height: 768 });
   await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await waitMasonry(page);
   const m = await visibleRects(page);
@@ -115,7 +123,7 @@ await test("1024 masonry still two columns", async () => {
 });
 
 await test("390 mobile: single column flow, no absolute packing holes", async () => {
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const page = await newPage({ width: 390, height: 844 });
   await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.waitForSelector("article.note-item", { timeout: 45000 });
   await page.waitForTimeout(1000);
@@ -138,7 +146,7 @@ await test("390 mobile: single column flow, no absolute packing holes", async ()
 });
 
 await test("filter relayout packs from top without holes", async () => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const page = await newPage({ width: 1440, height: 900 });
   await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await waitMasonry(page);
   const before = await visibleRects(page);
@@ -157,7 +165,7 @@ await test("filter relayout packs from top without holes", async () => {
 });
 
 await test("list-view destroys absolute masonry", async () => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const page = await newPage({ width: 1440, height: 900 });
   await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await waitMasonry(page);
   await page.selectOption("#sort-by", "list");
@@ -185,7 +193,7 @@ await test("list-view destroys absolute masonry", async () => {
 });
 
 await test("sort upload-asc repacks with DOM order", async () => {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const page = await newPage({ width: 1440, height: 900 });
   await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await waitMasonry(page);
   await page.selectOption("#sort-by", "upload-asc");

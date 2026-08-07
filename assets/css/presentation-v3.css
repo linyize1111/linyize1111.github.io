@@ -172,7 +172,7 @@ html[data-theme="glass"] body.reading-focus #main > .post.is-article-reading {
 
 /* Hover must preserve masonry translate — use CSS vars set by JS */
 #posts-container.posts.masonry-active:not(.list-view) > article.note-item:hover {
-  transform: translate3d(var(--masonry-x, 0px), calc(var(--masonry-y, 0px) - 3px), 0);
+  transform: translate3d(var(--masonry-x, 0px), calc(var(--masonry-y, 0px) - 3px), 0) !important;
   border-color: color-mix(in srgb, var(--accent) 30%, var(--card-border));
   box-shadow: 0 18px 46px rgba(0,0,0,.15);
 }

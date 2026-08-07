@@ -1291,8 +1291,14 @@ article.note-item,
 
 .posts article:hover,
 article.note-item:hover,
-#posts-container.posts > article.note-item:hover {
+#posts-container.posts:not(.masonry-active) > article.note-item:hover {
     transform: translateY(-4px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+#posts-container.posts.masonry-active:not(.list-view) > article.note-item:hover {
+    /* placement vars owned by page-list masonry; only lift slightly */
+    transform: translate3d(var(--masonry-x, 0px), calc(var(--masonry-y, 0px) - 3px), 0) !important;
     box-shadow: var(--card-shadow-hover);
 }
 
@@ -2420,10 +2426,14 @@ html:not([data-theme]) body.reading-focus #main > section.post.is-article-readin
     #sakura-canvas {
         display: none !important;
     }
-    #posts-container.posts > article.note-item,
-    #posts-container.posts > article.note-item:hover {
+    /* Never zero out masonry placement transforms — only kill decorative motion */
+    #posts-container.posts:not(.masonry-active) > article.note-item,
+    #posts-container.posts:not(.masonry-active) > article.note-item:hover {
         transition: none !important;
         transform: none !important;
+    }
+    #posts-container.posts.masonry-active > article.note-item {
+        transition: none !important;
     }
     .card-carousel .carousel-slide {
         transition: none !important;
