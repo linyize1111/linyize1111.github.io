@@ -121,8 +121,8 @@ for (const eng of engines) {
         return {
           masonry: c.classList.contains("masonry-active") && cs0 && cs0.position === "absolute",
           position: cs0 && cs0.position,
-          leftGutter: rects[0] ? rects[0].left - main.left : 0,
-          rightGutter: rects[0] ? main.right - rects[0].right : 0,
+          leftGutter: rects[0] ? rects[0].left : 0,
+          rightGutter: rects[0] ? document.documentElement.clientWidth - rects[0].right : 0,
           widthRatio: rects[0] ? rects[0].width / main.width : 0,
           xs: [...new Set(rects.map((r) => Math.round(r.left / 8) * 8))],
         };
@@ -168,23 +168,28 @@ await test("chromium 390 literature", async () => {
 await test("chromium 390 article reading + images", async () => {
   await withBrowser(chromium, { width: 390, height: 844 }, async (page) => {
     await page.goto(`${BASE}/directory.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.waitForSelector("article.note-item a", { timeout: 45000 });
+    await page.waitForFunction(() => {
+      return Array.from(document.querySelectorAll("article.note-item a[href*='note.html']")).some(
+        (a) => {
+          const art = a.closest("article");
+          return art && getComputedStyle(art).display !== "none" && a.offsetParent !== null;
+        }
+      );
+    }, { timeout: 45000 });
     const href = await page.evaluate(() => {
-      const a = document.querySelector("article.note-item a[href*='note.html']");
+      const a = Array.from(document.querySelectorAll("article.note-item a[href*='note.html']")).find(
+        (el) => {
+          const art = el.closest("article");
+          return art && getComputedStyle(art).display !== "none";
+        }
+      );
       return a ? a.getAttribute("href") : null;
     });
     assert.ok(href, "article link");
-    await page.goto(`${BASE}/${href.replace(/^\//, "")}&${bust}`.replace("&", "?"), {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
-    });
-    // href may already include ?
-    if (!page.url().includes("note.html")) {
-      await page.goto(`${BASE}/${href}${href.includes("?") ? "&" : "?"}${bust}`, {
-        waitUntil: "domcontentloaded",
-        timeout: 60000,
-      });
-    }
+    const url = href.startsWith("http")
+      ? href
+      : `${BASE}/${href.replace(/^\//, "")}${href.includes("?") ? "&" : "?"}${bust}`;
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.waitForSelector("#markdown-container .markdown-body, #note-title", { timeout: 45000 });
     await page.waitForTimeout(600);
     const info = await page.evaluate(() => {
