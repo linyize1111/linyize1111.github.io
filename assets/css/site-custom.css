@@ -2898,7 +2898,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
     user-select: text;
   }
 
-  .article-gallery__nav { display: none; }
+  .article-gallery__nav { display: none !important; }
   .article-gallery__counter {
     color: rgba(255,255,255,.9); font-size: 0.85rem; text-align: center; padding: 0.35rem 0;
   }

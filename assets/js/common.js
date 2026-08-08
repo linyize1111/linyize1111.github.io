@@ -44,6 +44,13 @@
     var t = THEMES.indexOf(theme) !== -1 ? theme : "light";
     if (t === "light") document.documentElement.removeAttribute("data-theme");
     else document.documentElement.setAttribute("data-theme", t);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", t === "light" ? "#e8eef6" : t === "dark" ? "#0d1118" : "#0a1420");
   }
 
   function currentTheme() {
