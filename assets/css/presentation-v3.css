@@ -576,10 +576,16 @@ body.presentation-poetry #markdown-container .markdown-body {
 body.presentation-poetry #markdown-container .markdown-body,
 body.presentation-fiction #markdown-container .markdown-body {
   max-width: var(--article-measure);
+  margin-inline: auto;
 }
 body.presentation-poetry #markdown-container .markdown-body p { margin-bottom: .35em; }
+/* Fragment / quote may center short lines; never force all articles */
 body.presentation-fragment #markdown-container .markdown-body,
 body.presentation-quote #markdown-container .markdown-body { font-size: 1.05rem; }
+body.presentation-fiction #markdown-container .markdown-body,
+body.presentation-fiction #markdown-container .markdown-body p {
+  text-align: left;
+}
 
 @media (max-width: 736px) {
   body { background-attachment: scroll !important; }

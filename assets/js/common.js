@@ -364,6 +364,7 @@
       if (sheet) sheet.hidden = false;
       if (backdrop) backdrop.hidden = false;
       document.body.classList.add("mobile-nav-open");
+      syncThemeChips(sheet || document);
     }
 
     function toggleMenu() {
@@ -382,22 +383,36 @@
       meta.setAttribute("content", t === "light" ? "#e8eef6" : t === "dark" ? "#0d1118" : "#0a1420");
     }
 
+    function syncThemeChips(root) {
+      var scope = root || document;
+      var cur = currentTheme();
+      Array.prototype.forEach.call(scope.querySelectorAll(".mobile-nav-chip[data-theme-set]"), function (chip) {
+        var on = chip.getAttribute("data-theme-set") === cur;
+        chip.classList.toggle("is-active", on);
+        chip.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+
     function fillSheetExtras(sheet) {
       var extras = document.createElement("div");
       extras.className = "mobile-nav-sheet__extras";
       extras.innerHTML =
         '<div class="mobile-nav-sheet__divider" role="separator"></div>' +
         '<div class="mobile-nav-sheet__row" role="group" aria-label="主題">' +
-        '<button type="button" class="mobile-nav-chip" data-theme-set="light">Light</button>' +
-        '<button type="button" class="mobile-nav-chip" data-theme-set="dark">Dark</button>' +
-        '<button type="button" class="mobile-nav-chip" data-theme-set="glass">Glass</button>' +
+        '<button type="button" class="mobile-nav-chip" data-theme-set="light" aria-pressed="false">Light</button>' +
+        '<button type="button" class="mobile-nav-chip" data-theme-set="dark" aria-pressed="false">Dark</button>' +
+        '<button type="button" class="mobile-nav-chip" data-theme-set="glass" aria-pressed="false">Glass</button>' +
         "</div>" +
-        '<div class="mobile-nav-sheet__social">' +
-        '<a href="https://github.com/linyize1111" target="_blank" rel="noopener">GitHub</a>' +
-        '<a href="https://www.instagram.com/linyize._.mcxi/" target="_blank" rel="noopener">Instagram</a>' +
-        '<a href="mailto:jay0975008815@gmail.com">Mail</a>' +
+        '<div class="mobile-nav-sheet__social" role="group" aria-label="社群連結">' +
+        '<a class="mobile-social-link" href="https://github.com/linyize1111" target="_blank" rel="noopener">' +
+        '<i class="icon brands fa-github" aria-hidden="true"></i><span>GitHub</span></a>' +
+        '<a class="mobile-social-link" href="https://www.instagram.com/linyize._.mcxi/" target="_blank" rel="noopener">' +
+        '<i class="icon brands fa-instagram" aria-hidden="true"></i><span>Instagram</span></a>' +
+        '<a class="mobile-social-link" href="mailto:jay0975008815@gmail.com">' +
+        '<i class="icon fa-envelope" aria-hidden="true"></i><span>Mail</span></a>' +
         "</div>";
       sheet.appendChild(extras);
+      syncThemeChips(extras);
       extras.addEventListener("click", function (e) {
         var chip = e.target.closest("[data-theme-set]");
         if (!chip) return;
@@ -405,6 +420,7 @@
         applyTheme(next);
         localStorage.setItem("colorTheme", next);
         syncThemeColor();
+        syncThemeChips(extras);
         var themeBtn = document.getElementById("btn-theme");
         if (themeBtn) themeBtn.dispatchEvent(new Event("lyz-theme-refresh"));
         closeMenu();
@@ -575,19 +591,70 @@
       pop.className = "mobile-controls-popover";
       pop.hidden = true;
       pop.innerHTML =
-        '<button type="button" data-ctrl="theme">切換主題</button>' +
+        '<button type="button" data-ctrl="theme">🎨 切換主題</button>' +
         '<button type="button" data-ctrl="focus" class="mobile-ctrl-focus">專注閱讀</button>' +
-        '<button type="button" data-ctrl="mute">音效</button>' +
-        '<button type="button" data-ctrl="play">背景</button>' +
-        '<button type="button" data-ctrl="top" class="mobile-ctrl-top" hidden>回頂端</button>';
+        '<button type="button" data-ctrl="mute">🔊 音效</button>' +
+        '<button type="button" data-ctrl="play">🌸 背景效果</button>' +
+        '<button type="button" data-ctrl="top" class="mobile-ctrl-top" hidden>↑ 回頂端</button>';
 
       document.body.appendChild(fab);
       document.body.appendChild(pop);
 
       function setOpen(open) {
         fab.setAttribute("aria-expanded", open ? "true" : "false");
+        fab.classList.toggle("is-open", open);
         pop.hidden = !open;
         document.body.classList.toggle("mobile-controls-open", open);
+        if (open) syncControlStates();
+      }
+
+      function isSoundOn() {
+        var music = document.getElementById("bg-music");
+        if (music) return !music.muted;
+        return sessionStorage.getItem("mediaMuted") !== "true";
+      }
+
+      function isBgAnimOn() {
+        if (prefersReducedMotion() || saveDataPreferred()) return false;
+        var music = document.getElementById("bg-music");
+        if (music) return !music.paused;
+        var video = document.getElementById("bg-video");
+        return !!(video && !video.paused && video.style.visibility !== "hidden");
+      }
+
+      function syncControlStates() {
+        var focusOn = document.body.classList.contains("reading-focus");
+        var soundOn = false;
+        var bgOn = false;
+        try {
+          soundOn = isSoundOn();
+        } catch (e) {}
+        try {
+          bgOn = isBgAnimOn();
+        } catch (e) {}
+
+        var focusBtn = pop.querySelector('[data-ctrl="focus"]');
+        if (focusBtn) {
+          focusBtn.hidden = !document.getElementById("markdown-container");
+          focusBtn.setAttribute("data-active", focusOn ? "true" : "false");
+          focusBtn.textContent = focusOn ? "✓ 專注閱讀" : "專注閱讀";
+        }
+        var muteBtn = pop.querySelector('[data-ctrl="mute"]');
+        if (muteBtn) {
+          muteBtn.setAttribute("data-active", soundOn ? "true" : "false");
+          muteBtn.textContent = soundOn ? "✓ 🔊 音效" : "🔊 音效";
+        }
+        var playBtn = pop.querySelector('[data-ctrl="play"]');
+        if (playBtn) {
+          playBtn.setAttribute("data-active", bgOn ? "true" : "false");
+          playBtn.textContent = bgOn ? "✓ 🌸 背景效果" : "🌸 背景效果";
+        }
+        var themeBtn = pop.querySelector('[data-ctrl="theme"]');
+        if (themeBtn) {
+          var t = currentTheme();
+          themeBtn.textContent =
+            "🎨 主題 · " + (t === "glass" ? "Glass" : t === "dark" ? "Dark" : "Light");
+        }
       }
 
       fab.addEventListener("click", function (e) {
@@ -618,7 +685,6 @@
             localStorage.setItem("readingFocus", String(next));
             applyReadingFocus(next);
           }
-          btn.textContent = document.body.classList.contains("reading-focus") ? "顯示背景" : "專注閱讀";
         } else if (action === "mute") {
           var m = document.getElementById("btn-mute");
           if (m) m.click();
@@ -628,7 +694,12 @@
         } else if (action === "top") {
           window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
         }
-        setOpen(false);
+        syncControlStates();
+        if (action !== "theme" && action !== "mute" && action !== "play" && action !== "focus") {
+          setOpen(false);
+        } else {
+          setTimeout(syncControlStates, 80);
+        }
       });
 
       var topBtn = pop.querySelector(".mobile-ctrl-top");
@@ -638,10 +709,7 @@
       }
       syncTop();
       window.addEventListener("scroll", syncTop, { passive: true });
-
-      // Focus button only meaningful on article pages
-      var focusBtn = pop.querySelector(".mobile-ctrl-focus");
-      if (focusBtn && !document.getElementById("markdown-container")) focusBtn.hidden = true;
+      syncControlStates();
     }
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
