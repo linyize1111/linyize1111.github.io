@@ -87,7 +87,7 @@ function checkFilesExistAndRender() {
  * Packing only — never re-sorts articles by height.
  */
 (function () {
-    const BP = 960;
+    const BP = 760;
     const COLS = 2;
     let masonryFrame = null;
     let cardObserver = null;
@@ -441,35 +441,45 @@ function initSortingAndFiltering() {
 
         if (paginationControls) {
             paginationControls.innerHTML = '';
+            paginationControls.classList.add('pagination-controls');
             if (totalPages > 1) {
+                const compact = document.createElement('div');
+                compact.className = 'pagination-compact';
+                const btnPrev = makeBtn('← 上一頁', currentPage - 1, currentPage === 1, false);
+                btnPrev.classList.add('pagination-nav');
+                const status = document.createElement('span');
+                status.className = 'pagination-status';
+                status.textContent = currentPage + ' / ' + totalPages;
+                const btnNext = makeBtn('下一頁 →', currentPage + 1, currentPage === totalPages, false);
+                btnNext.classList.add('pagination-nav');
+                compact.appendChild(btnPrev);
+                compact.appendChild(status);
+                compact.appendChild(btnNext);
+                paginationControls.appendChild(compact);
+
+                // Desktop still gets numbered buttons for quick jumps
+                const desktop = document.createElement('div');
+                desktop.className = 'pagination-desktop';
                 const btnFirst = makeBtn('<<', 1, currentPage === 1, false);
-                paginationControls.appendChild(btnFirst);
-
-                const btnPrev = makeBtn('<', currentPage - 1, currentPage === 1, false);
-                paginationControls.appendChild(btnPrev);
-
+                desktop.appendChild(btnFirst);
+                desktop.appendChild(makeBtn('<', currentPage - 1, currentPage === 1, false));
                 for (let p = 1; p <= totalPages; p++) {
                     if (totalPages > 7) {
                         if (p !== 1 && p !== totalPages && Math.abs(p - currentPage) > 1) {
                             if (p === 2 || p === totalPages - 1) {
                                 const ellipsis = document.createElement('span');
                                 ellipsis.textContent = '...';
-                                ellipsis.style.color = '#fff';
-                                ellipsis.style.margin = '0 5px';
-                                paginationControls.appendChild(ellipsis);
+                                ellipsis.className = 'pagination-ellipsis';
+                                desktop.appendChild(ellipsis);
                             }
                             continue;
                         }
                     }
-                    const pBtn = makeBtn(p.toString(), p, false, p === currentPage);
-                    paginationControls.appendChild(pBtn);
+                    desktop.appendChild(makeBtn(p.toString(), p, false, p === currentPage));
                 }
-
-                const btnNext = makeBtn('>', currentPage + 1, currentPage === totalPages, false);
-                paginationControls.appendChild(btnNext);
-
-                const btnLast = makeBtn('>>', totalPages, currentPage === totalPages, false);
-                paginationControls.appendChild(btnLast);
+                desktop.appendChild(makeBtn('>', currentPage + 1, currentPage === totalPages, false));
+                desktop.appendChild(makeBtn('>>', totalPages, currentPage === totalPages, false));
+                paginationControls.appendChild(desktop);
             }
         }
     }
@@ -502,6 +512,8 @@ function initSortingAndFiltering() {
     filterCategory.addEventListener('change', updateView);
     sortBy.addEventListener('change', updateView);
 
+    enhanceMobileFilterChrome();
+
     // ?cat=隨想 或 #thoughts → 預設只看隨想
     try {
         const params = new URLSearchParams(window.location.search);
@@ -516,6 +528,150 @@ function initSortingAndFiltering() {
 
     // Provide initial view
     updateView();
+}
+
+function enhanceMobileFilterChrome() {
+    const panel = document.getElementById('sort-filter-controls');
+    const filterCategory = document.getElementById('filter-category');
+    const sortBy = document.getElementById('sort-by');
+    if (!panel || !filterCategory || !sortBy || panel.dataset.v7Enhanced === '1') return;
+    panel.dataset.v7Enhanced = '1';
+    panel.classList.add('sort-filter-controls--v7');
+
+    // Compact mobile bar
+    let bar = panel.querySelector('.filter-compact-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'filter-compact-bar';
+        bar.innerHTML =
+            '<button type="button" class="filter-compact-btn" id="btn-open-filter" aria-haspopup="dialog" aria-expanded="false">篩選</button>' +
+            '<label class="filter-compact-sort"><span class="sr-only">排序</span>' +
+            '<select id="sort-by-mobile" aria-label="排序方式"></select></label>' +
+            '<button type="button" class="filter-view-toggle" id="btn-view-toggle" aria-label="切換列表檢視" title="列表／卡片">▦</button>';
+        panel.insertBefore(bar, panel.firstChild);
+    }
+
+    const sortMobile = document.getElementById('sort-by-mobile');
+    const viewToggle = document.getElementById('btn-view-toggle');
+    const openFilter = document.getElementById('btn-open-filter');
+
+    // Mirror sort options without "list"
+    if (sortMobile) {
+        sortMobile.innerHTML = '';
+        Array.from(sortBy.options).forEach(function (opt) {
+            if (opt.value === 'list') return;
+            const o = document.createElement('option');
+            o.value = opt.value;
+            o.textContent = opt.textContent
+                .replace('上傳時間 (新到舊)', '最新')
+                .replace('上傳時間 (舊到新)', '最舊')
+                .replace('最後編輯 (新到舊)', '最後編輯')
+                .replace('名稱 (A-Z)', '名稱 A-Z')
+                .replace('名稱 (Z-A)', '名稱 Z-A');
+            sortMobile.appendChild(o);
+        });
+        sortMobile.value = sortBy.value === 'list' ? 'upload-desc' : sortBy.value;
+        sortMobile.addEventListener('change', function () {
+            sortBy.value = sortMobile.value;
+            sortBy.dispatchEvent(new Event('change'));
+            syncViewToggle();
+        });
+    }
+
+    function syncViewToggle() {
+        const isList = sortBy.value === 'list';
+        if (viewToggle) {
+            viewToggle.textContent = isList ? '☰' : '▦';
+            viewToggle.setAttribute('aria-pressed', isList ? 'true' : 'false');
+            viewToggle.title = isList ? '切換卡片檢視' : '切換列表檢視';
+        }
+        if (sortMobile && !isList) sortMobile.value = sortBy.value;
+    }
+
+    if (viewToggle) {
+        viewToggle.addEventListener('click', function () {
+            if (sortBy.value === 'list') {
+                sortBy.value = (sortMobile && sortMobile.value) || 'upload-desc';
+            } else {
+                sortBy.value = 'list';
+            }
+            sortBy.dispatchEvent(new Event('change'));
+            syncViewToggle();
+        });
+    }
+    sortBy.addEventListener('change', syncViewToggle);
+    syncViewToggle();
+
+    // Filter bottom sheet
+    let sheet = document.getElementById('mobile-filter-sheet');
+    if (!sheet) {
+        sheet = document.createElement('div');
+        sheet.id = 'mobile-filter-sheet';
+        sheet.className = 'mobile-filter-sheet';
+        sheet.hidden = true;
+        sheet.innerHTML =
+            '<div class="mobile-filter-sheet__panel" role="dialog" aria-label="分類篩選">' +
+            '<div class="mobile-filter-sheet__head"><strong>分類</strong>' +
+            '<button type="button" class="mobile-filter-sheet__close" aria-label="關閉">×</button></div>' +
+            '<div class="mobile-filter-sheet__list" id="mobile-filter-list"></div>' +
+            '<button type="button" class="mobile-filter-sheet__apply" id="mobile-filter-apply">套用</button>' +
+            '</div>' +
+            '<button type="button" class="mobile-filter-sheet__backdrop" aria-label="關閉篩選"></button>';
+        document.body.appendChild(sheet);
+    }
+
+    function rebuildFilterList() {
+        const list = document.getElementById('mobile-filter-list');
+        if (!list) return;
+        list.innerHTML = '';
+        Array.from(filterCategory.options).forEach(function (opt) {
+            const id = 'mf-' + String(opt.value || 'all').replace(/\s+/g, '-');
+            const row = document.createElement('label');
+            row.className = 'mobile-filter-option';
+            row.innerHTML =
+                '<input type="radio" name="mobile-filter-cat" value="' +
+                opt.value.replace(/"/g, '&quot;') +
+                '" id="' +
+                id +
+                '"' +
+                (filterCategory.value === opt.value ? ' checked' : '') +
+                ' /> <span>' +
+                (opt.textContent || opt.value) +
+                '</span>';
+            list.appendChild(row);
+        });
+    }
+
+    function openSheet() {
+        rebuildFilterList();
+        sheet.hidden = false;
+        document.body.classList.add('mobile-filter-open');
+        if (openFilter) openFilter.setAttribute('aria-expanded', 'true');
+    }
+    function closeSheet() {
+        sheet.hidden = true;
+        document.body.classList.remove('mobile-filter-open');
+        if (openFilter) openFilter.setAttribute('aria-expanded', 'false');
+    }
+
+    if (openFilter) openFilter.addEventListener('click', openSheet);
+    sheet.querySelector('.mobile-filter-sheet__close').addEventListener('click', closeSheet);
+    sheet.querySelector('.mobile-filter-sheet__backdrop').addEventListener('click', closeSheet);
+    document.getElementById('mobile-filter-apply').addEventListener('click', function () {
+        const picked = sheet.querySelector('input[name="mobile-filter-cat"]:checked');
+        if (picked) {
+            filterCategory.value = picked.value;
+            filterCategory.dispatchEvent(new Event('change'));
+            if (openFilter) {
+                openFilter.textContent =
+                    picked.value === 'all' ? '篩選' : '篩選 · ' + (picked.parentNode.textContent || '').trim();
+            }
+        }
+        closeSheet();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !sheet.hidden) closeSheet();
+    });
 }
 
 /* Prevent stacking listeners when cms-public re-inits after fetch */

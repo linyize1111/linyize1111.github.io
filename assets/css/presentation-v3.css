@@ -80,7 +80,7 @@ html[data-theme="glass"] body.reading-focus #main > .post.is-article-reading {
 #posts-container.posts {
   --masonry-gap: clamp(1rem, 2vw, 1.75rem);
   --masonry-columns: 2;
-  --masonry-bp: 960px;
+  --masonry-bp: 760px;
 }
 
 /* Fallback before JS: still 2-col grid so FOUC isn't single-column collapse */
@@ -204,12 +204,12 @@ html[data-theme="glass"] body.reading-focus #main > .post.is-article-reading {
   left: auto !important;
 }
 
-@media screen and (max-width: 959px) {
+@media screen and (max-width: 759px) {
   #posts-container.posts:not(.list-view):not(.masonry-active) {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* Mobile: destroy absolute packing — document flow */
+  /* Compact / phone: destroy absolute packing — document flow */
   #posts-container.posts.masonry-active:not(.list-view) {
     display: block;
     height: auto !important;
@@ -231,6 +231,12 @@ html[data-theme="glass"] body.reading-focus #main > .post.is-article-reading {
 
   #posts-container.posts.masonry-active:not(.list-view) > article.note-item:hover {
     transform: none !important;
+  }
+}
+
+@media screen and (min-width: 760px) and (max-width: 900px) {
+  #posts-container.posts:not(.list-view):not(.masonry-active) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

@@ -52,8 +52,8 @@
   var originalArticleSnapshot = null;
   var previewIframeReady = false;
   var frontendPreviewView = "article";
-  var frontendPreviewTheme = "light";
-  var frontendPreviewDevice = "desktop";
+  var frontendPreviewTheme = "glass";
+  var frontendPreviewDevice = "mobile";
   var frontendPreviewFocus = false;
   var lastAiBodyApplied = false;
   var frontendPreviewTimer = null;

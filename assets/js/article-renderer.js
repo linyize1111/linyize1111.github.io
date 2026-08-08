@@ -516,7 +516,7 @@
     nav.className = "article-toc";
     nav.setAttribute("aria-label", "文章大綱");
     var html =
-      '<details class="article-toc__panel" open><summary>大綱</summary><ol class="article-toc__list">';
+      '<details class="article-toc__panel"' + (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 900px)").matches ? "" : " open") + '><summary>文章大綱</summary><ol class="article-toc__list">';
     items.forEach(function (it) {
       html +=
         '<li class="toc-' +

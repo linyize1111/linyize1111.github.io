@@ -169,13 +169,32 @@
     if (!gallery || gallery.dataset.boundV5 === "1") return;
     gallery.dataset.boundV5 = "1";
     var slides = gallery.querySelectorAll(".article-gallery__slide");
+    var dotsWrap = gallery.querySelector(".article-gallery__dots");
     var dots = gallery.querySelectorAll(".article-gallery__dot");
-    var index = 0, touchX = null;
+    var index = 0;
+    var touchX = null;
+    var touchY = null;
+    var useCounter = slides.length > 7;
+    var counter = null;
+
+    if (useCounter && dotsWrap) {
+      dotsWrap.innerHTML = "";
+      counter = document.createElement("div");
+      counter.className = "article-gallery__counter";
+      counter.setAttribute("aria-live", "polite");
+      dotsWrap.appendChild(counter);
+      dots = [];
+    }
 
     function show(n) {
       index = (n + slides.length) % slides.length;
-      Array.prototype.forEach.call(slides, function (s, i) { s.classList.toggle("is-active", i === index); });
-      Array.prototype.forEach.call(dots, function (d, i) { d.classList.toggle("is-active", i === index); });
+      Array.prototype.forEach.call(slides, function (s, i) {
+        s.classList.toggle("is-active", i === index);
+      });
+      Array.prototype.forEach.call(dots, function (d, i) {
+        d.classList.toggle("is-active", i === index);
+      });
+      if (counter) counter.textContent = index + 1 + " / " + slides.length;
       var activeImg = slides[index] && slides[index].querySelector("img");
       if (activeImg) analyze(gallery, activeImg, "always");
     }
@@ -184,24 +203,44 @@
     var next = gallery.querySelector(".article-gallery__next");
     if (prev) prev.addEventListener("click", function () { show(index - 1); });
     if (next) next.addEventListener("click", function () { show(index + 1); });
-    Array.prototype.forEach.call(dots, function (d, i) { d.addEventListener("click", function () { show(i); }); });
+    Array.prototype.forEach.call(dots, function (d, i) {
+      d.addEventListener("click", function () { show(i); });
+    });
     gallery.addEventListener("keydown", function (e) {
       if (e.key === "ArrowLeft") show(index - 1);
       if (e.key === "ArrowRight") show(index + 1);
     });
-    gallery.addEventListener("touchstart", function (e) { touchX = e.touches[0] && e.touches[0].clientX; }, { passive: true });
-    gallery.addEventListener("touchend", function (e) {
-      if (touchX == null || !e.changedTouches[0]) return;
-      var dx = e.changedTouches[0].clientX - touchX;
-      if (Math.abs(dx) > 44) show(index + (dx < 0 ? 1 : -1));
-      touchX = null;
-    }, { passive: true });
+    gallery.addEventListener(
+      "touchstart",
+      function (e) {
+        if (!e.touches[0]) return;
+        touchX = e.touches[0].clientX;
+        touchY = e.touches[0].clientY;
+      },
+      { passive: true }
+    );
+    gallery.addEventListener(
+      "touchend",
+      function (e) {
+        if (touchX == null || !e.changedTouches[0]) return;
+        var dx = e.changedTouches[0].clientX - touchX;
+        var dy = e.changedTouches[0].clientY - (touchY || 0);
+        if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+          show(index + (dx < 0 ? 1 : -1));
+        }
+        touchX = null;
+        touchY = null;
+      },
+      { passive: true }
+    );
 
     Array.prototype.forEach.call(slides, function (slide, i) {
       var img = slide.querySelector("img");
       if (!img) return;
       img.style.cursor = "zoom-in";
-      img.addEventListener("click", function () { openLightbox(collectGallerySrcs(gallery), i); });
+      img.addEventListener("click", function () {
+        openLightbox(collectGallerySrcs(gallery), i);
+      });
     });
     show(0);
   }
@@ -229,10 +268,19 @@
       '<button type="button" class="article-lightbox__nav article-lightbox__next" aria-label="下一張">&#10095;</button>';
     document.body.appendChild(overlay);
     document.body.classList.add("lightbox-open");
-    var img = overlay.querySelector("img"), cap = overlay.querySelector("figcaption");
+    var img = overlay.querySelector("img"),
+      cap = overlay.querySelector("figcaption");
+    var touchX = null,
+      touchY = null;
 
-    function render() { img.src = items[idx].src; cap.textContent = items[idx].caption || ""; }
-    function move(delta) { idx = (idx + delta + items.length) % items.length; render(); }
+    function render() {
+      img.src = items[idx].src;
+      cap.textContent = items[idx].caption || "";
+    }
+    function move(delta) {
+      idx = (idx + delta + items.length) % items.length;
+      render();
+    }
     function close() {
       overlay.remove();
       document.body.classList.remove("lightbox-open");
@@ -244,9 +292,36 @@
       if (e.key === "ArrowRight") move(1);
     }
     overlay.querySelector(".article-lightbox__close").addEventListener("click", close);
-    overlay.querySelector(".article-lightbox__prev").addEventListener("click", function () { move(-1); });
-    overlay.querySelector(".article-lightbox__next").addEventListener("click", function () { move(1); });
-    overlay.addEventListener("click", function (e) { if (e.target === overlay) close(); });
+    overlay.querySelector(".article-lightbox__prev").addEventListener("click", function () {
+      move(-1);
+    });
+    overlay.querySelector(".article-lightbox__next").addEventListener("click", function () {
+      move(1);
+    });
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) close();
+    });
+    overlay.addEventListener(
+      "touchstart",
+      function (e) {
+        if (!e.touches[0]) return;
+        touchX = e.touches[0].clientX;
+        touchY = e.touches[0].clientY;
+      },
+      { passive: true }
+    );
+    overlay.addEventListener(
+      "touchend",
+      function (e) {
+        if (touchX == null || !e.changedTouches[0]) return;
+        var dx = e.changedTouches[0].clientX - touchX;
+        var dy = e.changedTouches[0].clientY - (touchY || 0);
+        if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.25) move(dx < 0 ? 1 : -1);
+        touchX = null;
+        touchY = null;
+      },
+      { passive: true }
+    );
     document.addEventListener("keydown", key);
     render();
   }
