@@ -1,0 +1,176 @@
+<!DOCTYPE HTML>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>前台預覽 · LYZ</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- Same public styles as note / directory — no admin.css -->
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap" />
+  <link rel="stylesheet" href="assets/css/site-custom.css?v=v6-preview-1" />
+  <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v6-preview-1" />
+  <style>
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: transparent;
+    }
+    body.is-preview {
+      padding: 1.25rem 1rem 2.5rem;
+    }
+    #preview-empty {
+      opacity: .55;
+      text-align: center;
+      padding: 3rem 1rem;
+      font-size: .95rem;
+    }
+    #preview-stage.mode-card {
+      max-width: 42rem;
+      margin: 0 auto;
+    }
+    #preview-stage.mode-article {
+      max-width: min(92vw, 920px);
+      margin: 0 auto;
+    }
+    /* Neutralize public chrome that shouldn't run in sandbox */
+    #wrapper, #header, #nav, #copyright, #global-nav, #video-controls, #loading-screen {
+      display: none !important;
+    }
+    body.reading-focus-preview #preview-stage.mode-article {
+      /* local preview-only focus; does not touch localStorage */
+    }
+    body.reading-focus-preview {
+      --bg: #f7f4ef;
+    }
+    html[data-theme="dark"] body.reading-focus-preview {
+      --bg: #12151a;
+    }
+    .admin-preview-card-host {
+      display: block;
+      width: 100%;
+    }
+    .admin-preview-card-host > article.note-item {
+      width: 100% !important;
+      max-width: none;
+      position: relative !important;
+      transform: none !important;
+      margin: 0;
+    }
+  </style>
+</head>
+<body class="is-preview is-preload">
+  <div id="preview-empty">等待編輯器傳送草稿預覽…</div>
+  <div id="preview-stage" class="mode-article" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <script src="assets/js/supabase-config.js"></script>
+  <script src="assets/js/supabase-client.js?v=v6-preview-1"></script>
+  <script src="assets/js/site-sections.js?v=v6-preview-1"></script>
+  <script src="assets/js/presentation-registry.js?v=v6-preview-1"></script>
+  <script src="assets/js/article-media.js?v=v6-preview-1"></script>
+  <script src="assets/js/article-renderer.js?v=v6-preview-1"></script>
+  <script>
+    (function () {
+      "use strict";
+      var emptyEl = document.getElementById("preview-empty");
+      var stage = document.getElementById("preview-stage");
+      var lastPayload = null;
+
+      function setTheme(theme) {
+        var t = theme === "dark" || theme === "glass" ? theme : "light";
+        if (t === "light") document.documentElement.removeAttribute("data-theme");
+        else document.documentElement.setAttribute("data-theme", t);
+        // Glass needs some atmosphere without admin chrome
+        if (t === "glass") {
+          document.body.style.backgroundImage =
+            "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.18), transparent 55%), url('images/bg.jpg')";
+          document.body.style.backgroundSize = "cover";
+          document.body.style.backgroundAttachment = "fixed";
+        } else {
+          document.body.style.backgroundImage = "";
+          document.body.style.backgroundSize = "";
+          document.body.style.backgroundAttachment = "";
+        }
+      }
+
+      function setReadingFocus(on) {
+        document.body.classList.toggle("reading-focus", !!on);
+        document.body.classList.toggle("reading-focus-preview", !!on);
+        document.documentElement.classList.toggle("reading-focus", !!on);
+      }
+
+      function renderPreview(payload) {
+        lastPayload = payload || {};
+        var article = lastPayload.article;
+        var mode = lastPayload.mode === "card" ? "card" : "article";
+        setTheme(lastPayload.theme || "light");
+        setReadingFocus(!!lastPayload.readingFocus && mode === "article");
+
+        if (!article) {
+          emptyEl.hidden = false;
+          stage.hidden = true;
+          stage.innerHTML = "";
+          return;
+        }
+
+        emptyEl.hidden = true;
+        stage.hidden = false;
+        stage.className = mode === "card" ? "mode-card" : "mode-article";
+        stage.innerHTML = "";
+
+        var R = window.SBArticleRenderer;
+        if (!R) {
+          stage.textContent = "SBArticleRenderer 未載入";
+          return;
+        }
+
+        // Clear previous presentation classes on body
+        Array.prototype.slice.call(document.body.classList).forEach(function (c) {
+          if (c.indexOf("presentation-") === 0 || c === "reading-page") document.body.classList.remove(c);
+        });
+        delete document.body.dataset.presentation;
+
+        if (mode === "card") {
+          R.renderCardInto(stage, article, 0);
+        } else {
+          R.renderArticleInto(stage, article, { applyReadingFocus: false });
+          if (lastPayload.readingFocus) setReadingFocus(true);
+        }
+
+        document.body.classList.remove("is-preload");
+      }
+
+      window.addEventListener("message", function (e) {
+        if (e.origin !== location.origin) return;
+        var data = e.data;
+        if (!data || data.type !== "LYZ_ARTICLE_PREVIEW") return;
+        try {
+          renderPreview(data);
+          if (e.source && e.source.postMessage) {
+            e.source.postMessage({ type: "LYZ_ARTICLE_PREVIEW_ACK", ok: true }, location.origin);
+          }
+        } catch (err) {
+          console.error("[admin-preview]", err);
+          if (e.source && e.source.postMessage) {
+            e.source.postMessage(
+              { type: "LYZ_ARTICLE_PREVIEW_ACK", ok: false, error: String(err && err.message || err) },
+              location.origin
+            );
+          }
+        }
+      });
+
+      // Ready handshake
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "LYZ_ARTICLE_PREVIEW_READY" }, location.origin);
+      }
+    })();
+  </script>
+</body>
+</html>

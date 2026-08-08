@@ -49,6 +49,14 @@
   var editorMode = "split"; // split | edit | preview
   var formDirty = false;
   var formSnapshot = "";
+  var originalArticleSnapshot = null;
+  var previewIframeReady = false;
+  var frontendPreviewView = "article";
+  var frontendPreviewTheme = "light";
+  var frontendPreviewDevice = "desktop";
+  var frontendPreviewFocus = false;
+  var lastAiBodyApplied = false;
+  var frontendPreviewTimer = null;
   var sectionsCache = [];
   var activeSectionKey = null;
   var sectionDirty = false;
@@ -497,6 +505,70 @@
   }
 
   // ---------- 開啟 / 重置表單（大編輯 overlay） ----------
+
+  // ---------- V6.2 True frontend preview + draft safety ----------
+  function cloneJson(obj) {
+    try {
+      return structuredClone(obj);
+    } catch (e) {
+      return JSON.parse(JSON.stringify(obj || null));
+    }
+  }
+
+  function collectDraftArticle() {
+    var id = ($("f-id") && $("f-id").value) || "";
+    var topic = $("f-card-topic") ? $("f-card-topic").value.trim() : "";
+    var label = $("f-card-label") ? $("f-card-label").value.trim() : "";
+    var showLabel = $("f-show-card-label") ? !!$("f-show-card-label").checked : !!label;
+    var prev =
+      window.__lastOpenedAiEditorial && typeof window.__lastOpenedAiEditorial === "object"
+        ? window.__lastOpenedAiEditorial
+        : {};
+    var display = Object.assign({}, prev.display || {}, {
+      card_topic: topic,
+      card_label: label,
+      show_card_label: showLabel && !!label,
+    });
+    var ai = Object.assign({}, prev, {
+      display: display,
+      card_topic: topic,
+      card_label: label,
+      show_card_label: display.show_card_label,
+    });
+    var tags = (($("f-tags") && $("f-tags").value) || "")
+      .split(/[,，、]+/)
+      .map(function (t) { return t.trim(); })
+      .filter(Boolean);
+    var nowIso = new Date().toISOString();
+    var base = originalArticleSnapshot || {};
+    return {
+      id: id || null,
+      section: dbSection(($("f-section") && $("f-section").value) || "notes"),
+      title: ($("f-title") && $("f-title").value) || "",
+      slug: ($("f-slug") && $("f-slug").value) || "",
+      summary: ($("f-summary") && $("f-summary").value) || "",
+      category: ($("f-category") && $("f-category").value) || "",
+      tags: tags,
+      body: ($("f-body") && $("f-body").value) || "",
+      content_type: ($("f-content-type") && $("f-content-type").value) || null,
+      presentation: ($("f-presentation") && $("f-presentation").value) || null,
+      visibility: ($("f-visibility") && $("f-visibility").value) || "public",
+      series: ($("f-series") && $("f-series").value.trim()) || null,
+      show_title: $("f-show-title") ? !!$("f-show-title").checked : true,
+      show_summary: $("f-show-summary") ? !!$("f-show-summary").checked : true,
+      cover: ($("f-cover") && $("f-cover").value.trim()) || null,
+      cover_display: base.cover_display || null,
+      images: Array.isArray(currentImages) ? currentImages.slice() : [],
+      pdf_url: ($("f-pdf") && $("f-pdf").value.trim()) || null,
+      ai_editorial: ai,
+      status: ($("f-status") && $("f-status").value) || "draft",
+      published_at: base.published_at || null,
+      created_at: base.created_at || nowIso,
+      updated_at: nowIso,
+      sort_index: parseInt(($("f-sort") && $("f-sort").value) || "0", 10) || 0,
+    };
+  }
+
   function updateMdPreview() {
     var preview = $("md-preview");
     var body = $("f-body");
@@ -513,38 +585,390 @@
     }
   }
 
+  function sendFrontendPreview() {
+    var frame = $("frontend-preview-frame");
+    if (!frame || !frame.contentWindow) return;
+    var article = collectDraftArticle();
+    var payload = {
+      type: "LYZ_ARTICLE_PREVIEW",
+      mode: frontendPreviewView === "card" ? "card" : "article",
+      theme: frontendPreviewTheme || "light",
+      readingFocus: !!frontendPreviewFocus && frontendPreviewView !== "card",
+      article: article,
+    };
+    try {
+      frame.contentWindow.postMessage(payload, location.origin);
+    } catch (e) {
+      console.warn("[admin preview]", e);
+    }
+    updateLiveCompareLink(article);
+  }
+
+  function scheduleFrontendPreview() {
+    if (frontendPreviewTimer) clearTimeout(frontendPreviewTimer);
+    frontendPreviewTimer = setTimeout(function () {
+      frontendPreviewTimer = null;
+      sendFrontendPreview();
+      if (editorMode === "changes") renderChangesPanel();
+    }, 160);
+  }
+
   function scheduleMdPreview() {
     if (previewTimer) clearTimeout(previewTimer);
-    previewTimer = setTimeout(updateMdPreview, 120);
+    previewTimer = setTimeout(function () {
+      updateMdPreview();
+      scheduleFrontendPreview();
+    }, 120);
+  }
+
+  function updateLiveCompareLink(article) {
+    var link = $("fp-open-live");
+    if (!link) return;
+    var a = article || collectDraftArticle();
+    var published = (($("f-status") && $("f-status").value) || "") === "published";
+    if (published && a.slug) {
+      link.hidden = false;
+      link.href =
+        "note.html?id=" +
+        encodeURIComponent(a.slug) +
+        "&section=" +
+        encodeURIComponent(a.section || "notes");
+    } else {
+      link.hidden = true;
+      link.removeAttribute("href");
+    }
+  }
+
+  function setFrontendChromeUi() {
+    document.querySelectorAll("[data-fp-view]").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-fp-view") === frontendPreviewView);
+    });
+    document.querySelectorAll("[data-fp-theme]").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-fp-theme") === frontendPreviewTheme);
+    });
+    document.querySelectorAll("[data-fp-device]").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-fp-device") === frontendPreviewDevice);
+    });
+    document.querySelectorAll("[data-fp-focus]").forEach(function (btn) {
+      var on = btn.getAttribute("data-fp-focus") === "on";
+      btn.classList.toggle("active", on === frontendPreviewFocus);
+    });
+    var wrap = $("frontend-preview-wrap");
+    if (wrap) wrap.setAttribute("data-device", frontendPreviewDevice || "desktop");
+    var focusGroup = $("fp-focus-group");
+    if (focusGroup) focusGroup.style.display = frontendPreviewView === "card" ? "none" : "";
+  }
+
+  function syncPreviewPaneChrome(mode) {
+    var title = $("preview-pane-title");
+    var hint = $("preview-pane-hint");
+    var chrome = $("frontend-preview-chrome");
+    var wrap = $("frontend-preview-wrap");
+    var md = $("md-preview");
+    var changes = $("changes-panel");
+    if (mode === "markdown") {
+      if (title) title.textContent = "Markdown 預覽";
+      if (hint) hint.textContent = "格式檢查（非真實前台）";
+      if (chrome) chrome.hidden = true;
+      if (wrap) wrap.hidden = true;
+      if (md) md.hidden = false;
+      if (changes) changes.hidden = true;
+    } else if (mode === "changes") {
+      if (title) title.textContent = "變更";
+      if (hint) hint.textContent = "草稿 vs 開啟時的已存版本";
+      if (chrome) chrome.hidden = true;
+      if (wrap) wrap.hidden = true;
+      if (md) md.hidden = true;
+      if (changes) changes.hidden = false;
+    } else {
+      if (title) title.textContent = "前台預覽";
+      if (hint) hint.textContent = "與 public 同一 renderer · 未儲存也能預覽";
+      if (chrome) chrome.hidden = false;
+      if (wrap) wrap.hidden = false;
+      if (md) md.hidden = true;
+      if (changes) changes.hidden = true;
+    }
   }
 
   function setEditorMode(mode) {
-    if (mode !== "split" && mode !== "edit" && mode !== "preview") mode = "split";
+    var allowed = { split: 1, edit: 1, frontend: 1, changes: 1, markdown: 1, preview: 1 };
+    if (!allowed[mode]) mode = "split";
+    if (mode === "preview") mode = "frontend";
     editorMode = mode;
     var main = $("editor-main");
     if (main) main.setAttribute("data-layout", mode);
     document.querySelectorAll(".mode-btn").forEach(function (btn) {
       btn.classList.toggle("active", btn.getAttribute("data-editor-mode") === mode);
     });
-    if (mode === "preview" || mode === "split") updateMdPreview();
+    syncPreviewPaneChrome(mode);
+    if (mode === "markdown") updateMdPreview();
+    if (mode === "changes") renderChangesPanel();
+    if (mode === "split" || mode === "frontend") scheduleFrontendPreview();
+  }
+
+  function countParagraphs(text) {
+    return String(text || "")
+      .split(/\n\s*\n/)
+      .map(function (p) { return p.trim(); })
+      .filter(Boolean).length;
+  }
+
+  function lineDiff(oldText, newText) {
+    var a = String(oldText || "").replace(/\r\n/g, "\n").split("\n");
+    var b = String(newText || "").replace(/\r\n/g, "\n").split("\n");
+    var max = Math.max(a.length, b.length);
+    // Lightweight LCS-ish: map equal lines greedily
+    var out = [];
+    var i = 0;
+    var j = 0;
+    while (i < a.length || j < b.length) {
+      if (i < a.length && j < b.length && a[i] === b[j]) {
+        out.push({ t: "ctx", line: a[i] });
+        i++; j++;
+        continue;
+      }
+      if (j < b.length && (i >= a.length || a.indexOf(b[j], i) === -1 || a.indexOf(b[j], i) > i + 8)) {
+        out.push({ t: "add", line: b[j] });
+        j++;
+        continue;
+      }
+      if (i < a.length) {
+        out.push({ t: "del", line: a[i] });
+        i++;
+        continue;
+      }
+      out.push({ t: "add", line: b[j++] });
+      if (out.length > 4000) break;
+    }
+    return out;
+  }
+
+  function escapeHtml(s) {
+    return String(s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function buildSafetyWarnings(original, draft) {
+    var warns = [];
+    if (!original) return warns;
+    var ob = String(original.body || "");
+    var nb = String(draft.body || "");
+    var oLen = ob.length;
+    var nLen = nb.length;
+    if (oLen > 80 && nLen < oLen * 0.55) {
+      warns.push(
+        "⚠ 正文比已儲存版本少了大量內容。\n舊版：" +
+          oLen +
+          " 字\n目前：" +
+          nLen +
+          " 字\n請確認不是貼上／標題解析造成的截斷。"
+      );
+    }
+    var oImgs = Array.isArray(original.images) ? original.images.length : 0;
+    var nImgs = Array.isArray(draft.images) ? draft.images.length : 0;
+    if (oImgs >= 2 && nImgs < oImgs - 1) {
+      warns.push("⚠ 圖片數突然下降（" + oImgs + " → " + nImgs + "）");
+    }
+    if ((original.title || "").trim() && !(draft.title || "").trim()) {
+      warns.push("⚠ 標題變空");
+    }
+    if ((original.status || "") === "published" && (draft.status || "") === "draft") {
+      warns.push("⚠ 狀態由 published → draft");
+    }
+    if ((original.visibility || "public") === "public" && (draft.visibility || "") === "private") {
+      warns.push("⚠ 可見性由 public → private");
+    }
+    if (original.show_title !== false && draft.show_title === false) {
+      warns.push("⚠ show_title：true → false");
+    }
+    var title = String(draft.title || "");
+    if (title.length > 80) {
+      var head = ob.slice(0, Math.min(200, ob.length)).replace(/\s+/g, "");
+      var tNorm = title.replace(/\s+/g, "");
+      if (head && tNorm && (head.indexOf(tNorm.slice(0, 40)) !== -1 || tNorm.indexOf(head.slice(0, 40)) !== -1)) {
+        warns.push("⚠ 標題疑似包含正文內容");
+      }
+    }
+    return warns;
+  }
+
+  function renderChangesPanel() {
+    var warningsEl = $("changes-warnings");
+    var statsEl = $("changes-stats");
+    var metaEl = $("changes-meta");
+    var bodyDiffEl = $("changes-body-diff");
+    if (!warningsEl || !statsEl || !metaEl || !bodyDiffEl) return;
+
+    var draft = collectDraftArticle();
+    var original = originalArticleSnapshot;
+    var warns = buildSafetyWarnings(original || {}, draft);
+    warningsEl.innerHTML = warns
+      .map(function (w) {
+        return '<div class="warn">' + escapeHtml(w).replace(/\n/g, "<br>") + "</div>";
+      })
+      .join("");
+
+    var oBody = original ? String(original.body || "") : "";
+    var nBody = String(draft.body || "");
+    var oChars = oBody.length;
+    var nChars = nBody.length;
+    var oParas = countParagraphs(oBody);
+    var nParas = countParagraphs(nBody);
+    statsEl.textContent =
+      "正文\n\n原版：" +
+      oChars +
+      " 字 / " +
+      oParas +
+      " 段\n新版：" +
+      nChars +
+      " 字 / " +
+      nParas +
+      " 段\n\n" +
+      (nChars - oChars >= 0 ? "+" : "") +
+      (nChars - oChars) +
+      " 字\n" +
+      (nParas - oParas >= 0 ? "+" : "") +
+      (nParas - oParas) +
+      " 段";
+
+    var fields = [
+      ["title", "標題"],
+      ["summary", "摘要"],
+      ["category", "分類"],
+      ["presentation", "presentation"],
+      ["content_type", "content_type"],
+      ["visibility", "visibility"],
+      ["series", "series"],
+      ["show_title", "show_title"],
+      ["show_summary", "show_summary"],
+      ["status", "狀態"],
+      ["cover", "封面"],
+    ];
+    function fieldVal(obj, key) {
+      if (!obj) return "";
+      if (key === "show_title" || key === "show_summary") return String(!!obj[key]);
+      if (key === "cover") return obj.cover || "";
+      return obj[key] == null ? "" : String(obj[key]);
+    }
+    var oDisp = original && original.ai_editorial && original.ai_editorial.display
+      ? original.ai_editorial.display
+      : {};
+    var nDisp = draft.ai_editorial && draft.ai_editorial.display ? draft.ai_editorial.display : {};
+    var rows = fields
+      .map(function (pair) {
+        var key = pair[0];
+        var label = pair[1];
+        var ov = fieldVal(original, key);
+        var nv = fieldVal(draft, key);
+        var changed = ov !== nv;
+        return (
+          '<div class="' +
+          (changed ? "changed" : "") +
+          '"><dt>' +
+          escapeHtml(label) +
+          "</dt><dd>" +
+          (changed
+            ? escapeHtml(ov || "（空）") + " → " + escapeHtml(nv || "（空）")
+            : escapeHtml(nv || "（空）")) +
+          "</dd></div>"
+        );
+      })
+      .join("");
+    rows +=
+      '<div class="' +
+      ((oDisp.card_topic || "") !== (nDisp.card_topic || "") ? "changed" : "") +
+      '"><dt>card_topic</dt><dd>' +
+      escapeHtml((oDisp.card_topic || "（空）") + " → " + (nDisp.card_topic || "（空）")) +
+      "</dd></div>";
+    rows +=
+      '<div class="' +
+      ((oDisp.card_label || "") !== (nDisp.card_label || "") ? "changed" : "") +
+      '"><dt>card_label</dt><dd>' +
+      escapeHtml((oDisp.card_label || "（空）") + " → " + (nDisp.card_label || "（空）")) +
+      "</dd></div>";
+    var oTags = ((original && original.tags) || []).join(", ");
+    var nTags = (draft.tags || []).join(", ");
+    rows +=
+      '<div class="' +
+      (oTags !== nTags ? "changed" : "") +
+      '"><dt>tags</dt><dd>' +
+      escapeHtml((oTags || "（空）") + (oTags !== nTags ? " → " + (nTags || "（空）") : "")) +
+      "</dd></div>";
+    var oImgN = original && Array.isArray(original.images) ? original.images.length : 0;
+    var nImgN = Array.isArray(draft.images) ? draft.images.length : 0;
+    rows +=
+      '<div class="' +
+      (oImgN !== nImgN ? "changed" : "") +
+      '"><dt>images</dt><dd>' +
+      oImgN +
+      " → " +
+      nImgN +
+      "</dd></div>";
+
+    metaEl.innerHTML = "<h4>Metadata</h4><dl>" + rows + "</dl>";
+
+    var diff = lineDiff(oBody, nBody);
+    var html = "";
+    if (lastAiBodyApplied && oBody !== nBody) {
+      html += '<div class="diff-ai">AI 修改 · 正文來自 AI clean_body</div>\n';
+    }
+    if (!original) {
+      html += '<div class="diff-ctx">（新文章：尚無已存版本）</div>\n';
+    }
+    var shown = 0;
+    diff.forEach(function (row) {
+      if (row.t === "ctx") return; // keep panel focused on changes
+      shown++;
+      if (shown > 300) return;
+      var cls = row.t === "add" ? "diff-add" : row.t === "del" ? "diff-del" : "diff-ctx";
+      var prefix = row.t === "add" ? "+ " : row.t === "del" ? "- " : "  ";
+      html +=
+        '<div class="' +
+        cls +
+        '">' +
+        escapeHtml(prefix + row.line) +
+        "</div>";
+    });
+    if (!shown) html += '<div class="diff-ctx">正文無變更</div>';
+    bodyDiffEl.innerHTML = html;
+  }
+
+  function verifySavedAgainstSubmitted(submitted, saved) {
+    if (!submitted || !saved) return [];
+    var keys = [
+      "title",
+      "summary",
+      "category",
+      "presentation",
+      "content_type",
+      "visibility",
+      "series",
+      "show_title",
+      "show_summary",
+      "body",
+      "cover",
+      "status",
+      "slug",
+    ];
+    var mismatches = [];
+    keys.forEach(function (k) {
+      var a = submitted[k];
+      var b = saved[k];
+      if (k === "show_title" || k === "show_summary") {
+        a = !!a;
+        b = !!b;
+      }
+      if (a == null) a = "";
+      if (b == null) b = "";
+      if (String(a) !== String(b)) mismatches.push(k);
+    });
+    return mismatches;
   }
 
   function captureFormSnapshot() {
-    formSnapshot = JSON.stringify({
-      id: ($("f-id") && $("f-id").value) || "",
-      section: ($("f-section") && $("f-section").value) || "",
-      status: ($("f-status") && $("f-status").value) || "",
-      category: ($("f-category") && $("f-category").value) || "",
-      title: ($("f-title") && $("f-title").value) || "",
-      slug: ($("f-slug") && $("f-slug").value) || "",
-      summary: ($("f-summary") && $("f-summary").value) || "",
-      tags: ($("f-tags") && $("f-tags").value) || "",
-      pdf: ($("f-pdf") && $("f-pdf").value) || "",
-      sort: ($("f-sort") && $("f-sort").value) || "",
-      cover: ($("f-cover") && $("f-cover").value) || "",
-      body: ($("f-body") && $("f-body").value) || "",
-      images: currentImages,
-    });
+    formSnapshot = JSON.stringify(collectDraftArticle());
     formDirty = false;
     mediaUploadedUnsaved = false;
     updateSaveStateUi();
@@ -553,6 +977,7 @@
   function markFormDirty() {
     formDirty = true;
     updateSaveStateUi();
+    scheduleFrontendPreview();
   }
 
   function confirmLeaveEditor() {
@@ -579,6 +1004,8 @@
     document.body.classList.add("editor-open");
     setEditorMode(editorMode || "split");
     updateMdPreview();
+    scheduleFrontendPreview();
+    setFrontendChromeUi();
     updateLengthHint();
   }
 
@@ -714,6 +1141,8 @@
     if ($("f-show-card-label")) $("f-show-card-label").checked = true;
     window.__lastOpenedAiEditorial = {};
     lastAiAnalysis = null;
+    lastAiBodyApplied = false;
+    originalArticleSnapshot = null;
     if ($("ai-review-panel")) $("ai-review-panel").classList.add("hidden");
     if ($("ai-status")) $("ai-status").textContent = "";
     currentImages = [];
@@ -733,10 +1162,11 @@
       var res = await client.from("articles").select("*").eq("id", id).single();
       if (res.error) { msg("form-msg", "讀取失敗：" + res.error.message, "err"); return; }
       var a = res.data;
+      originalArticleSnapshot = cloneJson(a);
       $("f-id").value = a.id;
       editingArticleId = a.id;
       window.__lastOpenedAiEditorial =
-        a.ai_editorial && typeof a.ai_editorial === "object" ? a.ai_editorial : {};
+        a.ai_editorial && typeof a.ai_editorial === "object" ? cloneJson(a.ai_editorial) : {};
       var catNorm = normalizeCategory(a.category || "");
       $("f-section").value =
         a.section === "notes" && isAcademicCategory(catNorm) ? "academic" : a.section;
@@ -782,15 +1212,18 @@
       renderImagesEditor();
       refreshCategoryList();
       updateMdPreview();
+      scheduleFrontendPreview();
       updateLengthHint();
       syncCategoryChips();
       updateFormChrome();
       if (!a.presentation) setAiStatus("此篇尚無 presentation，建議執行 AI 整理與判斷", false);
     } else {
+      originalArticleSnapshot = null;
       syncCategoryChips();
       updateFormChrome();
     }
     captureFormSnapshot();
+    scheduleFrontendPreview();
     var bodyEl = $("f-body");
     if (bodyEl && editorMode !== "preview") {
       setTimeout(function () { bodyEl.focus(); }, 50);
@@ -1192,6 +1625,13 @@
     if (!slug) { msg("form-msg", "請填 slug", "err"); return; }
     $("f-slug").value = slug;
 
+    var draftForGuard = collectDraftArticle();
+    var truncWarns = buildSafetyWarnings(originalArticleSnapshot || {}, draftForGuard);
+    if (truncWarns.length) {
+      var proceed = window.confirm(truncWarns.join("\n\n") + "\n\n仍要儲存嗎？");
+      if (!proceed) return;
+    }
+
     var category = ensureCategoryOnSave();
     if (!category) return;
     var tags = $("f-tags").value.split(/[,，、]+/).map(function (t) { return t.trim(); }).filter(Boolean);
@@ -1288,14 +1728,27 @@
       msg("form-msg", "儲存失敗：" + m, "err");
       return;
     }
-    msg("form-msg", "已儲存 ✔", "ok");
+    var submitted = collectDraftArticle();
+    submitted.id = res.data.id;
+    var mismatches = verifySavedAgainstSubmitted(submitted, res.data);
+    if (mismatches.length) {
+      msg("form-msg", "⚠ 資料庫回讀內容與送出內容不同：" + mismatches.join(", "), "err");
+    } else {
+      msg("form-msg", "已儲存 ✔", "ok");
+    }
     $("f-id").value = res.data.id;
     editingArticleId = res.data.id;
+    originalArticleSnapshot = cloneJson(res.data);
+    if (res.data.ai_editorial && typeof res.data.ai_editorial === "object") {
+      window.__lastOpenedAiEditorial = cloneJson(res.data.ai_editorial);
+    }
+    lastAiBodyApplied = false;
     $("btn-delete").classList.remove("hidden");
     mediaUploadedUnsaved = false;
     setBodyImageStatus("");
     captureFormSnapshot();
     updateFormChrome();
+    scheduleFrontendPreview();
     loadArticles();
   }
 
@@ -2113,8 +2566,11 @@ var quickDraft = $("btn-quick-draft");
     }
     if ((mode === "all" || mode === "body") && a.clean_body != null) {
       $("f-body").value = a.clean_body;
+      lastAiBodyApplied = true;
       scheduleMdPreview();
     }
+    scheduleFrontendPreview();
+    if (editorMode === "changes") renderChangesPanel();
     if (a.ai_editorial || true) {
       // provenance stamped on next successful save via fields
     }

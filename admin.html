@@ -24,7 +24,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;900&display=swap">
-    <link rel="stylesheet" href="assets/css/admin.css?v=ai-v3-1" />
+    <link rel="stylesheet" href="assets/css/admin.css?v=v6-preview-1" />
 </head>
 
 <body class="admin">
@@ -208,9 +208,11 @@
                             </div>
                         </div>
                         <div class="editor-modes" role="tablist" aria-label="編輯檢視">
-                            <button type="button" class="mode-btn active" data-editor-mode="split" title="左右分欄">分欄</button>
-                            <button type="button" class="mode-btn" data-editor-mode="edit" title="只看 Markdown">編輯</button>
-                            <button type="button" class="mode-btn" data-editor-mode="preview" title="只看排版預覽">預覽</button>
+                            <button type="button" class="mode-btn active" data-editor-mode="split" title="左右分欄：編輯 + 前台預覽">分欄</button>
+                            <button type="button" class="mode-btn" data-editor-mode="edit" title="只看 Markdown 編輯">編輯</button>
+                            <button type="button" class="mode-btn" data-editor-mode="frontend" title="真實前台預覽">前台預覽</button>
+                            <button type="button" class="mode-btn" data-editor-mode="changes" title="草稿變更 diff">變更</button>
+                            <button type="button" class="mode-btn" data-editor-mode="markdown" title="原始 Markdown HTML 預覽">Markdown</button>
                         </div>
                         <div class="editor-bar-actions">
                             <span id="editor-save-state" class="editor-save-state" aria-live="polite">已同步</span>
@@ -451,8 +453,53 @@
                                 <textarea id="f-body" placeholder="# 標題&#10;&#10;內文支援 Markdown…&#10;&#10;可直接 Ctrl+V / 拖曳貼上圖片（自動上傳）。&#10;&#10;- 列表&#10;- **粗體**&#10;- [連結](https://…)&#10;&#10;> 引用&#10;&#10;Tab 縮排；Ctrl+S 儲存。" spellcheck="true"></textarea>
                             </div>
                             <div class="editor-pane editor-pane-preview" id="editor-pane-preview">
-                                <div class="pane-label">即時預覽</div>
-                                <div id="md-preview" class="markdown-body md-preview-inner" aria-live="polite"></div>
+                                <div class="pane-label pane-label-row" id="preview-pane-label">
+                                    <span id="preview-pane-title">前台預覽</span>
+                                    <span class="pane-hint" id="preview-pane-hint">與 public 同一 renderer · 未儲存也能預覽</span>
+                                </div>
+
+                                <div id="frontend-preview-chrome" class="frontend-preview-chrome">
+                                    <div class="fp-group" role="group" aria-label="預覽類型">
+                                        <button type="button" class="fp-btn active" data-fp-view="article">文章頁</button>
+                                        <button type="button" class="fp-btn" data-fp-view="card">卡片</button>
+                                    </div>
+                                    <div class="fp-group" role="group" aria-label="主題">
+                                        <button type="button" class="fp-btn active" data-fp-theme="light">Light</button>
+                                        <button type="button" class="fp-btn" data-fp-theme="dark">Dark</button>
+                                        <button type="button" class="fp-btn" data-fp-theme="glass">Glass</button>
+                                    </div>
+                                    <div class="fp-group" role="group" aria-label="裝置寬度">
+                                        <button type="button" class="fp-btn active" data-fp-device="desktop">Desktop</button>
+                                        <button type="button" class="fp-btn" data-fp-device="tablet">Tablet</button>
+                                        <button type="button" class="fp-btn" data-fp-device="mobile">Mobile</button>
+                                    </div>
+                                    <div class="fp-group" role="group" aria-label="閱讀模式" id="fp-focus-group">
+                                        <button type="button" class="fp-btn active" data-fp-focus="off">背景</button>
+                                        <button type="button" class="fp-btn" data-fp-focus="on">專注閱讀</button>
+                                    </div>
+                                    <a class="fp-live-link muted" id="fp-open-live" href="#" target="_blank" rel="noopener" hidden>開啟線上版本</a>
+                                </div>
+
+                                <div id="frontend-preview-wrap" class="preview-device-frame" data-device="desktop">
+                                    <iframe
+                                        id="frontend-preview-frame"
+                                        title="前台預覽"
+                                        src="admin-preview.html"
+                                        sandbox="allow-scripts allow-same-origin"
+                                    ></iframe>
+                                </div>
+
+                                <div id="md-preview" class="markdown-body md-preview-inner" aria-live="polite" hidden></div>
+
+                                <div id="changes-panel" class="changes-panel" hidden>
+                                    <div id="changes-warnings" class="changes-warnings"></div>
+                                    <div id="changes-stats" class="changes-stats muted"></div>
+                                    <div id="changes-meta" class="changes-meta"></div>
+                                    <div id="changes-body" class="changes-body">
+                                        <h4>正文 diff</h4>
+                                        <pre id="changes-body-diff" class="changes-diff"></pre>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -530,13 +577,15 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 
     <script src="assets/js/supabase-config.js"></script>
-    <script src="assets/js/supabase-client.js?v=media-repair-3"></script>
+    <script src="assets/js/supabase-client.js?v=v6-preview-1"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/site-sections.js?v=ai-v3-1"></script>
-    <script src="assets/js/presentation-registry.js?v=media-repair-3"></script>
+    <script src="assets/js/site-sections.js?v=v6-preview-1"></script>
+    <script src="assets/js/presentation-registry.js?v=v6-preview-1"></script>
+    <script src="assets/js/article-media.js?v=v6-preview-1"></script>
+    <script src="assets/js/article-renderer.js?v=v6-preview-1"></script>
     <script src="assets/js/ai-editorial-schema.js?v=semantic-card-1"></script>
     <script src="assets/js/ai-editorial-client.js?v=ai-v3-1"></script>
-    <script src="assets/js/admin.js?v=ai-v3-1"></script>
+    <script src="assets/js/admin.js?v=v6-preview-1"></script>
 </body>
 
 </html>

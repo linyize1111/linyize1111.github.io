@@ -117,11 +117,12 @@ test("admin.js has no SHORT_CHARS / LONG_CHARS vars", () => {
 
 test("cms-public.js has no bodyPlainLen compact heuristics", () => {
   const s = read("assets/js/cms-public.js");
+  const r = read("assets/js/article-renderer.js");
   assert.equal(s.includes("bodyPlainLen"), false);
   assert.equal(s.includes("isCompactCard"), false);
   assert.equal(s.includes("isPhotoNoteCard"), false);
-  assert.ok(s.includes("SBPresentation"));
-  assert.ok(s.includes("resolvePresentation") || s.includes("presentationMeta"));
+  assert.ok(s.includes("SBPresentation") || r.includes("SBPresentation"));
+  assert.ok(r.includes("presentationMeta") || s.includes("SBPresentation"));
 });
 
 test("public list HTML has no static note-item fallbacks", () => {
@@ -207,11 +208,14 @@ test("schema warns on polished AI card_label", () => {
 
 test("cms-public uses stored semantic display metadata", () => {
   const s = read("assets/js/cms-public.js");
-  assert.ok(s.includes("semanticCardDisplay"));
-  assert.ok(s.includes("card_topic"));
-  assert.ok(s.includes("card_label"));
-  assert.ok(s.includes("show_card_label"));
-  assert.ok(s.includes("firstBodyExcerpt"));
+  const r = read("assets/js/article-renderer.js");
+  assert.ok(r.includes("semanticCardDisplay"));
+  assert.ok(r.includes("card_topic"));
+  assert.ok(r.includes("card_label"));
+  assert.ok(r.includes("show_card_label"));
+  assert.ok(r.includes("firstBodyExcerpt"));
+  assert.ok(s.includes("SBArticleRenderer"));
+  assert.equal(r.includes('content: "一則小廢文"'), false);
   assert.equal(s.includes('content: "一則小廢文"'), false);
 });
 

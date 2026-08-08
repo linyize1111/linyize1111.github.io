@@ -502,10 +502,145 @@ body.admin.editor-open { overflow: hidden; }
 }
 .markdown-body th { background: rgba(255,255,255,0.06); }
 
-/* 模式：只編輯 / 只預覽 */
+/* 模式：只編輯 / 前台預覽 / Markdown / 變更 */
 .editor-main[data-layout="edit"] .editor-pane-preview { display: none; }
 .editor-main[data-layout="edit"] .editor-pane-write { border-right: none; }
+.editor-main[data-layout="frontend"] .editor-pane-write,
+.editor-main[data-layout="changes"] .editor-pane-write,
 .editor-main[data-layout="preview"] .editor-pane-write { display: none; }
+.editor-main[data-layout="markdown"] #frontend-preview-chrome,
+.editor-main[data-layout="markdown"] #frontend-preview-wrap,
+.editor-main[data-layout="markdown"] #changes-panel { display: none !important; }
+.editor-main[data-layout="markdown"] #md-preview { display: block !important; }
+.editor-main[data-layout="changes"] #frontend-preview-chrome,
+.editor-main[data-layout="changes"] #frontend-preview-wrap,
+.editor-main[data-layout="changes"] #md-preview { display: none !important; }
+.editor-main[data-layout="changes"] #changes-panel { display: block !important; }
+.editor-main[data-layout="split"] #md-preview,
+.editor-main[data-layout="frontend"] #md-preview,
+.editor-main[data-layout="preview"] #md-preview { display: none !important; }
+.editor-main[data-layout="split"] #changes-panel,
+.editor-main[data-layout="frontend"] #changes-panel,
+.editor-main[data-layout="preview"] #changes-panel { display: none !important; }
+
+.frontend-preview-chrome {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.65rem;
+  align-items: center;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--a-border);
+  background: rgba(255,255,255,0.03);
+}
+.fp-group {
+  display: inline-flex;
+  gap: 0.2rem;
+  padding: 0.15rem;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.22);
+}
+.fp-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--a-muted);
+  font-size: 0.78rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.fp-btn.active {
+  background: rgba(86, 208, 248, 0.2);
+  color: #e8f7ff;
+}
+.fp-live-link {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--a-accent);
+  text-decoration: none;
+}
+.fp-live-link:hover { text-decoration: underline; }
+
+.preview-device-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  padding: 0.65rem;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(86,208,248,0.08), transparent 55%),
+    rgba(0,0,0,0.18);
+  overflow: auto;
+}
+.preview-device-frame iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: 1px solid var(--a-border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.28);
+}
+.preview-device-frame[data-device="tablet"] iframe {
+  width: 768px;
+  max-width: 100%;
+}
+.preview-device-frame[data-device="mobile"] iframe {
+  width: 390px;
+  max-width: 100%;
+}
+
+.changes-panel {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem 1.2rem 2rem;
+}
+.changes-warnings {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+}
+.changes-warnings .warn {
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 180, 70, 0.12);
+  border: 1px solid rgba(255, 180, 70, 0.35);
+  color: #ffd9a0;
+  font-size: 0.9rem;
+}
+.changes-stats {
+  margin-bottom: 0.85rem;
+  white-space: pre-line;
+  font-size: 0.88rem;
+}
+.changes-meta dl {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 0.35rem 0.75rem;
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+.changes-meta dt { color: var(--a-muted); }
+.changes-meta dd { margin: 0; }
+.changes-meta .changed dd { color: #9fe7ff; }
+.changes-diff {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(0,0,0,0.28);
+  border: 1px solid var(--a-border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  max-height: 48vh;
+  overflow: auto;
+}
+.changes-diff .diff-add { color: #8dffb0; }
+.changes-diff .diff-del { color: #ff9b9b; }
+.changes-diff .diff-ctx { color: var(--a-muted); }
+.changes-diff .diff-ai { color: #ffd27a; font-weight: 600; }
 
 @media (max-width: 960px) {
   .editor-layout { flex-direction: column; }
@@ -527,9 +662,8 @@ body.admin.editor-open { overflow: hidden; }
   .editor-overlay { padding: 0; }
   .editor-shell { border-radius: 0; }
   .editor-bar { padding: 0.55rem 0.7rem; }
-  .editor-modes { order: 3; width: 100%; justify-content: stretch; }
-  .mode-btn { flex: 1; text-align: center; }
-  /* 窄螢幕分欄改為上下：預設只顯示編輯，可切預覽 */
+  .editor-modes { order: 3; width: 100%; justify-content: stretch; flex-wrap: wrap; }
+  .mode-btn { flex: 1; text-align: center; min-width: 4.5rem; }
   .editor-main[data-layout="split"] .editor-pane-preview { display: none; }
   .editor-main[data-layout="split"] .editor-pane-write {
     border-bottom: none; max-height: none;
