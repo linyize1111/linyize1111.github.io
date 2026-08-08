@@ -311,18 +311,6 @@
     var ADMIN_LINK = { href: "academic.html", label: "學科筆記" };
     var menuOpen = false;
 
-    function ensureGlobalNavShell() {
-      var nav = document.getElementById("global-nav");
-      if (!nav) {
-        nav = document.createElement("nav");
-        nav.id = "global-nav";
-        document.body.appendChild(nav);
-      }
-      nav.removeAttribute("style");
-      nav.setAttribute("aria-label", "主要導覽");
-      return nav;
-    }
-
     function currentPath() {
       return (location.pathname || "").split("/").pop() || "index.html";
     }
@@ -340,9 +328,51 @@
       return a;
     }
 
+    function retireLegacyGlobalNav() {
+      var legacy = document.getElementById("global-nav");
+      if (!legacy) return;
+      if (legacy.id === "desktop-global-nav" || legacy.id === "mobile-global-nav") return;
+      legacy.remove();
+    }
+
+    function ensureDesktopNav() {
+      var nav = document.getElementById("desktop-global-nav");
+      if (!nav) {
+        nav = document.createElement("nav");
+        nav.id = "desktop-global-nav";
+        document.body.appendChild(nav);
+      }
+      nav.className = "desktop-global-nav";
+      nav.setAttribute("aria-label", "主要導覽");
+      nav.removeAttribute("style");
+      return nav;
+    }
+
+    function ensureMobileNav() {
+      var nav = document.getElementById("mobile-global-nav");
+      if (!nav) {
+        nav = document.createElement("nav");
+        nav.id = "mobile-global-nav";
+        document.body.insertBefore(nav, document.body.firstChild);
+      }
+      nav.className = "mobile-global-nav";
+      nav.setAttribute("aria-label", "手機主要導覽");
+      nav.removeAttribute("style");
+      return nav;
+    }
+
+    function renderDesktopNav() {
+      var nav = ensureDesktopNav();
+      nav.innerHTML = "";
+      PUBLIC_LINKS.forEach(function (item) {
+        nav.appendChild(buildLink(item));
+      });
+      return nav;
+    }
+
     function closeMenu() {
       menuOpen = false;
-      var nav = document.getElementById("global-nav");
+      var nav = document.getElementById("mobile-global-nav");
       var btn = document.getElementById("mobile-nav-toggle");
       var sheet = document.getElementById("mobile-nav-sheet");
       var backdrop = document.getElementById("mobile-nav-backdrop");
@@ -355,7 +385,7 @@
 
     function openMenu() {
       menuOpen = true;
-      var nav = document.getElementById("global-nav");
+      var nav = document.getElementById("mobile-global-nav");
       var btn = document.getElementById("mobile-nav-toggle");
       var sheet = document.getElementById("mobile-nav-sheet");
       var backdrop = document.getElementById("mobile-nav-backdrop");
@@ -427,22 +457,15 @@
       });
     }
 
-    function renderPublicNav() {
-      var nav = ensureGlobalNavShell();
+    function renderMobileNav() {
+      var nav = ensureMobileNav();
       nav.innerHTML = "";
-      nav.classList.add("global-nav--v7");
 
       var brand = document.createElement("a");
       brand.className = "mobile-nav-brand";
       brand.href = "index.html";
       brand.textContent = "LYZ";
       brand.setAttribute("aria-label", "LYZ 首頁");
-
-      var desktopLinks = document.createElement("div");
-      desktopLinks.className = "global-nav__desktop";
-      PUBLIC_LINKS.forEach(function (item) {
-        desktopLinks.appendChild(buildLink(item));
-      });
 
       var toggle = document.createElement("button");
       toggle.type = "button";
@@ -467,23 +490,20 @@
       sheet.appendChild(sheetLinks);
       fillSheetExtras(sheet);
 
-      var backdrop = document.createElement("button");
-      backdrop.type = "button";
-      backdrop.id = "mobile-nav-backdrop";
-      backdrop.className = "mobile-nav-backdrop";
-      backdrop.hidden = true;
-      backdrop.setAttribute("aria-label", "關閉選單");
+      var backdrop = document.getElementById("mobile-nav-backdrop");
+      if (!backdrop) {
+        backdrop = document.createElement("button");
+        backdrop.type = "button";
+        backdrop.id = "mobile-nav-backdrop";
+        backdrop.className = "mobile-nav-backdrop";
+        backdrop.hidden = true;
+        backdrop.setAttribute("aria-label", "關閉選單");
+        document.body.appendChild(backdrop);
+      }
 
       nav.appendChild(brand);
-      nav.appendChild(desktopLinks);
       nav.appendChild(toggle);
       nav.appendChild(sheet);
-
-      if (!document.getElementById("mobile-nav-backdrop")) {
-        document.body.appendChild(backdrop);
-      } else {
-        backdrop = document.getElementById("mobile-nav-backdrop");
-      }
 
       toggle.addEventListener("click", function (e) {
         e.stopPropagation();
@@ -508,10 +528,7 @@
       return nav;
     }
 
-    function injectAdminLink(nav) {
-      if (!nav) return;
-      var desktop = nav.querySelector(".global-nav__desktop");
-      var sheetLinks = nav.querySelector(".mobile-nav-sheet__links");
+    function injectAdminNav(desktopNav, mobileNav) {
       function place(container) {
         if (!container || container.querySelector('[data-admin-nav="academic"]')) return;
         var a = buildLink(ADMIN_LINK, { "data-admin-nav": "academic" });
@@ -519,7 +536,8 @@
         if (about) container.insertBefore(a, about);
         else container.appendChild(a);
       }
-      place(desktop);
+      place(desktopNav);
+      var sheetLinks = mobileNav && mobileNav.querySelector(".mobile-nav-sheet__links");
       place(sheetLinks);
     }
 
@@ -528,21 +546,23 @@
         document.querySelectorAll('a[href="academic.html"], li.nav-admin-only'),
         function (el) {
           if (el.getAttribute("data-admin-nav") === "academic") return;
-          if (el.closest("#global-nav")) return;
+          if (el.closest("#desktop-global-nav, #mobile-global-nav")) return;
           el.remove();
         }
       );
     }
 
+    retireLegacyGlobalNav();
     stripStaticAdminHints();
-    var nav = renderPublicNav();
+    var desktopNav = renderDesktopNav();
+    var mobileNav = renderMobileNav();
 
     function revealIfAdmin() {
       if (!window.SBAuth || typeof window.SBAuth.isAdmin !== "function") return;
       window.SBAuth
         .isAdmin()
         .then(function (ok) {
-          if (ok) injectAdminLink(nav);
+          if (ok) injectAdminNav(desktopNav, mobileNav);
         })
         .catch(function () {});
     }
@@ -554,7 +574,6 @@
     }
     setTimeout(revealIfAdmin, 900);
 
-    // Keep theme button icon in sync when sheet changes theme
     document.addEventListener("lyz-theme-refresh", function () {});
     var themeBtnPoll = setInterval(function () {
       var themeBtn = document.getElementById("btn-theme");

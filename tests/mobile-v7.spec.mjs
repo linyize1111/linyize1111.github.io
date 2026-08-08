@@ -62,18 +62,21 @@ for (const eng of engines) {
   await test(`${eng.name} 390 home: no overflow + sticky mobile nav`, async () => {
     await withBrowser(eng.api, { width: 390, height: 844 }, async (page) => {
       await page.goto(`${BASE}/index.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-      await page.waitForSelector("#global-nav.global-nav--v7", { timeout: 20000 });
+      await page.waitForSelector("#mobile-global-nav", { timeout: 20000 });
       const nav = await page.evaluate(() => {
-        const n = document.getElementById("global-nav");
+        const n = document.getElementById("mobile-global-nav");
+        const d = document.getElementById("desktop-global-nav");
         const cs = getComputedStyle(n);
         return {
           sticky: cs.position === "sticky" || cs.position === "fixed",
           toggle: !!document.getElementById("mobile-nav-toggle"),
-          desktopHidden: getComputedStyle(n.querySelector(".global-nav__desktop")).display === "none",
+          mobileVisible: cs.display !== "none",
+          desktopHidden: !d || getComputedStyle(d).display === "none",
         };
       });
       assert.ok(nav.toggle, "hamburger");
-      assert.ok(nav.desktopHidden, "desktop links hidden");
+      assert.ok(nav.mobileVisible, "mobile nav visible");
+      assert.ok(nav.desktopHidden, "desktop nav hidden");
       const o = await noHOverflow(page);
       assert.ok(o.ok, `overflow ${o.sw}/${o.cw}`);
       await page.screenshot({ path: path.join(artifacts, `mobile-home-390-${eng.name}.png`) });

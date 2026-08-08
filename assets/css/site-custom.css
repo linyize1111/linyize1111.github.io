@@ -761,18 +761,47 @@ body {
     margin-bottom: 3rem;
 }
 
-/* Primary nav = floating glass pill. Hide duplicate HTML5 UP #nav links. */
+/* Primary floating nav = desktop pill. Legacy #nav is secondary page nav. */
+#nav {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    height: 3.25rem;
+    line-height: 3.25rem;
+    margin-top: -3.25rem;
+    padding: 0 1.25rem 0 0.35rem;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
 #nav ul.links {
-    display: none;
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
 }
 #nav ul.icons {
-    justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+    margin-left: auto;
+    margin-bottom: 0;
 }
-@media screen and (min-width: 981px) {
+@media screen and (max-width: 900px) {
+    #nav,
+    #navPanelToggle {
+        display: none !important;
+    }
+}
+@media screen and (min-width: 901px) and (max-width: 980px) {
+    /* main.css hides #nav below 980; keep floating desktop pill as primary */
     #nav {
-        /* Keep social strip compact; primary IA is #global-nav */
-        padding-top: 0.75rem;
-        padding-bottom: 0.75rem;
+        display: none !important;
     }
 }
 
@@ -1062,40 +1091,66 @@ body:not(:has(#intro)) #header {
 }
 
 /* ============================================================
-   I. GLOBAL NAV + FLOATING CONTROLS (design polish)
+   I. DESKTOP GLOBAL NAV + FLOATING CONTROLS (design polish)
    ============================================================ */
-#global-nav {
-    position: fixed !important;
-    top: 18px !important;
-    right: 18px !important;
-    z-index: 10002 !important;
-    display: flex !important;
-    gap: 6px !important;
-    padding: 6px 8px !important;
-    border-radius: 999px !important;
-    background: rgba(8, 12, 22, 0.42) !important;
-    border: 1px solid rgba(255, 255, 255, 0.16) !important;
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28) !important;
+#desktop-global-nav,
+.desktop-global-nav {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 10002;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    max-width: calc(100vw - 36px);
+    height: auto;
+    margin: 0;
+    padding: 6px 8px;
+    border-radius: 999px;
+    background: rgba(8, 12, 22, 0.42);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+    box-sizing: border-box;
 }
 
-#global-nav a {
-    color: rgba(255, 255, 255, 0.92) !important;
-    text-decoration: none !important;
-    border: none !important;
-    font-size: 0.82rem !important;
-    font-weight: 600 !important;
+#desktop-global-nav a,
+.desktop-global-nav a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    color: rgba(255, 255, 255, 0.94);
+    text-decoration: none;
+    border: none;
+    font-size: 0.82rem;
+    font-weight: 600;
     letter-spacing: 0.02em;
-    padding: 0.35rem 0.7rem !important;
-    border-radius: 999px !important;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    white-space: nowrap;
     transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
 }
 
-#global-nav a:hover {
-    background: rgba(125, 232, 255, 0.16) !important;
-    color: #b8f4ff !important;
+#desktop-global-nav a:hover,
+.desktop-global-nav a:hover {
+    background: rgba(125, 232, 255, 0.16);
+    color: #b8f4ff;
     transform: translateY(-1px);
+}
+
+#desktop-global-nav a[aria-current="page"],
+.desktop-global-nav a[aria-current="page"] {
+    background: rgba(125, 232, 255, 0.16);
+    color: #c9f7ff;
+}
+
+/* Mobile nav shell is owned by the V7 mobile block; hide on desktop base */
+#mobile-global-nav,
+.mobile-global-nav {
+    display: none;
 }
 
 #video-controls {
@@ -1203,7 +1258,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6,
-#nav, .button, #global-nav, #video-controls button {
+#nav, .button, #desktop-global-nav, #video-controls button {
     font-family: var(--font-ui);
     letter-spacing: 0.01em;
 }
@@ -1428,7 +1483,7 @@ article.note-item:hover .image.fit img {
 .button,
 #pagination-controls button,
 #video-controls button,
-#global-nav a {
+#desktop-global-nav a {
     font-family: var(--font-ui);
     font-weight: 600;
 }
@@ -1436,7 +1491,7 @@ article.note-item:hover .image.fit img {
 .button:focus-visible,
 #pagination-controls button:focus-visible,
 #video-controls button:focus-visible,
-#global-nav a:focus-visible,
+#desktop-global-nav a:focus-visible,
 #btn-paw:focus-visible,
 #btn-theme:focus-visible {
     outline: none;
@@ -1576,18 +1631,6 @@ html.paw-cursor-active * {
 }
 
 @media screen and (max-width: 736px) {
-    #global-nav {
-        top: 10px !important;
-        right: 10px !important;
-        gap: 2px !important;
-        padding: 4px 6px !important;
-    }
-
-    #global-nav a {
-        font-size: 0.72rem !important;
-        padding: 0.28rem 0.5rem !important;
-    }
-
     #site-stats,
     .site-stats-wrap {
         gap: 0.5rem;
@@ -2513,36 +2556,42 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 
 @media screen and (max-width: 900px) {
-  #global-nav.global-nav--v7 {
-    position: sticky !important;
-    top: env(safe-area-inset-top, 0px) !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    max-width: none !important;
-    height: var(--mobile-nav-h) !important;
-    min-height: var(--mobile-nav-h) !important;
-    margin: 0 !important;
+  /* Desktop floating pill never shows on mobile */
+  #desktop-global-nav,
+  .desktop-global-nav {
+    display: none !important;
+  }
+
+  #mobile-global-nav,
+  .mobile-global-nav {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: none;
+    height: var(--mobile-nav-h);
+    min-height: var(--mobile-nav-h);
+    margin: 0;
     padding:
       0
       max(var(--mobile-edge), env(safe-area-inset-right, 0px))
       0
-      max(var(--mobile-edge), env(safe-area-inset-left, 0px)) !important;
-    border-radius: 0 !important;
-    border: none !important;
-    border-bottom: 1px solid rgba(255,255,255,.12) !important;
-    background: rgba(7, 12, 20, .42) !important;
-    backdrop-filter: blur(16px) saturate(125%) !important;
-    -webkit-backdrop-filter: blur(16px) saturate(125%) !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,.18) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 0.75rem !important;
-    z-index: 10020 !important;
+      max(var(--mobile-edge), env(safe-area-inset-left, 0px));
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+    background: rgba(7, 12, 20, .42);
+    backdrop-filter: blur(16px) saturate(125%);
+    -webkit-backdrop-filter: blur(16px) saturate(125%);
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    z-index: 10020;
+    box-sizing: border-box;
   }
-
-  #global-nav .global-nav__desktop { display: none !important; }
 
   .mobile-nav-brand {
     display: inline-flex !important;
@@ -2589,9 +2638,9 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   }
   .mobile-nav-toggle__bars::before { top: -6px; }
   .mobile-nav-toggle__bars::after { top: 6px; }
-  #global-nav.is-open .mobile-nav-toggle__bars { background: transparent; }
-  #global-nav.is-open .mobile-nav-toggle__bars::before { top: 0; transform: rotate(45deg); }
-  #global-nav.is-open .mobile-nav-toggle__bars::after { top: 0; transform: rotate(-45deg); }
+  #mobile-global-nav.is-open .mobile-nav-toggle__bars { background: transparent; }
+  #mobile-global-nav.is-open .mobile-nav-toggle__bars::before { top: 0; transform: rotate(45deg); }
+  #mobile-global-nav.is-open .mobile-nav-toggle__bars::after { top: 0; transform: rotate(-45deg); }
 
   .mobile-nav-backdrop {
     display: block;
@@ -3119,6 +3168,8 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 
 @media screen and (min-width: 901px) {
+  #mobile-global-nav,
+  .mobile-global-nav,
   .mobile-nav-brand,
   .mobile-nav-toggle,
   .mobile-nav-sheet,
@@ -3129,10 +3180,9 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   .pagination-compact,
   .mobile-filter-sheet { display: none !important; }
   .pagination-desktop { display: flex !important; flex-wrap: wrap; gap: 6px; justify-content: center; }
-  #global-nav.global-nav--v7 .global-nav__desktop {
+  #desktop-global-nav,
+  .desktop-global-nav {
     display: flex !important;
-    gap: 6px;
-    align-items: center;
   }
 }
 
