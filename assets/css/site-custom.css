@@ -78,8 +78,8 @@ html[data-theme] table {
 
     /* V7.1 mobile controls contrast (theme-independent) */
     --mobile-control-panel: rgba(7,12,20,.96);
-    --mobile-control-item: rgba(255,255,255,.09);
-    --mobile-control-item-hover: rgba(255,255,255,.16);
+    --mobile-control-item: rgba(32,42,58,.98);
+    --mobile-control-item-hover: rgba(48,62,82,.98);
     --mobile-control-text: #f7fbff;
     --mobile-control-muted: #c2cedd;
     --mobile-control-border: rgba(255,255,255,.16);
@@ -2837,8 +2837,8 @@ body.admin-gated-page.admin-gate-ok #wrapper {
     background: rgba(125,232,255,.20) !important;
   }
   .mobile-controls-popover button[data-active="true"] {
-    background: rgba(125,232,255,.18) !important;
-    border-color: rgba(125,232,255,.45) !important;
+    background: rgba(18, 56, 68, .98) !important;
+    border-color: rgba(125,232,255,.55) !important;
     color: #d8faff !important;
     -webkit-text-fill-color: #d8faff;
   }

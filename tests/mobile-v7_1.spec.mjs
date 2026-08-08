@@ -119,12 +119,14 @@ await test("390 glass: controls contrast + active state", async () => {
         fabColor: getComputedStyle(document.getElementById("mobile-controls-fab")).color,
       };
     });
-    const pop = parseRgb(info.popBg);
     const btnBg = parseRgb(info.btnBg);
     const btnColor = parseRgb(info.btnColor);
-    assert.ok(contrastish(btnBg, btnColor) > 180, `btn contrast too low ${info.btnBg} / ${info.btnColor}`);
-    assert.ok(contrastish(pop, btnColor) > 120, "popover text readable");
-    assert.ok(contrastish(parseRgb(info.fabBg), parseRgb(info.fabColor)) > 180, "fab contrast");
+    const pop = parseRgb(info.popBg);
+    // Prefer opaque button surfaces so computed RGB contrast is meaningful.
+    assert.ok(btnBg && btnColor && contrastish(btnBg, btnColor) > 280, `btn contrast too low ${info.btnBg} / ${info.btnColor}`);
+    assert.ok(pop && btnColor && contrastish(pop, btnColor) > 280, "popover text readable");
+    assert.ok(contrastish(parseRgb(info.fabBg), parseRgb(info.fabColor)) > 280, "fab contrast");
+    assert.notEqual(info.btnBg, info.btnColor);
     await page.screenshot({ path: path.join(artifacts, "mobile-controls-glass-390.png") });
   });
 });
@@ -146,7 +148,7 @@ await test("390 light: controls stay dark overlay", async () => {
     });
     const pop = parseRgb(info.popBg);
     assert.ok(pop && pop.r + pop.g + pop.b < 120, `popover should stay dark, got ${info.popBg}`);
-    assert.ok(contrastish(parseRgb(info.btnBg), parseRgb(info.btnColor)) > 180);
+    assert.ok(contrastish(parseRgb(info.btnBg), parseRgb(info.btnColor)) > 280);
     await page.screenshot({ path: path.join(artifacts, "mobile-controls-light-390.png") });
   });
 });
