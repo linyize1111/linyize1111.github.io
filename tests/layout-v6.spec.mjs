@@ -53,7 +53,7 @@ await test("1440 directory: 2-col grid, equal cards, balanced gutters", async ()
       c2: c2 ? { top: c2.top, left: c2.left, width: c2.width, right: c2.right } : null,
       cr: { left: cr.left, right: cr.right, width: cr.width },
       html: document.documentElement.outerHTML.slice(0, 5000),
-      academicInNav: !!document.querySelector('#global-nav a[href="academic.html"]'),
+      academicInNav: !!document.querySelector('#desktop-global-nav a[href="academic.html"], #mobile-global-nav a[href="academic.html"]'),
       academicInSource: /academic\.html/.test(document.documentElement.outerHTML) &&
         /學科筆記/.test(document.documentElement.outerHTML),
       genericLabel: Array.from(document.querySelectorAll(".note-card__label, .note-card__content")).some(
