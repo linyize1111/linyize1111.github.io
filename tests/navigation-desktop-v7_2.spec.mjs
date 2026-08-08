@@ -189,7 +189,8 @@ await test("intermediate widths neither both-on nor both-off", async () => {
   const widths = [960, 1100, 1280, 1600];
   await withPage({ width: 960, height: 800 }, async (page) => {
     await page.goto(`${BASE}/index.html?${bust}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.waitForSelector("#desktop-global-nav, #mobile-global-nav", { timeout: 20000 });
+    await page.waitForSelector("#desktop-global-nav", { state: "attached", timeout: 20000 });
+    await page.waitForSelector("#mobile-global-nav", { state: "attached", timeout: 20000 });
     for (const w of widths) {
       await page.setViewportSize({ width: w, height: 800 });
       await page.waitForTimeout(120);
