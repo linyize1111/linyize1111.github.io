@@ -489,6 +489,13 @@ body.presentation-quote #markdown-container .markdown-body {
   -webkit-backdrop-filter: blur(8px);
 }
 
+@media screen and (max-width: 900px) {
+  /* Mobile: swipe + dots; hide side arrows (presentation-v3 loads after site-custom). */
+  .article-gallery__nav {
+    display: none !important;
+  }
+}
+
 /* ---------- Article page ---------- */
 .article-hero {
   width: min(100%, 60rem) !important;
