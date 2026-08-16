@@ -51,6 +51,9 @@
   var formSnapshot = "";
   var originalArticleSnapshot = null;
   var previewIframeReady = false;
+  var draftPreviewVersion = 0;
+  var lastPreviewRenderedVersion = null;
+  var lastPreviewDiagnostics = null;
   var frontendPreviewView = "article";
   var frontendPreviewTheme = "glass";
   var frontendPreviewDevice = "mobile";
@@ -482,24 +485,89 @@
   // ---------- images editor ----------
   function renderImagesEditor() {
     var box = $("images-editor");
+    if (!box) return;
     box.innerHTML = "";
+    box.classList.add("images-editor--v8");
     currentImages.forEach(function (im, idx) {
       var row = document.createElement("div");
       row.className = "img-row";
+      row.draggable = true;
+      row.dataset.index = String(idx);
+
+      var handle = document.createElement("span");
+      handle.className = "img-row__handle";
+      handle.title = "拖曳排序";
+      handle.textContent = "⋮⋮";
+
+      var order = document.createElement("span");
+      order.className = "img-row__order muted";
+      order.textContent = String(idx + 1);
+
       var thumb = document.createElement("img");
-      thumb.className = "thumb"; thumb.src = im.src;
+      thumb.className = "thumb";
+      thumb.src = im.src;
+      thumb.alt = "";
+      thumb.loading = "lazy";
+
+      var meta = document.createElement("div");
+      meta.className = "img-row__meta";
+      var url = document.createElement("div");
+      url.className = "img-row__url muted";
+      url.textContent = im.src;
+      url.title = im.src;
       var cap = document.createElement("input");
-      cap.placeholder = "圖說（選填）"; cap.value = im.caption || "";
+      cap.placeholder = "圖說（選填）";
+      cap.value = im.caption || "";
       cap.addEventListener("input", function () {
         currentImages[idx].caption = cap.value;
         markFormDirty();
       });
+      meta.appendChild(url);
+      meta.appendChild(cap);
+
       var del = document.createElement("button");
-      del.className = "btn danger"; del.textContent = "移除";
+      del.type = "button";
+      del.className = "btn danger";
+      del.textContent = "移除";
       del.addEventListener("click", function () {
-        currentImages.splice(idx, 1); renderImagesEditor(); markFormDirty();
+        currentImages.splice(idx, 1);
+        renderImagesEditor();
+        markFormDirty();
       });
-      row.appendChild(thumb); row.appendChild(cap); row.appendChild(del);
+
+      row.addEventListener("dragstart", function (e) {
+        row.classList.add("is-dragging");
+        e.dataTransfer.setData("text/plain", String(idx));
+        e.dataTransfer.effectAllowed = "move";
+      });
+      row.addEventListener("dragend", function () {
+        row.classList.remove("is-dragging");
+      });
+      row.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        row.classList.add("is-drop-target");
+      });
+      row.addEventListener("dragleave", function () {
+        row.classList.remove("is-drop-target");
+      });
+      row.addEventListener("drop", function (e) {
+        e.preventDefault();
+        row.classList.remove("is-drop-target");
+        var from = parseInt(e.dataTransfer.getData("text/plain"), 10);
+        var to = idx;
+        if (!isFinite(from) || from === to) return;
+        var moved = currentImages.splice(from, 1)[0];
+        currentImages.splice(to, 0, moved);
+        renderImagesEditor();
+        markFormDirty();
+      });
+
+      row.appendChild(handle);
+      row.appendChild(order);
+      row.appendChild(thumb);
+      row.appendChild(meta);
+      row.appendChild(del);
       box.appendChild(row);
     });
   }
@@ -585,24 +653,94 @@
     }
   }
 
-  function sendFrontendPreview() {
-    var frame = $("frontend-preview-frame");
-    if (!frame || !frame.contentWindow) return;
-    if (!previewIframeReady) return;
+  function setPreviewSyncStatus(state, detail) {
+    var el = $("fp-sync-status");
+    if (!el) return;
+    el.setAttribute("data-state", state || "wait");
+    var label =
+      state === "ok"
+        ? "● 預覽已同步"
+        : state === "err"
+          ? "⚠ 預覽失敗"
+          : "● 等待預覽";
+    el.textContent = detail ? label + " · " + detail : label;
+  }
+
+  function buildPreviewPayload() {
+    draftPreviewVersion += 1;
     var article = collectDraftArticle();
-    var payload = {
+    return {
       type: "LYZ_ARTICLE_PREVIEW",
       mode: frontendPreviewView === "card" ? "card" : "article",
       theme: frontendPreviewTheme || "light",
       readingFocus: !!frontendPreviewFocus && frontendPreviewView !== "card",
+      draftVersion: draftPreviewVersion,
       article: article,
     };
+  }
+
+  function applyPreviewResult(result, payload) {
+    if (!result) {
+      setPreviewSyncStatus("err", "無回應");
+      return;
+    }
+    if (result.ok) {
+      lastPreviewRenderedVersion = result.renderedVersion;
+      lastPreviewDiagnostics = result.diagnostics || null;
+      var synced =
+        result.renderedVersion == null ||
+        result.renderedVersion === draftPreviewVersion;
+      setPreviewSyncStatus(
+        synced ? "ok" : "wait",
+        synced ? "v" + draftPreviewVersion : "渲染中…"
+      );
+    } else {
+      setPreviewSyncStatus("err", result.error || result.reason || "失敗");
+    }
+    updateLiveCompareLink(payload && payload.article);
+  }
+
+  function sendFrontendPreview() {
+    var frame = $("frontend-preview-frame");
+    if (!frame) return;
+    var payload = buildPreviewPayload();
+    setPreviewSyncStatus("wait", "傳送草稿…");
+
+    // Preferred: same-origin direct API (deterministic)
+    try {
+      var win = frame.contentWindow;
+      var api = win && win.LYZAdminPreview;
+      if (api && typeof api.render === "function") {
+        previewIframeReady = true;
+        var result = api.render(payload);
+        applyPreviewResult(result, payload);
+        return;
+      }
+    } catch (e) {
+      console.warn("[admin preview api]", e);
+    }
+
+    // Fallback: postMessage
+    if (!previewIframeReady || !frame.contentWindow) {
+      setPreviewSyncStatus("wait", "iframe 尚未就緒");
+      return;
+    }
     try {
       frame.contentWindow.postMessage(payload, location.origin);
     } catch (e) {
       console.warn("[admin preview]", e);
+      setPreviewSyncStatus("err", String(e && e.message || e));
     }
-    updateLiveCompareLink(article);
+    updateLiveCompareLink(payload.article);
+  }
+
+  function reloadFrontendPreviewFrame() {
+    var frame = $("frontend-preview-frame");
+    if (!frame) return;
+    previewIframeReady = false;
+    lastPreviewRenderedVersion = null;
+    setPreviewSyncStatus("wait", "重新載入預覽…");
+    frame.src = "admin-preview.html?v=" + Date.now();
   }
 
   function scheduleFrontendPreview() {
@@ -622,24 +760,49 @@
         previewIframeReady = true;
         sendFrontendPreview();
       }
+      if (data.type === "LYZ_ARTICLE_PREVIEW_ACK") {
+        applyPreviewResult(
+          {
+            ok: !!data.ok,
+            renderedVersion: data.renderedVersion,
+            diagnostics: data.diagnostics,
+            error: data.error,
+          },
+          null
+        );
+      }
     });
 
     var frame = $("frontend-preview-frame");
     if (frame) {
       frame.addEventListener("load", function () {
-        // Fallback if READY was missed (cache / race)
+        previewIframeReady = false;
         setTimeout(function () {
+          try {
+            var api = frame.contentWindow && frame.contentWindow.LYZAdminPreview;
+            if (api && typeof api.render === "function") {
+              previewIframeReady = true;
+              sendFrontendPreview();
+              return;
+            }
+          } catch (e) {}
+          // Soft fallback if READY / API missed
           if (!previewIframeReady) {
             previewIframeReady = true;
             sendFrontendPreview();
           }
-        }, 400);
+        }, 50);
       });
     }
 
     var chrome = $("frontend-preview-chrome");
     if (chrome) {
       chrome.addEventListener("click", function (e) {
+        var reloadBtn = e.target.closest("[data-fp-reload]");
+        if (reloadBtn) {
+          reloadFrontendPreviewFrame();
+          return;
+        }
         var btn = e.target.closest("[data-fp-view], [data-fp-theme], [data-fp-device], [data-fp-focus]");
         if (!btn) return;
         if (btn.hasAttribute("data-fp-view")) {
@@ -659,6 +822,7 @@
       });
     }
     setFrontendChromeUi();
+    setPreviewSyncStatus("wait", "初始化");
   }
 
   function scheduleMdPreview() {

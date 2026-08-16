@@ -66,20 +66,18 @@ await page.waitForFunction(() => window.SBArticleRenderer && window.SBArticleRen
 const result = await page.evaluate(async (article) => {
   const R = window.SBArticleRenderer;
   const direct = R.buildCard(article, 0);
-  // Simulate postMessage path
-  const stage = document.getElementById("preview-stage");
-  const empty = document.getElementById("preview-empty");
-  empty.hidden = true;
-  stage.hidden = false;
-  R.renderCardInto(stage, article, 0);
-  const viaHost = stage.querySelector("article.note-item");
+  const api = window.LYZAdminPreview;
+  if (!api) throw new Error("LYZAdminPreview missing");
+  api.render({ mode: "card", theme: "light", draftVersion: 1, article });
+  const viaHost = document.querySelector("#main #posts-container article.note-item");
   return {
-    sameClass: direct.className === viaHost.className,
-    samePresentation: viaHost.getAttribute("data-presentation") === "fragment",
-    hasSemantic: viaHost.classList.contains("note-item--semantic"),
-    label: (viaHost.querySelector(".note-card__label") || {}).textContent || "",
-    topic: viaHost.getAttribute("data-card-topic") || "",
+    sameClass: !!(viaHost && direct.className === viaHost.className),
+    samePresentation: viaHost && viaHost.getAttribute("data-presentation") === "fragment",
+    hasSemantic: viaHost && viaHost.classList.contains("note-item--semantic"),
+    label: (viaHost && viaHost.querySelector(".note-card__label") || {}).textContent || "",
+    topic: (viaHost && viaHost.getAttribute("data-card-topic")) || "",
     rendererName: typeof R.buildCard,
+    underMain: !!(viaHost && viaHost.closest("#main")),
   };
 }, fixture);
 
@@ -87,6 +85,7 @@ assert.equal(result.rendererName, "function");
 assert.equal(result.sameClass, true);
 assert.equal(result.samePresentation, true);
 assert.equal(result.hasSemantic, true);
+assert.equal(result.underMain, true);
 assert.ok(result.label.includes("長大後") || result.topic === "夢");
 
 await page.screenshot({ path: path.join(artifacts, "admin-preview-card-desktop.png") });
@@ -94,31 +93,26 @@ await page.screenshot({ path: path.join(artifacts, "admin-preview-card-desktop.p
 // Theme glass + mobile-ish article
 await page.setViewportSize({ width: 390, height: 844 });
 await page.evaluate((article) => {
-  window.postMessage(
-    {
-      type: "LYZ_ARTICLE_PREVIEW",
-      mode: "article",
-      theme: "glass",
-      readingFocus: false,
-      article,
-    },
-    location.origin
-  );
+  window.LYZAdminPreview.render({
+    type: "LYZ_ARTICLE_PREVIEW",
+    mode: "article",
+    theme: "glass",
+    readingFocus: false,
+    draftVersion: 2,
+    article,
+  });
 }, { ...fixture, presentation: "article-lite", show_title: true, title: "Glass Mobile Preview" });
 await page.waitForTimeout(400);
 await page.screenshot({ path: path.join(artifacts, "admin-preview-glass-mobile.png") });
 
 await page.setViewportSize({ width: 1280, height: 900 });
 await page.evaluate((article) => {
-  window.postMessage(
-    {
-      type: "LYZ_ARTICLE_PREVIEW",
-      mode: "article",
-      theme: "glass",
-      article,
-    },
-    location.origin
-  );
+  window.LYZAdminPreview.render({
+    mode: "article",
+    theme: "glass",
+    draftVersion: 3,
+    article,
+  });
 }, { ...fixture, presentation: "longform", show_title: true, title: "Glass Desktop Preview", body: "# Hello\n\nLongform body.\n\n## Section\n\nMore." });
 await page.waitForTimeout(400);
 await page.screenshot({ path: path.join(artifacts, "admin-preview-glass-desktop.png") });

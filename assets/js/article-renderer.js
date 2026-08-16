@@ -219,6 +219,56 @@
     }
   }
 
+  /** Card multi-image preview collage (no carousel). */
+  function buildCardCollageHtml(slides, url, mediaStrategy, ratioStyle, coverStyle) {
+    if (!slides || !slides.length) return "";
+    if (slides.length === 1) {
+      return (
+        '<div class="card-media-zone card-media-zone--' +
+        esc(mediaStrategy) +
+        '" style="' +
+        ratioStyle +
+        '"><a href="' +
+        url +
+        '" class="image fit"><img loading="lazy" src="' +
+        esc(slides[0].src) +
+        '" alt="" style="' +
+        coverStyle +
+        '" /></a></div>'
+      );
+    }
+    var shown = slides.slice(0, 3);
+    var extra = slides.length - shown.length;
+    var layout = slides.length === 2 ? "pair" : "stack";
+    var html =
+      '<div class="card-media-zone card-media-zone--' +
+      esc(mediaStrategy) +
+      ' card-media-zone--collage"><div class="card-collage card-collage--' +
+      layout +
+      '" style="' +
+      ratioStyle +
+      '">';
+    shown.forEach(function (s, si) {
+      var cellClass = "card-collage__cell" + (si === 0 ? " card-collage__cell--primary" : "");
+      html +=
+        '<a href="' +
+        url +
+        '" class="' +
+        cellClass +
+        '"><img loading="lazy" src="' +
+        esc(s.src) +
+        '" alt="" style="' +
+        coverStyle +
+        '" />';
+      if (si === shown.length - 1 && extra > 0) {
+        html += '<span class="card-collage__more" aria-label="還有 ' + extra + ' 張">+' + extra + "</span>";
+      }
+      html += "</a>";
+    });
+    html += "</div></div>";
+    return html;
+  }
+
   /** List/card renderer driven by stored presentation only. */
   function buildCard(a, listIndex) {
     var meta = presentationMeta(a);
@@ -316,50 +366,9 @@
         else labelHtml = "";
       }
 
-      var mediaHtml = "";
-      if (hasCover) {
-        if (slides.length === 1) {
-          mediaHtml =
-            '<div class="card-media-zone card-media-zone--' +
-            esc(mediaStrategy) +
-            '" style="' +
-            ratioStyle +
-            '"><a href="' +
-            url +
-            '" class="image fit"><img loading="lazy" src="' +
-            esc(slides[0].src) +
-            '" alt="" style="' +
-            coverDisplayStyle(a) +
-            '" /></a></div>';
-        } else {
-          mediaHtml =
-            '<div class="card-media-zone card-media-zone--' +
-            esc(mediaStrategy) +
-            '"><div class="card-carousel" style="' +
-            ratioStyle +
-            '">';
-          slides.forEach(function (s, si) {
-            mediaHtml +=
-              '<div class="carousel-slide' +
-              (si === 0 ? " active" : "") +
-              '"><a href="' +
-              url +
-              '" class="image fit"><img loading="lazy" src="' +
-              esc(s.src) +
-              '" alt="" style="' +
-              coverDisplayStyle(a) +
-              '" />' +
-              (s.caption ? '<span class="carousel-caption">' + esc(s.caption) + "</span>" : "") +
-              "</a></div>";
-          });
-          mediaHtml += '<div class="carousel-dots" aria-hidden="true">';
-          slides.forEach(function (_, si) {
-            mediaHtml +=
-              '<span class="carousel-dot' + (si === 0 ? " is-active" : "") + '"></span>';
-          });
-          mediaHtml += "</div></div></div>";
-        }
-      }
+      var mediaHtml = hasCover
+        ? buildCardCollageHtml(slides, url, mediaStrategy, ratioStyle, coverDisplayStyle(a))
+        : "";
 
       art.innerHTML =
         metaHtml +
@@ -424,48 +433,7 @@
       return art;
     }
 
-    var mediaHtml = "";
-    if (slides.length === 1) {
-      mediaHtml =
-        '<div class="card-media-zone card-media-zone--' +
-        esc(mediaStrategy) +
-        '" style="' +
-        ratioStyle +
-        '"><a href="' +
-        url +
-        '" class="image fit"><img loading="lazy" src="' +
-        esc(slides[0].src) +
-        '" alt="" style="' +
-        coverDisplayStyle(a) +
-        '" /></a></div>';
-    } else {
-      mediaHtml =
-        '<div class="card-media-zone card-media-zone--' +
-        esc(mediaStrategy) +
-        '"><div class="card-carousel" style="' +
-        ratioStyle +
-        '">';
-      slides.forEach(function (s, si) {
-        mediaHtml +=
-          '<div class="carousel-slide' +
-          (si === 0 ? " active" : "") +
-          '"><a href="' +
-          url +
-          '" class="image fit"><img loading="lazy" src="' +
-          esc(s.src) +
-          '" alt="" style="' +
-          coverDisplayStyle(a) +
-          '" />' +
-          (s.caption ? '<span class="carousel-caption">' + esc(s.caption) + "</span>" : "") +
-          "</a></div>";
-      });
-      mediaHtml += '<div class="carousel-dots" aria-hidden="true">';
-      slides.forEach(function (_, si) {
-        mediaHtml +=
-          '<span class="carousel-dot' + (si === 0 ? " is-active" : "") + '"></span>';
-      });
-      mediaHtml += "</div></div></div>";
-    }
+    var mediaHtml = buildCardCollageHtml(slides, url, mediaStrategy, ratioStyle, coverDisplayStyle(a));
 
     art.innerHTML =
       metaHtml +
@@ -646,13 +614,13 @@
     options = options || {};
     if (!target) return null;
     target.innerHTML = "";
-    target.classList.add("admin-preview-article-host");
+    // Match public note.html shell so CSS selectors (#main > section.post …) apply.
     var section = document.createElement("section");
     section.className = "post is-article-reading";
     section.innerHTML =
       '<header class="major">' +
-      '<span class="date" id="note-status"></span>' +
       '<h1 id="note-title"></h1>' +
+      '<p id="note-status"></p>' +
       "</header>" +
       '<div id="markdown-container"></div>';
     target.appendChild(section);
@@ -669,7 +637,17 @@
   function renderCardInto(target, article, listIndex) {
     if (!target) return null;
     target.innerHTML = "";
-    target.classList.add("admin-preview-card-host", "posts");
+    var host = target;
+    if (target.id === "main" || target.tagName === "MAIN") {
+      var posts = document.createElement("div");
+      posts.id = "posts-container";
+      posts.className = "posts";
+      target.appendChild(posts);
+      host = posts;
+    } else {
+      host.id = host.id || "posts-container";
+      host.classList.add("posts");
+    }
     var card = buildCard(article, listIndex || 0);
     card.querySelectorAll("a[href]").forEach(function (anchor) {
       anchor.addEventListener("click", function (e) {
@@ -677,7 +655,10 @@
       });
       anchor.setAttribute("href", "#");
     });
-    target.appendChild(card);
+    host.appendChild(card);
+    if (window.SBArticleMedia && typeof window.SBArticleMedia.enhancePageMedia === "function") {
+      window.SBArticleMedia.enhancePageMedia(host);
+    }
     return card;
   }
 
