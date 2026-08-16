@@ -203,19 +203,42 @@
   async function applySections() {
     var nodes = document.querySelectorAll("[data-section-key]");
     if (!nodes.length) return;
-    var client = window.SB.client();
-    var res = await client.from("site_sections").select("key,value");
-    if (res.error || !res.data) return;
+    var schema = window.LYZSiteCopySchema;
     var map = {};
-    res.data.forEach(function (row) {
-      map[row.key] = row.value;
-    });
+    if (schema && Array.isArray(schema.ENTRIES)) {
+      schema.ENTRIES.forEach(function (e) {
+        if (e && e.key != null) map[e.key] = e.fallback;
+      });
+    }
+    try {
+      var client = window.SB.client();
+      if (client) {
+        var res = await client.from("site_sections").select("key,value");
+        if (!res.error && res.data) {
+          res.data.forEach(function (row) {
+            if (row && row.key != null && row.value != null) map[row.key] = row.value;
+          });
+        }
+      }
+    } catch (e) {}
     nodes.forEach(function (el) {
       var key = el.getAttribute("data-section-key");
-      if (map[key] == null) return;
+      if (map[key] == null || map[key] === "") return;
       var mode = el.getAttribute("data-section-mode") || "text";
-      if (mode === "markdown") el.innerHTML = window.SB.renderMarkdown(map[key]);
-      else el.innerHTML = esc(map[key]).replace(/\n/g, "<br />");
+      var entry = schema && schema.byKey ? schema.byKey(key) : null;
+      if (entry && entry.mode) mode = el.getAttribute("data-section-mode") || entry.mode;
+      if (mode === "markdown" && window.SB && typeof window.SB.renderMarkdown === "function") {
+        el.innerHTML = window.SB.renderMarkdown(map[key]);
+      } else if (mode === "multiline") {
+        el.innerHTML = esc(map[key]).replace(/\n/g, "<br />");
+      } else {
+        // Preserve link labels / simple text nodes
+        if (el.tagName === "A" || el.children.length === 0) {
+          el.textContent = map[key];
+        } else {
+          el.innerHTML = esc(map[key]).replace(/\n/g, "<br />");
+        }
+      }
     });
   }
 

@@ -3083,3 +3083,273 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   border-top-color: transparent;
   border-bottom-color: rgba(255, 255, 255, 0.96);
 }
+
+/* ========== V9: static media + About ========== */
+.static-media {
+  position: relative;
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18);
+  background: rgba(8, 10, 14, 0.2);
+}
+.static-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: center;
+  position: relative;
+  z-index: 1;
+}
+.static-media__ambient,
+.about-profile__ambient {
+  position: absolute;
+  inset: -10%;
+  z-index: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  filter: blur(24px) brightness(0.55);
+  transform: scale(1.08);
+  opacity: 0.28;
+  pointer-events: none;
+}
+.static-media--feature {
+  width: min(100%, 58rem);
+  margin-inline: auto;
+}
+#main .post.featured .static-media--feature,
+#main .post.featured a.image.main {
+  height: auto !important;
+  max-height: none !important;
+  background: transparent !important;
+}
+#main .post.featured a.image.main img,
+#main .posts article a.image.fit img {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+  object-position: center;
+}
+#main .posts article a.image.fit {
+  height: auto !important;
+  display: block !important;
+  background: transparent !important;
+}
+
+.about-page {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 3vw, 1.5rem) 3rem;
+}
+.about-profile {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: clamp(2.5rem, 5vw, 5.5rem);
+  align-items: center;
+  margin: clamp(1.5rem, 4vw, 3rem) auto clamp(3rem, 6vw, 5rem);
+}
+.about-profile__copy {
+  max-width: 64ch;
+  text-align: left;
+  justify-self: start;
+  width: 100%;
+}
+.about-updated {
+  margin: 0 0 0.75rem;
+  opacity: 0.65;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+}
+.about-profile__copy > h1 {
+  margin: 0 0 1.1rem;
+  text-align: left;
+  color: #18bfef;
+  font-size: clamp(1.8rem, 3.2vw, 2.45rem);
+  line-height: 1.2;
+}
+.about-profile__quote {
+  margin: 0 0 1.5rem;
+  font-size: clamp(1.15rem, 2.2vw, 1.45rem);
+  line-height: 1.65;
+  font-weight: 600;
+  text-align: left;
+  opacity: 0.95;
+}
+.about-profile__body {
+  text-align: left;
+  font-size: 1.0625rem;
+  line-height: 1.85;
+}
+.about-profile__body p {
+  margin: 0 0 1.1em;
+  text-align: left;
+}
+.about-profile__media {
+  margin: 0;
+  width: 100%;
+}
+.about-trajectory {
+  margin: 0 auto 2rem;
+  max-width: 1180px;
+}
+.about-trajectory > h2 {
+  text-align: left;
+  margin: 0 0 1.35rem;
+  font-size: clamp(1.35rem, 2.4vw, 1.7rem);
+}
+.about-trajectory__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.15rem;
+}
+.about-trajectory__card {
+  margin: 0;
+  padding: 1.15rem 1.2rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
+}
+[data-theme="light"] .about-trajectory__card {
+  background: rgba(20, 24, 36, 0.03);
+  border-color: rgba(20, 24, 36, 0.08);
+}
+.about-trajectory__card h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1.05rem;
+}
+.about-trajectory__card p {
+  margin: 0;
+  line-height: 1.7;
+  opacity: 0.88;
+  font-size: 0.98rem;
+}
+
+@media (max-width: 900px) {
+  .about-profile {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+  .about-profile__media {
+    order: -1;
+    max-width: 28rem;
+    margin-inline: auto;
+  }
+  .about-trajectory__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Compact list heroes */
+#main > section > header.major,
+#main > article > header.major.list-hero {
+  padding-bottom: 0.5rem !important;
+  margin-bottom: 1rem !important;
+}
+.list-hero {
+  max-width: 48rem;
+  margin-inline: auto;
+  text-align: left;
+}
+.list-hero .date,
+.list-hero h2,
+.list-hero p {
+  text-align: left;
+}
+
+/* Site toast + music hint */
+#site-toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(1.25rem, env(safe-area-inset-bottom, 0px) + 16px);
+  transform: translateX(-50%) translateY(8px);
+  z-index: 12000;
+  min-width: min(92vw, 22rem);
+  max-width: min(92vw, 28rem);
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: rgba(12, 14, 20, 0.92);
+  color: #f3f6fb;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+#site-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+#site-toast strong {
+  display: block;
+  margin-bottom: 0.15rem;
+}
+#site-toast code {
+  font-size: 0.85rem;
+}
+@media (min-width: 901px) {
+  #site-toast {
+    left: auto;
+    right: max(1.25rem, env(safe-area-inset-right, 0px) + 18px);
+    transform: translateY(8px);
+  }
+  #site-toast.is-visible {
+    transform: translateY(0);
+  }
+}
+.music-resume-hint {
+  position: fixed;
+  left: 50%;
+  bottom: max(4.5rem, env(safe-area-inset-bottom, 0px) + 72px);
+  transform: translateX(-50%);
+  z-index: 11900;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(12, 14, 20, 0.78);
+  color: #fff;
+  font-size: 0.78rem;
+  pointer-events: none;
+}
+#video-controls {
+  right: max(18px, env(safe-area-inset-right, 0px) + 12px) !important;
+  bottom: max(18px, env(safe-area-inset-bottom, 0px) + 12px) !important;
+}
+
+/* V9: list pagination / list-view (moved from directory/literature inline) */
+#pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 2rem 0 1rem;
+  flex-wrap: wrap;
+}
+#pagination-controls button {
+  padding: 0.5em 1em;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-weight: bold;
+  min-width: 2.5em;
+}
+#pagination-controls button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+#pagination-controls button.active {
+  background: rgba(173, 216, 230, 0.25);
+  border-color: lightblue;
+  color: lightblue;
+}
+#pagination-controls button:disabled { opacity: 0.35; cursor: default; }
+#page-info { font-size: 0.85em; opacity: 0.7; text-align: center; margin-bottom: 0.5rem; }

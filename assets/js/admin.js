@@ -662,14 +662,24 @@
         ? "● 預覽已同步"
         : state === "err"
           ? "⚠ 預覽失敗"
-          : "● 等待預覽";
+          : state === "load"
+            ? "● 正在載入 iframe"
+            : state === "ready"
+              ? "● Renderer ready"
+              : state === "sent"
+                ? "● Draft sent"
+                : "● 等待預覽";
     el.textContent = detail ? label + " · " + detail : label;
   }
+
+  var forcePreviewTimer = null;
+  var forcePreviewAttempts = null;
+  var lastBuiltPreviewPayload = null;
 
   function buildPreviewPayload() {
     draftPreviewVersion += 1;
     var article = collectDraftArticle();
-    return {
+    lastBuiltPreviewPayload = {
       type: "LYZ_ARTICLE_PREVIEW",
       mode: frontendPreviewView === "card" ? "card" : "article",
       theme: frontendPreviewTheme || "light",
@@ -677,6 +687,7 @@
       draftVersion: draftPreviewVersion,
       article: article,
     };
+    return lastBuiltPreviewPayload;
   }
 
   function applyPreviewResult(result, payload) {
@@ -687,51 +698,122 @@
     if (result.ok) {
       lastPreviewRenderedVersion = result.renderedVersion;
       lastPreviewDiagnostics = result.diagnostics || null;
-      var synced =
-        result.renderedVersion == null ||
-        result.renderedVersion === draftPreviewVersion;
+      var ver = result.renderedVersion != null ? result.renderedVersion : draftPreviewVersion;
+      var synced = result.renderedVersion == null || result.renderedVersion === draftPreviewVersion;
       setPreviewSyncStatus(
         synced ? "ok" : "wait",
-        synced ? "v" + draftPreviewVersion : "渲染中…"
+        synced ? ("Draft rendered v" + ver) : "渲染中…"
       );
     } else {
-      setPreviewSyncStatus("err", result.error || result.reason || "失敗");
+      setPreviewSyncStatus("err", result.error || result.reason || "renderer exception");
     }
     updateLiveCompareLink(payload && payload.article);
   }
 
-  function sendFrontendPreview() {
+  function tryRenderPreviewPayload(payload) {
     var frame = $("frontend-preview-frame");
-    if (!frame) return;
-    var payload = buildPreviewPayload();
-    setPreviewSyncStatus("wait", "傳送草稿…");
-
-    // Preferred: same-origin direct API (deterministic)
+    if (!frame) return { ok: false, reason: "no-frame" };
     try {
       var win = frame.contentWindow;
       var api = win && win.LYZAdminPreview;
-      if (api && typeof api.render === "function") {
+      if (api && typeof api.render === "function" && api.ready !== false) {
         previewIframeReady = true;
+        setPreviewSyncStatus("ready", "API ok");
+        setPreviewSyncStatus("sent", "v" + payload.draftVersion);
         var result = api.render(payload);
         applyPreviewResult(result, payload);
+        return result && result.ok ? { ok: true, result: result } : { ok: false, reason: (result && result.error) || "renderer exception", result: result };
+      }
+      return { ok: false, reason: "iframe API unavailable" };
+    } catch (e) {
+      return { ok: false, reason: "iframe API unavailable: " + (e && e.message || e) };
+    }
+  }
+
+  function sendFrontendPreview() {
+    try {
+      var frame = $("frontend-preview-frame");
+      if (!frame) {
+        setPreviewSyncStatus("err", "找不到 preview iframe");
         return;
       }
-    } catch (e) {
-      console.warn("[admin preview api]", e);
-    }
+      var payload;
+      try {
+        payload = buildPreviewPayload();
+      } catch (err) {
+        setPreviewSyncStatus("err", "Payload error: " + (err && err.message || err));
+        console.error("[admin preview payload]", err);
+        return;
+      }
+      setPreviewSyncStatus("sent", "v" + payload.draftVersion);
 
-    // Fallback: postMessage
-    if (!previewIframeReady || !frame.contentWindow) {
-      setPreviewSyncStatus("wait", "iframe 尚未就緒");
+      var direct = tryRenderPreviewPayload(payload);
+      if (direct.ok) return;
+
+      // Fallback: postMessage (same-origin listener in iframe)
+      if (!previewIframeReady && !frame.contentWindow) {
+        setPreviewSyncStatus("load", "iframe 尚未就緒");
+        forceFrontendPreview();
+        return;
+      }
+      try {
+        frame.contentWindow.postMessage(payload, location.origin);
+        setPreviewSyncStatus("sent", "postMessage v" + payload.draftVersion);
+      } catch (e) {
+        setPreviewSyncStatus("err", String(e && e.message || e));
+      }
+      updateLiveCompareLink(payload.article);
+    } catch (e) {
+      setPreviewSyncStatus("err", "預覽建立失敗: " + (e && e.message || e));
+      console.error("[admin preview]", e);
+    }
+  }
+
+  function forceFrontendPreview() {
+    if (forcePreviewTimer) {
+      clearTimeout(forcePreviewTimer);
+      forcePreviewTimer = null;
+    }
+    var delays = [0, 50, 150, 300, 700];
+    var payload;
+    try {
+      payload = lastBuiltPreviewPayload || buildPreviewPayload();
+      // Keep same draftVersion across retries — rebuild article fields only
+      payload.article = collectDraftArticle();
+      payload.mode = frontendPreviewView === "card" ? "card" : "article";
+      payload.theme = frontendPreviewTheme || "light";
+      payload.readingFocus = !!frontendPreviewFocus && frontendPreviewView !== "card";
+      lastBuiltPreviewPayload = payload;
+    } catch (err) {
+      setPreviewSyncStatus("err", "Payload error: " + (err && err.message || err));
       return;
     }
-    try {
-      frame.contentWindow.postMessage(payload, location.origin);
-    } catch (e) {
-      console.warn("[admin preview]", e);
-      setPreviewSyncStatus("err", String(e && e.message || e));
+
+    setPreviewSyncStatus("load", "force retry…");
+    var i = 0;
+    function attempt() {
+      var out = tryRenderPreviewPayload(payload);
+      if (out.ok) {
+        forcePreviewAttempts = null;
+        return;
+      }
+      i += 1;
+      if (i >= delays.length) {
+        setPreviewSyncStatus("err", out.reason || "iframe API unavailable");
+        // last-resort postMessage
+        try {
+          var frame = $("frontend-preview-frame");
+          if (frame && frame.contentWindow) {
+            frame.contentWindow.postMessage(payload, location.origin);
+          }
+        } catch (e) {}
+        return;
+      }
+      var wait = delays[i] - delays[i - 1];
+      forcePreviewTimer = setTimeout(attempt, Math.max(0, wait));
     }
-    updateLiveCompareLink(payload.article);
+    forcePreviewAttempts = delays;
+    attempt();
   }
 
   function reloadFrontendPreviewFrame() {
@@ -739,15 +821,29 @@
     if (!frame) return;
     previewIframeReady = false;
     lastPreviewRenderedVersion = null;
-    setPreviewSyncStatus("wait", "重新載入預覽…");
-    frame.src = "admin-preview.html?v=" + Date.now();
+    setPreviewSyncStatus("load", "重新載入預覽…");
+    frame.src = "admin-preview.html?v=v9-polish-1&t=" + Date.now();
+    frame.addEventListener(
+      "load",
+      function onReloaded() {
+        frame.removeEventListener("load", onReloaded);
+        forceFrontendPreview();
+      },
+      { once: true }
+    );
   }
 
   function scheduleFrontendPreview() {
     if (frontendPreviewTimer) clearTimeout(frontendPreviewTimer);
     frontendPreviewTimer = setTimeout(function () {
       frontendPreviewTimer = null;
-      sendFrontendPreview();
+      try {
+        // Build payload once, then force-retry until iframe API renders.
+        buildPreviewPayload();
+        forceFrontendPreview();
+      } catch (e) {
+        setPreviewSyncStatus("err", "Payload error: " + (e && e.message || e));
+      }
       if (editorMode === "changes") renderChangesPanel();
     }, 160);
   }
@@ -758,7 +854,8 @@
       var data = e.data || {};
       if (data.type === "LYZ_ARTICLE_PREVIEW_READY") {
         previewIframeReady = true;
-        sendFrontendPreview();
+        setPreviewSyncStatus("ready", "READY");
+        forceFrontendPreview();
       }
       if (data.type === "LYZ_ARTICLE_PREVIEW_ACK") {
         applyPreviewResult(
@@ -768,31 +865,25 @@
             diagnostics: data.diagnostics,
             error: data.error,
           },
-          null
+          lastBuiltPreviewPayload
         );
       }
     });
 
     var frame = $("frontend-preview-frame");
     if (frame) {
+      setPreviewSyncStatus("load", "waiting iframe");
       frame.addEventListener("load", function () {
         previewIframeReady = false;
-        setTimeout(function () {
-          try {
-            var api = frame.contentWindow && frame.contentWindow.LYZAdminPreview;
-            if (api && typeof api.render === "function") {
-              previewIframeReady = true;
-              sendFrontendPreview();
-              return;
-            }
-          } catch (e) {}
-          // Soft fallback if READY / API missed
-          if (!previewIframeReady) {
-            previewIframeReady = true;
-            sendFrontendPreview();
-          }
-        }, 50);
+        setPreviewSyncStatus("load", "iframe loaded");
+        forceFrontendPreview();
       });
+      // If already complete (missed load)
+      try {
+        if (frame.contentDocument && frame.contentDocument.readyState === "complete") {
+          forceFrontendPreview();
+        }
+      } catch (e) {}
     }
 
     var chrome = $("frontend-preview-chrome");
@@ -822,7 +913,7 @@
       });
     }
     setFrontendChromeUi();
-    setPreviewSyncStatus("wait", "初始化");
+    setPreviewSyncStatus("load", "初始化");
   }
 
   function scheduleMdPreview() {
@@ -2078,14 +2169,39 @@
     loadArticles();
   }
 
-  // ---------- 區塊文字 ----------
+  // ---------- 網站內容（Site Copy CMS） ----------
   function sectionMeta(key) {
-    return SECTION_META[key] || {
+    var schema = window.LYZSiteCopySchema && window.LYZSiteCopySchema.byKey
+      ? window.LYZSiteCopySchema.byKey(key)
+      : null;
+    if (schema) {
+      return {
+        title: schema.label || key,
+        desc: schema.description || "",
+        mode: schema.mode || "text",
+        page: schema.page,
+        group: schema.group,
+        fallback: schema.fallback || "",
+        pageUrl: schema.pageUrl || "",
+      };
+    }
+    return {
       title: key,
       desc: "自訂區塊文字",
       mode: "text",
+      fallback: "",
+      pageUrl: "",
     };
   }
+
+  var PAGE_LABELS = {
+    global: "全站",
+    home: "首頁",
+    directory: "隨筆",
+    literature: "文學創作",
+    about: "關於我",
+    academic: "學科筆記",
+  };
 
   function escapeHtml(s) {
     return window.SB && window.SB.escapeText
@@ -2104,7 +2220,7 @@
     var meta = sectionMeta(activeSectionKey || "");
     var val = ta.value || "";
     if (!val.trim()) {
-      preview.innerHTML = "";
+      preview.innerHTML = '<span class="muted">（使用 fallback／空白）</span>';
       return;
     }
     if (meta.mode === "markdown" && window.SB && typeof window.SB.renderMarkdown === "function") {
@@ -2124,23 +2240,55 @@
     if (!sectionsCache.length) {
       if (empty) {
         empty.classList.remove("hidden");
-        empty.textContent = "尚無區塊資料（可先套用 0001 SQL 的種子）。";
+        empty.textContent = "尚無 schema（請確認 site-copy-schema.js 已載入）。";
       }
       return;
     }
     if (empty) empty.classList.add("hidden");
+
+    var byPage = {};
     sectionsCache.forEach(function (r) {
       var meta = sectionMeta(r.key);
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "sec-nav-item" + (r.key === activeSectionKey ? " active" : "");
-      btn.setAttribute("data-sec-key", r.key);
-      var snip = String(r.value || "").replace(/\s+/g, " ").trim().slice(0, 48);
-      btn.innerHTML =
-        '<span class="sec-nav-title">' + escapeHtml(meta.title) + "</span>" +
-        '<span class="sec-nav-snip">' + escapeHtml(snip || "（空白）") + "</span>";
-      btn.addEventListener("click", function () { openSectionEditor(r.key); });
-      box.appendChild(btn);
+      var page = meta.page || "global";
+      if (!byPage[page]) byPage[page] = [];
+      byPage[page].push(r);
+    });
+
+    var pageOrder =
+      (window.LYZSiteCopySchema && window.LYZSiteCopySchema.pages && window.LYZSiteCopySchema.pages()) ||
+      Object.keys(byPage);
+
+    pageOrder.forEach(function (page) {
+      var rows = byPage[page];
+      if (!rows || !rows.length) return;
+      var head = document.createElement("div");
+      head.className = "sec-nav-group";
+      head.textContent = PAGE_LABELS[page] || page;
+      box.appendChild(head);
+      rows.forEach(function (r) {
+        var meta = sectionMeta(r.key);
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "sec-nav-item" + (r.key === activeSectionKey ? " active" : "");
+        btn.setAttribute("data-sec-key", r.key);
+        var snip = String(r.value != null && r.value !== "" ? r.value : r.fallback || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 48);
+        var badge = r.fromDb ? "" : '<span class="sec-badge">fallback</span>';
+        btn.innerHTML =
+          '<span class="sec-nav-title">' +
+          escapeHtml(meta.title) +
+          badge +
+          "</span>" +
+          '<span class="sec-nav-snip">' +
+          escapeHtml(snip || "（空白）") +
+          "</span>";
+        btn.addEventListener("click", function () {
+          openSectionEditor(r.key);
+        });
+        box.appendChild(btn);
+      });
     });
   }
 
@@ -2148,67 +2296,93 @@
     if (sectionDirty && activeSectionKey && activeSectionKey !== key) {
       if (!window.confirm("目前區塊有未儲存變更，確定切換？")) return;
     }
-    var row = sectionsCache.find(function (r) { return r.key === key; });
-    if (!row) return;
     activeSectionKey = key;
-    sectionDirty = false;
+    var row = sectionsCache.find(function (r) {
+      return r.key === key;
+    });
     var meta = sectionMeta(key);
     var editor = $("sections-editor");
     var placeholder = $("sections-placeholder");
-    if (editor) editor.classList.remove("hidden");
     if (placeholder) placeholder.classList.add("hidden");
+    if (editor) editor.classList.remove("hidden");
     if ($("sec-title")) $("sec-title").textContent = meta.title;
-    if ($("sec-desc")) $("sec-desc").textContent = meta.desc;
+    if ($("sec-desc")) $("sec-desc").textContent = meta.desc || "";
     if ($("sec-key")) $("sec-key").textContent = key;
-    if ($("sec-value")) $("sec-value").value = row.value || "";
-    if ($("sec-status")) $("sec-status").textContent = "";
-    updateSectionPreview();
+    if ($("sec-value")) {
+      $("sec-value").value =
+        row && row.value != null && row.value !== ""
+          ? row.value
+          : meta.fallback || "";
+    }
+    var openLink = $("sec-open-page");
+    if (openLink) {
+      if (meta.pageUrl) {
+        openLink.hidden = false;
+        openLink.href = meta.pageUrl;
+      } else {
+        openLink.hidden = true;
+      }
+    }
+    if ($("sec-status")) {
+      $("sec-status").textContent = row && row.fromDb ? "已儲存於資料庫" : "目前顯示 schema fallback（尚未 UPSERT）";
+    }
+    sectionDirty = false;
     renderSectionsNav();
+    updateSectionPreview();
   }
 
   async function saveActiveSection() {
     if (!activeSectionKey) return;
     var ta = $("sec-value");
-    var btn = $("btn-sec-save");
     if (!ta) return;
-    if (btn) btn.disabled = true;
-    if ($("sec-status")) $("sec-status").textContent = "儲存中…";
-    var up = await client.from("site_sections").update({ value: ta.value }).eq("key", activeSectionKey);
-    if (btn) btn.disabled = false;
+    msg("sec-status", "");
+    var payload = { key: activeSectionKey, value: ta.value };
+    var up = await client.from("site_sections").upsert(payload, { onConflict: "key" });
     if (up.error) {
-      if ($("sec-status")) $("sec-status").textContent = "儲存失敗：" + up.error.message;
-      msg("global-msg", "儲存失敗：" + up.error.message, "err");
-      return;
+      // fallback to update then insert
+      var upd = await client.from("site_sections").update({ value: ta.value }).eq("key", activeSectionKey);
+      if (upd.error) {
+        var ins = await client.from("site_sections").insert(payload);
+        if (ins.error) {
+          msg("sec-status", "儲存失敗：" + (ins.error.message || upd.error.message || up.error.message), "err");
+          return;
+        }
+      }
     }
-    sectionsCache.forEach(function (r) {
-      if (r.key === activeSectionKey) r.value = ta.value;
-    });
     sectionDirty = false;
-    if ($("sec-status")) $("sec-status").textContent = "已儲存 ✔";
-    msg("global-msg", "已儲存區塊 " + activeSectionKey + " ✔", "ok");
-    setTimeout(function () { msg("global-msg", ""); }, 2500);
-    renderSectionsNav();
+    await loadSections();
+    openSectionEditor(activeSectionKey);
+    msg("sec-status", "已儲存 ✔", "ok");
   }
 
   async function loadSections() {
-    var empty = $("sections-nav-empty");
-    if (empty) {
-      empty.classList.remove("hidden");
-      empty.textContent = "載入中…";
-    }
-    var list = $("sections-list");
-    if (list) list.innerHTML = "";
-    var res = await client.from("site_sections").select("key,value").order("key");
-    if (res.error) {
-      if (empty) empty.textContent = "讀取失敗：" + res.error.message;
-      return;
-    }
-    sectionsCache = res.data || [];
-    activeSectionKey = null;
-    sectionDirty = false;
-    if ($("sections-editor")) $("sections-editor").classList.add("hidden");
-    if ($("sections-placeholder")) $("sections-placeholder").classList.remove("hidden");
+    var dbMap = {};
+    try {
+      var res = await client.from("site_sections").select("key,value").order("key");
+      if (!res.error && res.data) {
+        res.data.forEach(function (r) {
+          dbMap[r.key] = r.value;
+        });
+      }
+    } catch (e) {}
+
+    var entries =
+      (window.LYZSiteCopySchema && window.LYZSiteCopySchema.ENTRIES) ||
+      Object.keys(SECTION_META || {}).map(function (k) {
+        return { key: k, fallback: "" };
+      });
+
+    sectionsCache = entries.map(function (e) {
+      var has = Object.prototype.hasOwnProperty.call(dbMap, e.key);
+      return {
+        key: e.key,
+        value: has ? dbMap[e.key] : "",
+        fallback: e.fallback || "",
+        fromDb: has,
+      };
+    });
     renderSectionsNav();
+    if (activeSectionKey) openSectionEditor(activeSectionKey);
   }
 
   // ---------- 進入後台 ----------

@@ -13,51 +13,13 @@
     <noscript>
         <link rel="stylesheet" href="assets/css/noscript.css" />
     </noscript>
-    <style>
-        /* 統一主圖的圖片尺寸並裁切 */
-        .post.featured .image.main {
-            height: 400px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.8);
-            /* 深色背景襯托未填滿區域 */
-        }
-
-        .post.featured .image.main img {
-            max-width: 100%;
-            max-height: 100%;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: center;
-        }
-
-        /* 統一小卡片圖片的尺寸並裁切 */
-        .posts article .image.fit {
-            height: 250px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.2);
-        }
-
-        .posts article .image.fit img {
-            max-width: 100%;
-            max-height: 100%;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: center;
-        }
-    </style>
-    <!-- Google Fonts: loaded as <link> to avoid render-blocking @import -->
+<!-- Google Fonts: loaded as <link> to avoid render-blocking @import -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
     <!-- Site Custom CSS: dark mode + image styles -->
-    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v8-preview-gallery-1" />
-    <link rel="stylesheet" href="assets/css/site-custom.css?v=v8-preview-gallery-1" />
+    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v9-polish-1" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9-polish-1" />
 </head>
 
 <body class="is-preload">
@@ -150,43 +112,41 @@
         <div id="main">
             <article class="post featured">
                 <header class="major">
-                    <span class="date">HELLO WORLD</span>
+                    <span class="date" data-section-key="home.featured.eyebrow">HELLO WORLD</span>
                     <h2><a href="about.html" data-section-key="home.featured.title">關於本站與我</a></h2>
                     <p data-section-key="home.featured.body">我是林佾則，目前就讀於國立中山大學資訊工程學系二年級。<br /><br />
                         本網站於 2020 年 12 月初試啼聲，那時十分感謝資訊社學長的指導，讓我得以搭建出這專屬於我的數位空間。雖然當時僅具雛形，卻也成為我記錄學習歷程的珍貴起點。<br /><br />
                         升上大二後，我不僅在程式語言與資訊科學上持續精進，更重新拾起閱讀的習慣，廣泛涉獵文學、藝術、音樂與咖啡等多元領域。基於對美學與技術的雙重追求，我於近期著手將網站進行全方位的翻新與優化。未來，這裡將持續蛻變為我記錄技術筆記與生活思想的靜謐天地，歡迎您的駐足與閱覽。
                     </p>
                 </header>
-                <a href="about.html" class="image main"><img loading="lazy" src="images/pic1.jpg" alt="About Me" /></a>
+                <a href="about.html" class="image main static-media static-media--feature"><img loading="lazy" src="images/pic1.jpg" alt="About Me" /></a>
                 <ul class="actions special">
-                    <li><a href="about.html" class="button large">了解更多關於我</a></li>
+                    <li><a href="about.html" class="button large"><span data-section-key="home.featured.cta">了解更多關於我</span></a></li>
                 </ul>
             </article>
 
             <section class="posts">
                 <article>
                     <header>
-                        <span class="date">生活與閱讀</span>
-                        <h2><a href="directory.html">隨筆</a></h2>
+                        <span class="date" data-section-key="home.notes.eyebrow">生活與閱讀</span>
+                        <h2><a href="directory.html" data-section-key="home.notes.title">隨筆</a></h2>
                     </header>
-                    <a href="directory.html" class="image fit"><img loading="lazy" src="images/pic2.jpg" alt="隨筆" /></a>
-                    <p>碎念、日記、感想、閱讀心得與整理過的散文。不必完美——只是留下當下的痕跡。
-                    </p>
+                    <a href="directory.html" class="image fit static-media"><img loading="lazy" src="images/pic2.jpg" alt="隨筆" /></a>
+                    <p data-section-key="home.notes.body" data-section-mode="multiline">碎念、日記、感想、閱讀心得與整理過的散文。不必完美——只是留下當下的痕跡。</p>
                     <ul class="actions special">
-                        <li><a href="directory.html" class="button primary large">查看隨筆</a></li>
+                        <li><a href="directory.html" class="button primary large"><span data-section-key="home.notes.cta">查看隨筆</span></a></li>
                     </ul>
                 </article>
 
                 <article>
                     <header>
-                        <span class="date">創作</span>
-                        <h2><a href="literature.html">文學創作</a></h2>
+                        <span class="date" data-section-key="home.literature.eyebrow">創作</span>
+                        <h2><a href="literature.html" data-section-key="home.literature.title">文學創作</a></h2>
                     </header>
-                    <a href="literature.html" class="image fit"><img loading="lazy" src="images/pic3.jpg" alt="文學創作" /></a>
-                    <p>小說、詩、劇本與長篇創作。虛構與文學作品放這裡；心得感想請到隨筆。
-                    </p>
+                    <a href="literature.html" class="image fit static-media"><img loading="lazy" src="images/pic3.jpg" alt="文學創作" /></a>
+                    <p data-section-key="home.literature.body" data-section-mode="multiline">小說、詩、劇本與長篇創作。虛構與文學作品放這裡；心得感想請到隨筆。</p>
                     <ul class="actions special">
-                        <li><a href="literature.html" class="button primary large">查看文學創作</a></li>
+                        <li><a href="literature.html" class="button primary large"><span data-section-key="home.literature.cta">查看文學創作</span></a></li>
                     </ul>
                 </article>
             </section>
@@ -215,15 +175,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/supabase-client.js?v=v8-preview-gallery-1"></script>
+<script src="assets/js/supabase-client.js?v=v9-polish-1"></script>
 <script src="assets/js/auth.js"></script>
-<script src="assets/js/site-sections.js?v=v8-preview-gallery-1"></script>
-    <script src="assets/js/presentation-registry.js?v=v8-preview-gallery-1"></script>
-<script src="assets/js/article-media.js?v=v8-preview-gallery-1"></script>
-    <script src="assets/js/article-renderer.js?v=v8-preview-gallery-1"></script>
-    <script src="assets/js/cms-public.js?v=v8-preview-gallery-1"></script>
+<script src="assets/js/site-copy-schema.js?v=v9-polish-1"></script>
+<script src="assets/js/site-sections.js?v=v9-polish-1"></script>
+    <script src="assets/js/presentation-registry.js?v=v9-polish-1"></script>
+<script src="assets/js/article-media.js?v=v9-polish-1"></script>
+    <script src="assets/js/article-renderer.js?v=v9-polish-1"></script>
+    <script src="assets/js/cms-public.js?v=v9-polish-1"></script>
 
-<script src="assets/js/common.js?v=v8-preview-gallery-1"></script>
+<script src="assets/js/common.js?v=v9-polish-1"></script>
 </body>
 
 </html>

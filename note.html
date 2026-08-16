@@ -19,37 +19,8 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
-        #markdown-container {
-            text-align: left;
-        }
-
-        /* Image styles: definitive rules for note page images (beat main.css). */
-        #markdown-container img,
-        #markdown-container .markdown-body img,
-        #markdown-container p > img,
-        #markdown-container figure img,
-        #markdown-container a > img {
-            display: block !important;
-            max-width: min(100%, 960px) !important;
-            max-height: 65vh !important;
-            width: auto !important;
-            height: auto !important;
-            margin: 2.5rem auto !important;
-            border-radius: 10px !important;
-            box-shadow: 0 6px 28px rgba(0, 0, 0, 0.18) !important;
-            object-fit: contain !important;
-            background: rgba(0, 0, 0, 0.04);
-        }
-
-        @media screen and (max-width: 736px) {
-            #markdown-container img,
-            #markdown-container .markdown-body img {
-                max-height: 50vh !important;
-                border-radius: 8px !important;
-                margin: 1.75rem auto !important;
-            }
-        }
-
+        /* Non-media markdown chrome only — gallery/images owned by presentation-v3 + article-media */
+        #markdown-container { text-align: left; }
         #markdown-container pre {
             background: #212931;
             color: #ffffff;
@@ -58,21 +29,18 @@
             overflow-x: auto;
             margin: 1.5em 0;
         }
-
         #markdown-container code {
             background: rgba(144, 144, 144, 0.25);
             border-radius: 3px;
             padding: 0.25em 0.5em;
             font-family: "Courier New", monospace;
         }
-
         #markdown-container blockquote {
             border-left: solid 4px #18bfef;
             padding-left: 1.5em;
             font-style: italic;
             margin: 1.5em 0;
         }
-
         #markdown-container figcaption {
             text-align: center;
             font-size: 0.85rem;
@@ -86,8 +54,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
     <!-- Site Custom CSS: dark mode + image styles -->
-    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v8-preview-gallery-1" />
-    <link rel="stylesheet" href="assets/css/site-custom.css?v=v8-preview-gallery-1" />
+    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v9-polish-1" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9-polish-1" />
 </head>
 
 <body class="is-preload">
@@ -204,19 +172,20 @@
     <script src="https://cdn.jsdelivr.net/npm/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
 
-    <script src="assets/js/common.js?v=v8-preview-gallery-1"></script>
+    <script src="assets/js/common.js?v=v9-polish-1"></script>
 
     <!-- Supabase CMS：未設定時自動略過；文章頁由 cms-public.js 動態渲染 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
     <script src="assets/js/supabase-config.js"></script>
-    <script src="assets/js/supabase-client.js?v=v8-preview-gallery-1"></script>
+    <script src="assets/js/supabase-client.js?v=v9-polish-1"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/site-sections.js?v=v8-preview-gallery-1"></script>
-    <script src="assets/js/presentation-registry.js?v=v8-preview-gallery-1"></script>
-    <script src="assets/js/article-media.js?v=v8-preview-gallery-1"></script>
-    <script src="assets/js/article-renderer.js?v=v8-preview-gallery-1"></script>
-    <script src="assets/js/cms-public.js?v=v8-preview-gallery-1"></script>
+    <script src="assets/js/site-copy-schema.js?v=v9-polish-1"></script>
+<script src="assets/js/site-sections.js?v=v9-polish-1"></script>
+    <script src="assets/js/presentation-registry.js?v=v9-polish-1"></script>
+    <script src="assets/js/article-media.js?v=v9-polish-1"></script>
+    <script src="assets/js/article-renderer.js?v=v9-polish-1"></script>
+    <script src="assets/js/cms-public.js?v=v9-polish-1"></script>
 
     <script src="assets/js/page-note.js"></script>
 </body>

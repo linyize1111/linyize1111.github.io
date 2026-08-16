@@ -117,22 +117,52 @@
     video.play().catch(function () {});
   }
 
+  function showSiteToast(title, detail) {
+    var el = document.getElementById("site-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "site-toast";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
+      document.body.appendChild(el);
+    }
+    el.hidden = false;
+    el.innerHTML =
+      "<strong>" + String(title || "") + "</strong>" +
+      (detail ? "<code>" + String(detail) + "</code>" : "");
+    el.classList.add("is-visible");
+    clearTimeout(showSiteToast._t);
+    showSiteToast._t = setTimeout(function () {
+      el.classList.remove("is-visible");
+      setTimeout(function () { el.hidden = true; }, 220);
+    }, 2000);
+  }
+  window.showSiteToast = showSiteToast;
+
   function initMediaControls() {
     function mount() {
       var video = document.getElementById("bg-video");
       var music = document.getElementById("bg-music");
       var btnMute = document.getElementById("btn-mute");
       var btnPlay = document.getElementById("btn-play");
+      var hint = document.getElementById("music-resume-hint");
+      if (!hint) {
+        hint = document.createElement("div");
+        hint.id = "music-resume-hint";
+        hint.className = "music-resume-hint";
+        hint.hidden = true;
+        hint.textContent = "點一下頁面以繼續音樂";
+        document.body.appendChild(hint);
+      }
 
-      /* Background video is decorative: start after first paint, never block it. */
       if (video && !prefersReducedMotion() && !saveDataPreferred()) {
         idle(function () { startBackgroundVideo(video); }, 1200);
       }
       if (!music || !btnMute || !btnPlay) return;
 
       var isMuted = sessionStorage.getItem("mediaMuted") === "true";
+      var desired = sessionStorage.getItem("musicDesiredPlaying") === "true";
       music.muted = isMuted;
-      music.pause();
 
       function updateMuteBtn() {
         btnMute.innerHTML = music.muted
@@ -144,6 +174,24 @@
           ? '<i class="fas fa-play"></i>'
           : '<i class="fas fa-pause"></i>';
       }
+      function setDesired(on) {
+        desired = !!on;
+        sessionStorage.setItem("musicDesiredPlaying", String(desired));
+      }
+      function hideHint() {
+        hint.hidden = true;
+      }
+      function showHint() {
+        hint.hidden = false;
+      }
+      function tryPlayFromGesture() {
+        if (!desired) return;
+        music.play().then(function () {
+          hideHint();
+          updatePlayBtn();
+        }).catch(function () {});
+      }
+
       updateMuteBtn();
       updatePlayBtn();
 
@@ -152,6 +200,26 @@
         var setTime = function () { try { music.currentTime = savedTime; } catch (e) {} };
         if (music.readyState >= 1) setTime();
         else music.addEventListener("loadedmetadata", setTime, { once: true });
+      }
+
+      if (desired) {
+        music.play().then(function () {
+          hideHint();
+          updatePlayBtn();
+        }).catch(function () {
+          // Autoplay blocked — keep desiredPlaying true; resume on next gesture.
+          showHint();
+          updatePlayBtn();
+          var once = function () {
+            document.removeEventListener("pointerdown", once, true);
+            document.removeEventListener("keydown", once, true);
+            tryPlayFromGesture();
+          };
+          document.addEventListener("pointerdown", once, true);
+          document.addEventListener("keydown", once, true);
+        });
+      } else {
+        music.pause();
       }
 
       btnMute.addEventListener("click", function (e) {
@@ -164,16 +232,28 @@
       btnPlay.addEventListener("click", function () {
         if (music.paused) {
           if (video) startBackgroundVideo(video);
-          music.play().catch(function () {});
+          setDesired(true);
+          music.play().then(function () {
+            hideHint();
+            updatePlayBtn();
+          }).catch(function () {
+            showHint();
+            updatePlayBtn();
+          });
         } else {
+          setDesired(false);
           music.pause();
+          hideHint();
+          updatePlayBtn();
         }
-        updatePlayBtn();
       });
 
       window.addEventListener("pagehide", function () {
         sessionStorage.setItem("mediaMuted", String(music.muted));
         sessionStorage.setItem("musicCurrentTime", String(music.currentTime || 0));
+        sessionStorage.setItem("musicDesiredPlaying", String(desired && !music.paused ? true : desired));
+        // Persist explicit desired flag even if currently buffering
+        if (desired) sessionStorage.setItem("musicDesiredPlaying", "true");
       });
     }
 
@@ -849,8 +929,20 @@
       var wrap = btn.closest(".social-copy-wrap");
       var tip = wrap && wrap.querySelector(".social-copy-tip");
       copyText(text).then(
-        function () { flashTip(tip, true); },
-        function () { flashTip(tip, false); }
+        function () {
+          flashTip(tip, true);
+          if (typeof showSiteToast === "function") {
+            showSiteToast("✓ 已複製 Discord 使用者 ID", text);
+          }
+        },
+        function () {
+          flashTip(tip, false);
+          if (typeof showSiteToast === "function") {
+            showSiteToast("無法自動複製 Discord ID，請手動複製：", text);
+          } else {
+            window.prompt("請手動複製 Discord ID", text);
+          }
+        }
       );
     });
   }

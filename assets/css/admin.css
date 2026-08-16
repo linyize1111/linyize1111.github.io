@@ -849,3 +849,21 @@ body.admin.editor-open { overflow: hidden; }
 #ai-r-body {
   min-height: 160px; font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem;
 }
+
+.sec-nav-group {
+  margin: 0.85rem 0 0.35rem;
+  padding: 0 0.2rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+.sec-badge {
+  margin-left: 0.35rem;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(86,208,248,0.18);
+  color: #9fe3ff;
+  vertical-align: middle;
+}
