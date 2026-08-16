@@ -403,9 +403,7 @@ function initSortingAndFiltering() {
                 pres === 'fragment' ||
                 pres === 'quote' ||
                 cat === '隨想' ||
-                cat === '短思' ||
-                el.classList.contains('is-thought') ||
-                el.classList.contains('is-fragment')
+                cat === '短思'
             );
         }
         filtered.sort((a, b) => {
