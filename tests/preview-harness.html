@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <title>Preview harness</title>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { display: flex; }
+    #left { width: 40%; height: 100%; font: 16px/1.4 sans-serif; padding: 12px; box-sizing: border-box; }
+    #frontend-preview-frame { width: 60%; height: 100%; border: 0; }
+  </style>
+</head>
+<body>
+  <textarea id="left">TEST-PREVIEW-123</textarea>
+  <iframe id="frontend-preview-frame" src="../admin-preview.html" sandbox="allow-scripts allow-same-origin"></iframe>
+  <script>
+    (function () {
+      var frame = document.getElementById("frontend-preview-frame");
+      var delays = [0, 50, 150, 300, 700, 1200, 2000];
+      function send() {
+        try {
+          var api = frame.contentWindow && frame.contentWindow.LYZAdminPreview;
+          if (!api || typeof api.render !== "function" || api.ready === false) return false;
+          var r = api.render({
+            mode: "article",
+            draftVersion: 99,
+            theme: "light",
+            article: {
+              title: "Draft",
+              body: "TEST-PREVIEW-123\n\nunsaved body",
+              presentation: "article-lite",
+              section: "notes",
+              status: "draft",
+              show_title: true
+            }
+          });
+          if (r && r.ok) {
+            document.documentElement.setAttribute("data-preview", "ok");
+            return true;
+          }
+        } catch (e) {
+          document.documentElement.setAttribute("data-preview-err", String(e && e.message || e));
+        }
+        return false;
+      }
+      function tick(i) {
+        if (send()) return;
+        if (i >= delays.length - 1) {
+          document.documentElement.setAttribute("data-preview", "fail");
+          return;
+        }
+        setTimeout(function () { tick(i + 1); }, delays[i + 1] - delays[i]);
+      }
+      frame.addEventListener("load", function () { tick(0); });
+      if (frame.contentDocument && frame.contentDocument.readyState === "complete") tick(0);
+    })();
+  </script>
+</body>
+</html>

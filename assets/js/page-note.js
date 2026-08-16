@@ -21,9 +21,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const contentEl = document.getElementById('markdown-container');
 
     if (!fileName && !pdfName && !litName) {
-        titleEl.innerText = '系統錯誤';
-        statusEl.innerText = '未提供檔案參數 (Missing URL Parameter)';
-        contentEl.innerHTML = '<p>請從首頁目錄選擇要閱讀的筆記或簡報。</p>';
+        const copy = window.LYZSiteCopy || function (_k, fb) { return fb; };
+        titleEl.innerText = copy('note.error.title', '系統錯誤');
+        titleEl.setAttribute('data-section-key', 'note.error.title');
+        statusEl.innerText = copy('note.error.missing', '未提供檔案參數 (Missing URL Parameter)');
+        statusEl.setAttribute('data-section-key', 'note.error.missing');
+        contentEl.innerHTML = '<p data-section-key="note.error.hint">請從首頁目錄選擇要閱讀的筆記或簡報。</p>';
         return;
     }
 

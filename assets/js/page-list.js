@@ -352,7 +352,8 @@ function initSortingAndFiltering() {
         filterCategory.innerHTML = '';
         const allOpt = document.createElement('option');
         allOpt.value = 'all';
-        allOpt.textContent = '所有分類';
+        allOpt.textContent = (window.LYZSiteCopy && window.LYZSiteCopy('ui.filter.allCategories', '所有分類')) || '所有分類';
+        allOpt.setAttribute('data-section-key', 'ui.filter.allCategories');
         filterCategory.appendChild(allOpt);
         ordered.forEach((c) => {
             const opt = document.createElement('option');
@@ -455,7 +456,8 @@ function initSortingAndFiltering() {
         if (pageInfo) {
             pageInfo.textContent = activeItems.length > 0
                 ? `第 ${currentPage} 頁，共 ${totalPages} 頁（${activeItems.length} 篇文章）`
-                : '無符合條件的內容';
+                : ((window.LYZSiteCopy && window.LYZSiteCopy('ui.pagination.empty', '無符合條件的內容')) || '無符合條件的內容');
+            pageInfo.setAttribute('data-section-key', 'ui.pagination.info');
         }
 
         if (paginationControls) {
@@ -464,13 +466,17 @@ function initSortingAndFiltering() {
             if (totalPages > 1) {
                 const compact = document.createElement('div');
                 compact.className = 'pagination-compact';
-                const btnPrev = makeBtn('← 上一頁', currentPage - 1, currentPage === 1, false);
+                const prevLabel = (window.LYZSiteCopy && window.LYZSiteCopy('ui.pagination.prev', '← 上一頁')) || '← 上一頁';
+                const nextLabel = (window.LYZSiteCopy && window.LYZSiteCopy('ui.pagination.next', '下一頁 →')) || '下一頁 →';
+                const btnPrev = makeBtn(prevLabel, currentPage - 1, currentPage === 1, false);
                 btnPrev.classList.add('pagination-nav');
+                btnPrev.setAttribute('data-section-key', 'ui.pagination.prev');
                 const status = document.createElement('span');
                 status.className = 'pagination-status';
                 status.textContent = currentPage + ' / ' + totalPages;
-                const btnNext = makeBtn('下一頁 →', currentPage + 1, currentPage === totalPages, false);
+                const btnNext = makeBtn(nextLabel, currentPage + 1, currentPage === totalPages, false);
                 btnNext.classList.add('pagination-nav');
+                btnNext.setAttribute('data-section-key', 'ui.pagination.next');
                 compact.appendChild(btnPrev);
                 compact.appendChild(status);
                 compact.appendChild(btnNext);
@@ -563,16 +569,24 @@ function enhanceMobileFilterChrome() {
         bar = document.createElement('div');
         bar.className = 'filter-compact-bar';
         bar.innerHTML =
-            '<button type="button" class="filter-compact-btn" id="btn-open-filter" aria-haspopup="dialog" aria-expanded="false">篩選</button>' +
-            '<label class="filter-compact-sort"><span class="sr-only">排序</span>' +
+            '<button type="button" class="filter-compact-btn" id="btn-open-filter" data-section-key="ui.filter.open" aria-haspopup="dialog" aria-expanded="false">篩選</button>' +
+            '<label class="filter-compact-sort"><span class="sr-only" data-section-key="ui.sort.labelShort">排序</span>' +
             '<select id="sort-by-mobile" aria-label="排序方式"></select></label>' +
-            '<button type="button" class="filter-view-toggle" id="btn-view-toggle" aria-label="切換列表檢視" title="列表／卡片">▦</button>';
+            '<button type="button" class="filter-view-toggle" id="btn-view-toggle" data-section-key="ui.sort.viewToggle" aria-label="切換列表檢視" title="列表／卡片">▦</button>';
         panel.insertBefore(bar, panel.firstChild);
     }
 
     const sortMobile = document.getElementById('sort-by-mobile');
     const viewToggle = document.getElementById('btn-view-toggle');
     const openFilter = document.getElementById('btn-open-filter');
+
+    const shortSort = {
+        'upload-desc': { key: 'ui.sort.uploadDescShort', text: '最新' },
+        'upload-asc': { key: 'ui.sort.uploadAscShort', text: '最舊' },
+        'edit-desc': { key: 'ui.sort.editDescShort', text: '最後編輯' },
+        'title-asc': { key: 'ui.sort.titleAscShort', text: '名稱 A-Z' },
+        'title-desc': { key: 'ui.sort.titleDescShort', text: '名稱 Z-A' }
+    };
 
     // Mirror sort options without "list"
     if (sortMobile) {
@@ -581,12 +595,13 @@ function enhanceMobileFilterChrome() {
             if (opt.value === 'list') return;
             const o = document.createElement('option');
             o.value = opt.value;
-            o.textContent = opt.textContent
-                .replace('上傳時間 (新到舊)', '最新')
-                .replace('上傳時間 (舊到新)', '最舊')
-                .replace('最後編輯 (新到舊)', '最後編輯')
-                .replace('名稱 (A-Z)', '名稱 A-Z')
-                .replace('名稱 (Z-A)', '名稱 Z-A');
+            const map = shortSort[opt.value];
+            if (map) {
+                o.textContent = (window.LYZSiteCopy && window.LYZSiteCopy(map.key, map.text)) || map.text;
+                o.setAttribute('data-section-key', map.key);
+            } else {
+                o.textContent = opt.textContent;
+            }
             sortMobile.appendChild(o);
         });
         sortMobile.value = sortBy.value === 'list' ? 'upload-desc' : sortBy.value;
@@ -630,10 +645,10 @@ function enhanceMobileFilterChrome() {
         sheet.hidden = true;
         sheet.innerHTML =
             '<div class="mobile-filter-sheet__panel" role="dialog" aria-label="分類篩選">' +
-            '<div class="mobile-filter-sheet__head"><strong>分類</strong>' +
+            '<div class="mobile-filter-sheet__head"><strong data-section-key="ui.filter.sheetTitle">分類</strong>' +
             '<button type="button" class="mobile-filter-sheet__close" aria-label="關閉">×</button></div>' +
             '<div class="mobile-filter-sheet__list" id="mobile-filter-list"></div>' +
-            '<button type="button" class="mobile-filter-sheet__apply" id="mobile-filter-apply">套用</button>' +
+            '<button type="button" class="mobile-filter-sheet__apply" id="mobile-filter-apply" data-section-key="ui.filter.apply">套用</button>' +
             '</div>' +
             '<button type="button" class="mobile-filter-sheet__backdrop" aria-label="關閉篩選"></button>';
         document.body.appendChild(sheet);

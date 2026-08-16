@@ -675,10 +675,13 @@
   var forcePreviewTimer = null;
   var forcePreviewAttempts = null;
   var lastBuiltPreviewPayload = null;
+  var pendingPreviewPayload = null;
+  var previewWatchdogTimer = null;
+  var previewLastError = null;
 
-  function buildPreviewPayload() {
+  function buildPreviewPayload(articleOverride) {
     draftPreviewVersion += 1;
-    var article = collectDraftArticle();
+    var article = articleOverride || collectDraftArticle();
     lastBuiltPreviewPayload = {
       type: "LYZ_ARTICLE_PREVIEW",
       mode: frontendPreviewView === "card" ? "card" : "article",
@@ -687,27 +690,71 @@
       draftVersion: draftPreviewVersion,
       article: article,
     };
+    pendingPreviewPayload = lastBuiltPreviewPayload;
     return lastBuiltPreviewPayload;
   }
 
   function applyPreviewResult(result, payload) {
+    if (previewWatchdogTimer) {
+      clearTimeout(previewWatchdogTimer);
+      previewWatchdogTimer = null;
+    }
     if (!result) {
+      previewLastError = "無回應";
       setPreviewSyncStatus("err", "無回應");
       return;
     }
     if (result.ok) {
+      previewLastError = null;
       lastPreviewRenderedVersion = result.renderedVersion;
       lastPreviewDiagnostics = result.diagnostics || null;
-      var ver = result.renderedVersion != null ? result.renderedVersion : draftPreviewVersion;
-      var synced = result.renderedVersion == null || result.renderedVersion === draftPreviewVersion;
+      var ver = result.renderedVersion != null ? result.renderedVersion : (payload && payload.draftVersion);
+      var synced =
+        result.renderedVersion == null ||
+        (payload && result.renderedVersion === payload.draftVersion) ||
+        result.renderedVersion === draftPreviewVersion;
       setPreviewSyncStatus(
         synced ? "ok" : "wait",
         synced ? ("Draft rendered v" + ver) : "渲染中…"
       );
     } else {
-      setPreviewSyncStatus("err", result.error || result.reason || "renderer exception");
+      previewLastError = result.error || result.reason || "renderer exception";
+      setPreviewSyncStatus("err", previewLastError);
     }
     updateLiveCompareLink(payload && payload.article);
+  }
+
+  function startPreviewWatchdog(payload) {
+    if (previewWatchdogTimer) clearTimeout(previewWatchdogTimer);
+    previewWatchdogTimer = setTimeout(function () {
+      previewWatchdogTimer = null;
+      var frame = $("frontend-preview-frame");
+      var api = null;
+      try {
+        api = frame && frame.contentWindow && frame.contentWindow.LYZAdminPreview;
+      } catch (e) {}
+      var readyState = "n/a";
+      try {
+        readyState = frame && frame.contentDocument ? frame.contentDocument.readyState : "blocked";
+      } catch (e2) {
+        readyState = "cross-origin?";
+      }
+      if (lastPreviewRenderedVersion === (payload && payload.draftVersion)) return;
+      previewLastError = "watchdog timeout";
+      setPreviewSyncStatus(
+        "err",
+        "前台預覽沒有回應 · iframe:" +
+          readyState +
+          " API:" +
+          (api ? "yes" : "no") +
+          " req:v" +
+          (payload && payload.draftVersion) +
+          " got:v" +
+          (lastPreviewRenderedVersion == null ? "-" : lastPreviewRenderedVersion) +
+          " err:" +
+          (previewLastError || "-")
+      );
+    }, 1500);
   }
 
   function tryRenderPreviewPayload(payload) {
@@ -715,56 +762,42 @@
     if (!frame) return { ok: false, reason: "no-frame" };
     try {
       var win = frame.contentWindow;
-      var api = win && win.LYZAdminPreview;
+      if (!win) return { ok: false, reason: "iframe contentWindow null" };
+      var api = win.LYZAdminPreview;
       if (api && typeof api.render === "function" && api.ready !== false) {
         previewIframeReady = true;
-        setPreviewSyncStatus("ready", "API ok");
         setPreviewSyncStatus("sent", "v" + payload.draftVersion);
+        startPreviewWatchdog(payload);
         var result = api.render(payload);
         applyPreviewResult(result, payload);
-        return result && result.ok ? { ok: true, result: result } : { ok: false, reason: (result && result.error) || "renderer exception", result: result };
+        return result && result.ok
+          ? { ok: true, result: result }
+          : { ok: false, reason: (result && result.error) || "renderer exception", result: result };
       }
       return { ok: false, reason: "iframe API unavailable" };
     } catch (e) {
-      return { ok: false, reason: "iframe API unavailable: " + (e && e.message || e) };
+      previewLastError = String(e && e.message || e);
+      return { ok: false, reason: "iframe API unavailable: " + previewLastError };
     }
+  }
+
+  function pushPreviewPayload(payload) {
+    pendingPreviewPayload = payload;
+    lastBuiltPreviewPayload = payload;
+    var out = tryRenderPreviewPayload(payload);
+    if (out.ok) return out;
+    // Keep pending; retries / onload will pick it up. Do not hide direct API errors behind silent postMessage.
+    setPreviewSyncStatus("load", out.reason || "waiting iframe API");
+    return out;
   }
 
   function sendFrontendPreview() {
     try {
-      var frame = $("frontend-preview-frame");
-      if (!frame) {
-        setPreviewSyncStatus("err", "找不到 preview iframe");
-        return;
-      }
-      var payload;
-      try {
-        payload = buildPreviewPayload();
-      } catch (err) {
-        setPreviewSyncStatus("err", "Payload error: " + (err && err.message || err));
-        console.error("[admin preview payload]", err);
-        return;
-      }
-      setPreviewSyncStatus("sent", "v" + payload.draftVersion);
-
-      var direct = tryRenderPreviewPayload(payload);
-      if (direct.ok) return;
-
-      // Fallback: postMessage (same-origin listener in iframe)
-      if (!previewIframeReady && !frame.contentWindow) {
-        setPreviewSyncStatus("load", "iframe 尚未就緒");
-        forceFrontendPreview();
-        return;
-      }
-      try {
-        frame.contentWindow.postMessage(payload, location.origin);
-        setPreviewSyncStatus("sent", "postMessage v" + payload.draftVersion);
-      } catch (e) {
-        setPreviewSyncStatus("err", String(e && e.message || e));
-      }
-      updateLiveCompareLink(payload.article);
+      var payload = buildPreviewPayload();
+      pushPreviewPayload(payload);
+      forceFrontendPreview();
     } catch (e) {
-      setPreviewSyncStatus("err", "預覽建立失敗: " + (e && e.message || e));
+      setPreviewSyncStatus("err", "Payload error: " + (e && e.message || e));
       console.error("[admin preview]", e);
     }
   }
@@ -775,20 +808,26 @@
       forcePreviewTimer = null;
     }
     var delays = [0, 50, 150, 300, 700];
-    var payload;
-    try {
-      payload = lastBuiltPreviewPayload || buildPreviewPayload();
-      // Keep same draftVersion across retries — rebuild article fields only
-      payload.article = collectDraftArticle();
-      payload.mode = frontendPreviewView === "card" ? "card" : "article";
-      payload.theme = frontendPreviewTheme || "light";
-      payload.readingFocus = !!frontendPreviewFocus && frontendPreviewView !== "card";
-      lastBuiltPreviewPayload = payload;
-    } catch (err) {
-      setPreviewSyncStatus("err", "Payload error: " + (err && err.message || err));
-      return;
+    var payload = pendingPreviewPayload;
+    if (!payload) {
+      try {
+        payload = buildPreviewPayload();
+      } catch (err) {
+        setPreviewSyncStatus("err", "Payload error: " + (err && err.message || err));
+        return;
+      }
+    } else {
+      // Refresh article fields / chrome options, keep draftVersion
+      try {
+        if (!payload._fixture) {
+          payload.article = collectDraftArticle();
+        }
+        payload.mode = frontendPreviewView === "card" ? "card" : "article";
+        payload.theme = frontendPreviewTheme || "light";
+        payload.readingFocus = !!frontendPreviewFocus && frontendPreviewView !== "card";
+      } catch (e) {}
     }
-
+    pendingPreviewPayload = payload;
     setPreviewSyncStatus("load", "force retry…");
     var i = 0;
     function attempt() {
@@ -800,13 +839,6 @@
       i += 1;
       if (i >= delays.length) {
         setPreviewSyncStatus("err", out.reason || "iframe API unavailable");
-        // last-resort postMessage
-        try {
-          var frame = $("frontend-preview-frame");
-          if (frame && frame.contentWindow) {
-            frame.contentWindow.postMessage(payload, location.origin);
-          }
-        } catch (e) {}
         return;
       }
       var wait = delays[i] - delays[i - 1];
@@ -816,21 +848,37 @@
     attempt();
   }
 
+  function testPreviewPipeline() {
+    var fixture = window.LYZ_PREVIEW_FIXTURE;
+    if (!fixture) {
+      setPreviewSyncStatus("err", "LYZ_PREVIEW_FIXTURE missing — check preview-fixture.js");
+      return;
+    }
+    var article = cloneJson(fixture);
+    article.body = (article.body || "") + "\n\nTEST-PREVIEW-123\n";
+    article.title = (article.title || "Fixture") + " · TEST-PREVIEW-123";
+    draftPreviewVersion += 1;
+    var payload = {
+      type: "LYZ_ARTICLE_PREVIEW",
+      mode: "article",
+      theme: frontendPreviewTheme || "light",
+      readingFocus: false,
+      draftVersion: draftPreviewVersion,
+      article: article,
+      _fixture: true,
+    };
+    setPreviewSyncStatus("sent", "fixture v" + draftPreviewVersion);
+    pushPreviewPayload(payload);
+    forceFrontendPreview();
+  }
+
   function reloadFrontendPreviewFrame() {
     var frame = $("frontend-preview-frame");
     if (!frame) return;
     previewIframeReady = false;
     lastPreviewRenderedVersion = null;
     setPreviewSyncStatus("load", "重新載入預覽…");
-    frame.src = "admin-preview.html?v=v9-polish-1&t=" + Date.now();
-    frame.addEventListener(
-      "load",
-      function onReloaded() {
-        frame.removeEventListener("load", onReloaded);
-        forceFrontendPreview();
-      },
-      { once: true }
-    );
+    frame.src = "admin-preview.html?v=v9.1-layout-recovery-1&t=" + Date.now();
   }
 
   function scheduleFrontendPreview() {
@@ -838,7 +886,6 @@
     frontendPreviewTimer = setTimeout(function () {
       frontendPreviewTimer = null;
       try {
-        // Build payload once, then force-retry until iframe API renders.
         buildPreviewPayload();
         forceFrontendPreview();
       } catch (e) {
@@ -855,7 +902,7 @@
       if (data.type === "LYZ_ARTICLE_PREVIEW_READY") {
         previewIframeReady = true;
         setPreviewSyncStatus("ready", "READY");
-        forceFrontendPreview();
+        if (pendingPreviewPayload) forceFrontendPreview();
       }
       if (data.type === "LYZ_ARTICLE_PREVIEW_ACK") {
         applyPreviewResult(
@@ -865,7 +912,7 @@
             diagnostics: data.diagnostics,
             error: data.error,
           },
-          lastBuiltPreviewPayload
+          pendingPreviewPayload || lastBuiltPreviewPayload
         );
       }
     });
@@ -876,12 +923,11 @@
       frame.addEventListener("load", function () {
         previewIframeReady = false;
         setPreviewSyncStatus("load", "iframe loaded");
-        forceFrontendPreview();
+        if (pendingPreviewPayload) forceFrontendPreview();
       });
-      // If already complete (missed load)
       try {
         if (frame.contentDocument && frame.contentDocument.readyState === "complete") {
-          forceFrontendPreview();
+          if (pendingPreviewPayload) forceFrontendPreview();
         }
       } catch (e) {}
     }
@@ -892,6 +938,11 @@
         var reloadBtn = e.target.closest("[data-fp-reload]");
         if (reloadBtn) {
           reloadFrontendPreviewFrame();
+          return;
+        }
+        var testBtn = e.target.closest("[data-fp-test-pipeline]");
+        if (testBtn) {
+          testPreviewPipeline();
           return;
         }
         var btn = e.target.closest("[data-fp-view], [data-fp-theme], [data-fp-device], [data-fp-focus]");

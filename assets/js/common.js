@@ -124,12 +124,13 @@
       el.id = "site-toast";
       el.setAttribute("role", "status");
       el.setAttribute("aria-live", "polite");
+      el.setAttribute("data-section-key", "ui.toast.shell");
       document.body.appendChild(el);
     }
     el.hidden = false;
     el.innerHTML =
-      "<strong>" + String(title || "") + "</strong>" +
-      (detail ? "<code>" + String(detail) + "</code>" : "");
+      "<strong data-section-key=\"ui.toast.title\">" + String(title || "") + "</strong>" +
+      (detail ? "<code data-ui-copy=\"technical\">" + String(detail) + "</code>" : "");
     el.classList.add("is-visible");
     clearTimeout(showSiteToast._t);
     showSiteToast._t = setTimeout(function () {
@@ -138,6 +139,93 @@
     }, 2000);
   }
   window.showSiteToast = showSiteToast;
+
+  function siteCopy(key, fallback) {
+    try {
+      var schema = window.LYZSiteCopySchema;
+      if (schema && typeof schema.byKey === "function") {
+        var entry = schema.byKey(key);
+        if (entry && entry.fallback != null && String(entry.fallback) !== "") return String(entry.fallback);
+      }
+    } catch (e) {}
+    return fallback;
+  }
+  window.LYZSiteCopy = siteCopy;
+
+  function stampStaticSiteCopyKeys() {
+    var logo = document.querySelector("a.logo");
+    if (logo && !logo.getAttribute("data-section-key")) {
+      logo.setAttribute("data-section-key", "site.brand");
+    }
+    var navMap = {
+      "index.html": "nav.home",
+      "directory.html": "nav.notes",
+      "literature.html": "nav.literature",
+      "about.html": "nav.about",
+      "academic.html": "nav.academic"
+    };
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#nav ul.links a[href], #header a.logo"),
+      function (a) {
+        if (a.classList.contains("logo")) {
+          if (!a.getAttribute("data-section-key")) a.setAttribute("data-section-key", "site.brand");
+          return;
+        }
+        var href = (a.getAttribute("href") || "").split("?")[0];
+        if (navMap[href] && !a.getAttribute("data-section-key")) {
+          a.setAttribute("data-section-key", navMap[href]);
+        }
+      }
+    );
+    var copyLi = document.querySelector("#copyright li:first-child");
+    if (copyLi && !copyLi.getAttribute("data-section-key")) {
+      copyLi.setAttribute("data-section-key", "footer.copyright");
+    }
+    var designLi = document.querySelector("#copyright li:nth-child(2)");
+    if (designLi && !designLi.querySelector("[data-section-key]")) {
+      var html = designLi.innerHTML;
+      if (/Design:/i.test(html) && !designLi.querySelector("[data-section-key]")) {
+        designLi.innerHTML =
+          '<span data-section-key="footer.designPrefix">Design:</span> ' +
+          '<a href="https://html5up.net" data-section-key="footer.designCredit">HTML5 UP</a>';
+      }
+    }
+    var menuToggle = document.querySelector("a.navPanelToggle");
+    if (menuToggle && !menuToggle.getAttribute("data-section-key")) {
+      menuToggle.setAttribute("data-section-key", "ui.nav.menuToggle");
+    }
+    Array.prototype.forEach.call(document.querySelectorAll(".social-copy-tip__hint"), function (el) {
+      if (!el.getAttribute("data-section-key")) el.setAttribute("data-section-key", "ui.social.copyHint");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".social-copy-tip__id"), function (el) {
+      el.setAttribute("data-ui-copy", "technical");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("#nav .icons .label, #nav ul.icons .label"), function (el) {
+      var t = (el.textContent || "").trim().toLowerCase();
+      var keyMap = {
+        github: "ui.social.github",
+        instagram: "ui.social.instagram",
+        facebook: "ui.social.facebook",
+        discord: "ui.social.discord",
+        penana: "ui.social.penana",
+        mail: "ui.social.mail",
+        email: "ui.social.mail"
+      };
+      if (keyMap[t] && !el.getAttribute("data-section-key")) el.setAttribute("data-section-key", keyMap[t]);
+    });
+    var continueBtn = document.querySelector("#intro a.button.scrolly, .intro a.button.scrolly");
+    if (continueBtn && !continueBtn.getAttribute("data-section-key")) {
+      continueBtn.setAttribute("data-section-key", "home.intro.continue");
+    }
+    var focusToggle = document.getElementById("reading-focus-toggle");
+    if (focusToggle && !focusToggle.getAttribute("data-section-key")) {
+      focusToggle.setAttribute("data-section-key", "ui.controls.focus");
+    }
+    var themeBtn = document.getElementById("btn-theme");
+    if (themeBtn && !themeBtn.getAttribute("data-section-key")) {
+      themeBtn.setAttribute("data-section-key", "ui.controls.theme");
+    }
+  }
 
   function initMediaControls() {
     function mount() {
@@ -151,7 +239,8 @@
         hint.id = "music-resume-hint";
         hint.className = "music-resume-hint";
         hint.hidden = true;
-        hint.textContent = "點一下頁面以繼續音樂";
+        hint.textContent = siteCopy("ui.music.resumeHint", "點一下頁面以繼續音樂");
+        hint.setAttribute("data-section-key", "ui.music.resumeHint");
         document.body.appendChild(hint);
       }
 
@@ -383,12 +472,12 @@
 
   function initAdminNav() {
     var PUBLIC_LINKS = [
-      { href: "index.html", label: "首頁" },
-      { href: "directory.html", label: "隨筆" },
-      { href: "literature.html", label: "文學創作" },
-      { href: "about.html", label: "關於我" },
+      { href: "index.html", label: "首頁", key: "nav.home" },
+      { href: "directory.html", label: "隨筆", key: "nav.notes" },
+      { href: "literature.html", label: "文學創作", key: "nav.literature" },
+      { href: "about.html", label: "關於我", key: "nav.about" },
     ];
-    var ADMIN_LINK = { href: "academic.html", label: "學科筆記" };
+    var ADMIN_LINK = { href: "academic.html", label: "學科筆記", key: "nav.academic" };
     var menuOpen = false;
 
     function currentPath() {
@@ -398,7 +487,8 @@
     function buildLink(item, extraAttrs) {
       var a = document.createElement("a");
       a.href = item.href;
-      a.textContent = item.label;
+      a.textContent = siteCopy(item.key, item.label);
+      if (item.key) a.setAttribute("data-section-key", item.key);
       if (currentPath() === item.href) a.setAttribute("aria-current", "page");
       if (extraAttrs) {
         Object.keys(extraAttrs).forEach(function (k) {
@@ -509,26 +599,26 @@
       extras.innerHTML =
         '<div class="mobile-nav-sheet__divider" role="separator"></div>' +
         '<div class="mobile-nav-sheet__row" role="group" aria-label="主題">' +
-        '<button type="button" class="mobile-nav-chip" data-theme-set="light" aria-pressed="false">Light</button>' +
-        '<button type="button" class="mobile-nav-chip" data-theme-set="dark" aria-pressed="false">Dark</button>' +
-        '<button type="button" class="mobile-nav-chip" data-theme-set="glass" aria-pressed="false">Glass</button>' +
+        '<button type="button" class="mobile-nav-chip" data-theme-set="light" data-section-key="ui.theme.light" aria-pressed="false">Light</button>' +
+        '<button type="button" class="mobile-nav-chip" data-theme-set="dark" data-section-key="ui.theme.dark" aria-pressed="false">Dark</button>' +
+        '<button type="button" class="mobile-nav-chip" data-theme-set="glass" data-section-key="ui.theme.glass" aria-pressed="false">Glass</button>' +
         "</div>" +
         '<div class="mobile-nav-sheet__social" role="group" aria-label="社群連結">' +
-        '<a class="mobile-social-link" href="https://github.com/linyize1111" target="_blank" rel="noopener">' +
+        '<a class="mobile-social-link" href="https://github.com/linyize1111" target="_blank" rel="noopener" data-section-key="ui.social.github">' +
         '<i class="icon brands fa-github" aria-hidden="true"></i><span>GitHub</span></a>' +
-        '<a class="mobile-social-link" href="https://www.instagram.com/linyize._.mcxi/" target="_blank" rel="noopener">' +
+        '<a class="mobile-social-link" href="https://www.instagram.com/linyize._.mcxi/" target="_blank" rel="noopener" data-section-key="ui.social.instagram">' +
         '<i class="icon brands fa-instagram" aria-hidden="true"></i><span>Instagram</span></a>' +
-        '<a class="mobile-social-link" href="https://www.facebook.com/lin.jay.911547/" target="_blank" rel="noopener">' +
+        '<a class="mobile-social-link" href="https://www.facebook.com/lin.jay.911547/" target="_blank" rel="noopener" data-section-key="ui.social.facebook">' +
         '<i class="icon brands fa-facebook-f" aria-hidden="true"></i><span>Facebook</span></a>' +
         '<span class="social-copy-wrap mobile-social-copy">' +
-        '<a class="mobile-social-link js-copy-id" href="#" role="button" data-copy-text="lookin_her_eyes" aria-label="複製 Discord ID lookin_her_eyes">' +
+        '<a class="mobile-social-link js-copy-id" href="#" role="button" data-copy-text="lookin_her_eyes" data-section-key="ui.social.discord" aria-label="複製 Discord ID lookin_her_eyes">' +
         '<i class="icon brands fa-discord" aria-hidden="true"></i><span>Discord</span></a>' +
         '<span class="social-copy-tip" role="tooltip">' +
-        '<code class="social-copy-tip__id">lookin_her_eyes</code>' +
-        '<span class="social-copy-tip__hint">點擊複製</span></span></span>' +
-        '<a class="mobile-social-link" href="https://www.penana.com/user/374414/%E6%99%82%E9%9B%AA" target="_blank" rel="noopener">' +
+        '<code class="social-copy-tip__id" data-ui-copy="technical">lookin_her_eyes</code>' +
+        '<span class="social-copy-tip__hint" data-section-key="ui.social.copyHint">點擊複製</span></span></span>' +
+        '<a class="mobile-social-link" href="https://www.penana.com/user/374414/%E6%99%82%E9%9B%AA" target="_blank" rel="noopener" data-section-key="ui.social.penana">' +
         '<i class="icon solid fa-pen" aria-hidden="true"></i><span>Penana</span></a>' +
-        '<a class="mobile-social-link" href="mailto:jay0975008815@gmail.com">' +
+        '<a class="mobile-social-link" href="mailto:jay0975008815@gmail.com" data-section-key="ui.social.mail">' +
         '<i class="icon fa-envelope" aria-hidden="true"></i><span>Mail</span></a>' +
         "</div>";
       sheet.appendChild(extras);
@@ -554,7 +644,8 @@
       var brand = document.createElement("a");
       brand.className = "mobile-nav-brand";
       brand.href = "index.html";
-      brand.textContent = "LYZ";
+      brand.textContent = siteCopy("ui.nav.mobileBrand", "LYZ");
+      brand.setAttribute("data-section-key", "ui.nav.mobileBrand");
       brand.setAttribute("aria-label", "LYZ 首頁");
 
       var toggle = document.createElement("button");
@@ -700,11 +791,11 @@
       pop.className = "mobile-controls-popover";
       pop.hidden = true;
       pop.innerHTML =
-        '<button type="button" data-ctrl="theme">🎨 切換主題</button>' +
-        '<button type="button" data-ctrl="focus" class="mobile-ctrl-focus">專注閱讀</button>' +
-        '<button type="button" data-ctrl="mute">🔊 音效</button>' +
-        '<button type="button" data-ctrl="play">🌸 背景效果</button>' +
-        '<button type="button" data-ctrl="top" class="mobile-ctrl-top" hidden>↑ 回頂端</button>';
+        '<button type="button" data-ctrl="theme" data-section-key="ui.controls.theme">🎨 切換主題</button>' +
+        '<button type="button" data-ctrl="focus" class="mobile-ctrl-focus" data-section-key="ui.controls.focus">專注閱讀</button>' +
+        '<button type="button" data-ctrl="mute" data-section-key="ui.controls.mute">🔊 音效</button>' +
+        '<button type="button" data-ctrl="play" data-section-key="ui.controls.play">🌸 背景效果</button>' +
+        '<button type="button" data-ctrl="top" class="mobile-ctrl-top" data-section-key="ui.controls.top" hidden>↑ 回頂端</button>';
 
       document.body.appendChild(fab);
       document.body.appendChild(pop);
@@ -932,13 +1023,13 @@
         function () {
           flashTip(tip, true);
           if (typeof showSiteToast === "function") {
-            showSiteToast("✓ 已複製 Discord 使用者 ID", text);
+            showSiteToast(siteCopy("ui.discord.copied", "✓ 已複製 Discord 使用者 ID"), text);
           }
         },
         function () {
           flashTip(tip, false);
           if (typeof showSiteToast === "function") {
-            showSiteToast("無法自動複製 Discord ID，請手動複製：", text);
+            showSiteToast(siteCopy("ui.discord.copyFailed", "無法自動複製 Discord ID，請手動複製："), text);
           } else {
             window.prompt("請手動複製 Discord ID", text);
           }
@@ -948,6 +1039,7 @@
   }
 
   function initCommon() {
+    stampStaticSiteCopyKeys();
     initTheme();
     initLoadingScreen();
     initHeroSpacer();
@@ -959,6 +1051,8 @@
     initMobileControlsFab();
     initCopyIdTips();
     initAnalytics();
+    // Re-stamp after nav chrome mounts
+    stampStaticSiteCopyKeys();
   }
 
   initCommon();

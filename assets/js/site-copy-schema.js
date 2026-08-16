@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LYZ site copy schema — editable text keys + fallbacks from current HTML.
  * Exposes window.LYZSiteCopySchema and window.LYZSiteCopySchema.ENTRIES.
  */
@@ -67,7 +67,46 @@
       fallback: "© LYZ",
       pageUrl: "index.html"
     },
-
+    {
+      key: "footer.designPrefix",
+      page: "global",
+      group: "頁尾",
+      label: "設計署名前綴",
+      description: "頁尾 Design: 前綴",
+      mode: "text",
+      fallback: "Design:",
+      pageUrl: "index.html"
+    },
+    {
+      key: "footer.designCredit",
+      page: "global",
+      group: "頁尾",
+      label: "設計署名",
+      description: "頁尾 HTML5 UP 連結文字",
+      mode: "text",
+      fallback: "HTML5 UP",
+      pageUrl: "index.html"
+    },
+    {
+      key: "nav.academic",
+      page: "global",
+      group: "導覽",
+      label: "導覽 · 學科筆記",
+      description: "管理員導覽「學科筆記」",
+      mode: "text",
+      fallback: "學科筆記",
+      pageUrl: "academic.html"
+    },
+    {
+      key: "home.intro.continue",
+      page: "home",
+      group: "歡迎",
+      label: "首頁 · Continue",
+      description: "首頁 intro 向下捲動按鈕",
+      mode: "text",
+      fallback: "Continue",
+      pageUrl: "index.html"
+    },
     // —— HOME ——
     {
       key: "home.intro.title",
@@ -318,7 +357,7 @@
       group: "介紹",
       label: "關於我 · 引言標題",
       description: "關於我頁引言／詩句標題（支援 Markdown）",
-      mode: "markdown",
+      mode: "multiline",
       fallback: "月季花四季盛放\n說起來，落花時節就是花開時節呢。",
       pageUrl: "about.html"
     },
@@ -456,7 +495,58 @@
       mode: "text",
       fallback: "管理員專用區。",
       pageUrl: "academic.html"
-    }
+    },
+
+    // —— UI labels ——
+    { key: "ui.filter.categoryLabel", page: "directory", group: "列表 UI", label: "分類篩選標籤", description: "Filter label", mode: "text", fallback: "分類篩選", pageUrl: "directory.html" },
+    { key: "ui.filter.allCategories", page: "directory", group: "列表 UI", label: "所有分類", description: "Filter all option", mode: "text", fallback: "所有分類", pageUrl: "directory.html" },
+    { key: "ui.sort.label", page: "directory", group: "列表 UI", label: "排序方式標籤", description: "Sort label", mode: "text", fallback: "排序方式", pageUrl: "directory.html" },
+    { key: "ui.sort.uploadDesc", page: "directory", group: "列表 UI", label: "上傳時間新到舊", description: "Sort option", mode: "text", fallback: "上傳時間 (新到舊)", pageUrl: "directory.html" },
+    { key: "ui.sort.uploadAsc", page: "directory", group: "列表 UI", label: "上傳時間舊到新", description: "Sort option", mode: "text", fallback: "上傳時間 (舊到新)", pageUrl: "directory.html" },
+    { key: "ui.sort.editDesc", page: "directory", group: "列表 UI", label: "最後編輯新到舊", description: "Sort option", mode: "text", fallback: "最後編輯 (新到舊)", pageUrl: "directory.html" },
+    { key: "ui.sort.titleAsc", page: "directory", group: "列表 UI", label: "名稱 A-Z", description: "Sort option", mode: "text", fallback: "名稱 (A-Z)", pageUrl: "directory.html" },
+    { key: "ui.sort.titleDesc", page: "directory", group: "列表 UI", label: "名稱 Z-A", description: "Sort option", mode: "text", fallback: "名稱 (Z-A)", pageUrl: "directory.html" },
+    { key: "ui.sort.listView", page: "directory", group: "列表 UI", label: "列表檢視", description: "Sort option", mode: "text", fallback: "列表檢視 (僅標題)", pageUrl: "directory.html" },
+    { key: "ui.pagination.info", page: "directory", group: "列表 UI", label: "分頁資訊", description: "Pagination info line (runtime may overwrite)", mode: "text", fallback: "", pageUrl: "directory.html" },
+    { key: "ui.pagination.prev", page: "directory", group: "列表 UI", label: "上一頁", description: "Pagination previous", mode: "text", fallback: "← 上一頁", pageUrl: "directory.html" },
+    { key: "ui.pagination.next", page: "directory", group: "列表 UI", label: "下一頁", description: "Pagination next", mode: "text", fallback: "下一頁 →", pageUrl: "directory.html" },
+    { key: "ui.pagination.empty", page: "directory", group: "列表 UI", label: "無符合內容", description: "Empty filter result", mode: "text", fallback: "無符合條件的內容", pageUrl: "directory.html" },
+    { key: "ui.filter.open", page: "directory", group: "列表 UI", label: "篩選按鈕", description: "Mobile filter open", mode: "text", fallback: "篩選", pageUrl: "directory.html" },
+    { key: "ui.filter.sheetTitle", page: "directory", group: "列表 UI", label: "分類表頭", description: "Mobile filter sheet title", mode: "text", fallback: "分類", pageUrl: "directory.html" },
+    { key: "ui.filter.apply", page: "directory", group: "列表 UI", label: "套用", description: "Mobile filter apply", mode: "text", fallback: "套用", pageUrl: "directory.html" },
+    { key: "ui.sort.labelShort", page: "directory", group: "列表 UI", label: "排序短標", description: "sr-only sort label", mode: "text", fallback: "排序", pageUrl: "directory.html" },
+    { key: "ui.sort.viewToggle", page: "directory", group: "列表 UI", label: "檢視切換", description: "List/card toggle marker", mode: "text", fallback: "▦", pageUrl: "directory.html" },
+    { key: "ui.sort.uploadDescShort", page: "directory", group: "列表 UI", label: "最新", description: "Mobile short sort", mode: "text", fallback: "最新", pageUrl: "directory.html" },
+    { key: "ui.sort.uploadAscShort", page: "directory", group: "列表 UI", label: "最舊", description: "Mobile short sort", mode: "text", fallback: "最舊", pageUrl: "directory.html" },
+    { key: "ui.sort.editDescShort", page: "directory", group: "列表 UI", label: "最後編輯短", description: "Mobile short sort", mode: "text", fallback: "最後編輯", pageUrl: "directory.html" },
+    { key: "ui.sort.titleAscShort", page: "directory", group: "列表 UI", label: "名稱 A-Z 短", description: "Mobile short sort", mode: "text", fallback: "名稱 A-Z", pageUrl: "directory.html" },
+    { key: "ui.sort.titleDescShort", page: "directory", group: "列表 UI", label: "名稱 Z-A 短", description: "Mobile short sort", mode: "text", fallback: "名稱 Z-A", pageUrl: "directory.html" },
+    { key: "ui.loading.articles", page: "global", group: "狀態", label: "文章載入中", description: "List loading text", mode: "text", fallback: "載入文章中…", pageUrl: "directory.html" },
+    { key: "ui.music.resumeHint", page: "global", group: "媒體", label: "音樂繼續提示", description: "Shown when autoplay blocked", mode: "text", fallback: "點一下頁面以繼續音樂", pageUrl: "index.html" },
+    { key: "ui.discord.copied", page: "global", group: "社群", label: "Discord 已複製", description: "Toast title on copy success", mode: "text", fallback: "✓ 已複製 Discord 使用者 ID", pageUrl: "index.html" },
+    { key: "ui.discord.copyFailed", page: "global", group: "社群", label: "Discord 複製失敗", description: "Toast title on copy failure", mode: "text", fallback: "無法自動複製 Discord ID，請手動複製：", pageUrl: "index.html" },
+    { key: "ui.nav.mobileBrand", page: "global", group: "導覽", label: "手機品牌", description: "Mobile nav brand text", mode: "text", fallback: "LYZ", pageUrl: "index.html" },
+    { key: "ui.nav.menuToggle", page: "global", group: "導覽", label: "選單開關", description: "Legacy Menu toggle label", mode: "text", fallback: "Menu", pageUrl: "index.html" },
+    { key: "ui.theme.light", page: "global", group: "主題", label: "Light", description: "Theme chip", mode: "text", fallback: "Light", pageUrl: "index.html" },
+    { key: "ui.theme.dark", page: "global", group: "主題", label: "Dark", description: "Theme chip", mode: "text", fallback: "Dark", pageUrl: "index.html" },
+    { key: "ui.theme.glass", page: "global", group: "主題", label: "Glass", description: "Theme chip", mode: "text", fallback: "Glass", pageUrl: "index.html" },
+    { key: "ui.social.github", page: "global", group: "社群", label: "GitHub", description: "Social label", mode: "text", fallback: "GitHub", pageUrl: "index.html" },
+    { key: "ui.social.instagram", page: "global", group: "社群", label: "Instagram", description: "Social label", mode: "text", fallback: "Instagram", pageUrl: "index.html" },
+    { key: "ui.social.facebook", page: "global", group: "社群", label: "Facebook", description: "Social label", mode: "text", fallback: "Facebook", pageUrl: "index.html" },
+    { key: "ui.social.discord", page: "global", group: "社群", label: "Discord", description: "Social label", mode: "text", fallback: "Discord", pageUrl: "index.html" },
+    { key: "ui.social.penana", page: "global", group: "社群", label: "Penana", description: "Social label", mode: "text", fallback: "Penana", pageUrl: "index.html" },
+    { key: "ui.social.mail", page: "global", group: "社群", label: "Mail", description: "Social label", mode: "text", fallback: "Mail", pageUrl: "index.html" },
+    { key: "ui.social.copyHint", page: "global", group: "社群", label: "點擊複製", description: "Discord tip hint", mode: "text", fallback: "點擊複製", pageUrl: "index.html" },
+    { key: "ui.controls.theme", page: "global", group: "控制", label: "切換主題", description: "Controls popover theme", mode: "text", fallback: "🎨 切換主題", pageUrl: "index.html" },
+    { key: "ui.controls.focus", page: "global", group: "控制", label: "專注閱讀", description: "Reading focus control", mode: "text", fallback: "專注閱讀", pageUrl: "index.html" },
+    { key: "ui.controls.mute", page: "global", group: "控制", label: "音效", description: "Mute control", mode: "text", fallback: "🔊 音效", pageUrl: "index.html" },
+    { key: "ui.controls.play", page: "global", group: "控制", label: "背景效果", description: "BG effects control", mode: "text", fallback: "🌸 背景效果", pageUrl: "index.html" },
+    { key: "ui.controls.top", page: "global", group: "控制", label: "回頂端", description: "Scroll top control", mode: "text", fallback: "↑ 回頂端", pageUrl: "index.html" },
+    { key: "ui.toast.shell", page: "global", group: "狀態", label: "Toast 容器", description: "Toast element marker", mode: "text", fallback: "", pageUrl: "index.html" },
+    { key: "ui.toast.title", page: "global", group: "狀態", label: "Toast 標題", description: "Toast title slot", mode: "text", fallback: "", pageUrl: "index.html" },
+    { key: "note.error.title", page: "note", group: "文章", label: "文章錯誤標題", description: "note.html missing-id title", mode: "text", fallback: "系統錯誤", pageUrl: "note.html" },
+    { key: "note.error.missing", page: "note", group: "文章", label: "缺少參數", description: "note.html missing URL param", mode: "text", fallback: "未提供檔案參數 (Missing URL Parameter)", pageUrl: "note.html" },
+    { key: "note.error.hint", page: "note", group: "文章", label: "錯誤提示", description: "note.html empty-state hint", mode: "text", fallback: "請從首頁目錄選擇要閱讀的筆記或簡報。", pageUrl: "note.html" }
   ];
 
   var PAGE_ORDER = ["global", "home", "directory", "literature", "about", "academic"];
