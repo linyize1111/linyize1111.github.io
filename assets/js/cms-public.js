@@ -200,6 +200,28 @@
     });
   }
 
+  function normalizeSiteCopyMarkdown(value) {
+    var text = String(value == null ? "" : value).replace(/\r\n/g, "\n");
+    text = text.replace(/^\n+/, "").replace(/\n+$/, "");
+    var lines = text.split("\n");
+    var nonEmpty = lines.filter(function (l) { return l.trim().length; });
+    if (nonEmpty.length) {
+      var indents = nonEmpty.map(function (l) {
+        var m = l.match(/^[ \t]+/);
+        return m ? m[0].length : 0;
+      });
+      var min = Math.min.apply(null, indents);
+      if (min > 0) {
+        lines = lines.map(function (l) {
+          if (!l.trim()) return "";
+          return l.slice(min);
+        });
+        text = lines.join("\n");
+      }
+    }
+    return text;
+  }
+
   async function applySections() {
     var nodes = document.querySelectorAll("[data-section-key]");
     if (!nodes.length) return;
@@ -227,20 +249,26 @@
       var mode = el.getAttribute("data-section-mode") || "text";
       var entry = schema && schema.byKey ? schema.byKey(key) : null;
       if (entry && entry.mode) mode = el.getAttribute("data-section-mode") || entry.mode;
+      var raw = map[key];
       if (mode === "markdown" && window.SB && typeof window.SB.renderMarkdown === "function") {
-        el.innerHTML = window.SB.renderMarkdown(map[key]);
+        el.innerHTML = window.SB.renderMarkdown(normalizeSiteCopyMarkdown(raw));
+        // Guard: accidental indented code blocks for site copy
+        if (el.querySelector("pre > code") && String(raw).indexOf("```") < 0) {
+          el.innerHTML = esc(normalizeSiteCopyMarkdown(raw)).replace(/\n/g, "<br />");
+        }
       } else if (mode === "multiline") {
-        el.innerHTML = esc(map[key]).replace(/\n/g, "<br />");
+        el.innerHTML = esc(normalizeSiteCopyMarkdown(raw)).replace(/\n/g, "<br />");
       } else {
-        // Preserve link labels / simple text nodes
-        if (el.tagName === "A" || el.children.length === 0) {
-          el.textContent = map[key];
+        if (el.tagName === "A" || el.tagName === "OPTION" || el.tagName === "LABEL" || el.children.length === 0) {
+          el.textContent = raw;
         } else {
-          el.innerHTML = esc(map[key]).replace(/\n/g, "<br />");
+          el.innerHTML = esc(raw).replace(/\n/g, "<br />");
         }
       }
     });
   }
+
+  window.LYZNormalizeSiteCopyMarkdown = normalizeSiteCopyMarkdown;
 
   document.addEventListener("DOMContentLoaded", function () {
     var container = document.getElementById("posts-container");
@@ -248,7 +276,7 @@
 
     if (CONFIGURED && container && container.getAttribute("data-section")) {
       container.innerHTML =
-        '<div class="cms-loading" style="text-align:center;padding:40px 0;opacity:.7;">載入文章中…</div>';
+        '<div class="cms-loading" data-section-key="ui.loading.articles" style="text-align:center;padding:40px 0;opacity:.7;">載入文章中…</div>';
     }
 
     async function gateAcademicIfNeeded() {
@@ -269,10 +297,10 @@
 
     gateAcademicIfNeeded().then(function (ok) {
       if (!ok) return;
+      applySections();
       if (!CONFIGURED) return;
       if (container && container.getAttribute("data-section")) renderList(container);
       if (document.getElementById("markdown-container")) renderArticle();
-      applySections();
     });
   });
 })();

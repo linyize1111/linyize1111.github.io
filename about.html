@@ -16,8 +16,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
-    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v9-polish-1" />
-    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9-polish-1" />
+    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v9.1-layout-recovery-1" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9.1-layout-recovery-1" />
 </head>
 
 <body class="is-preload">
@@ -94,7 +94,7 @@
                     <div class="about-profile__copy">
                         <p class="about-updated" data-section-key="about.updated">最近更新日期: 2026/03</p>
                         <h1 data-section-key="about.title">關於我</h1>
-                        <div class="about-profile__quote" data-section-key="about.heading" data-section-mode="markdown">
+                        <div class="about-profile__quote" data-section-key="about.heading" data-section-mode="multiline">
                             月季花四季盛放<br>
                             說起來，落花時節就是花開時節呢。
                         </div>
@@ -136,7 +136,7 @@
 		<div id="copyright">
 			<ul>
 				<li data-section-key="footer.copyright">&copy; LYZ</li>
-				<li>Design: <a href="https://html5up.net">HTML5 UP</a></li>
+				<li><span data-section-key="footer.designPrefix">Design:</span> <a href="https://html5up.net" data-section-key="footer.designCredit">HTML5 UP</a></li>
 			</ul>
 		</div>
 
@@ -156,21 +156,38 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/supabase-client.js?v=v9-polish-1"></script>
+<script src="assets/js/supabase-client.js?v=v9.1-layout-recovery-1"></script>
 <script src="assets/js/auth.js"></script>
-<script src="assets/js/site-copy-schema.js?v=v9-polish-1"></script>
-<script src="assets/js/site-sections.js?v=v9-polish-1"></script>
-<script src="assets/js/presentation-registry.js?v=v9-polish-1"></script>
-<script src="assets/js/article-media.js?v=v9-polish-1"></script>
-<script src="assets/js/cms-public.js?v=v9-polish-1"></script>
-<script src="assets/js/common.js?v=v9-polish-1"></script>
+<script src="assets/js/site-copy-schema.js?v=v9.1-layout-recovery-1"></script>
+<script src="assets/js/site-sections.js?v=v9.1-layout-recovery-1"></script>
+<script src="assets/js/presentation-registry.js?v=v9.1-layout-recovery-1"></script>
+<script src="assets/js/article-media.js?v=v9.1-layout-recovery-1"></script>
+<script src="assets/js/cms-public.js?v=v9.1-layout-recovery-1"></script>
+<script src="assets/js/common.js?v=v9.1-layout-recovery-1"></script>
 <script>
   (function () {
+    var profile = document.querySelector(".about-profile");
     var img = document.querySelector(".about-profile__media img");
     var ambient = document.querySelector(".about-profile__ambient");
-    if (img && ambient) {
+    if (!profile || !img) return;
+    function setAmbient() {
       var src = img.currentSrc || img.getAttribute("src");
-      if (src) ambient.style.backgroundImage = 'url("' + src.replace(/"/g, '\\"') + '")';
+      if (ambient && src) ambient.style.backgroundImage = 'url("' + src.replace(/"/g, '\\"') + '")';
+    }
+    function markOk() {
+      profile.classList.add("has-media");
+      profile.classList.remove("media-failed");
+      setAmbient();
+    }
+    function markFail() {
+      profile.classList.add("media-failed");
+      profile.classList.remove("has-media");
+    }
+    img.addEventListener("load", markOk);
+    img.addEventListener("error", markFail);
+    if (img.complete) {
+      if (img.naturalWidth > 0) markOk();
+      else markFail();
     }
   })();
 </script>
