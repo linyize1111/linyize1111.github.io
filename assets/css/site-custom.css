@@ -3194,3 +3194,98 @@ body.admin-gated-page.admin-gate-ok #wrapper {
     transition: none !important;
   }
 }
+
+/* Discord / copyable social ID tip */
+.social-copy-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.social-copy-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%) translateY(4px);
+  z-index: 40;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: max-content;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(18, 20, 28, 0.92);
+  color: #f4f6fb;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  font-size: 0.72rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.social-copy-tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-top-color: rgba(18, 20, 28, 0.92);
+}
+.social-copy-tip__id {
+  font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  user-select: all;
+  background: transparent;
+  color: inherit;
+}
+.social-copy-tip__hint {
+  opacity: 0.72;
+  font-size: 0.66rem;
+}
+.social-copy-wrap:hover .social-copy-tip,
+.social-copy-wrap:focus-within .social-copy-tip,
+.social-copy-wrap.is-open .social-copy-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.social-copy-tip.is-copied .social-copy-tip__hint {
+  color: #9dffc0;
+  opacity: 1;
+}
+.social-copy-tip.is-failed .social-copy-tip__hint {
+  color: #ffb4b4;
+  opacity: 1;
+}
+.mobile-social-copy {
+  display: inline-flex;
+}
+.mobile-social-copy .social-copy-tip {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+.mobile-social-copy .social-copy-tip::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: rgba(18, 20, 28, 0.92);
+}
+[data-theme="light"] .social-copy-tip {
+  background: rgba(255, 255, 255, 0.96);
+  color: #1d2230;
+  border-color: rgba(20, 24, 36, 0.12);
+  box-shadow: 0 8px 22px rgba(20, 24, 36, 0.12);
+}
+[data-theme="light"] .social-copy-tip::after {
+  border-top-color: rgba(255, 255, 255, 0.96);
+}
+[data-theme="light"] .mobile-social-copy .social-copy-tip::after {
+  border-top-color: transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.96);
+}

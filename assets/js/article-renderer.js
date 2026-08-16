@@ -116,9 +116,19 @@
   }
 
   function collectSlides(a) {
-    // Cover / images[] are no longer shown above cards or articles.
-    // Only Markdown body images (pasted below) remain via enhanceMarkdownMedia.
-    return [];
+    var seen = new Set();
+    var slides = [];
+    var broken = /(?:^|\/)rat\.jpg$/i;
+    function push(src, caption) {
+      if (!src || seen.has(src) || broken.test(src)) return;
+      seen.add(src);
+      slides.push({ src: src, caption: caption || "" });
+    }
+    if (a.cover) push(a.cover, "");
+    (Array.isArray(a.images) ? a.images : []).forEach(function (im) {
+      if (im && im.src) push(im.src, im.caption || "");
+    });
+    return slides;
   }
 
   function resolvePdfUrl(url) {

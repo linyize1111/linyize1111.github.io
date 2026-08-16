@@ -440,8 +440,12 @@
         '<i class="icon brands fa-instagram" aria-hidden="true"></i><span>Instagram</span></a>' +
         '<a class="mobile-social-link" href="https://www.facebook.com/lin.jay.911547/" target="_blank" rel="noopener">' +
         '<i class="icon brands fa-facebook-f" aria-hidden="true"></i><span>Facebook</span></a>' +
-        '<a class="mobile-social-link" href="https://discord.com/" target="_blank" rel="noopener" title="Discord: lookin_her_eyes">' +
+        '<span class="social-copy-wrap mobile-social-copy">' +
+        '<a class="mobile-social-link js-copy-id" href="#" role="button" data-copy-text="lookin_her_eyes" aria-label="複製 Discord ID lookin_her_eyes">' +
         '<i class="icon brands fa-discord" aria-hidden="true"></i><span>Discord</span></a>' +
+        '<span class="social-copy-tip" role="tooltip">' +
+        '<code class="social-copy-tip__id">lookin_her_eyes</code>' +
+        '<span class="social-copy-tip__hint">點擊複製</span></span></span>' +
         '<a class="mobile-social-link" href="https://www.penana.com/user/374414/%E6%99%82%E9%9B%AA" target="_blank" rel="noopener">' +
         '<i class="icon solid fa-pen" aria-hidden="true"></i><span>Penana</span></a>' +
         '<a class="mobile-social-link" href="mailto:jay0975008815@gmail.com">' +
@@ -799,6 +803,58 @@
     window.addEventListener("scroll", sync, { passive: true });
   }
 
+  function initCopyIdTips() {
+    function flashTip(tip, ok) {
+      if (!tip) return;
+      tip.classList.add(ok ? "is-copied" : "is-failed");
+      var hint = tip.querySelector(".social-copy-tip__hint");
+      var prev = hint ? hint.textContent : "";
+      if (hint) hint.textContent = ok ? "已複製" : "複製失敗";
+      window.setTimeout(function () {
+        tip.classList.remove("is-copied", "is-failed");
+        if (hint) hint.textContent = prev || "點擊複製";
+      }, 1400);
+    }
+
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+      }
+      return new Promise(function (resolve, reject) {
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          if (ok) resolve();
+          else reject(new Error("copy failed"));
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }
+
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".js-copy-id");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var text = (btn.getAttribute("data-copy-text") || "").trim();
+      if (!text) return;
+      var wrap = btn.closest(".social-copy-wrap");
+      var tip = wrap && wrap.querySelector(".social-copy-tip");
+      copyText(text).then(
+        function () { flashTip(tip, true); },
+        function () { flashTip(tip, false); }
+      );
+    });
+  }
+
   function initCommon() {
     initTheme();
     initLoadingScreen();
@@ -809,6 +865,7 @@
     initReadingFocusUi();
     initScrollTopButton();
     initMobileControlsFab();
+    initCopyIdTips();
     initAnalytics();
   }
 
