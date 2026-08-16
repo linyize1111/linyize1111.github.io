@@ -116,19 +116,9 @@
   }
 
   function collectSlides(a) {
-    var seen = new Set();
-    var slides = [];
-    var broken = /(?:^|\/)rat\.jpg$/i;
-    function push(src, caption) {
-      if (!src || seen.has(src) || broken.test(src)) return;
-      seen.add(src);
-      slides.push({ src: src, caption: caption || "" });
-    }
-    if (a.cover) push(a.cover, "");
-    (Array.isArray(a.images) ? a.images : []).forEach(function (im) {
-      if (im && im.src) push(im.src, im.caption || "");
-    });
-    return slides;
+    // Cover / images[] are no longer shown above cards or articles.
+    // Only Markdown body images (pasted below) remain via enhanceMarkdownMedia.
+    return [];
   }
 
   function resolvePdfUrl(url) {
@@ -599,37 +589,15 @@
       statusEl.innerText = bits.join(" · ");
     }
 
-    var coverCfg = coverConfig(a);
     var existingHero = postSection && postSection.querySelector(".article-hero, .article-cover-inline");
     if (existingHero) existingHero.remove();
     if (postSection) postSection.classList.remove("has-article-hero", "has-article-cover-inline");
 
-    if (postSection && a.cover && coverCfg.style === "hero") {
-      postSection.classList.add("has-article-hero");
-      var hero = document.createElement("div");
-      hero.className = "article-hero";
-      if (coverCfg.ratio && coverCfg.ratio !== "auto") hero.style.aspectRatio = coverCfg.ratio;
-      hero.innerHTML =
-        '<img src="' + esc(a.cover) + '" alt="" style="' + coverDisplayStyle(a) + '" />';
-      var header = postSection.querySelector("header.major");
-      if (header && header.nextSibling) postSection.insertBefore(hero, header.nextSibling);
-      else postSection.appendChild(hero);
-    }
+    // Cover/hero above the article intentionally disabled — body Markdown images only.
 
     var html = window.SB.renderMarkdown(a.body || "");
     contentEl.innerHTML = '<div class="markdown-body article-reading">' + html + "</div>";
     var bodyRoot = contentEl.querySelector(".markdown-body");
-
-    if (postSection && a.cover && coverCfg.style === "inline") {
-      postSection.classList.add("has-article-cover-inline");
-      var inlineCover = document.createElement("figure");
-      inlineCover.className = "article-cover-inline";
-      if (coverCfg.ratio && coverCfg.ratio !== "auto") inlineCover.style.aspectRatio = coverCfg.ratio;
-      inlineCover.innerHTML =
-        '<img src="' + esc(a.cover) + '" alt="" style="' + coverDisplayStyle(a) + '" />';
-      if (bodyRoot && bodyRoot.firstChild) bodyRoot.insertBefore(inlineCover, bodyRoot.firstChild);
-      else if (bodyRoot) bodyRoot.appendChild(inlineCover);
-    }
 
     enhanceArticleFigures(bodyRoot);
     var toc = buildArticleToc(bodyRoot, meta.allowToc);

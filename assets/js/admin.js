@@ -588,6 +588,7 @@
   function sendFrontendPreview() {
     var frame = $("frontend-preview-frame");
     if (!frame || !frame.contentWindow) return;
+    if (!previewIframeReady) return;
     var article = collectDraftArticle();
     var payload = {
       type: "LYZ_ARTICLE_PREVIEW",
@@ -611,6 +612,53 @@
       sendFrontendPreview();
       if (editorMode === "changes") renderChangesPanel();
     }, 160);
+  }
+
+  function bindFrontendPreviewChrome() {
+    window.addEventListener("message", function (e) {
+      if (e.origin !== location.origin) return;
+      var data = e.data || {};
+      if (data.type === "LYZ_ARTICLE_PREVIEW_READY") {
+        previewIframeReady = true;
+        sendFrontendPreview();
+      }
+    });
+
+    var frame = $("frontend-preview-frame");
+    if (frame) {
+      frame.addEventListener("load", function () {
+        // Fallback if READY was missed (cache / race)
+        setTimeout(function () {
+          if (!previewIframeReady) {
+            previewIframeReady = true;
+            sendFrontendPreview();
+          }
+        }, 400);
+      });
+    }
+
+    var chrome = $("frontend-preview-chrome");
+    if (chrome) {
+      chrome.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-fp-view], [data-fp-theme], [data-fp-device], [data-fp-focus]");
+        if (!btn) return;
+        if (btn.hasAttribute("data-fp-view")) {
+          frontendPreviewView = btn.getAttribute("data-fp-view") || "article";
+        }
+        if (btn.hasAttribute("data-fp-theme")) {
+          frontendPreviewTheme = btn.getAttribute("data-fp-theme") || "glass";
+        }
+        if (btn.hasAttribute("data-fp-device")) {
+          frontendPreviewDevice = btn.getAttribute("data-fp-device") || "mobile";
+        }
+        if (btn.hasAttribute("data-fp-focus")) {
+          frontendPreviewFocus = btn.getAttribute("data-fp-focus") === "on";
+        }
+        setFrontendChromeUi();
+        scheduleFrontendPreview();
+      });
+    }
+    setFrontendChromeUi();
   }
 
   function scheduleMdPreview() {
@@ -2068,6 +2116,7 @@
   // ---------- 事件綁定 ----------
   function bind() {
     bindClearAuthButtons();
+    bindFrontendPreviewChrome();
     var g = $("btn-google");
     if (g) g.addEventListener("click", function () {
       window.SBAuth.signInWithGoogle(window.location.href.split("#")[0]);

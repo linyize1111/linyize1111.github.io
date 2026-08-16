@@ -379,26 +379,13 @@
   }
 
   function resolveCoverDisplay(article) {
+    // V7.3: never render cover/hero above the article; body Markdown images only.
     var cd = (article && article.cover_display) || {};
-    var p = (window.SBPresentation && window.SBPresentation.resolvePresentation(article)) || "article-lite";
-    var defaults = {
-      fragment: { style: "none", ratio: "auto", fit: "contain", position: "center center" },
-      quote: { style: "none", ratio: "auto", fit: "contain", position: "center center" },
-      "photo-note": { style: "inline", ratio: "auto", fit: "contain", position: "center center" },
-      journal: { style: "inline", ratio: "auto", fit: "contain", position: "center center" },
-      review: { style: "hero", ratio: "auto", fit: "contain", position: "center center" },
-      longform: { style: "hero", ratio: "auto", fit: "contain", position: "center center" },
-      "article-lite": { style: "inline", ratio: "auto", fit: "contain", position: "center center" },
-      fiction: { style: "inline", ratio: "auto", fit: "contain", position: "center center" },
-      poetry: { style: "inline", ratio: "auto", fit: "contain", position: "center center" },
-      reference: { style: "inline", ratio: "auto", fit: "contain", position: "center center" }
-    };
-    var d = defaults[p] || defaults["article-lite"];
     return {
-      style: cd.style || d.style,
-      ratio: cd.ratio || d.ratio,
-      fit: cd.fit || d.fit,
-      position: cd.position || d.position
+      style: "none",
+      ratio: cd.ratio || "auto",
+      fit: cd.fit || "contain",
+      position: cd.position || "center center",
     };
   }
 

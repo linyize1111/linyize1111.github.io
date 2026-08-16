@@ -438,6 +438,12 @@
         '<i class="icon brands fa-github" aria-hidden="true"></i><span>GitHub</span></a>' +
         '<a class="mobile-social-link" href="https://www.instagram.com/linyize._.mcxi/" target="_blank" rel="noopener">' +
         '<i class="icon brands fa-instagram" aria-hidden="true"></i><span>Instagram</span></a>' +
+        '<a class="mobile-social-link" href="https://www.facebook.com/lin.jay.911547/" target="_blank" rel="noopener">' +
+        '<i class="icon brands fa-facebook-f" aria-hidden="true"></i><span>Facebook</span></a>' +
+        '<a class="mobile-social-link" href="https://discord.com/" target="_blank" rel="noopener" title="Discord: lookin_her_eyes">' +
+        '<i class="icon brands fa-discord" aria-hidden="true"></i><span>Discord</span></a>' +
+        '<a class="mobile-social-link" href="https://www.penana.com/user/374414/%E6%99%82%E9%9B%AA" target="_blank" rel="noopener">' +
+        '<i class="icon solid fa-pen" aria-hidden="true"></i><span>Penana</span></a>' +
         '<a class="mobile-social-link" href="mailto:jay0975008815@gmail.com">' +
         '<i class="icon fa-envelope" aria-hidden="true"></i><span>Mail</span></a>' +
         "</div>";

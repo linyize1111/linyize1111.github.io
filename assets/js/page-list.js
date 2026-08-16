@@ -393,6 +393,27 @@ function initSortingAndFiltering() {
         } else {
             filtered = initialOrder.filter(item => filtered.includes(item));
         }
+
+        // Pin 隨想 / fragment / quote cards after serious creative work.
+        function isLowPriorityCard(el) {
+            if (!el) return false;
+            const pres = el.dataset.presentation || '';
+            const cat = el.dataset.category || '';
+            return (
+                pres === 'fragment' ||
+                pres === 'quote' ||
+                cat === '隨想' ||
+                cat === '短思' ||
+                el.classList.contains('is-thought') ||
+                el.classList.contains('is-fragment')
+            );
+        }
+        filtered.sort((a, b) => {
+            const aLow = isLowPriorityCard(a);
+            const bLow = isLowPriorityCard(b);
+            if (aLow === bLow) return 0;
+            return aLow ? 1 : -1;
+        });
         return filtered;
     }
 
