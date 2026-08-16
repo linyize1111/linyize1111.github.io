@@ -18,8 +18,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
     <!-- Site Custom CSS: dark mode + image styles -->
-    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v9-polish-1" />
-    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9-polish-1" />
+    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v9.1-layout-recovery-1" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9.1-layout-recovery-1" />
 </head>
 
 <body class="is-preload">
@@ -103,32 +103,32 @@
             </ul>
         </nav>
 
-        <div id="main">
-            <article class="post featured">
-                <header class="major list-hero">
-                    <span class="date" data-section-key="literature.eyebrow">創作</span>
-                    <h2><a href="#" data-section-key="literature.title">文學創作</a></h2>
-                    <p data-section-key="literature.body" data-section-mode="multiline">小說、詩、劇本與長篇創作。虛構與文學作品放這裡；心得感想請到隨筆。</p>
-                </header>
-            </article>
-
-            <!-- 篩選與排序控制面板 -->
+                <div id="main">
+            <section class="list-page-hero" aria-label="文學創作介紹">
+                <div class="list-page-hero__heading">
+                    <span class="list-page-hero__eyebrow" data-section-key="literature.eyebrow">創作</span>
+                    <h1 class="list-page-hero__title" data-section-key="literature.title">文學創作</h1>
+                </div>
+                <div class="list-page-hero__body" data-section-key="literature.body" data-section-mode="multiline">小說、詩、劇本與長篇創作。虛構與文學作品放這裡；心得感想請到隨筆。
+                </div>
+            </section>
+<!-- 篩選與排序控制面板 -->
             <div id="sort-filter-controls" class="sort-filter-controls">
                 <div class="sort-filter-controls__group">
-                    <label for="filter-category">分類篩選</label>
+                    <label for="filter-category" data-section-key="ui.filter.categoryLabel">分類篩選</label>
                     <select id="filter-category">
-                        <option value="all">所有分類</option>
+                        <option value="all" data-section-key="ui.filter.allCategories">所有分類</option>
                     </select>
                 </div>
                 <div class="sort-filter-controls__group">
-                    <label for="sort-by">排序方式</label>
+                    <label for="sort-by" data-section-key="ui.sort.label">排序方式</label>
                     <select id="sort-by">
-                        <option value="upload-desc" selected>上傳時間 (新到舊)</option>
-                        <option value="upload-asc">上傳時間 (舊到新)</option>
-                        <option value="edit-desc">最後編輯 (新到舊)</option>
-                        <option value="title-asc">名稱 (A-Z)</option>
-                        <option value="title-desc">名稱 (Z-A)</option>
-                        <option value="list">列表檢視 (僅標題)</option>
+                        <option value="upload-desc" selected data-section-key="ui.sort.uploadDesc">上傳時間 (新到舊)</option>
+                        <option value="upload-asc" data-section-key="ui.sort.uploadAsc">上傳時間 (舊到新)</option>
+                        <option value="edit-desc" data-section-key="ui.sort.editDesc">最後編輯 (新到舊)</option>
+                        <option value="title-asc" data-section-key="ui.sort.titleAsc">名稱 (A-Z)</option>
+                        <option value="title-desc" data-section-key="ui.sort.titleDesc">名稱 (Z-A)</option>
+                        <option value="list" data-section-key="ui.sort.listView">列表檢視 (僅標題)</option>
                     </select>
                 </div>
             </div>
@@ -138,13 +138,13 @@
             </section>
             <!-- 分頁資訊與按鈕 -->
             <div id="pagination-controls"></div>
-            <p id="page-info" style="margin-top: 1.5rem;"></p>
+            <p id="page-info" data-section-key="ui.pagination.info" style="margin-top: 1.5rem;"></p>
         </div>
 
         <div id="copyright">
             <ul>
-                <li>&copy; LYZ</li>
-                <li>Design: <a href="https://html5up.net">HTML5 UP</a></li>
+                <li data-section-key="footer.copyright">&copy; LYZ</li>
+                <li><span data-section-key="footer.designPrefix">Design:</span> <a href="https://html5up.net" data-section-key="footer.designCredit">HTML5 UP</a></li>
             </ul>
         </div>
     </div>
@@ -160,22 +160,22 @@
     <script src="https://cdn.jsdelivr.net/npm/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
     <!-- 櫻花特效由 common.js 的 initSakuraIfPresent() 統一初始化 -->
-    <script src="assets/js/common.js?v=v9-polish-1"></script>
+    <script src="assets/js/common.js?v=v9.1-layout-recovery-1"></script>
 
     <!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
     <script src="assets/js/supabase-config.js"></script>
-    <script src="assets/js/supabase-client.js?v=v9-polish-1"></script>
+    <script src="assets/js/supabase-client.js?v=v9.1-layout-recovery-1"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/site-copy-schema.js?v=v9-polish-1"></script>
-<script src="assets/js/site-sections.js?v=v9-polish-1"></script>
-    <script src="assets/js/presentation-registry.js?v=v9-polish-1"></script>
-<script src="assets/js/article-media.js?v=v9-polish-1"></script>
-    <script src="assets/js/article-renderer.js?v=v9-polish-1"></script>
-    <script src="assets/js/cms-public.js?v=v9-polish-1"></script>
+    <script src="assets/js/site-copy-schema.js?v=v9.1-layout-recovery-1"></script>
+<script src="assets/js/site-sections.js?v=v9.1-layout-recovery-1"></script>
+    <script src="assets/js/presentation-registry.js?v=v9.1-layout-recovery-1"></script>
+<script src="assets/js/article-media.js?v=v9.1-layout-recovery-1"></script>
+    <script src="assets/js/article-renderer.js?v=v9.1-layout-recovery-1"></script>
+    <script src="assets/js/cms-public.js?v=v9.1-layout-recovery-1"></script>
 
-    <script src="assets/js/page-list.js?v=v9-polish-1"></script>
+    <script src="assets/js/page-list.js?v=v9.1-layout-recovery-1"></script>
 </body>
 
 </html>

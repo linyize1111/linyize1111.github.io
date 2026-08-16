@@ -3149,10 +3149,13 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 .about-profile {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
-  gap: clamp(2.5rem, 5vw, 5.5rem);
-  align-items: center;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.82fr);
+  gap: clamp(3rem, 6vw, 6rem);
+  align-items: start;
   margin: clamp(1.5rem, 4vw, 3rem) auto clamp(3rem, 6vw, 5rem);
+}
+.about-profile.media-failed {
+  grid-template-columns: minmax(0, 1fr);
 }
 .about-profile__copy {
   max-width: 64ch;
@@ -3175,11 +3178,23 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 .about-profile__quote {
   margin: 0 0 1.5rem;
+  padding-left: 1rem;
+  border-left: 2px solid #18bfef;
+  background: transparent;
   font-size: clamp(1.15rem, 2.2vw, 1.45rem);
   line-height: 1.65;
   font-weight: 600;
   text-align: left;
   opacity: 0.95;
+}
+.about-profile__quote pre,
+.about-profile__quote code {
+  all: unset;
+  display: block;
+  white-space: pre-wrap;
+  font: inherit;
+  background: transparent;
+  color: inherit;
 }
 .about-profile__body {
   text-align: left;
@@ -3190,12 +3205,42 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   margin: 0 0 1.1em;
   text-align: left;
 }
+.about-profile__body pre {
+  background: transparent !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: pre-wrap;
+  font: inherit !important;
+}
 .about-profile__media {
   margin: 0;
+  width: min(100%, 460px);
+  justify-self: end;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  overflow: hidden;
+}
+.about-profile__media img {
+  display: block;
   width: 100%;
+  height: auto;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+  border-radius: 12px;
+}
+.about-profile__ambient {
+  opacity: 0.23;
+  filter: blur(24px) brightness(0.55);
+}
+.about-profile.media-failed .about-profile__media {
+  display: none;
 }
 .about-trajectory {
-  margin: 0 auto 2rem;
+  margin: 3.5rem auto 2rem;
   max-width: 1180px;
 }
 .about-trajectory > h2 {
@@ -3210,15 +3255,15 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 .about-trajectory__card {
   margin: 0;
-  padding: 1.15rem 1.2rem 1.25rem;
+  padding: 1.05rem 1.1rem 1.15rem;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
   text-align: left;
 }
 [data-theme="light"] .about-trajectory__card {
-  background: rgba(20, 24, 36, 0.03);
-  border-color: rgba(20, 24, 36, 0.08);
+  background: rgba(20, 24, 36, 0.025);
+  border-color: rgba(20, 24, 36, 0.07);
 }
 .about-trajectory__card h3 {
   margin: 0 0 0.45rem;
@@ -3240,27 +3285,95 @@ body.admin-gated-page.admin-gate-ok #wrapper {
     order: -1;
     max-width: 28rem;
     margin-inline: auto;
+    justify-self: center;
   }
   .about-trajectory__grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* Compact list heroes */
-#main > section > header.major,
-#main > article > header.major.list-hero {
-  padding-bottom: 0.5rem !important;
-  margin-bottom: 1rem !important;
+/* ========== V9.1 list-page-hero (NOT HTML5 UP .post/.major/.date) ========== */
+/* Reset legacy #main > * { padding: 4rem } — that rule caused the huge blank band. */
+#main > .list-page-hero {
+  padding: clamp(2.75rem, 5vw, 4.25rem) clamp(2rem, 5vw, 5rem);
+  border-top: 0;
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
 }
-.list-hero {
-  max-width: 48rem;
-  margin-inline: auto;
+#main > .sort-filter-controls {
+  padding: 1.25rem clamp(1.25rem, 4vw, 4rem) 1rem;
+}
+#main > #pagination-controls,
+#main > #page-info {
+  padding: 0.75rem clamp(1.25rem, 4vw, 4rem) 1.5rem;
+  border-top: solid 2px #eeeeee;
+}
+#main > #pagination-controls:empty {
+  padding: 0;
+  border: 0;
+  min-height: 0;
+}
+#main > #page-info:empty {
+  padding: 0;
+  border: 0;
+  margin: 0;
+  min-height: 0;
+}
+.list-page-hero {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+  align-items: end;
+  gap: clamp(2rem, 5vw, 5rem);
+  padding: clamp(2.75rem, 5vw, 4.25rem) clamp(2rem, 5vw, 5rem);
+  min-height: 0;
+  max-height: none;
+  box-sizing: border-box;
+}
+.list-page-hero__heading {
+  text-align: left;
+  justify-self: start;
+}
+.list-page-hero__eyebrow {
+  display: inline-block;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
+  margin: 0;
+}
+.list-page-hero__eyebrow::after {
+  content: "";
+  display: block;
+  width: 3rem;
+  height: 1px;
+  margin-top: 0.65rem;
+  background: currentColor;
+  opacity: 0.35;
+}
+.list-page-hero__title {
+  margin: 1rem 0 0;
+  font-size: clamp(2.8rem, 6vw, 4.6rem);
+  line-height: 1.08;
+  font-weight: 800;
   text-align: left;
 }
-.list-hero .date,
-.list-hero h2,
-.list-hero p {
+.list-page-hero__body {
+  max-width: 42rem;
+  margin: 0;
   text-align: left;
+  line-height: 1.85;
+  font-size: 1.05rem;
+  justify-self: start;
+  opacity: 0.92;
+}
+@media (max-width: 760px) {
+  .list-page-hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+    padding: 2rem 18px 2.5rem;
+    gap: 1.25rem;
+  }
 }
 
 /* Site toast + music hint */
