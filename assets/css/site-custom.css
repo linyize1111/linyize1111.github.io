@@ -743,13 +743,16 @@ body {
     z-index: 1;
 }
 
-/* Soft tint over the video � keep image/video visible underneath */
+/* Soft tint over the video — keep image/video visible underneath */
 #wrapper > .bg {
     background-attachment: fixed !important;
     background-position: center center !important;
     background-size: cover !important;
-    background-image: none !important;
-    background-color: rgba(21, 27, 34, 0.42) !important;
+    background-repeat: no-repeat !important;
+    background-image:
+      linear-gradient(rgba(21, 27, 34, 0.38), rgba(21, 27, 34, 0.38)),
+      url("../../images/bg.jpg") !important;
+    background-color: transparent !important;
 }
 
 /* Push #main down so there's room to scroll and see bg below */
