@@ -4045,7 +4045,14 @@
     $("#library-platform")?.addEventListener("change", () => renderLibrary(true));
     $("#library-scope")?.addEventListener("change", () => renderLibrary(true));
     $("#library-sort")?.addEventListener("change", () => renderLibrary(true));
-    $("#library-search")?.addEventListener("input", debounce(() => renderLibrary(true)));
+    $("#library-search")?.addEventListener("input", debounce(async () => {
+      const q = $("#library-search").value;
+      if (parseWorkCode(q)) {
+        const work = await lookupExactCode(q);
+        if (work) { await openWork(work.id); return; }
+      }
+      renderLibrary(true);
+    }));
     bindClick("#library-more", () => { state.libraryVisible += 60; renderLibrary(); });
     $("#ranking-platform")?.addEventListener("change", renderLeaderboard);
     $("#ranking-order")?.addEventListener("change", renderLeaderboard);
