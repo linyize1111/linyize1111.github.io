@@ -111,8 +111,9 @@ main { position: relative; z-index: 3; width: min(1420px, 92vw); margin: 0 auto;
   border-radius: 16px;
   background: rgba(115, 87, 255, 0.08);
 }
-.home-submit-panel h3 { margin: 0 0 8px; font-size: 18px; }
-.home-submit-panel .submit-id-row { margin-top: 10px; }
+.profile-submit-card h3,
+.profile-stats-card h3,
+.profile-admin-card h3 { margin: 0 0 8px; font-size: 18px; }
 .site-note {
   margin-top: 18px;
   max-width: 980px;

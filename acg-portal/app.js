@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "2.0.5";
+  const APP_VERSION = "2.0.6";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,has_hidden_tags,created_at,exposure_level";
   const GAME_IMAGE_HOSTS = [
     "cdn.akamai.steamstatic.com",
@@ -40,6 +40,24 @@
 
   const PLATFORM_LABELS = { nhentai: "N", "18comic": "JM", hanime: "動畫", pixiv: "插畫" };
   const LOLO_TAG_PATTERN = /\b(loli|lolicon|lolita|toddler|toddlercon|preteen|underage)\b|ロリ|蘿莉|萝莉|幼女|幼児|児童|童女|小学生|小學生/i;
+  const TAG_RENAME_RULES = [
+    { label: "皮炎", pattern: /\b(anal|focus anal|double anal)\b|肛門|肛交|アナル|皮炎/i },
+    { label: "內蛇", pattern: /\b(nakadashi|creampie)\b|中出|中出し|內射|内射|內蛇/i },
+    { label: "鄭太", pattern: /\b(shotacon|shota|low shotacon)\b|正太|鄭太|ショタ|おねショタ|ショタおね|ママショタ|オネショタ|おばショタ|ケモショタ|ショタ提督/i },
+    { label: "強鹼", pattern: /\b(rape|netorare|mind break|mindbreak|ntr)\b|強姦|強鹼|^NTR$/i },
+    { label: "口膠", pattern: /\b(blowjob|fellatio)\b|口交|口膠/i },
+    { label: "亂倫", pattern: /\bincest\b|亂倫|近親相姦|母子相姦/i }
+  ];
+  const TAG_HIDE_PATTERN = /\b(ahegao|paizuri|bondage|futanari|bdsm|guro|snuff|scat|bestiality|cunnilingus|clothed paizuri|multiple paizuri|focus paizuri|focus anal|double anal|anal intercourse|big penis|small penis|huge penis|urethra insertion)\b|輪姦|触手|觸手|異種姦|強制絶頂|蟲姦|霊姦|獣姦|獸姦|調教|凌辱|無修正|无修正|口内射精|射精|犬姦|機械姦|隠姦|陰姦|NPC姦|ノーハンド射精|グロマン|馬姦|睡眠姦|睡姦|乳内射精|子宮内射精|膣内射精|大量射精|視姦|影姦|遠隔姦|ポケ姦|アナル中出し/i;
+  const SEARCH_SYNONYMS = {
+    "鄭太": ["正太", "shota", "shotacon", "ショタ"],
+    "正太": ["鄭太", "shota", "shotacon"],
+    "皮炎": ["anal", "肛交", "肛門"],
+    "內蛇": ["中出", "nakadashi", "creampie", "內射", "内射"],
+    "強鹼": ["ntr", "netorare", "rape", "NTR"],
+    "口膠": ["口交", "blowjob", "fellatio"],
+    "亂倫": ["incest", "近親相姦"]
+  };
   const RATING_LABELS = {
     "-5": "超雷", "-4": "很差", "-3": "偏弱", "-2": "不太好", "-1": "略差",
     "0": "普通", "1": "還行", "2": "不錯", "3": "好看", "4": "很棒", "5": "神作"
@@ -121,6 +139,8 @@
     preferenceTags: new Map(),
     libraryVisible: 60,
     librarySeed: crypto.randomUUID?.() || String(Date.now()),
+    librarySearchIds: null,
+    librarySearchLoading: false,
     bulkWorks: [],
     homeShowingRandom: false,
     currentWork: null,
@@ -168,9 +188,33 @@
     return LOLO_TAG_PATTERN.test(String(tag || ""));
   }
 
+  function tagRenameLabel(tag) {
+    const text = String(tag || "").trim();
+    if (!text) return null;
+    for (const rule of TAG_RENAME_RULES) {
+      if (rule.pattern.test(text)) return rule.label;
+    }
+    if (/\banal\b/i.test(text) && !/animal/i.test(text)) return "皮炎";
+    return null;
+  }
+
+  function isHiddenFlaggedTag(tag) {
+    const text = String(tag || "").trim();
+    if (!text || isLoliTag(text)) return false;
+    if (tagRenameLabel(text)) return false;
+    if (TAG_HIDE_PATTERN.test(text)) return true;
+    const graphic = [
+      /\b(loli|lolicon|shota|shotacon|toddler|preteen|underage|bestiality|zoophilia|necrophilia|snuff|guro|rape|gangbang|netorare)\b/i,
+      /(ロリ|ショタ|蘿莉|萝莉|正太|獸姦|獣姦|輪姦|強姦|中出|口交|肛交|触手|調教|凌辱)/,
+      /\b(penis|vagina|anal|ahegao|nakadashi|creampie|cumshot|fellatio|cunnilingus|paizuri|futanari|tentacle|bondage|bdsm|scat)\b/i
+    ];
+    return graphic.some(re => re.test(text));
+  }
+
   function sanitizePublicTags(tags) {
     const input = Array.isArray(tags) ? tags : [];
     const out = [];
+    const seen = new Set();
     let hasAvocado = false;
     for (const raw of input) {
       const tag = String(raw || "").trim();
@@ -178,11 +222,25 @@
       if (tag === "🥑" || isLoliTag(tag)) {
         if (!hasAvocado) {
           out.push("🥑");
+          seen.add("🥑");
           hasAvocado = true;
         }
         continue;
       }
+      const renamed = tagRenameLabel(tag);
+      if (renamed) {
+        const key = normalize(renamed);
+        if (!seen.has(key)) {
+          out.push(renamed);
+          seen.add(key);
+        }
+        continue;
+      }
+      if (isHiddenFlaggedTag(tag)) continue;
+      const key = normalize(tag);
+      if (seen.has(key)) continue;
       out.push(tag);
+      seen.add(key);
     }
     return out;
   }
@@ -456,6 +514,32 @@
     return String(value ?? "").normalize("NFKC").toLocaleLowerCase("zh-TW").replace(/\s+/g, " ").trim();
   }
 
+  function expandSearchTerms(query) {
+    const base = normalize(query);
+    if (!base) return [];
+    const terms = new Set([base]);
+    for (const token of base.split(/[\s,，/]+/).filter(Boolean)) {
+      terms.add(token);
+      const synonyms = SEARCH_SYNONYMS[token] || SEARCH_SYNONYMS[token.toUpperCase()] || [];
+      for (const synonym of synonyms) terms.add(normalize(synonym));
+    }
+    for (const [key, values] of Object.entries(SEARCH_SYNONYMS)) {
+      if (base.includes(normalize(key))) {
+        terms.add(normalize(key));
+        values.forEach(value => terms.add(normalize(value)));
+      }
+    }
+    return [...terms].filter(Boolean);
+  }
+
+  function parseSearchCode(query) {
+    const compact = String(query || "").trim().toUpperCase().replace(/\s+/g, "");
+    const parsed = parseWorkCode(compact) || parseWorkCode(query);
+    if (parsed) return parsed;
+    if (/^\d{1,12}$/.test(compact)) return { platform: null, work_id: compact, code: compact };
+    return null;
+  }
+
   function levenshtein(a, b) {
     if (a === b) return 0;
     if (!a.length) return b.length;
@@ -502,12 +586,13 @@
   }
 
   function searchableFields(work) {
+    const displayTags = sanitizePublicTags(publicTagsOf(work));
     return [
       { value: formatWorkCode(work), weight: 140 },
       { value: work.work_id, weight: 120 },
       { value: displayTitleOf(work), weight: 75 },
       { value: displayAuthorOf(work), weight: 48 },
-      ...((work.public_tags || []).map(value => ({ value, weight: 34 }))),
+      ...(displayTags.map(value => ({ value, weight: 34 }))),
     ].map(field => ({ ...field, normalized: normalize(field.value) })).filter(field => field.normalized);
   }
 
@@ -516,13 +601,17 @@
     if (field.normalized === term) return field.weight * 2.2;
     if (field.normalized.startsWith(term)) return field.weight * 1.55;
     if (field.normalized.includes(term)) return field.weight;
-    if (term.length < 3) return 0;
+    if (term.length < 2) return 0;
     const tokens = field.normalized.split(/[\s\-_()[\]【】「」,，/]+/).filter(Boolean);
     let best = 0;
     for (const token of tokens) {
-      if (Math.abs(token.length - term.length) > 3) continue;
+      if (Math.abs(token.length - term.length) > 4) continue;
       const match = similarity(token, term);
-      if (match >= .68) best = Math.max(best, field.weight * match * .75);
+      if (match >= .62) best = Math.max(best, field.weight * match * .78);
+    }
+    if (term.length >= 3) {
+      const whole = similarity(field.normalized, term);
+      if (whole >= .72) best = Math.max(best, field.weight * whole * .62);
     }
     return best;
   }
@@ -530,14 +619,24 @@
   function workSearchScore(work, query) {
     const q = normalize(query);
     if (!q) return stableRandom(work.id || `${work.platform}:${work.work_id}`);
-    const terms = q.split(" ").filter(Boolean);
+    const code = parseSearchCode(q);
+    if (code) {
+      if (work.work_id === code.work_id && (!code.platform || work.platform === code.platform)) return 2000;
+      if (work.work_id === code.work_id) return 1600;
+      if (work.work_id.startsWith(code.work_id)) return 1200;
+    }
+    const terms = expandSearchTerms(q);
     const fields = searchableFields(work);
     let total = 0;
+    let matched = 0;
     for (const term of terms) {
       const best = Math.max(...fields.map(field => scoreTerm(field, term)), 0);
-      if (best <= 0) return Number.NEGATIVE_INFINITY;
-      total += best;
+      if (best > 0) {
+        matched += 1;
+        total += best;
+      }
     }
+    if (!matched) return Number.NEGATIVE_INFINITY;
     const rating = state.scoreByWork.get(work.id) || 0;
     return total + Math.max(0, rating + 5) + stableRandom(work.id) * .01;
   }
@@ -1193,8 +1292,34 @@
     if (!panel || !state.profile) return;
     const p = state.profile;
     panel.innerHTML = `
-      <div class="privacy-card">
+      <div class="privacy-card profile-stats-card">
         <h3>${escapeHtml(myDisplayName())}</h3>
+        <p class="muted">我的統計</p>
+        <p>收藏 ${state.favorites.size} · 已看 ${state.watched.size} · 待看 ${state.watchlist.size}</p>
+      </div>
+      <div class="privacy-card profile-submit-card">
+        <p class="eyebrow">SUBMISSION</p>
+        <h3>投稿作品編號</h3>
+        <p class="muted small-note">選 N 或 JM，只填數字 ID。重複的會提示「這筆已經在資料庫。」</p>
+        <div class="submit-id-row">
+          <select id="profile-submit-platform" aria-label="平台">
+            <option value="nhentai">N</option>
+            <option value="18comic">JM</option>
+          </select>
+          <input id="profile-submit-work-id" inputmode="numeric" pattern="[0-9]*" maxlength="12" placeholder="只填數字 ID">
+          <button id="profile-submit-send" class="button button-primary" type="button">送出編號</button>
+        </div>
+        <p class="muted small-note">有建議或問題可到 <a href="#feedback" data-view="feedback">意見反饋</a>。</p>
+      </div>
+      ${isAdmin() ? `<div class="privacy-card profile-admin-card">
+        <p class="eyebrow">ADMIN</p>
+        <h3>管理員後台</h3>
+        <p class="muted small-note">會員審核、作品管理、投稿佇列與同步紀錄。</p>
+        <p><a class="button button-secondary" href="#admin" data-view="admin">進入管理後台</a></p>
+      </div>` : ""}
+      <div class="privacy-card">
+        <p class="eyebrow">PRIVACY</p>
+        <h3>隱私設定</h3>
         <p class="muted">個人頁預設私人。公開項目需自行打開。</p>
         <label class="check-inline"><input id="privacy-private" type="checkbox" ${p.profile_private !== false ? "checked" : ""}> 個人頁設為私人</label>
         <label class="check-inline"><input id="privacy-stats" type="checkbox" ${p.show_stats ? "checked" : ""}> 公開統計</label>
@@ -1204,12 +1329,9 @@
           <button class="button button-primary" id="save-privacy">儲存隱私設定</button>
           <button class="button button-secondary" id="all-private">全部設為私人</button>
         </div>
-      </div>
-      <div class="privacy-card">
-        <p>收藏 ${state.favorites.size} · 已看 ${state.watched.size} · 待看 ${state.watchlist.size}</p>
-        <p><a class="button button-secondary" href="#feedback" data-view="feedback">意見與投稿</a></p>
       </div>`;
     $("#save-privacy")?.addEventListener("click", savePrivacy);
+    $("#profile-submit-send")?.addEventListener("click", () => submitWorkIdOnly("profile"));
     $("#all-private")?.addEventListener("click", async () => {
       const { data, error } = await supabase.rpc("set_all_private");
       if (error) return toast(error.message, "error");
@@ -1321,19 +1443,21 @@
     }
   }
 
-  async function submitWorkIdOnly(source = "feedback") {
+  async function submitWorkIdOnly(source = "profile") {
     if (!await requireMember()) return;
-    const platform = $(source === "home" ? "#home-submit-platform" : "#submit-platform")?.value;
-    const workId = $(source === "home" ? "#home-submit-work-id" : "#submit-work-id")?.value?.trim();
+    const selectors = {
+      profile: ["#profile-submit-platform", "#profile-submit-work-id"]
+    };
+    const [platformSel, workIdSel] = selectors[source] || selectors.profile;
+    const platform = $(platformSel)?.value;
+    const workId = $(workIdSel)?.value?.trim();
     if (!platform || !workId) return toast("請選平台並填寫數字 ID", "warning");
     if (!/^\d+$/.test(workId)) return toast("車號只能填數字", "warning");
     const { data, error } = await supabase.rpc("submit_work_id", { platform, work_id: workId });
     if (error) return toast(error.message, "error");
     toast(data?.message || (data?.duplicate ? "這筆已經在資料庫." : "已送出"), data?.ok ? "success" : "warning");
-    if (source === "home") {
-      const input = $("#home-submit-work-id");
-      if (input) input.value = "";
-    }
+    const input = $(workIdSel);
+    if (input) input.value = "";
   }
 
   async function loadSourceStatus() {
@@ -1888,17 +2012,53 @@
     return `${works.length.toLocaleString()} 筆符合條件；排序：${sortLabels[mode] || sortLabels.default}`;
   }
 
+  async function runLibrarySmartSearch(query) {
+    const q = String(query || "").trim();
+    if (!q) {
+      state.librarySearchIds = null;
+      return;
+    }
+    state.librarySearchLoading = true;
+    const platform = $("#library-platform")?.value || "all";
+    try {
+      const { data, error } = await supabase.rpc("search_works_smart", {
+        query: q,
+        platform_filter: platform === "all" ? null : platform,
+        result_limit: 400
+      });
+      if (error) throw error;
+      const rows = (data || []).map(projectMemberWork).filter(Boolean);
+      for (const work of rows) state.workById.set(work.id, work);
+      state.librarySearchIds = rows.map(work => work.id);
+    } catch (error) {
+      console.warn("search_works_smart unavailable; falling back to client filter", error);
+      state.librarySearchIds = null;
+    } finally {
+      state.librarySearchLoading = false;
+    }
+  }
+
   function filteredLibraryWorks() {
     const platform = $("#library-platform").value;
     const query = $("#library-search").value;
     const scope = $("#library-scope")?.value || "all";
-    let rows = state.works.filter(work =>
+    let rows;
+    if (state.librarySearchIds && normalize(query)) {
+      rows = state.librarySearchIds
+        .map(id => state.workById.get(id))
+        .filter(Boolean);
+    } else {
+      rows = state.works.filter(work =>
+        (platform === "all" || work.platform === platform) &&
+        workMatches(work, query)
+      );
+    }
+    rows = rows.filter(work =>
       (platform === "all" || work.platform === platform) &&
       (scope === "all"
         || (scope === "favorites" && state.favorites.has(work.id))
         || (scope === "watched" && state.watched.has(work.id))
-        || (scope === "watchlist" && state.watchlist.has(work.id))) &&
-      workMatches(work, query)
+        || (scope === "watchlist" && state.watchlist.has(work.id)))
     );
     if (scope === "favorites" && !state.session) {
       rows = [];
@@ -1912,9 +2072,10 @@
     const works = filteredLibraryWorks();
     const scope = $("#library-scope")?.value || "all";
     const query = $("#library-search")?.value || "";
+    const loadingNote = state.librarySearchLoading ? "（智慧搜尋中…）" : "";
     $("#library-summary").textContent = scope === "favorites" && !state.session
       ? "請先登入後查看你的收藏"
-      : librarySummaryText(works, query);
+      : `${librarySummaryText(works, query)}${loadingNote}`;
     $("#library-grid").innerHTML = works.slice(0, state.libraryVisible).map(archiveTicketHtml).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
     $("#library-more").classList.toggle("hidden", works.length <= state.libraryVisible);
   }
@@ -2301,20 +2462,18 @@
     }
     const gameBtn = $("#new-game-button");
     const adminNav = $('a[data-view="admin"]');
+    adminNav?.classList.add("hidden");
     if (loggedIn && (state.authLoading || !state.profileReady)) {
       gameBtn?.classList.remove("hidden");
       if (gameBtn) {
         gameBtn.disabled = true;
         gameBtn.textContent = "載入中…";
       }
-      adminNav?.classList.remove("hidden");
-      if (adminNav) adminNav.textContent = "⚙ 載入中…";
     } else {
       if (gameBtn) {
         gameBtn.disabled = false;
         gameBtn.textContent = "＋ 新增評鑑";
       }
-      if (adminNav) adminNav.textContent = "⚙ 管理後台";
       $$(".admin-only").forEach(node => node.classList.toggle("hidden", !isAdmin()));
     }
     if (!isAdmin() && state.profileReady && !state.authLoading && location.hash === "#admin") {
@@ -4202,8 +4361,7 @@
     bindClick("#draw-one-button", () => drawRandom(1));
     bindClick("#draw-five-button", () => drawRandom(5));
     bindClick("#draw-ten-button", () => drawRandom(10));
-    bindClick("#submit-work-send", () => submitWorkIdOnly("feedback"));
-    bindClick("#home-submit-send", () => submitWorkIdOnly("home"));
+    bindClick("#profile-submit-send", () => submitWorkIdOnly("profile"));
     $$("[data-admin-tab]").forEach(button => {
       button.addEventListener("click", () => loadAdmin(button.dataset.adminTab));
     });
@@ -4234,6 +4392,7 @@
         const work = await lookupExactCode(q);
         if (work) { await openWork(work.id); return; }
       }
+      await runLibrarySmartSearch(q);
       renderLibrary(true);
     }));
     bindClick("#library-more", () => { state.libraryVisible += 60; renderLibrary(); });
@@ -4249,10 +4408,8 @@
       }
     });
     $("#feedback-body")?.addEventListener("input", event => { if ($("#feedback-count")) $("#feedback-count").textContent = `${event.target.value.length} / 2000`; });
-    $("#recommendation-body")?.addEventListener("input", event => { if ($("#recommendation-count")) $("#recommendation-count").textContent = `${event.target.value.length} / 2000`; });
     document.addEventListener("input", event => { if (event.target.id === "admin-work-search") renderAdminWorks(); });
     bindClick("#feedback-send", () => sendFeedback("feedback"));
-    bindClick("#recommendation-send", () => sendFeedback("recommendation"));
     window.addEventListener("hashchange", async () => {
       const loc = parseLocationHash();
       if (loc.workId) {

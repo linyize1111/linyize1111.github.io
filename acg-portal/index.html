@@ -12,11 +12,11 @@
   <meta property="og:title" content="你的夜鹿導師 | ACG Portal">
   <meta property="og:description" content="私人整理的 ACG 收藏與評分倉庫。V2 已加強隱私，僅限審核會員。">
   <meta property="og:type" content="website">
-  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=2.0.5">
+  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=2.0.6">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2.0.5">
+  <link rel="stylesheet" href="styles.css?v=2.0.6">
 </head>
 <body>
   <div class="ambient ambient-one"></div>
@@ -24,7 +24,7 @@
 
   <header class="site-header">
     <a class="brand" href="#home" aria-label="ACG Portal 首頁">
-      <span class="brand-mark"><img src="assets/yoru-icon.png?v=2.0.5" alt=""></span>
+      <span class="brand-mark"><img src="assets/yoru-icon.png?v=2.0.6" alt=""></span>
       <span><strong>夜鹿導師</strong><small>ACG PORTAL</small></span>
     </a>
     <nav id="main-nav" class="main-nav" aria-label="主要導覽">
@@ -34,9 +34,8 @@
       <a href="#collection" data-view="collection">⭐ 我的收藏</a>
       <a href="#games" data-view="games">🎮 遊戲評鑑</a>
       <a href="#discuss" data-view="discuss">💬 討論</a>
-      <a href="#feedback" data-view="feedback">📝 投稿編號</a>
+      <a href="#feedback" data-view="feedback">💬 意見反饋</a>
       <a href="#profile" data-view="profile">👤 個人頁</a>
-      <a href="#admin" data-view="admin" class="admin-only hidden">⚙ 管理後台</a>
     </nav>
     <div class="auth-area">
       <button id="login-button" class="button button-primary">登入</button>
@@ -67,9 +66,9 @@
           <div>
             <p class="eyebrow">CURATED DISCOVERY</p>
             <h1>你的夜鹿導師</h1>
-            <p class="hero-tagline">夜鹿導師上數學課啦！</p>
+            <p class="hero-tagline">上數學課啦！</p>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.0.5" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.0.6" alt="夜鹿導師">
         </div>
         <div class="site-note">
           <p>本站永遠不營利、不放廣告，單純為了方便整理、記錄與分享個人精選。這裡只是小弟方便自己跟各位開導身心靈的倉庫。</p>
@@ -103,26 +102,14 @@
           <div>
             <p class="eyebrow">CURATED DISCOVERY</p>
             <h1>你的夜鹿導師</h1>
-            <p class="hero-tagline">夜鹿導師上數學課啦！</p>
+            <p class="hero-tagline">上數學課啦！</p>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.0.5" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.0.6" alt="夜鹿導師">
         </div>
         <div class="site-note">
           <p>本站永遠不營利、不放廣告，單純為了方便整理、記錄與分享個人精選。這裡只是小弟方便自己跟各位開導身心靈的倉庫。</p>
           <p>內容幾乎都是站長自己的喜好，盡量只挑中文翻譯版本；癖好不合請用搜尋或篩選。看到奇怪的作品可以負評或回報，可能是誤植或是其他人推薦的本子沒有仔細審核；也歡迎推薦作品編號，我會審核後再決定是否上架。</p>
           <p class="github-callout">第一版請大家低調使用、別 star 別亂分享，但現在本站已經安全多了，分享網址沒關係。若覺得這個小站有用，可以到 GitHub 幫我的專案按個 ★：<a href="https://github.com/linyize1111/acg-portal" target="_blank" rel="noopener noreferrer">linyize1111/acg-portal ↗</a></p>
-        </div>
-        <div class="home-submit-panel">
-          <h3>投稿作品編號</h3>
-          <p class="muted small-note">選 N 或 JM，只填數字 ID。重複的會提示「這筆已經在資料庫。」完整說明也可在 <a href="#feedback" data-view="feedback">意見與投稿</a> 頁。</p>
-          <div class="submit-id-row">
-            <select id="home-submit-platform" aria-label="平台">
-              <option value="nhentai">N</option>
-              <option value="18comic">JM</option>
-            </select>
-            <input id="home-submit-work-id" inputmode="numeric" pattern="[0-9]*" maxlength="12" placeholder="只填數字 ID">
-            <button id="home-submit-send" class="button button-primary" type="button">送出編號</button>
-          </div>
         </div>
         <div class="search-row home-random-row">
           <div class="platform-switch" role="group" aria-label="平台">
@@ -141,7 +128,7 @@
         <div class="search-row">
           <label class="search-box home-search-box">
             <span>⌕</span>
-            <input id="home-search" type="search" inputmode="numeric" placeholder="N-123456 / JM-123456 或標題…" autocomplete="off">
+            <input id="home-search" type="search" placeholder="N-123456 / JM-123456 或標題、標籤…" autocomplete="off">
           </label>
           <button id="draw-one-button" class="button button-secondary">隨機 1</button>
           <button id="draw-five-button" class="button button-secondary">隨機 5</button>
@@ -251,7 +238,7 @@
 
     <section id="view-profile" class="view">
       <div class="section-heading">
-        <div><p class="eyebrow">PROFILE</p><h2>個人頁</h2><p>預設全部私人。公開項目需自行開啟。</p></div>
+        <div><p class="eyebrow">PROFILE</p><h2>個人頁</h2><p>我的統計、投稿編號與隱私設定。管理員入口也在這裡。</p></div>
       </div>
       <div id="profile-panel" class="profile-panel"></div>
     </section>
@@ -261,26 +248,10 @@
         <div class="feedback-card">
           <p class="eyebrow">CONTACT</p>
           <h2>意見反饋</h2>
-          <p>請描述建議或問題。不要貼外部作品網址。</p>
+          <p>請描述建議或問題。不要貼外部作品網址。要投稿作品編號請到 <a href="#profile" data-view="profile">個人頁</a>。</p>
           <textarea id="feedback-body" maxlength="2000" placeholder="請描述建議或問題…"></textarea>
           <div class="form-footer"><span id="feedback-count">0 / 2000</span><button id="feedback-send" class="button button-primary">寄送意見</button></div>
           <div id="feedback-thread-list" class="feedback-thread-list"><p class="muted">載入中…</p></div>
-        </div>
-        <div class="feedback-card">
-          <p class="eyebrow">SUBMISSION</p>
-          <h2>投稿作品編號</h2>
-          <p>只接受平台＋編號。重複的會提示「這筆已經在資料庫。」</p>
-          <div class="submit-id-row">
-            <select id="submit-platform" aria-label="平台">
-              <option value="nhentai">N</option>
-              <option value="18comic">JM</option>
-            </select>
-            <input id="submit-work-id" inputmode="numeric" pattern="[0-9]*" maxlength="12" placeholder="只填數字 ID">
-            <button id="submit-work-send" class="button button-primary" type="button">送出編號</button>
-          </div>
-          <textarea id="recommendation-body" maxlength="2000" placeholder="選填說明（不要貼網址）…"></textarea>
-          <div class="form-footer"><span id="recommendation-count">0 / 2000</span><button id="recommendation-send" class="button button-secondary">附加說明並送出</button></div>
-          <div id="recommendation-thread-list" class="feedback-thread-list"><p class="muted">載入中…</p></div>
         </div>
       </div>
     </section>
@@ -360,7 +331,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"
     integrity="sha384-z2hqtpr/vSDZ8zSjLOiNgnR/mpU799AD93s6rvkNJLI6Hl0YlKXEhDtREzNT749S" crossorigin="anonymous"></script>
-  <script src="config.js?v=2.0.5"></script>
-  <script src="app.js?v=2.0.5"></script>
+  <script src="config.js?v=2.0.6"></script>
+  <script src="app.js?v=2.0.6"></script>
 </body>
 </html>
