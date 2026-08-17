@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "2.0.6";
+  const APP_VERSION = "2.1.0-rc1";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,has_hidden_tags,created_at,exposure_level";
   const GAME_IMAGE_HOSTS = [
     "cdn.akamai.steamstatic.com",
@@ -39,25 +39,7 @@
   const DRAW_HISTORY_KEY = "acg_draw_history_v1";
 
   const PLATFORM_LABELS = { nhentai: "N", "18comic": "JM", hanime: "動畫", pixiv: "插畫" };
-  const LOLO_TAG_PATTERN = /\b(loli|lolicon|lolita|toddler|toddlercon|preteen|underage)\b|ロリ|蘿莉|萝莉|幼女|幼児|児童|童女|小学生|小學生/i;
-  const TAG_RENAME_RULES = [
-    { label: "皮炎", pattern: /\b(anal|focus anal|double anal)\b|肛門|肛交|アナル|皮炎/i },
-    { label: "內蛇", pattern: /\b(nakadashi|creampie)\b|中出|中出し|內射|内射|內蛇/i },
-    { label: "鄭太", pattern: /\b(shotacon|shota|low shotacon)\b|正太|鄭太|ショタ|おねショタ|ショタおね|ママショタ|オネショタ|おばショタ|ケモショタ|ショタ提督/i },
-    { label: "強鹼", pattern: /\b(rape|netorare|mind break|mindbreak|ntr)\b|強姦|強鹼|^NTR$/i },
-    { label: "口膠", pattern: /\b(blowjob|fellatio)\b|口交|口膠/i },
-    { label: "亂倫", pattern: /\bincest\b|亂倫|近親相姦|母子相姦/i }
-  ];
-  const TAG_HIDE_PATTERN = /\b(ahegao|paizuri|bondage|futanari|bdsm|guro|snuff|scat|bestiality|cunnilingus|clothed paizuri|multiple paizuri|focus paizuri|focus anal|double anal|anal intercourse|big penis|small penis|huge penis|urethra insertion)\b|輪姦|触手|觸手|異種姦|強制絶頂|蟲姦|霊姦|獣姦|獸姦|調教|凌辱|無修正|无修正|口内射精|射精|犬姦|機械姦|隠姦|陰姦|NPC姦|ノーハンド射精|グロマン|馬姦|睡眠姦|睡姦|乳内射精|子宮内射精|膣内射精|大量射精|視姦|影姦|遠隔姦|ポケ姦|アナル中出し/i;
-  const SEARCH_SYNONYMS = {
-    "鄭太": ["正太", "shota", "shotacon", "ショタ"],
-    "正太": ["鄭太", "shota", "shotacon"],
-    "皮炎": ["anal", "肛交", "肛門"],
-    "內蛇": ["中出", "nakadashi", "creampie", "內射", "内射"],
-    "強鹼": ["ntr", "netorare", "rape", "NTR"],
-    "口膠": ["口交", "blowjob", "fellatio"],
-    "亂倫": ["incest", "近親相姦"]
-  };
+  const FORBIDDEN_DISPLAY_TAGS = new Set(["皮炎", "內蛇", "鄭太", "強鹼", "口膠", "🥑"]);
   const RATING_LABELS = {
     "-5": "超雷", "-4": "很差", "-3": "偏弱", "-2": "不太好", "-1": "略差",
     "0": "普通", "1": "還行", "2": "不錯", "3": "好看", "4": "很棒", "5": "神作"
@@ -141,6 +123,7 @@
     librarySeed: crypto.randomUUID?.() || String(Date.now()),
     librarySearchIds: null,
     librarySearchLoading: false,
+    homeSearchIds: null,
     bulkWorks: [],
     homeShowingRandom: false,
     currentWork: null,
@@ -184,61 +167,19 @@
     return PLATFORM_LABELS[platform] || platform || "";
   }
 
-  function isLoliTag(tag) {
-    return LOLO_TAG_PATTERN.test(String(tag || ""));
-  }
-
-  function tagRenameLabel(tag) {
-    const text = String(tag || "").trim();
-    if (!text) return null;
-    for (const rule of TAG_RENAME_RULES) {
-      if (rule.pattern.test(text)) return rule.label;
-    }
-    if (/\banal\b/i.test(text) && !/animal/i.test(text)) return "皮炎";
-    return null;
-  }
-
-  function isHiddenFlaggedTag(tag) {
-    const text = String(tag || "").trim();
-    if (!text || isLoliTag(text)) return false;
-    if (tagRenameLabel(text)) return false;
-    if (TAG_HIDE_PATTERN.test(text)) return true;
-    const graphic = [
-      /\b(loli|lolicon|shota|shotacon|toddler|preteen|underage|bestiality|zoophilia|necrophilia|snuff|guro|rape|gangbang|netorare)\b/i,
-      /(ロリ|ショタ|蘿莉|萝莉|正太|獸姦|獣姦|輪姦|強姦|中出|口交|肛交|触手|調教|凌辱)/,
-      /\b(penis|vagina|anal|ahegao|nakadashi|creampie|cumshot|fellatio|cunnilingus|paizuri|futanari|tentacle|bondage|bdsm|scat)\b/i
-    ];
-    return graphic.some(re => re.test(text));
+  function isForbiddenDisplayTag(tag) {
+    return FORBIDDEN_DISPLAY_TAGS.has(String(tag || "").trim());
   }
 
   function sanitizePublicTags(tags) {
     const input = Array.isArray(tags) ? tags : [];
     const out = [];
     const seen = new Set();
-    let hasAvocado = false;
     for (const raw of input) {
       const tag = String(raw || "").trim();
-      if (!tag) continue;
-      if (tag === "🥑" || isLoliTag(tag)) {
-        if (!hasAvocado) {
-          out.push("🥑");
-          seen.add("🥑");
-          hasAvocado = true;
-        }
-        continue;
-      }
-      const renamed = tagRenameLabel(tag);
-      if (renamed) {
-        const key = normalize(renamed);
-        if (!seen.has(key)) {
-          out.push(renamed);
-          seen.add(key);
-        }
-        continue;
-      }
-      if (isHiddenFlaggedTag(tag)) continue;
+      if (!tag || isForbiddenDisplayTag(tag)) continue;
       const key = normalize(tag);
-      if (seen.has(key)) continue;
+      if (!key || seen.has(key)) continue;
       out.push(tag);
       seen.add(key);
     }
@@ -294,16 +235,24 @@
     return tags.filter(Boolean);
   }
 
-  function tagRowHtml(work, max = 3) {
-    const tags = sanitizePublicTags(publicTagsOf(work)).slice(0, max);
-    if (!tags.length) return "";
-    const shown = tags.map(tag => {
-      const copyable = tag !== "🥑";
-      const copyAttr = copyable ? ` data-copy-tag="${escapeHtml(tag)}"` : "";
-      const icon = copyable ? '<span class="tag-copy-icon" aria-hidden="true">⧉</span>' : "";
-      return `<button type="button" class="tag tag-chip${copyable ? " tag-copyable" : " tag-avocado"}"${copyAttr} title="${copyable ? "點擊複製標籤" : "已遮蔽的題材標籤"}">${escapeHtml(tag)}${icon}</button>`;
-    });
-    return `<div class="tag-row">${shown.join("")}</div>`;
+  function tagChipHtml(tag) {
+    return `<button type="button" class="tag tag-chip tag-copyable" data-copy-tag="${escapeHtml(tag)}" title="點擊複製標籤">${escapeHtml(tag)}<span class="tag-copy-icon" aria-hidden="true">⧉</span></button>`;
+  }
+
+  function tagRowHtml(work, { max = 3, expand = false } = {}) {
+    const tags = sanitizePublicTags(publicTagsOf(work));
+    const hidden = Boolean(work?.has_hidden_tags);
+    if (!tags.length && !hidden) return "";
+    const shown = expand ? tags : tags.slice(0, max);
+    const overflow = expand ? 0 : Math.max(0, tags.length - shown.length);
+    const chips = shown.map(tagChipHtml);
+    if (overflow) {
+      chips.push(`<span class="tag tag-overflow" title="還有 ${overflow} 個標籤">+${overflow}</span>`);
+    }
+    if (hidden) {
+      chips.push('<span class="tag tag-hidden-note">部分標籤已隱藏</span>');
+    }
+    return `<div class="tag-row">${chips.join("")}</div>`;
   }
 
   function projectMemberWork(row) {
@@ -517,19 +466,7 @@
   function expandSearchTerms(query) {
     const base = normalize(query);
     if (!base) return [];
-    const terms = new Set([base]);
-    for (const token of base.split(/[\s,，/]+/).filter(Boolean)) {
-      terms.add(token);
-      const synonyms = SEARCH_SYNONYMS[token] || SEARCH_SYNONYMS[token.toUpperCase()] || [];
-      for (const synonym of synonyms) terms.add(normalize(synonym));
-    }
-    for (const [key, values] of Object.entries(SEARCH_SYNONYMS)) {
-      if (base.includes(normalize(key))) {
-        terms.add(normalize(key));
-        values.forEach(value => terms.add(normalize(value)));
-      }
-    }
-    return [...terms].filter(Boolean);
+    return [base, ...base.split(/[\s,，/]+/).filter(Boolean)].filter((term, index, arr) => arr.indexOf(term) === index);
   }
 
   function parseSearchCode(query) {
@@ -786,7 +723,7 @@
     if (workMatch) {
       return { view: "home", workId: workMatch[1], reviewId: workMatch[2] || null };
     }
-    const viewNames = ["home", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin"];
+    const viewNames = ["home", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin", "privacy", "terms"];
     if (raw === "random") return { view: "home", workId: null, reviewId: null };
     if (viewNames.includes(raw)) return { view: raw, workId: null, reviewId: null };
     return { view: null, workId: null, reviewId: null };
@@ -951,7 +888,7 @@
   function clearAuthCallbackUrl() {
     const url = new URL(location.href);
     ["code", "error", "error_description", "state"].forEach(key => url.searchParams.delete(key));
-    const viewNames = ["home", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin"];
+    const viewNames = ["home", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin", "privacy", "terms"];
     const hashBody = location.hash.replace(/^#/, "");
     const hashParams = new URLSearchParams(hashBody.includes("=") ? hashBody : "");
     const hasAuthHash = hashParams.has("access_token") || hashParams.has("refresh_token") || hashParams.has("error");
@@ -1184,11 +1121,11 @@
     if (!grid) return;
     const query = $("#home-search")?.value || "";
     const platform = state.homePlatform || "all";
-    let rows = state.works.filter(work =>
-      (platform === "all" || work.platform === platform) &&
-      (state.favorites.has(work.id) || state.watched.has(work.id) || state.watchlist.has(work.id) || workMatches(work, query))
-    );
-    if (!query && platform === "all") {
+    let rows;
+    if (query && state.homeSearchIds) {
+      rows = state.homeSearchIds.map(id => state.workById.get(id)).filter(Boolean);
+      if (platform !== "all") rows = rows.filter(work => work.platform === platform);
+    } else if (!query && platform === "all") {
       rows = state.works.filter(work => state.favorites.has(work.id) || state.watched.has(work.id) || state.watchlist.has(work.id));
     } else {
       rows = state.works.filter(work =>
@@ -1198,11 +1135,13 @@
     }
     if ($("#home-summary") && isApproved()) {
       $("#home-summary").textContent = rows.length
-        ? `我的資料庫 ${rows.length.toLocaleString()} 筆（收藏 ${state.favorites.size}／已看 ${state.watched.size}／待看 ${state.watchlist.size}）`
+        ? (query
+          ? `搜尋「${query}」${rows.length.toLocaleString()} 筆`
+          : `我的資料庫 ${rows.length.toLocaleString()} 筆（收藏 ${state.favorites.size}／已看 ${state.watched.size}／待看 ${state.watchlist.size}）`)
         : "還沒有收藏或紀錄。先去作品庫或用編號搜尋。";
     }
     grid.innerHTML = rows.slice(0, 60).map(archiveTicketHtml).join("")
-      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor.png?v=2.0.4" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
+      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor.png?v=2.1.0-rc1" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
   }
 
   function randomPool() {
@@ -1329,9 +1268,21 @@
           <button class="button button-primary" id="save-privacy">儲存隱私設定</button>
           <button class="button button-secondary" id="all-private">全部設為私人</button>
         </div>
+      </div>
+      <div class="privacy-card">
+        <p class="eyebrow">ACCOUNT</p>
+        <h3>帳號權利</h3>
+        <p class="muted small-note">可下載你自己的資料，或提出刪除帳號申請（不會自動刪除關聯作品／評分，需管理員處理）。</p>
+        <div class="detail-actions">
+          <button class="button button-secondary" id="download-my-data" type="button">下載我的資料</button>
+          <button class="button button-secondary" id="request-account-deletion" type="button">刪除帳號申請</button>
+        </div>
+        <p class="muted small-note"><a href="#privacy" data-view="privacy">隱私權政策</a> · <a href="#terms" data-view="terms">使用條款／社群規則</a></p>
       </div>`;
     $("#save-privacy")?.addEventListener("click", savePrivacy);
     $("#profile-submit-send")?.addEventListener("click", () => submitWorkIdOnly("profile"));
+    $("#download-my-data")?.addEventListener("click", downloadMyData);
+    $("#request-account-deletion")?.addEventListener("click", requestAccountDeletion);
     $("#all-private")?.addEventListener("click", async () => {
       const { data, error } = await supabase.rpc("set_all_private");
       if (error) return toast(error.message, "error");
@@ -1339,6 +1290,26 @@
       renderProfile();
       toast("已全部設為私人", "success");
     });
+  }
+
+  async function downloadMyData() {
+    const { data, error } = await supabase.rpc("download_my_data");
+    if (error) return toast(error.message, "error");
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "yoru-my-data.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("已下載你的資料", "success");
+  }
+
+  async function requestAccountDeletion() {
+    if (!confirm("送出刪除帳號申請？管理員會人工處理，不會立刻刪除你的評分或收藏紀錄。")) return;
+    const { error } = await supabase.rpc("submit_account_deletion_request", { reason: "user request from profile" });
+    if (error) return toast(error.message, "error");
+    toast("已送出刪除申請，等待管理員處理", "success");
   }
 
   async function savePrivacy() {
@@ -2010,6 +1981,29 @@
       "favorites-asc": "收藏數（少→多）"
     };
     return `${works.length.toLocaleString()} 筆符合條件；排序：${sortLabels[mode] || sortLabels.default}`;
+  }
+
+  async function runHomeSmartSearch(query) {
+    const q = String(query || "").trim();
+    if (!q) {
+      state.homeSearchIds = null;
+      return;
+    }
+    const platform = state.homePlatform || "all";
+    try {
+      const { data, error } = await supabase.rpc("search_works_smart", {
+        query: q,
+        platform_filter: platform === "all" ? null : platform,
+        result_limit: 200
+      });
+      if (error) throw error;
+      const rows = (data || []).map(projectMemberWork).filter(Boolean);
+      for (const work of rows) state.workById.set(work.id, work);
+      state.homeSearchIds = rows.map(work => work.id);
+    } catch (error) {
+      console.warn("search_works_smart unavailable; falling back to client filter", error);
+      state.homeSearchIds = null;
+    }
   }
 
   async function runLibrarySmartSearch(query) {
@@ -2694,7 +2688,7 @@
           <p class="work-code" id="detail-title">${escapeHtml(formatWorkCode(work))}</p>
           <h2>${escapeHtml(displayTitleOf(work))}</h2>
           <p>${escapeHtml(displayAuthorOf(work))}${work.language ? ` · ${escapeHtml(work.language)}` : ""} · ${escapeHtml(work.exposure_level === "RESTRICTED" ? "僅自己的資料庫" : "STANDARD")}</p>
-          ${tagRowHtml(work)}
+          ${tagRowHtml(work, { expand: true })}
           ${scoreBadgeHtml(work.id)}
           <div id="rating-histogram" class="rating-dist-panel"></div>
           <div class="detail-actions">
@@ -3980,7 +3974,16 @@
         <p class="muted small-note">自動通過已關閉。新會員一律待審，請手動通過。</p>
         <button class="button button-secondary" data-approve-all-pending>一鍵通過全部待審</button>
       </div>`;
-      content.innerHTML = degradedNotice + windowPanel + (users.map(profile => {
+      const { data: deletions } = await supabase
+        .from("request_account_deletion")
+        .select("id,user_id,reason,status,created_at")
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      const deletionPanel = `<div class="job-controls"><p class="muted small-note">刪除帳號申請（人工處理，不會自動刪 FK）</p>${
+        (deletions || []).map(row => `<div class="admin-row"><div><h4>${escapeHtml(row.user_id)}</h4><p>${escapeHtml(row.reason || "（未填原因）")} · ${new Date(row.created_at).toLocaleString("zh-TW")}</p></div><div class="admin-actions"><button class="button button-secondary" data-deletion-status="${row.id}" data-status="rejected">駁回</button><button class="button button-primary" data-deletion-status="${row.id}" data-status="completed">標記完成</button></div></div>`).join("") || '<p class="muted small-note">目前沒有待處理申請</p>'
+      }</div>`;
+      content.innerHTML = degradedNotice + windowPanel + deletionPanel + (users.map(profile => {
         const email = cleanName(profile.email) || (degraded ? "需套用 migration" : "（無信箱）");
         const lastSignIn = profile.last_sign_in_at ? new Date(profile.last_sign_in_at).toLocaleString("zh-TW") : (degraded ? "需套用 migration" : "尚未登入");
         return `<div class="admin-row"><div><h4>${escapeHtml(memberName(profile))}</h4><p>${escapeHtml(email)} · ${escapeHtml(profile.role)} · ${escapeHtml(profile.status)}</p><small>最近登入：${escapeHtml(lastSignIn)}</small></div><div class="admin-actions">${profile.role === "admin" ? "" : `${profile.status === "pending" ? `<button class="button button-primary" data-approve-user="${profile.id}">通過</button>` : ""}<button class="button button-secondary" data-suspend-user="${profile.id}" data-suspend="${profile.status === "suspended" ? "false" : "true"}">${profile.status === "suspended" ? "解除停權" : "停權"}</button>`}</div></div>`;
@@ -4252,9 +4255,10 @@
   }
 
   function switchView(view) {
-    const allowed = new Set(["home", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin", "landing"]);
+    const allowed = new Set(["home", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin", "landing", "privacy", "terms"]);
+    const publicViews = new Set(["landing", "privacy", "terms"]);
     if (view === "random") view = "home";
-    if (!isApproved() && view !== "landing") view = "landing";
+    if (!isApproved() && !publicViews.has(view)) view = "landing";
     if (!allowed.has(view)) view = isApproved() ? "home" : "landing";
     if (view === "admin") {
       if (!state.session) {
@@ -4268,7 +4272,7 @@
     if (location.hash.slice(1) !== view && view !== "landing") {
       history.replaceState(null, "", `#${view}`);
     }
-    rememberView(view === "landing" ? "home" : view);
+    rememberView(view === "landing" || view === "privacy" || view === "terms" ? "home" : view);
     $$(".view").forEach(section => section.classList.toggle("active", section.id === `view-${view}`));
     $$("[data-view]").forEach(link => link.classList.toggle("active", link.dataset.view === view));
     $("#main-nav")?.classList.remove("open");
@@ -4332,7 +4336,13 @@
         event.target.src = imageUrl("");
       }
     }, true);
-    $("#age-enter")?.addEventListener("click", () => { localStorage.setItem("acg_age_confirmed", "1"); closeModal("age-gate"); });
+    $("#age-enter")?.addEventListener("click", async () => {
+      localStorage.setItem("acg_age_confirmed", "1");
+      closeModal("age-gate");
+      if (state.session) {
+        try { await supabase.rpc("acknowledge_age"); } catch (_) { /* optional timestamp only */ }
+      }
+    });
     $("#age-leave")?.addEventListener("click", () => { location.href = "https://www.google.com/"; });
     if (localStorage.getItem("acg_age_confirmed") === "1") closeModal("age-gate");
     else openModal("age-gate");
@@ -4380,6 +4390,7 @@
           return;
         }
       }
+      await runHomeSmartSearch(q);
       renderHomeArchive();
     }));
     $("#collection-filter")?.addEventListener("change", renderCollection);
@@ -4542,6 +4553,15 @@
           toast(error ? error.message : `已通過 ${Number.isFinite(count) ? count : 0} 位會員`, error ? "error" : "success");
           if (!error) loadAdmin("users");
         });
+      }
+      if (target.dataset.deletionStatus) {
+        const { error } = await supabase.from("request_account_deletion").update({
+          status: target.dataset.status,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: state.session.user.id
+        }).eq("id", target.dataset.deletionStatus);
+        toast(error ? error.message : "申請狀態已更新（未自動刪除帳號）", error ? "error" : "success");
+        if (!error) loadAdmin("users");
       }
       if (target.dataset.approveUser) { const { error } = await supabase.rpc("approve_user", { target_user: target.dataset.approveUser, approve: true }); toast(error ? error.message : "會員已通過", error ? "error" : "success"); if (!error) loadAdmin("users"); }
       if (target.dataset.suspendUser) { const { error } = await supabase.rpc("set_user_suspension", { target_user: target.dataset.suspendUser, suspend: target.dataset.suspend === "true" }); toast(error ? error.message : "會員狀態已更新", error ? "error" : "success"); if (!error) loadAdmin("users"); }

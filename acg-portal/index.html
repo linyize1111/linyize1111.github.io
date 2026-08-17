@@ -8,15 +8,15 @@
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src 'none'; media-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com https://xpztpetskjohuxrpgmcm.supabase.co https://cdn.akamai.steamstatic.com https://shared.akamai.steamstatic.com https://steamcdn-a.akamaihd.net https://cdn.cloudflare.steamstatic.com https://img.dlsite.jp https://www.dlsite.com; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co; upgrade-insecure-requests">
   <title>你的夜鹿導師 | ACG Portal</title>
-  <meta name="description" content="私人整理的 ACG 收藏與評分倉庫，僅限審核會員瀏覽。">
+  <meta name="description" content="私人會員制 ACG metadata／評分工具。本站不提供作品圖片、下載或來源連結。">
   <meta property="og:title" content="你的夜鹿導師 | ACG Portal">
-  <meta property="og:description" content="私人整理的 ACG 收藏與評分倉庫。V2 已加強隱私，僅限審核會員。">
+  <meta property="og:description" content="私人整理的 ACG 編號與評分倉庫。僅限審核會員。本站不提供作品圖片、下載或來源連結。">
   <meta property="og:type" content="website">
-  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=2.0.6">
+  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=2.1.0-rc1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2.0.6">
+  <link rel="stylesheet" href="styles.css?v=2.1.0-rc1">
 </head>
 <body>
   <div class="ambient ambient-one"></div>
@@ -24,7 +24,7 @@
 
   <header class="site-header">
     <a class="brand" href="#home" aria-label="ACG Portal 首頁">
-      <span class="brand-mark"><img src="assets/yoru-icon.png?v=2.0.6" alt=""></span>
+      <span class="brand-mark"><img src="assets/yoru-icon.png?v=2.1.0-rc1" alt=""></span>
       <span><strong>夜鹿導師</strong><small>ACG PORTAL</small></span>
     </a>
     <nav id="main-nav" class="main-nav" aria-label="主要導覽">
@@ -68,12 +68,12 @@
             <h1>你的夜鹿導師</h1>
             <p class="hero-tagline">上數學課啦！</p>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.0.6" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.1.0-rc1" alt="夜鹿導師">
         </div>
         <div class="site-note">
-          <p>本站永遠不營利、不放廣告，單純為了方便整理、記錄與分享個人精選。這裡只是小弟方便自己跟各位開導身心靈的倉庫。</p>
-          <p>內容幾乎都是站長自己的喜好，盡量只挑中文翻譯版本；癖好不合請用搜尋或篩選。看到奇怪的作品可以負評或回報，可能是誤植或是其他人推薦的本子沒有仔細審核；也歡迎推薦作品編號，我會審核後再決定是否上架。</p>
-          <p class="github-callout">第一版請大家低調使用、別 star 別亂分享，但現在本站已經安全多了，分享網址沒關係。若覺得這個小站有用，可以到 GitHub 幫我的專案按個 ★：<a href="https://github.com/linyize1111/acg-portal" target="_blank" rel="noopener noreferrer">linyize1111/acg-portal ↗</a></p>
+          <p>本站永遠不營利、不放廣告。這裡是私人會員制的 ACG metadata／評分工具：記錄編號、評分與收藏，方便自己跟各位開導身心靈。</p>
+          <p>本站不提供作品圖片、下載或來源連結。內容幾乎都是站長自己的喜好，盡量只挑中文翻譯版本；癖好不合請用搜尋或篩選。看到奇怪的作品可以負評或回報。</p>
+          <p class="github-callout">請當私人工具使用。原始碼在 GitHub：<a href="https://github.com/linyize1111/acg-portal" target="_blank" rel="noopener noreferrer">linyize1111/acg-portal ↗</a></p>
         </div>
         <div class="landing-actions">
           <button id="landing-login" class="button button-primary" type="button">登入 / 建立帳號</button>
@@ -89,7 +89,7 @@
           </article>
           <article>
             <h3>規則</h3>
-            <p>禁止張貼外部網址、下載方式或違規描述。違規內容會被拒絕，草稿會保留讓你改。</p>
+            <p>禁止張貼外部網址、下載方式或違規描述。詳見<a href="#terms" data-view="terms">使用條款</a>與<a href="#privacy" data-view="privacy">隱私權政策</a>。</p>
           </article>
         </div>
         <p id="landing-status" class="muted"></p>
@@ -104,12 +104,12 @@
             <h1>你的夜鹿導師</h1>
             <p class="hero-tagline">上數學課啦！</p>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.0.6" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.1.0-rc1" alt="夜鹿導師">
         </div>
         <div class="site-note">
-          <p>本站永遠不營利、不放廣告，單純為了方便整理、記錄與分享個人精選。這裡只是小弟方便自己跟各位開導身心靈的倉庫。</p>
-          <p>內容幾乎都是站長自己的喜好，盡量只挑中文翻譯版本；癖好不合請用搜尋或篩選。看到奇怪的作品可以負評或回報，可能是誤植或是其他人推薦的本子沒有仔細審核；也歡迎推薦作品編號，我會審核後再決定是否上架。</p>
-          <p class="github-callout">第一版請大家低調使用、別 star 別亂分享，但現在本站已經安全多了，分享網址沒關係。若覺得這個小站有用，可以到 GitHub 幫我的專案按個 ★：<a href="https://github.com/linyize1111/acg-portal" target="_blank" rel="noopener noreferrer">linyize1111/acg-portal ↗</a></p>
+          <p>本站永遠不營利、不放廣告。這裡是私人會員制的 ACG metadata／評分工具：記錄編號、評分與收藏，方便自己跟各位開導身心靈。</p>
+          <p>本站不提供作品圖片、下載或來源連結。內容幾乎都是站長自己的喜好，盡量只挑中文翻譯版本；癖好不合請用搜尋或篩選。看到奇怪的作品可以負評或回報。</p>
+          <p class="github-callout">請當私人工具使用。原始碼在 GitHub：<a href="https://github.com/linyize1111/acg-portal" target="_blank" rel="noopener noreferrer">linyize1111/acg-portal ↗</a></p>
         </div>
         <div class="search-row home-random-row">
           <div class="platform-switch" role="group" aria-label="平台">
@@ -123,12 +123,12 @@
             <option value="watchlist">待看清單</option>
           </select>
           <label class="check-inline"><input id="home-random-exclude-watched" type="checkbox"> 排除已看</label>
-          <input id="home-random-tag" type="search" placeholder="安全標籤（選填）">
+          <input id="home-random-tag" type="search" placeholder="標籤（選填）">
         </div>
         <div class="search-row">
           <label class="search-box home-search-box">
             <span>⌕</span>
-            <input id="home-search" type="search" placeholder="N-123456 / JM-123456 或標題、標籤…" autocomplete="off">
+            <input id="home-search" type="search" placeholder="N-123456 / JM-123456 或標題、作者、標籤…" autocomplete="off">
           </label>
           <button id="draw-one-button" class="button button-secondary">隨機 1</button>
           <button id="draw-five-button" class="button button-secondary">隨機 5</button>
@@ -154,7 +154,7 @@
             <option value="watched">已看</option>
             <option value="watchlist">待看</option>
           </select>
-          <input id="library-search" type="search" placeholder="編號、標題、作者、安全標籤…">
+          <input id="library-search" type="search" placeholder="編號、標題、作者、標籤…">
         </div>
       </div>
       <div class="filter-row library-filters">
@@ -272,7 +272,58 @@
       </div>
       <div id="admin-content" class="admin-content"></div>
     </section>
+    <section id="view-privacy" class="view">
+      <div class="section-heading">
+        <div><p class="eyebrow">PRIVACY</p><h2>隱私權政策</h2><p>說明本站如何處理會員資料。這不是法律意見，也不保證特定法律效果。</p></div>
+      </div>
+      <article class="legal-doc">
+        <p>營運者為「夜鹿導師」站長（自然人，主要於台灣）。本站是私人會員制 ACG metadata／評分工具，網址為 <code>https://linyize1111.github.io/acg-portal/</code>。</p>
+        <h3>聯絡方式</h3>
+        <p>請透過站內「意見反饋」提出查詢、更正、下載或刪除申請。管理員以站內回覆處理，處理時間依人力而定，不保證立即完成。</p>
+        <h3>蒐集目的與資料類別</h3>
+        <ul>
+          <li>帳號：Google OAuth 或信箱密碼登入所取得的顯示名稱、頭像、信箱，以及你自訂的暱稱、審核狀態。</li>
+          <li>使用紀錄：評分、評論、收藏／已看／待看、私人筆記、意見反饋、可選的成年確認時間戳（<code>age_acknowledged_at</code>，不含生日或身分證件）。</li>
+          <li>作品目錄：站長維護的作品編號與 metadata；這不是你的個人資料，但可能出現在你的收藏清單中。</li>
+        </ul>
+        <h3>保存期間</h3>
+        <p>帳號存續期間保存。你提出刪除申請後，管理員會人工處理；關聯評分／收藏不會自動連鎖刪除，以免破壞其他人正在使用的紀錄。</p>
+        <h3>第三方與跨境傳輸</h3>
+        <ul>
+          <li>Supabase：帳號驗證與資料庫（目前主機區域為 AWS ap-northeast-1／日本）。</li>
+          <li>Google OAuth：若你選擇 Google 登入。</li>
+          <li>GitHub Pages：託管靜態網頁（HTML/CSS/JS），不存放你的評分資料庫。</li>
+        </ul>
+        <p>資料可能因此儲存或處理於台灣以外地區。</p>
+        <h3>你的權利</h3>
+        <p>你可以查詢、更正（暱稱與隱私設定）、下載自己的資料、申請刪除帳號、或停止使用（登出並不再登入）。行使權利請用個人頁的「下載我的資料」「刪除帳號申請」，或意見反饋。</p>
+        <h3>本政策未承諾的事項</h3>
+        <p>本站不宣稱「現在已經安全所以可以任意分享」、不宣稱「100% 合法」、也不宣稱「GitHub 不會封鎖」。本站不提供作品圖片、下載或來源連結。</p>
+      </article>
+    </section>
+
+    <section id="view-terms" class="view">
+      <div class="section-heading">
+        <div><p class="eyebrow">TERMS</p><h2>使用條款／社群規則</h2><p>繼續使用即表示你理解本站是私人會員工具，並遵守下列規則。</p></div>
+      </div>
+      <article class="legal-doc">
+        <ul>
+          <li>本工具記錄成人向 ACG 作品編號與評分。你必須已達所在地法定成年年齡（18+）。</li>
+          <li>內容僅供審核通過的私人會員瀏覽，不是公開目錄。</li>
+          <li>本站是 metadata／評分工具：不提供下載、不提供來源連結、會員畫面不顯示作品圖片。</li>
+          <li>禁止張貼或索取下載方式、磁力、網址、盜版來源，或任何違法、侵權內容。</li>
+          <li>禁止騷擾、人肉、洩漏個資、垃圾訊息。</li>
+          <li>管理員可隱藏或拒絕違規內容、停權帳號，或拒絕上架投稿。處理結果依站務判斷，不保證特定法律效果。</li>
+        </ul>
+        <p><a href="#privacy" data-view="privacy">隱私權政策</a></p>
+      </article>
+    </section>
   </main>
+
+  <footer class="site-footer">
+    <p>夜鹿導師 · 私人 ACG metadata／評分工具 · 本站不提供作品圖片、下載或來源連結。</p>
+    <p><a href="#privacy" data-view="privacy">隱私權政策</a> · <a href="#terms" data-view="terms">使用條款</a> · <a href="#feedback" data-view="feedback">意見反饋</a></p>
+  </footer>
 
   <div id="age-gate" class="modal open" role="dialog" aria-modal="true" aria-labelledby="age-title">
     <div class="modal-card age-card">
@@ -331,7 +382,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"
     integrity="sha384-z2hqtpr/vSDZ8zSjLOiNgnR/mpU799AD93s6rvkNJLI6Hl0YlKXEhDtREzNT749S" crossorigin="anonymous"></script>
-  <script src="config.js?v=2.0.6"></script>
-  <script src="app.js?v=2.0.6"></script>
+  <script src="config.js?v=2.1.0-rc1"></script>
+  <script src="app.js?v=2.1.0-rc1"></script>
 </body>
 </html>
