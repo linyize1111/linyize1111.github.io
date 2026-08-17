@@ -63,6 +63,12 @@ const sample = [
   "Valorant / LOL ARAM / 各種 Steam 遊戲",
   "",
   "歡迎直接找我打遊戲，我不氣氛的。",
+  "",
+  "---",
+  "",
+  "## ▸ 關於我",
+  "",
+  "這段應排到主題最上方。",
 ].join("\n");
 
 const result = await page.evaluate((md) => {
@@ -71,13 +77,17 @@ const result = await page.evaluate((md) => {
   body.removeAttribute("data-folds-ready");
   window.LYZEnhanceAboutMarkdownFolds(body);
   const folds = [...body.querySelectorAll("details.about-fold")];
+  const titles = folds.map((d) => d.querySelector("h2")?.textContent?.trim() || "");
   const game = folds.find((d) => d.textContent.includes("遊戲"));
   const beforeOpen = game ? game.open : null;
   if (game) game.open = true;
   const pageW = document.querySelector(".about-page").getBoundingClientRect().width;
   const mainW = document.getElementById("main").getBoundingClientRect().width;
+  const foldStyles = folds.map((d) => getComputedStyle(d).gridColumn);
   return {
     foldCount: folds.length,
+    titles,
+    firstTitle: titles[0] || "",
     allClosedInitially: folds.every((d) => d.open === false) || beforeOpen === false,
     gameWasClosed: beforeOpen === false,
     gamePanelText: game?.querySelector(".about-fold__panel")?.textContent || "",
@@ -85,15 +95,18 @@ const result = await page.evaluate((md) => {
     pageW,
     mainW,
     fillRatio: pageW / mainW,
+    singleColumn: foldStyles.every((c) => c === "auto" || c === "1" || !c.includes("/")),
   };
 }, sample);
 
-assert.ok(result.foldCount >= 2, `expected folds, got ${result.foldCount}`);
+assert.ok(result.foldCount >= 3, `expected folds, got ${result.foldCount}`);
+assert.match(result.firstTitle, /關於我/);
 assert.equal(result.gameWasClosed, true);
 assert.ok(result.gamePanelText.includes("傳說對決"));
 assert.ok(result.gamePanelText.includes("Valorant"));
 assert.ok(result.hasPreamble);
 assert.ok(result.fillRatio > 0.85, `page should fill main shell, ratio=${result.fillRatio}`);
+assert.ok(result.singleColumn, "topics should stay single-column");
 
 await page.screenshot({ path: path.join(artifacts, "about-folds-1440.png"), fullPage: false });
 

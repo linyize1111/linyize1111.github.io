@@ -3171,19 +3171,19 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 .about-profile__identity {
   min-width: 0;
   text-align: left;
-  max-width: 46rem;
+  max-width: 48rem;
 }
 .about-updated {
   margin: 0 0 0.75rem;
   opacity: 0.65;
-  font-size: 0.9rem;
+  font-size: 0.98rem;
   letter-spacing: 0.04em;
 }
 .about-profile__identity > h1 {
   margin: 0 0 1.1rem;
   text-align: left;
   color: #18bfef;
-  font-size: clamp(1.8rem, 3.2vw, 2.45rem);
+  font-size: clamp(2rem, 3.4vw, 2.7rem);
   line-height: 1.2;
 }
 .about-profile__quote {
@@ -3191,7 +3191,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   padding-left: 1rem;
   border-left: 2px solid #18bfef;
   background: transparent;
-  font-size: clamp(1.15rem, 2.2vw, 1.45rem);
+  font-size: clamp(1.25rem, 2.3vw, 1.55rem);
   line-height: 1.65;
   font-weight: 600;
   text-align: left;
@@ -3203,7 +3203,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   max-width: none;
 }
 .about-profile__body.about-markdown > p {
-  max-width: 46rem;
+  max-width: 48rem;
 }
 
 /* ========== V9.2 About Markdown scope (NOT article / HTML5 UP .markdown-body) ========== */
@@ -3226,8 +3226,8 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   margin: 0 0 1.15em;
   max-width: none;
   text-align: left;
-  font-size: 1.03rem;
-  line-height: 1.9;
+  font-size: 1.12rem;
+  line-height: 1.92;
 }
 .about-markdown strong,
 .about-markdown b {
@@ -3253,7 +3253,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  font-size: clamp(1.35rem, 2vw, 1.65rem);
+  font-size: clamp(1.45rem, 2.1vw, 1.75rem);
   margin: 2.2em 0 0.75em;
 }
 .about-markdown h2::after {
@@ -3283,7 +3283,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   gap: 0.85rem;
   list-style: none;
   cursor: pointer;
-  padding: 0.95rem 1.15rem;
+  padding: 1.05rem 1.25rem;
   user-select: none;
 }
 .about-fold__summary::-webkit-details-marker {
@@ -3312,7 +3312,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   display: block;
   margin: 0 !important;
   flex: 1;
-  font-size: clamp(1.12rem, 1.7vw, 1.35rem) !important;
+  font-size: clamp(1.22rem, 1.9vw, 1.48rem) !important;
   line-height: 1.4;
   font-weight: 700;
 }
@@ -3322,7 +3322,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   content: none !important;
 }
 .about-fold__panel {
-  padding: 0 1.2rem 1.15rem 2.35rem;
+  padding: 0 1.35rem 1.25rem 2.45rem;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 [data-theme="light"] .about-fold__panel {
@@ -3334,20 +3334,9 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 .about-fold__panel > :last-child {
   margin-bottom: 0;
 }
-@media (min-width: 960px) {
-  .about-markdown--folds {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem 1rem;
-    align-items: start;
-  }
-  .about-markdown--folds > :not(.about-fold) {
-    grid-column: 1 / -1;
-    max-width: 46rem;
-  }
-  .about-markdown--folds > .about-fold {
-    margin: 0;
-  }
+.about-fold__panel p,
+.about-fold__panel li {
+  font-size: 1.12rem;
 }
 .about-markdown h3 {
   font-size: 1.15rem;
@@ -3448,7 +3437,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 /* Intro / quote: keep poem-like, no giant h2 divider */
 .about-markdown--intro {
-  font-size: clamp(1.15rem, 2.2vw, 1.45rem);
+  font-size: clamp(1.25rem, 2.3vw, 1.55rem);
   font-weight: 600;
   line-height: 1.65;
 }
@@ -3467,7 +3456,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 
 .about-profile__media {
   margin: 0;
-  width: clamp(168px, 18vw, 220px);
+  width: clamp(240px, 26vw, 340px);
   justify-self: end;
   padding: 8px;
   border-radius: 16px;
@@ -3538,7 +3527,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   }
   .about-profile__media {
     order: -1;
-    width: min(148px, 42vw);
+    width: min(200px, 48vw);
     margin-inline: 0;
     justify-self: start;
   }

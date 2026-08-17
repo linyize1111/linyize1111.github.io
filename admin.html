@@ -1,12 +1,12 @@
-﻿<!DOCTYPE HTML>
+<!DOCTYPE HTML>
 <html lang="zh-Hant">
 
 <head>
     <meta charset="utf-8" />
-    <title>後台管理 · LYZ's website</title>
+    <title>��x�޲z �P LYZ's website</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-    <!-- 內容安全政策（CSP）：限制可載入來源，降低 XSS / 注入風險 -->
+    <!-- ���e�w���F���]CSP�^�G����i���J�ӷ��A���C XSS / �`�J���I -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         script-src 'self' https://cdn.jsdelivr.net;
@@ -25,119 +25,119 @@
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;900&display=swap">
     <link rel="stylesheet" href="assets/css/admin.css?v=v9.2-about-markdown-1" />
-    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9.4-about-folds-1" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9.5-about-polish-1" />
 </head>
 
 <body class="admin">
     <div class="admin-wrap">
         <div class="admin-top">
-            <h1>後台管理 · CMS</h1>
+            <h1>��x�޲z �P CMS</h1>
             <div class="stack" style="align-items:flex-end;">
                 <span class="who" id="who"></span>
                 <div>
-                    <a class="btn" href="index.html">← 回到網站</a>
-                    <button class="btn hidden" id="btn-logout">登出</button>
+                    <a class="btn" href="index.html">�� �^�����</a>
+                    <button class="btn hidden" id="btn-logout">�n�X</button>
                 </div>
             </div>
         </div>
 
         <div id="global-msg"></div>
 
-        <!-- 未設定 Supabase -->
+        <!-- ���]�w Supabase -->
         <div class="card hidden" id="view-unconfigured">
-            <h3>尚未設定 Supabase</h3>
-            <p class="muted">請先在 <code>assets/js/supabase-config.js</code> 填入新專案的
-                Project URL 與 anon key，並套用 <code>supabase/migrations</code> 內的 SQL。詳見交接文件。</p>
+            <h3>�|���]�w Supabase</h3>
+            <p class="muted">�Х��b <code>assets/js/supabase-config.js</code> ��J�s�M�ת�
+                Project URL �P anon key�A�îM�� <code>supabase/migrations</code> ���� SQL�C�Ԩ��汵���C</p>
         </div>
 
-        <!-- 登入 -->
+        <!-- �n�J -->
         <div class="card hidden center" id="view-login">
-            <h3>請以管理員 Google 帳號登入</h3>
-            <p class="muted">一般帳號登入後僅為訪客，沒有任何編輯權限。</p>
+            <h3>�ХH�޲z�� Google �b���n�J</h3>
+            <p class="muted">�@��b���n�J��Ȭ��X�ȡA�S������s���v���C</p>
             <p class="muted" id="login-hint" style="margin-top:.6rem;"></p>
             <p style="margin-top:1.2rem;">
-                <button class="btn google" id="btn-google">使用 Google 登入</button>
+                <button class="btn google" id="btn-google">�ϥ� Google �n�J</button>
             </p>
             <p style="margin-top:.9rem;">
-                <button type="button" class="btn" id="btn-clear-auth" title="清除本機殘留的 Supabase session 後重新整理">清除登入資料後重登</button>
+                <button type="button" class="btn" id="btn-clear-auth" title="�M�������ݯd�� Supabase session �᭫�s��z">�M���n�J��ƫ᭫�n</button>
             </p>
-            <p class="muted" style="margin-top:.7rem;font-size:.85rem;">若無痕可以登入、一般視窗卻卡住：多半是本機舊的 auth token／PKCE 殘渣，請按上方按鈕。</p>
+            <p class="muted" style="margin-top:.7rem;font-size:.85rem;">�Y�L���i�H�n�J�B�@������o�d���G�h�b�O�����ª� auth token��PKCE �ݴ��A�Ы��W����s�C</p>
         </div>
 
-        <!-- 非管理員 -->
+        <!-- �D�޲z�� -->
         <div class="card hidden center" id="view-guest">
-            <h3>你已登入，但不是管理員</h3>
-            <p class="muted">你的帳號不在管理員白名單，只有訪客權限。若這是誤判，請聯絡站長把你的信箱加入白名單。</p>
+            <h3>�A�w�n�J�A�����O�޲z��</h3>
+            <p class="muted">�A���b�����b�޲z���զW��A�u���X���v���C�Y�o�O�~�P�A���p��������A���H�c�[�J�զW��C</p>
             <p class="muted" id="guest-hint" style="margin-top:.6rem;"></p>
             <p style="margin-top:1rem;">
-                <button type="button" class="btn" id="btn-clear-auth-guest">清除登入資料後重登</button>
+                <button type="button" class="btn" id="btn-clear-auth-guest">�M���n�J��ƫ᭫�n</button>
             </p>
         </div>
 
-        <!-- 管理員後台 -->
+        <!-- �޲z����x -->
         <div id="view-admin" class="hidden">
             <div class="tabs">
-                <div class="tab active" data-tab="articles">文章管理</div>
-                <div class="tab" data-tab="sections">網站內容</div>
+                <div class="tab active" data-tab="articles">�峹�޲z</div>
+                <div class="tab" data-tab="sections">�������e</div>
             </div>
 
-            <!-- 文章 -->
+            <!-- �峹 -->
             <div id="tab-articles">
-                <!-- 快速匯入：先選分區，再貼上（heuristic 只建議、不覆寫分區） -->
+                <!-- �ֳt�פJ�G������ϡA�A�K�W�]heuristic �u��ĳ�B���мg���ϡ^ -->
                 <div class="card import-wizard" id="import-wizard">
-                    <h3>快速匯入</h3>
-                    <p class="muted import-promise">第一步先選<strong>分區</strong>。系統只建議標題／分類，不會偷偷改你選的分區。</p>
+                    <h3>�ֳt�פJ</h3>
+                    <p class="muted import-promise">�Ĥ@�B����<strong>����</strong>�C�t�Υu��ĳ���D�������A���|������A�諸���ϡC</p>
                     <div class="field full" style="margin-bottom:.85rem;">
-                        <label>1. 這篇是什麼？ *</label>
-                        <div class="section-pick" id="section-pick" role="radiogroup" aria-label="分區">
+                        <label>1. �o�g�O����H *</label>
+                        <div class="section-pick" id="section-pick" role="radiogroup" aria-label="����">
                             <button type="button" class="section-pick__btn is-selected" data-section="notes" aria-pressed="true">
-                                <strong>隨筆</strong>
-                                <span>生活、觀點、閱讀／觀看心得</span>
+                                <strong>�H��</strong>
+                                <span>�ͬ��B�[�I�B�\Ū���[�ݤ߱o</span>
                             </button>
                             <button type="button" class="section-pick__btn" data-section="literature" aria-pressed="false">
-                                <strong>文學創作</strong>
-                                <span>小說、詩、劇本、虛構文本</span>
+                                <strong>��ǳЧ@</strong>
+                                <span>�p���B�֡B�@���B��c�奻</span>
                             </button>
                             <button type="button" class="section-pick__btn" data-section="academic" aria-pressed="false">
-                                <strong>學科筆記</strong>
-                                <span>課堂／研究／程式（僅管理員可見）</span>
+                                <strong>�Ǭ쵧�O</strong>
+                                <span>�Ұ����s���{���]�Ⱥ޲z���i���^</span>
                             </button>
                         </div>
                         <input type="hidden" id="import-section" value="notes" />
                     </div>
                     <ol class="import-steps muted">
-                        <li>選分區（上方）</li>
-                        <li>貼上文字 → 預覽建議的標題／分類</li>
-                        <li>存成草稿；確認後再發佈</li>
+                        <li>����ϡ]�W��^</li>
+                        <li>�K�W��r �� �w����ĳ�����D������</li>
+                        <li>�s����Z�F�T�{��A�o�G</li>
                     </ol>
                     <div class="field full">
-                        <label>2. 貼上內容</label>
-                        <textarea id="paste-blob" rows="10" placeholder="貼上全文或 Markdown…&#10;&#10;可含 YAML frontmatter。分區以你在上方的選擇為準。"></textarea>
+                        <label>2. �K�W���e</label>
+                        <textarea id="paste-blob" rows="10" placeholder="�K�W����� Markdown�K&#10;&#10;�i�t YAML frontmatter�C���ϥH�A�b�W�誺��ܬ��ǡC"></textarea>
                     </div>
                     <div class="import-actions">
-                        <button type="button" class="btn primary" id="btn-quick-draft">存成草稿</button>
-                        <button type="button" class="btn" id="btn-parse-paste">先預覽</button>
-                        <button type="button" class="btn" id="btn-apply-paste" disabled>進大編輯繼續改</button>
-                        <button type="button" class="btn" id="btn-clear-paste">清除</button>
+                        <button type="button" class="btn primary" id="btn-quick-draft">�s����Z</button>
+                        <button type="button" class="btn" id="btn-parse-paste">���w��</button>
+                        <button type="button" class="btn" id="btn-apply-paste" disabled>�i�j�s���~���</button>
+                        <button type="button" class="btn" id="btn-clear-paste">�M��</button>
                         <span class="muted" id="paste-status"></span>
                     </div>
                     <details class="import-advanced">
-                        <summary>進階選項（可跳過）</summary>
+                        <summary>�i���ﶵ�]�i���L�^</summary>
                         <div class="row" style="align-items:flex-end; margin-top:.75rem;">
                             <div class="field" style="max-width:200px;">
-                                <label>篇幅提示（通常自動即可）</label>
+                                <label>�g�T���ܡ]�q�`�۰ʧY�i�^</label>
                                 <select id="import-length">
-                                    <option value="auto">自動判斷</option>
-                                    <option value="short">強制當隨想</option>
-                                    <option value="long">強制當長文</option>
+                                    <option value="auto">�۰ʧP�_</option>
+                                    <option value="short">�j����H�Q</option>
+                                    <option value="long">�j�������</option>
                                 </select>
                             </div>
                         </div>
                     </details>
                     <div id="import-preview" class="import-preview hidden">
                         <div class="import-preview-head">
-                            <strong id="preview-title">—</strong>
-                            <span class="badge" id="preview-length-badge">—</span>
+                            <strong id="preview-title">�X</strong>
+                            <span class="badge" id="preview-length-badge">�X</span>
                         </div>
                         <p class="muted" id="preview-meta"></p>
                         <p class="muted" id="preview-hint"></p>
@@ -149,83 +149,83 @@
                 <div class="card">
                     <div class="row" style="align-items:flex-end;">
                         <div class="field" style="max-width:220px;">
-                            <label>分區</label>
+                            <label>����</label>
                             <select id="list-section">
-                                <option value="notes">隨筆</option>
-                                <option value="literature">文學創作</option>
-                                <option value="academic">學科筆記</option>
+                                <option value="notes">�H��</option>
+                                <option value="literature">��ǳЧ@</option>
+                                <option value="academic">�Ǭ쵧�O</option>
                             </select>
                         </div>
                         <div class="field" style="max-width:160px;">
-                            <label>狀態</label>
+                            <label>���A</label>
                             <select id="list-status">
-                                <option value="all">全部</option>
-                                <option value="draft">只看草稿</option>
-                                <option value="published">只看已發佈</option>
+                                <option value="all">����</option>
+                                <option value="draft">�u�ݯ�Z</option>
+                                <option value="published">�u�ݤw�o�G</option>
                             </select>
                         </div>
                         <div class="field" style="max-width:220px;">
-                            <label>搜尋標題</label>
-                            <input id="list-search" type="search" placeholder="輸入關鍵字…" />
+                            <label>�j�M���D</label>
+                            <input id="list-search" type="search" placeholder="��J����r�K" />
                         </div>
                         <div class="field" style="max-width:160px; flex:0;">
-                            <button class="btn primary" id="btn-new">+ 手動新增</button>
+                            <button class="btn primary" id="btn-new">+ ��ʷs�W</button>
                         </div>
                     </div>
-                    <p class="muted" id="list-hint" style="margin:0 0 .75rem;">點「編輯」時，頂部會顯示目前正在改哪一篇。</p>
+                    <p class="muted" id="list-hint" style="margin:0 0 .75rem;">�I�u�s��v�ɡA�����|��ܥثe���b����@�g�C</p>
                     <div class="bulk-bar" id="bulk-bar">
-                        <label class="bulk-check-all"><input type="checkbox" id="bulk-select-all" /> 全選本頁</label>
-                        <span class="muted" id="bulk-count">已選 0</span>
-                        <select id="bulk-section" title="改分區">
-                            <option value="">改分區…</option>
-                            <option value="notes">→ 隨筆</option>
-                            <option value="literature">→ 文學創作</option>
-                            <option value="academic">→ 學科筆記</option>
+                        <label class="bulk-check-all"><input type="checkbox" id="bulk-select-all" /> ���糧��</label>
+                        <span class="muted" id="bulk-count">�w�� 0</span>
+                        <select id="bulk-section" title="�����">
+                            <option value="">����ϡK</option>
+                            <option value="notes">�� �H��</option>
+                            <option value="literature">�� ��ǳЧ@</option>
+                            <option value="academic">�� �Ǭ쵧�O</option>
                         </select>
-                        <select id="bulk-category" title="改分類">
-                            <option value="">改分類…</option>
+                        <select id="bulk-category" title="�����">
+                            <option value="">������K</option>
                         </select>
-                        <select id="bulk-status" title="改狀態">
-                            <option value="">改狀態…</option>
-                            <option value="draft">→ 草稿</option>
-                            <option value="published">→ 發佈</option>
+                        <select id="bulk-status" title="�窱�A">
+                            <option value="">�窱�A�K</option>
+                            <option value="draft">�� ��Z</option>
+                            <option value="published">�� �o�G</option>
                         </select>
-                        <button type="button" class="btn" id="btn-bulk-apply" disabled>套用批次</button>
+                        <button type="button" class="btn" id="btn-bulk-apply" disabled>�M�Χ妸</button>
                     </div>
                     <div id="article-list"></div>
                 </div>
 
             </div>
 
-            <!-- 大編輯模式（近全螢幕）：列表點編輯／快速匯入後進入 -->
+            <!-- �j�s��Ҧ��]����ù��^�G�C���I�s����ֳt�פJ��i�J -->
             <div id="article-form" class="editor-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="form-title">
                 <div class="editor-shell">
                     <header class="editor-bar">
                         <div class="editor-bar-left">
-                            <button type="button" class="btn" id="btn-cancel" title="返回文章列表">← 返回列表</button>
+                            <button type="button" class="btn" id="btn-cancel" title="��^�峹�C��">�� ��^�C��</button>
                             <div class="editor-identity">
-                                <h3 id="form-title">新增文章</h3>
-                                <p id="form-context" class="editor-context" aria-live="polite">尚未選擇文章</p>
+                                <h3 id="form-title">�s�W�峹</h3>
+                                <p id="form-context" class="editor-context" aria-live="polite">�|����ܤ峹</p>
                             </div>
                         </div>
-                        <div class="editor-modes" role="tablist" aria-label="編輯檢視">
-                            <button type="button" class="mode-btn active" data-editor-mode="split" title="左右分欄：編輯 + 前台預覽">分欄</button>
-                            <button type="button" class="mode-btn" data-editor-mode="edit" title="只看 Markdown 編輯">編輯</button>
-                            <button type="button" class="mode-btn" data-editor-mode="frontend" title="真實前台預覽">前台預覽</button>
-                            <button type="button" class="mode-btn" data-editor-mode="changes" title="草稿變更 diff">變更</button>
-                            <button type="button" class="mode-btn" data-editor-mode="markdown" title="原始 Markdown HTML 預覽">Markdown</button>
+                        <div class="editor-modes" role="tablist" aria-label="�s���˵�">
+                            <button type="button" class="mode-btn active" data-editor-mode="split" title="���k����G�s�� + �e�x�w��">����</button>
+                            <button type="button" class="mode-btn" data-editor-mode="edit" title="�u�� Markdown �s��">�s��</button>
+                            <button type="button" class="mode-btn" data-editor-mode="frontend" title="�u��e�x�w��">�e�x�w��</button>
+                            <button type="button" class="mode-btn" data-editor-mode="changes" title="��Z�ܧ� diff">�ܧ�</button>
+                            <button type="button" class="mode-btn" data-editor-mode="markdown" title="��l Markdown HTML �w��">Markdown</button>
                         </div>
                         <div class="editor-bar-actions">
-                            <span id="editor-save-state" class="editor-save-state" aria-live="polite">已同步</span>
+                            <span id="editor-save-state" class="editor-save-state" aria-live="polite">�w�P�B</span>
                             <label class="editor-status-label">
-                                <span class="sr-only">狀態</span>
-                                <select id="f-status" title="文章狀態">
-                                    <option value="draft">草稿</option>
-                                    <option value="published">發佈</option>
+                                <span class="sr-only">���A</span>
+                                <select id="f-status" title="�峹���A">
+                                    <option value="draft">��Z</option>
+                                    <option value="published">�o�G</option>
                                 </select>
                             </label>
-                            <button type="button" class="btn danger hidden" id="btn-delete">刪除</button>
-                            <button type="button" class="btn primary" id="btn-save">儲存</button>
+                            <button type="button" class="btn danger hidden" id="btn-delete">�R��</button>
+                            <button type="button" class="btn primary" id="btn-save">�x�s</button>
                         </div>
                     </header>
 
@@ -235,44 +235,44 @@
                         <aside class="editor-meta" id="editor-meta">
                             <input type="hidden" id="f-id" />
                             <details class="editor-meta-block" open>
-                                <summary>基本設定</summary>
+                                <summary>�򥻳]�w</summary>
                                 <div class="row">
                                     <div class="field">
-                                        <label>分區 *</label>
+                                        <label>���� *</label>
                                         <select id="f-section">
-                                            <option value="notes">隨筆</option>
-                                            <option value="literature">文學創作</option>
-                                            <option value="academic">學科筆記</option>
+                                            <option value="notes">�H��</option>
+                                            <option value="literature">��ǳЧ@</option>
+                                            <option value="academic">�Ǭ쵧�O</option>
                                         </select>
                                     </div>
                                     <div class="field" style="max-width:100px;">
-                                        <label>排序</label>
+                                        <label>�Ƨ�</label>
                                         <input id="f-sort" type="number" value="0" />
                                     </div>
                                 </div>
                                 <div class="field full">
-                                    <label>標題 *</label>
-                                    <input id="f-title" placeholder="請填標題，或按「AI 整理與判斷」後確認" />
+                                    <label>���D *</label>
+                                    <input id="f-title" placeholder="�ж���D�A�Ϋ��uAI ��z�P�P�_�v��T�{" />
                                 </div>
                                 <div class="field full">
-                                    <label>slug（網址代稱）*</label>
-                                    <input id="f-slug" placeholder="可自動產生" />
+                                    <label>slug�]���}�N�١^*</label>
+                                    <input id="f-slug" placeholder="�i�۰ʲ���" />
                                 </div>
                                 <div class="field full">
-                                    <label>摘要（語意摘要；短文可不顯示）</label>
-                                    <input id="f-summary" placeholder="一句話；勿用「本文探討…」報告腔" />
-                                    <label class="inline-check"><input type="checkbox" id="f-show-title" checked /> 前台顯示標題</label>
-                                    <label class="inline-check"><input type="checkbox" id="f-show-summary" checked /> 前台顯示摘要</label>
+                                    <label>�K�n�]�y�N�K�n�F�u��i����ܡ^</label>
+                                    <input id="f-summary" placeholder="�@�y�ܡF�ťΡu���屴�Q�K�v���i��" />
+                                    <label class="inline-check"><input type="checkbox" id="f-show-title" checked /> �e�x��ܼ��D</label>
+                                    <label class="inline-check"><input type="checkbox" id="f-show-summary" checked /> �e�x��ܺK�n</label>
                                 </div>
                             </details>
 
                             <details class="editor-meta-block" open>
-                                <summary>V3 呈現／可見性</summary>
+                                <summary>V3 �e�{���i����</summary>
                                 <div class="row">
                                     <div class="field">
                                         <label>presentation</label>
                                         <select id="f-presentation">
-                                            <option value="">（未設定 → article-lite）</option>
+                                            <option value="">�]���]�w �� article-lite�^</option>
                                             <option value="fragment">fragment</option>
                                             <option value="photo-note">photo-note</option>
                                             <option value="journal">journal</option>
@@ -287,138 +287,138 @@
                                     </div>
                                     <div class="field">
                                         <label>content_type</label>
-                                        <input id="f-content-type" placeholder="例如 fragment / review / fiction" />
+                                        <input id="f-content-type" placeholder="�Ҧp fragment / review / fiction" />
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="field">
                                         <label>visibility</label>
                                         <select id="f-visibility">
-                                            <option value="public">public（列表可見）</option>
-                                            <option value="unlisted">unlisted（僅網址）</option>
-                                            <option value="private">private（僅管理員）</option>
+                                            <option value="public">public�]�C���i���^</option>
+                                            <option value="unlisted">unlisted�]�Ⱥ��}�^</option>
+                                            <option value="private">private�]�Ⱥ޲z���^</option>
                                         </select>
                                     </div>
                                     <div class="field">
                                         <label>series</label>
-                                        <input id="f-series" placeholder="系列名稱（選填）" />
+                                        <input id="f-series" placeholder="�t�C�W�١]���^" />
                                     </div>
                                 </div>
-                                <p class="muted">前端只讀已存的 presentation；不會用字數重新猜測文類。</p>
+                                <p class="muted">�e�ݥuŪ�w�s�� presentation�F���|�Φr�ƭ��s�q�������C</p>
                                 <div class="field-row">
                                     <div class="field">
-                                        <label>card_topic（列表辨識主題，≠ 標題）</label>
-                                        <input id="f-card-topic" placeholder="例如：卡繆" />
+                                        <label>card_topic�]�C�����ѥD�D�A�� ���D�^</label>
+                                        <input id="f-card-topic" placeholder="�Ҧp�G�d�[" />
                                     </div>
                                     <div class="field">
                                         <label class="chk">
                                             <input type="checkbox" id="f-show-card-label" checked />
-                                            顯示 card_label
+                                            ��� card_label
                                         </label>
                                     </div>
                                 </div>
                                 <div class="field full">
-                                    <label>card_label（列表口語辨識，不要寫進 title）</label>
-                                    <input id="f-card-label" placeholder="例如：最近又想到卡繆" />
+                                    <label>card_label�]�C���f�y���ѡA���n�g�i title�^</label>
+                                    <input id="f-card-label" placeholder="�Ҧp�G�̪�S�Q��d�[" />
                                 </div>
                             </details>
 
                             <details class="editor-meta-block" open>
-                                <summary>AI 整理與判斷（需人工確認）</summary>
-                                <p class="muted">AI 像編輯、不像代筆。結果只會出現在下方審核區，不會自動發佈或覆寫，除非你按採用。</p>
+                                <summary>AI ��z�P�P�_�]�ݤH�u�T�{�^</summary>
+                                <p class="muted">AI ���s��B�����N���C���G�u�|�X�{�b�U��f�ְϡA���|�۰ʵo�G���мg�A���D�A���ĥΡC</p>
                                 <div class="import-actions" style="margin:.5rem 0 0;">
-                                    <button type="button" class="btn primary" id="btn-ai-analyze">AI 整理與判斷</button>
-                                    <button type="button" class="btn" id="btn-ai-meta-only">只重分析 metadata</button>
+                                    <button type="button" class="btn primary" id="btn-ai-analyze">AI ��z�P�P�_</button>
+                                    <button type="button" class="btn" id="btn-ai-meta-only">�u�����R metadata</button>
                                     <span class="muted" id="ai-status"></span>
                                 </div>
                                 <div id="ai-review-panel" class="ai-review-panel hidden">
                                     <p id="ai-r-warn" class="muted"></p>
                                     <p class="muted" id="ai-r-meta"></p>
                                     <dl class="ai-review-grid">
-                                        <div><dt>title</dt><dd id="ai-r-title">—</dd></div>
-                                        <div><dt>show_title</dt><dd id="ai-r-show-title">—</dd></div>
-                                        <div><dt>summary</dt><dd id="ai-r-summary">—</dd></div>
-                                        <div><dt>show_summary</dt><dd id="ai-r-show-summary">—</dd></div>
-                                        <div><dt>category</dt><dd id="ai-r-category">—</dd></div>
-                                        <div><dt>content_type</dt><dd id="ai-r-content-type">—</dd></div>
-                                        <div><dt>presentation</dt><dd id="ai-r-presentation">—</dd></div>
-                                        <div><dt>card_topic</dt><dd id="ai-r-card-topic">—</dd></div>
-                                        <div><dt>card_label</dt><dd id="ai-r-card-label">—</dd></div>
-                                        <div><dt>show_card_label</dt><dd id="ai-r-show-card-label">—</dd></div>
-                                        <div><dt>tags</dt><dd id="ai-r-tags">—</dd></div>
-                                        <div><dt>series</dt><dd id="ai-r-series">—</dd></div>
-                                        <div><dt>edit_level</dt><dd id="ai-r-edit-level">—</dd></div>
-                                        <div><dt>editorial_state</dt><dd id="ai-r-state">—</dd></div>
-                                        <div><dt>confidence</dt><dd id="ai-r-confidence">—</dd></div>
-                                        <div class="full"><dt>reason</dt><dd id="ai-r-reason">—</dd></div>
-                                        <div class="full"><dt>flags</dt><dd id="ai-r-flags">—</dd></div>
-                                        <div class="full"><dt>review</dt><dd id="ai-r-review">—</dd></div>
+                                        <div><dt>title</dt><dd id="ai-r-title">�X</dd></div>
+                                        <div><dt>show_title</dt><dd id="ai-r-show-title">�X</dd></div>
+                                        <div><dt>summary</dt><dd id="ai-r-summary">�X</dd></div>
+                                        <div><dt>show_summary</dt><dd id="ai-r-show-summary">�X</dd></div>
+                                        <div><dt>category</dt><dd id="ai-r-category">�X</dd></div>
+                                        <div><dt>content_type</dt><dd id="ai-r-content-type">�X</dd></div>
+                                        <div><dt>presentation</dt><dd id="ai-r-presentation">�X</dd></div>
+                                        <div><dt>card_topic</dt><dd id="ai-r-card-topic">�X</dd></div>
+                                        <div><dt>card_label</dt><dd id="ai-r-card-label">�X</dd></div>
+                                        <div><dt>show_card_label</dt><dd id="ai-r-show-card-label">�X</dd></div>
+                                        <div><dt>tags</dt><dd id="ai-r-tags">�X</dd></div>
+                                        <div><dt>series</dt><dd id="ai-r-series">�X</dd></div>
+                                        <div><dt>edit_level</dt><dd id="ai-r-edit-level">�X</dd></div>
+                                        <div><dt>editorial_state</dt><dd id="ai-r-state">�X</dd></div>
+                                        <div><dt>confidence</dt><dd id="ai-r-confidence">�X</dd></div>
+                                        <div class="full"><dt>reason</dt><dd id="ai-r-reason">�X</dd></div>
+                                        <div class="full"><dt>flags</dt><dd id="ai-r-flags">�X</dd></div>
+                                        <div class="full"><dt>review</dt><dd id="ai-r-review">�X</dd></div>
                                     </dl>
-                                    <label>建議正文 clean_body（採用前請對照）</label>
+                                    <label>��ĳ���� clean_body�]�ĥΫe�й�ӡ^</label>
                                     <textarea id="ai-r-body" rows="8" readonly></textarea>
                                     <div class="import-actions">
-                                        <button type="button" class="btn primary" id="btn-ai-apply-all">全部採用</button>
-                                        <button type="button" class="btn" id="btn-ai-apply-meta">只採用分類與呈現</button>
-                                        <button type="button" class="btn" id="btn-ai-apply-body">只採用排版修正</button>
-                                        <button type="button" class="btn" id="btn-ai-discard">放棄 AI 建議</button>
+                                        <button type="button" class="btn primary" id="btn-ai-apply-all">�����ĥ�</button>
+                                        <button type="button" class="btn" id="btn-ai-apply-meta">�u�ĥΤ����P�e�{</button>
+                                        <button type="button" class="btn" id="btn-ai-apply-body">�u�ĥαƪ��ץ�</button>
+                                        <button type="button" class="btn" id="btn-ai-discard">��� AI ��ĳ</button>
                                     </div>
                                 </div>
                             </details>
 
                             <details class="editor-meta-block" open>
-                                <summary>分類／標籤（請先確認）</summary>
+                                <summary>���������ҡ]�Х��T�{�^</summary>
                                 <p class="muted cat-guide">
-                                    <strong>隨想</strong>＝碎念　
-                                    <strong>日記</strong>＝當天生活　
-                                    <strong>散文</strong>＝整理過的長文（DB：隨筆）　
-                                    <strong>心得</strong>＝讀書／作品　
-                                    <strong>創作</strong>＝小說／詩／劇本
+                                    <strong>�H�Q</strong>�׸H���@
+                                    <strong>��O</strong>�׷��ѥͬ��@
+                                    <strong>����</strong>�׾�z�L������]DB�G�H���^�@
+                                    <strong>�߱o</strong>��Ū�ѡ��@�~�@
+                                    <strong>�Ч@</strong>�פp�����֡��@��
                                 </p>
                                 <div class="field full">
-                                    <label>分類 *</label>
-                                    <div class="chip-row" id="category-quick" aria-label="一鍵分類"></div>
+                                    <label>���� *</label>
+                                    <div class="chip-row" id="category-quick" aria-label="�@�����"></div>
                                     <select id="f-category" style="margin-top:.5rem;"></select>
                                     <p class="muted" id="length-hint"></p>
                                 </div>
                                 <div class="field full">
-                                    <label>標籤（選填）</label>
-                                    <input id="f-tags" placeholder="不必填；想標再點下方建議" />
-                                    <div class="chip-row" id="tag-suggestions" aria-label="標籤建議">
-                                        <button type="button" class="chip" data-tag="抱怨">+ 抱怨</button>
-                                        <button type="button" class="chip" data-tag="想法">+ 想法</button>
-                                        <button type="button" class="chip" data-tag="生活">+ 生活</button>
-                                        <button type="button" class="chip" data-tag="閱讀">+ 閱讀</button>
-                                        <button type="button" class="chip" data-tag="摘錄">+ 摘錄</button>
+                                    <label>���ҡ]���^</label>
+                                    <input id="f-tags" placeholder="������F�Q�ЦA�I�U���ĳ" />
+                                    <div class="chip-row" id="tag-suggestions" aria-label="���ҫ�ĳ">
+                                        <button type="button" class="chip" data-tag="���">+ ���</button>
+                                        <button type="button" class="chip" data-tag="�Q�k">+ �Q�k</button>
+                                        <button type="button" class="chip" data-tag="�ͬ�">+ �ͬ�</button>
+                                        <button type="button" class="chip" data-tag="�\Ū">+ �\Ū</button>
+                                        <button type="button" class="chip" data-tag="�K��">+ �K��</button>
                                     </div>
                                 </div>
                                 <div class="field full">
-                                    <label>PDF 連結（選填）</label>
-                                    <input id="f-pdf" placeholder="https://… 或留空" />
+                                    <label>PDF �s���]���^</label>
+                                    <input id="f-pdf" placeholder="https://�K �ίd��" />
                                 </div>
                             </details>
 
                             <details class="editor-meta-block">
-                                <summary>圖片（選填）</summary>
+                                <summary>�Ϥ��]���^</summary>
                                 <div class="field full">
-                                    <label>主圖／封面（選填）</label>
-                                    <p class="muted" style="margin:0 0 .5rem;">可不設。可在下方欄位 <strong>Ctrl+V 貼上截圖</strong>、拖曳圖片，或按上傳。沒有封面時列表用標題字首呈現。</p>
+                                    <label>�D�ϡ��ʭ��]���^</label>
+                                    <p class="muted" style="margin:0 0 .5rem;">�i���]�C�i�b�U����� <strong>Ctrl+V �K�W�I��</strong>�B�즲�Ϥ��A�Ϋ��W�ǡC�S���ʭ��ɦC���μ��D�r���e�{�C</p>
                                     <div class="img-row cover-drop" id="cover-drop">
                                         <img id="cover-thumb" class="thumb hidden" alt="" />
-                                        <input id="f-cover" placeholder="貼上圖片／URL，或右側上傳" />
+                                        <input id="f-cover" placeholder="�K�W�Ϥ���URL�A�Υk���W��" />
                                         <label class="btn" style="margin:0;">
-                                            上傳
+                                            �W��
                                             <input type="file" id="cover-file" accept="image/*" class="hidden" />
                                         </label>
-                                        <button type="button" class="btn" id="btn-clear-cover" title="清除封面">清除</button>
+                                        <button type="button" class="btn" id="btn-clear-cover" title="�M���ʭ�">�M��</button>
                                     </div>
                                     <span class="muted" id="cover-status"></span>
                                 </div>
                                 <div class="field full">
-                                    <label>更多圖片／輪播（選填）</label>
+                                    <label>��h�Ϥ��������]���^</label>
                                     <div id="images-editor" class="stack"></div>
                                     <div class="img-row" style="margin-top:.5rem;">
                                         <label class="btn" style="margin:0;">
-                                            + 上傳圖片
+                                            + �W�ǹϤ�
                                             <input type="file" id="more-file" accept="image/*" multiple class="hidden" />
                                         </label>
                                         <span class="muted" id="more-status"></span>
@@ -431,65 +431,65 @@
                             <div class="editor-pane editor-pane-write" id="editor-pane-write">
                                 <div class="pane-label pane-label-row">
                                     <span>Markdown</span>
-                                    <span class="pane-hint">可直接 Ctrl+V 貼上截圖 · Tab 縮排 · Ctrl+S 儲存</span>
+                                    <span class="pane-hint">�i���� Ctrl+V �K�W�I�� �P Tab �Y�� �P Ctrl+S �x�s</span>
                                 </div>
-                                <div class="md-toolbar" id="md-toolbar" role="toolbar" aria-label="Markdown 寫作工具列">
-                                    <button type="button" class="md-tool" data-md="h2" title="標題 ##">H2</button>
-                                    <button type="button" class="md-tool" data-md="h3" title="小標 ###">H3</button>
+                                <div class="md-toolbar" id="md-toolbar" role="toolbar" aria-label="Markdown �g�@�u��C">
+                                    <button type="button" class="md-tool" data-md="h2" title="���D ##">H2</button>
+                                    <button type="button" class="md-tool" data-md="h3" title="�p�� ###">H3</button>
                                     <span class="md-tool-sep" aria-hidden="true"></span>
-                                    <button type="button" class="md-tool" data-md="bold" title="粗體 **"><strong>B</strong></button>
-                                    <button type="button" class="md-tool" data-md="italic" title="斜體 *"><em>I</em></button>
+                                    <button type="button" class="md-tool" data-md="bold" title="���� **"><strong>B</strong></button>
+                                    <button type="button" class="md-tool" data-md="italic" title="���� *"><em>I</em></button>
                                     <span class="md-tool-sep" aria-hidden="true"></span>
-                                    <button type="button" class="md-tool" data-md="link" title="連結">連結</button>
-                                    <button type="button" class="md-tool" data-md="image" title="上傳圖片到內文（也可直接貼上）">貼圖</button>
+                                    <button type="button" class="md-tool" data-md="link" title="�s��">�s��</button>
+                                    <button type="button" class="md-tool" data-md="image" title="�W�ǹϤ��줺��]�]�i�����K�W�^">�K��</button>
                                     <input type="file" id="body-image-file" accept="image/*" multiple class="hidden" />
                                     <span class="md-tool-sep" aria-hidden="true"></span>
-                                    <button type="button" class="md-tool" data-md="ul" title="無序列表">• 列表</button>
-                                    <button type="button" class="md-tool" data-md="ol" title="有序列表">1. 列表</button>
-                                    <button type="button" class="md-tool" data-md="quote" title="引用">引用</button>
-                                    <button type="button" class="md-tool" data-md="hr" title="分隔線">—</button>
-                                    <button type="button" class="md-tool" data-md="code" title="行內程式碼">&lt;/&gt;</button>
+                                    <button type="button" class="md-tool" data-md="ul" title="�L�ǦC��">�E �C��</button>
+                                    <button type="button" class="md-tool" data-md="ol" title="���ǦC��">1. �C��</button>
+                                    <button type="button" class="md-tool" data-md="quote" title="�ޥ�">�ޥ�</button>
+                                    <button type="button" class="md-tool" data-md="hr" title="���j�u">�X</button>
+                                    <button type="button" class="md-tool" data-md="code" title="�椺�{���X">&lt;/&gt;</button>
                                     <span class="muted" id="body-image-status" style="margin-left:.5rem;font-size:.85em;"></span>
                                 </div>
-                                <textarea id="f-body" placeholder="# 標題&#10;&#10;內文支援 Markdown…&#10;&#10;可直接 Ctrl+V / 拖曳貼上圖片（自動上傳）。&#10;&#10;- 列表&#10;- **粗體**&#10;- [連結](https://…)&#10;&#10;> 引用&#10;&#10;Tab 縮排；Ctrl+S 儲存。" spellcheck="true"></textarea>
+                                <textarea id="f-body" placeholder="# ���D&#10;&#10;����䴩 Markdown�K&#10;&#10;�i���� Ctrl+V / �즲�K�W�Ϥ��]�۰ʤW�ǡ^�C&#10;&#10;- �C��&#10;- **����**&#10;- [�s��](https://�K)&#10;&#10;> �ޥ�&#10;&#10;Tab �Y�ơFCtrl+S �x�s�C" spellcheck="true"></textarea>
                             </div>
                             <div class="editor-pane editor-pane-preview" id="editor-pane-preview">
                                 <div class="pane-label pane-label-row" id="preview-pane-label">
-                                    <span id="preview-pane-title">前台預覽</span>
-                                    <span class="pane-hint" id="preview-pane-hint">與 public 同一 renderer · 未儲存也能預覽</span>
+                                    <span id="preview-pane-title">�e�x�w��</span>
+                                    <span class="pane-hint" id="preview-pane-hint">�P public �P�@ renderer �P ���x�s�]��w��</span>
                                 </div>
 
                                 <div id="frontend-preview-chrome" class="frontend-preview-chrome">
-                                    <div class="fp-group" role="group" aria-label="預覽類型">
-                                        <button type="button" class="fp-btn active" data-fp-view="article">文章頁</button>
-                                        <button type="button" class="fp-btn" data-fp-view="card">卡片</button>
+                                    <div class="fp-group" role="group" aria-label="�w������">
+                                        <button type="button" class="fp-btn active" data-fp-view="article">�峹��</button>
+                                        <button type="button" class="fp-btn" data-fp-view="card">�d��</button>
                                     </div>
-                                    <div class="fp-group" role="group" aria-label="主題">
+                                    <div class="fp-group" role="group" aria-label="�D�D">
                                         <button type="button" class="fp-btn active" data-fp-theme="light">Light</button>
                                         <button type="button" class="fp-btn" data-fp-theme="dark">Dark</button>
                                         <button type="button" class="fp-btn" data-fp-theme="glass">Glass</button>
                                     </div>
-                                    <div class="fp-group" role="group" aria-label="裝置寬度">
+                                    <div class="fp-group" role="group" aria-label="�˸m�e��">
                                         <button type="button" class="fp-btn active" data-fp-device="desktop">Desktop</button>
                                         <button type="button" class="fp-btn" data-fp-device="tablet">Tablet</button>
                                         <button type="button" class="fp-btn" data-fp-device="mobile">Mobile</button>
                                     </div>
-                                    <div class="fp-group" role="group" aria-label="閱讀模式" id="fp-focus-group">
-                                        <button type="button" class="fp-btn active" data-fp-focus="off">背景</button>
-                                        <button type="button" class="fp-btn" data-fp-focus="on">專注閱讀</button>
+                                    <div class="fp-group" role="group" aria-label="�\Ū�Ҧ�" id="fp-focus-group">
+                                        <button type="button" class="fp-btn active" data-fp-focus="off">�I��</button>
+                                        <button type="button" class="fp-btn" data-fp-focus="on">�M�`�\Ū</button>
                                     </div>
                                     <div class="fp-group fp-group--status" aria-live="polite">
-                                        <span id="fp-sync-status" class="fp-sync-status" data-state="wait">● 等待預覽</span>
-                                        <button type="button" class="fp-btn" data-fp-test-pipeline title="送出 fixture，不讀表單">測試預覽管線</button>
-                                        <button type="button" class="fp-btn" data-fp-reload title="重新載入預覽 iframe">重新載入預覽</button>
+                                        <span id="fp-sync-status" class="fp-sync-status" data-state="wait">�� ���ݹw��</span>
+                                        <button type="button" class="fp-btn" data-fp-test-pipeline title="�e�X fixture�A��Ū����">���չw���޽u</button>
+                                        <button type="button" class="fp-btn" data-fp-reload title="���s���J�w�� iframe">���s���J�w��</button>
                                     </div>
-                                    <a class="fp-live-link muted" id="fp-open-live" href="#" target="_blank" rel="noopener" hidden>開啟線上版本</a>
+                                    <a class="fp-live-link muted" id="fp-open-live" href="#" target="_blank" rel="noopener" hidden>�}�ҽu�W����</a>
                                 </div>
 
                                 <div id="frontend-preview-wrap" class="preview-device-frame" data-device="desktop">
                                     <iframe
                                         id="frontend-preview-frame"
-                                        title="前台預覽"
+                                        title="�e�x�w��"
                                         src="admin-preview.html?v=v9.2-about-markdown-1"
                                         sandbox="allow-scripts allow-same-origin"
                                     ></iframe>
@@ -502,7 +502,7 @@
                                     <div id="changes-stats" class="changes-stats muted"></div>
                                     <div id="changes-meta" class="changes-meta"></div>
                                     <div id="changes-body" class="changes-body">
-                                        <h4>正文 diff</h4>
+                                        <h4>���� diff</h4>
                                         <pre id="changes-body-diff" class="changes-diff"></pre>
                                     </div>
                                 </div>
@@ -512,114 +512,114 @@
                 </div>
             </div>
 
-            <!-- 網站內容 Site Copy -->
+            <!-- �������e Site Copy -->
             <div id="tab-sections" class="hidden">
                 <div class="card sections-intro">
-                    <h3>網站內容</h3>
-                    <p class="muted">依頁面分組編輯全站文案。即使資料庫尚無該列，也會顯示 schema fallback；按儲存會 UPSERT 到 site_sections。</p>
+                    <h3>�������e</h3>
+                    <p class="muted">�̭������սs�������סC�Y�ϸ�Ʈw�|�L�ӦC�A�]�|��� schema fallback�F���x�s�| UPSERT �� site_sections�C</p>
                 </div>
                 <div class="sections-workspace">
-                    <aside class="sections-nav card" id="sections-nav" aria-label="網站內容清單">
-                        <p class="muted sections-nav-empty" id="sections-nav-empty">載入中…</p>
+                    <aside class="sections-nav card" id="sections-nav" aria-label="�������e�M��">
+                        <p class="muted sections-nav-empty" id="sections-nav-empty">���J���K</p>
                         <div id="sections-list"></div>
                     </aside>
                     <div class="sections-editor card hidden" id="sections-editor">
                         <div class="sections-editor-head">
                             <div>
-                                <h3 id="sec-title">選擇區塊</h3>
+                                <h3 id="sec-title">��ܰ϶�</h3>
                                 <p class="muted" id="sec-desc"></p>
                                 <code class="sec-key" id="sec-key"></code>
                             </div>
                             <div class="sections-editor-actions">
-                                <a class="btn" id="sec-open-page" href="#" target="_blank" rel="noopener" hidden>開啟對應頁面</a>
-                                <button type="button" class="btn primary" id="btn-sec-save">儲存此區塊</button>
+                                <a class="btn" id="sec-open-page" href="#" target="_blank" rel="noopener" hidden>�}�ҹ�������</a>
+                                <button type="button" class="btn primary" id="btn-sec-save">�x�s���϶�</button>
                             </div>
                         </div>
                         <div class="field full">
-                            <label for="sec-value">文案</label>
-                            <div id="sec-md-toolbar" class="sec-md-toolbar hidden" role="toolbar" aria-label="Markdown 工具列">
-                                <button type="button" class="sec-md-btn" data-md="bold" title="粗體 **文字**"><b>B</b></button>
-                                <button type="button" class="sec-md-btn" data-md="italic" title="斜體 *文字*"><i>I</i></button>
-                                <button type="button" class="sec-md-btn" data-md="h2" title="小標 ##">H2</button>
-                                <button type="button" class="sec-md-btn" data-md="h3" title="次標 ###">H3</button>
-                                <button type="button" class="sec-md-btn" data-md="ul" title="清單 -">• 清單</button>
-                                <button type="button" class="sec-md-btn" data-md="quote" title="引用 >">❝</button>
-                                <button type="button" class="sec-md-btn" data-md="link" title="連結 [文字](url)">連結</button>
-                                <button type="button" class="sec-md-btn" data-md="hr" title="分隔線 ---">—</button>
-                                <button type="button" class="sec-md-btn" data-md="code" title="行內碼 `code`">`code`</button>
+                            <label for="sec-value">���</label>
+                            <div id="sec-md-toolbar" class="sec-md-toolbar hidden" role="toolbar" aria-label="Markdown �u��C">
+                                <button type="button" class="sec-md-btn" data-md="bold" title="���� **��r**"><b>B</b></button>
+                                <button type="button" class="sec-md-btn" data-md="italic" title="���� *��r*"><i>I</i></button>
+                                <button type="button" class="sec-md-btn" data-md="h2" title="�p�� ##">H2</button>
+                                <button type="button" class="sec-md-btn" data-md="h3" title="���� ###">H3</button>
+                                <button type="button" class="sec-md-btn" data-md="ul" title="�M�� -">�E �M��</button>
+                                <button type="button" class="sec-md-btn" data-md="quote" title="�ޥ� >">?</button>
+                                <button type="button" class="sec-md-btn" data-md="link" title="�s�� [��r](url)">�s��</button>
+                                <button type="button" class="sec-md-btn" data-md="hr" title="���j�u ---">�X</button>
+                                <button type="button" class="sec-md-btn" data-md="code" title="�椺�X `code`">`code`</button>
                             </div>
-                            <textarea id="sec-value" rows="14" placeholder="網站內容…" spellcheck="true"></textarea>
+                            <textarea id="sec-value" rows="14" placeholder="�������e�K" spellcheck="true"></textarea>
                             <details id="sec-md-help" class="sec-md-help hidden">
-                                <summary>About Markdown 可用語法</summary>
+                                <summary>About Markdown �i�λy�k</summary>
                                 <ul>
-                                    <li><code>**粗體**</code>　<code>*斜體*</code></li>
-                                    <li><code>## 小標</code>　<code>### 次標</code>（不會變全大寫）</li>
-                                    <li><code>- 清單項目</code></li>
-                                    <li><code>&gt; 引用一句話</code></li>
-                                    <li><code>[連結文字](https://…)</code></li>
-                                    <li><code>---</code> 輕量分隔線</li>
-                                    <li><code>`INTP`</code> 輕量行內碼</li>
-                                    <li>請勿整段空白縮排（會被誤判成 code block）</li>
+                                    <li><code>**����**</code>�@<code>*����*</code></li>
+                                    <li><code>## �p��</code>�@<code>### ����</code>�]���|�ܥ��j�g�^</li>
+                                    <li><code>- �M�涵��</code></li>
+                                    <li><code>&gt; �ޥΤ@�y��</code></li>
+                                    <li><code>[�s����r](https://�K)</code></li>
+                                    <li><code>---</code> ���q���j�u</li>
+                                    <li><code>`INTP`</code> ���q�椺�X</li>
+                                    <li>�Фž�q�ť��Y�ơ]�|�Q�~�P�� code block�^</li>
                                 </ul>
                             </details>
                         </div>
                         <div class="sec-preview-wrap">
-                            <div class="pane-label">站上大致會長這樣</div>
+                            <div class="pane-label">���W�j�P�|���o��</div>
                             <div id="sec-preview" class="sec-preview" aria-live="polite"></div>
                         </div>
                         <p class="muted" id="sec-status"></p>
                     </div>
                     <div class="sections-placeholder card" id="sections-placeholder">
-                        <p class="muted">← 從左側選一個區塊開始編輯</p>
+                        <p class="muted">�� �q������@�Ӱ϶��}�l�s��</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 刪除文章：雙重確認 modal（避免誤刪） -->
+    <!-- �R���峹�G�����T�{ modal�]�קK�~�R�^ -->
     <div id="delete-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
         <div class="modal-card">
-            <h3 id="delete-modal-title">刪除文章</h3>
+            <h3 id="delete-modal-title">�R���峹</h3>
             <div id="delete-step-1">
-                <p class="modal-warn">確定要<strong>永久刪除</strong>這篇文章嗎？</p>
+                <p class="modal-warn">�T�w�n<strong>�ä[�R��</strong>�o�g�峹�ܡH</p>
                 <p class="muted modal-article-name" id="delete-preview-title"></p>
-                <p class="muted modal-irreversible"><strong>永久刪除後無法復原</strong>，文章內容、圖片設定與瀏覽紀錄關聯將從資料庫移除。</p>
+                <p class="muted modal-irreversible"><strong>�ä[�R����L�k�_��</strong>�A�峹���e�B�Ϥ��]�w�P�s���������p�N�q��Ʈw�����C</p>
                 <div class="modal-actions">
-                    <button type="button" class="btn" id="delete-cancel-1">取消</button>
-                    <button type="button" class="btn danger" id="delete-continue">繼續刪除</button>
+                    <button type="button" class="btn" id="delete-cancel-1">����</button>
+                    <button type="button" class="btn danger" id="delete-continue">�~��R��</button>
                 </div>
             </div>
             <div id="delete-step-2" class="hidden">
-                <p class="muted">為確認此為高風險操作，請輸入文章標題以繼續：</p>
+                <p class="muted">���T�{���������I�ާ@�A�п�J�峹���D�H�~��G</p>
                 <p class="modal-expected" id="delete-expected-title"></p>
-                <input type="text" id="delete-confirm-input" placeholder="請輸入上方標題" autocomplete="off" />
+                <input type="text" id="delete-confirm-input" placeholder="�п�J�W����D" autocomplete="off" />
                 <div class="modal-actions">
-                    <button type="button" class="btn" id="delete-back">返回</button>
-                    <button type="button" class="btn danger" id="delete-confirm" disabled>確認永久刪除</button>
+                    <button type="button" class="btn" id="delete-back">��^</button>
+                    <button type="button" class="btn danger" id="delete-confirm" disabled>�T�{�ä[�R��</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 依賴：supabase-js / marked / DOMPurify（皆來自 jsDelivr，受 CSP 限制） -->
+    <!-- �̿�Gsupabase-js / marked / DOMPurify�]�ҨӦ� jsDelivr�A�� CSP ����^ -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 
     <script src="assets/js/supabase-config.js"></script>
-    <script src="assets/js/supabase-client.js?v=v9.4-about-folds-1"></script>
+    <script src="assets/js/supabase-client.js?v=v9.5-about-polish-1"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/site-copy-schema.js?v=v9.4-about-folds-1"></script>
-    <script src="assets/js/site-sections.js?v=v9.4-about-folds-1"></script>
-    <script src="assets/js/presentation-registry.js?v=v9.4-about-folds-1"></script>
-    <script src="assets/js/article-media.js?v=v9.4-about-folds-1"></script>
-    <script src="assets/js/article-renderer.js?v=v9.4-about-folds-1"></script>
+    <script src="assets/js/site-copy-schema.js?v=v9.5-about-polish-1"></script>
+    <script src="assets/js/site-sections.js?v=v9.5-about-polish-1"></script>
+    <script src="assets/js/presentation-registry.js?v=v9.5-about-polish-1"></script>
+    <script src="assets/js/article-media.js?v=v9.5-about-polish-1"></script>
+    <script src="assets/js/article-renderer.js?v=v9.5-about-polish-1"></script>
     <script src="assets/js/ai-editorial-schema.js?v=semantic-card-1"></script>
     <script src="assets/js/ai-editorial-client.js?v=ai-v3-1"></script>
-    <script src="assets/js/preview-fixture.js?v=v9.4-about-folds-1"></script>
-    <script src="assets/js/about-markdown.js?v=v9.4-about-folds-1"></script>
-    <script src="assets/js/admin.js?v=v9.4-about-folds-1"></script>
+    <script src="assets/js/preview-fixture.js?v=v9.5-about-polish-1"></script>
+    <script src="assets/js/about-markdown.js?v=v9.5-about-polish-1"></script>
+    <script src="assets/js/admin.js?v=v9.5-about-polish-1"></script>
 </body>
 
 </html>

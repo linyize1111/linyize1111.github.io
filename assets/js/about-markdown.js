@@ -41,6 +41,19 @@
       folds.push({ heading: heading, panelNodes: panelNodes });
     }
 
+    // Prefer 「關於我」 as the first topic fold (CMS order may place it last).
+    folds.sort(function (a, b) {
+      function isAboutMe(fold) {
+        var t = String(fold.heading.textContent || "")
+          .replace(/[▸►>■\s]/g, "")
+          .trim();
+        return t === "關於我";
+      }
+      var aMe = isAboutMe(a) ? 0 : 1;
+      var bMe = isAboutMe(b) ? 0 : 1;
+      return aMe - bMe;
+    });
+
     root.textContent = "";
     keep.forEach(function (n) {
       root.appendChild(n);

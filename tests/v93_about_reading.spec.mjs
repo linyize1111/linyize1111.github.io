@@ -67,7 +67,8 @@ const layout = await page.evaluate(() => {
 assert.equal(layout.profileDisplay, "block");
 assert.ok(layout.bodyBelowMasthead, "body must sit under masthead, not beside avatar");
 assert.equal(layout.sideBySideBody, false);
-assert.ok(layout.mediaWidth < 240, `avatar should be compact, got ${layout.mediaWidth}`);
+assert.ok(layout.mediaWidth < 360, `avatar should stay in masthead, got ${layout.mediaWidth}`);
+assert.ok(layout.mediaWidth >= 200, `avatar should be larger, got ${layout.mediaWidth}`);
 assert.ok(layout.bodyWidth > 700, `body should use shell width, got ${layout.bodyWidth}`);
 
 const md = await page.evaluate(() => {
