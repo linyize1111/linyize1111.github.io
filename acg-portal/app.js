@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.8.1";
+  const APP_VERSION = "1.9.0";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -108,6 +108,9 @@
     workerStatus: { available: null, lastError: null },
     googleProviderEnabled: null,
     autoApproveOpen: false,
+    autoApprove: { open: false, until: null, memberLimit: null, used: 0, remaining: null },
+    authResolved: false,
+    contentLoaded: false,
     reviewStatsByWork: new Map(),
     favoriteCounts: new Map()
   };
@@ -1561,12 +1564,37 @@
     try {
       const { data, error } = await supabase.rpc("get_auto_approve_status");
       if (error) throw error;
-      state.autoApproveOpen = Boolean(data?.open);
+      state.autoApprove = {
+        open: Boolean(data?.open),
+        until: data?.auto_approve_until || null,
+        memberLimit: data?.member_limit == null ? null : Number(data.member_limit),
+        used: Number(data?.used || 0),
+        remaining: data?.remaining == null ? null : Number(data.remaining)
+      };
+      state.autoApproveOpen = state.autoApprove.open;
     } catch (error) {
       console.warn("get_auto_approve_status failed", error);
+      state.autoApprove = { open: false, until: null, memberLimit: null, used: 0, remaining: null };
       state.autoApproveOpen = false;
     }
     return state.autoApproveOpen;
+  }
+
+  function autoApproveWindowText() {
+    const info = state.autoApprove;
+    if (!info.open) return "目前未開放自動通過：登入後需等站長手動審核。";
+    const parts = [];
+    if (info.until) {
+      const remainMs = new Date(info.until).getTime() - Date.now();
+      if (Number.isFinite(remainMs) && remainMs > 0) {
+        const hours = Math.floor(remainMs / 3600000);
+        const minutes = Math.max(Math.round((remainMs % 3600000) / 60000), 1);
+        parts.push(hours > 0 ? `還有約 ${hours} 小時 ${minutes} 分` : `還有約 ${minutes} 分`);
+      }
+    }
+    if (info.remaining != null) parts.push(`剩 ${info.remaining} / ${info.memberLimit} 個名額`);
+    const detail = parts.length ? `（${parts.join("、")}）` : "";
+    return `現在是開放時段：登入後會自動成為會員，不用等審核${detail}。`;
   }
 
   async function claimAutoApprovalIfNeeded(profile) {
@@ -1626,10 +1654,12 @@
       } finally {
         if (runId === loadAuthRun) {
           state.authLoading = false;
+          state.authResolved = true;
           state.profileReady = Boolean(state.session && state.profile);
           updateAuthUi();
           updateAdminStatusBar();
           loadAuthPromise = null;
+          if (isApproved()) void ensureContentLoaded();
         }
         renderBulkDraw();
         if ($("#view-library")?.classList.contains("active")) renderLibrary();
@@ -1654,11 +1684,11 @@
       help.textContent = "正在檢查 Google 登入狀態…";
     } else if (state.googleProviderEnabled) {
       help.textContent = state.autoApproveOpen
-        ? "目前開放審核中：新註冊／登入會自動通過。Google 可用；若失敗請改用信箱登入。"
-        : "Google 登入已可使用；第一次登入後需等待管理員審核，才可留言、評分與收藏。若 Google 失敗，請改用下方信箱登入，或確認 Supabase Site URL 為 /acg-portal/（Console 可設 localStorage.setItem('acg_debug_auth','1') 看詳情）。";
+        ? `${autoApproveWindowText()}建議直接用 Google 登入；若失敗請改用信箱登入。`
+        : "本站僅限會員：第一次登入後需等站長審核，通過才看得到內容。若 Google 失敗，請改用下方信箱登入，或確認 Supabase Site URL 為 /acg-portal/（Console 可設 localStorage.setItem('acg_debug_auth','1') 看詳情）。";
     } else {
       help.textContent = state.autoApproveOpen
-        ? "目前開放審核中：新註冊／登入會自動通過。Google OAuth 尚未啟用，請先用信箱＋站內密碼。"
+        ? `${autoApproveWindowText()}Google OAuth 尚未啟用，請先用信箱＋站內密碼。`
         : "Google OAuth 尚未在 Supabase 啟用；目前請先使用信箱＋站內密碼或信箱魔法連結。";
     }
   }
@@ -1786,8 +1816,10 @@
     state.authLoading = false;
     state.favorites.clear();
     state.preferenceTags.clear();
+    state.contentLoaded = false;
     updateAuthUi();
-    toast("已登出");
+    // Reload so no member-only rows stay in the page after signing out.
+    location.reload();
   }
 
   function openProfileEditor() {
@@ -1861,6 +1893,90 @@
     }
     updateGoogleProviderUi();
     updateAdminStatusBar();
+    applyMemberGate();
+  }
+
+  /**
+   * Members-only site: nothing renders until the account is approved.
+   * "loading" keeps the gate closed so a returning member sees no flicker.
+   */
+  function memberGateState() {
+    if (!state.authResolved) return "loading";
+    if (!state.session) return "anon";
+    if (state.authLoading || !state.profileReady) return "loading";
+    const status = state.profile?.status;
+    if (status === "active") return "ok";
+    if (status === "suspended") return "suspended";
+    return "pending";
+  }
+
+  function applyMemberGate() {
+    const gate = $("#member-gate");
+    if (!gate) return;
+    const phase = memberGateState();
+    const blocked = phase !== "ok" && phase !== "loading";
+    document.body.classList.toggle("gated", blocked);
+    const message = $("#member-gate-message");
+    const windowNote = $("#member-gate-window");
+    const loginButton = $("#member-gate-login");
+    const recheckButton = $("#member-gate-recheck");
+    const logoutButton = $("#member-gate-logout");
+
+    if (blocked) {
+      if (phase === "anon") {
+        if (message) message.textContent = "本站所有內容都要先登入、並經站長審核通過後才看得到。";
+        if (windowNote) windowNote.textContent = autoApproveWindowText();
+      } else if (phase === "suspended") {
+        if (message) message.textContent = "這個帳號已被停權，無法瀏覽內容。如有誤會請聯絡站長。";
+        if (windowNote) windowNote.textContent = "";
+      } else {
+        if (message) message.textContent = "帳號已建立，正在等待站長審核。通過後重新整理就能看到全部內容。";
+        if (windowNote) windowNote.textContent = state.autoApprove.open
+          ? `${autoApproveWindowText()}若剛好卡在名額邊界，可按下方重新檢查。`
+          : autoApproveWindowText();
+      }
+      loginButton?.classList.toggle("hidden", phase !== "anon");
+      recheckButton?.classList.toggle("hidden", phase !== "pending");
+      logoutButton?.classList.toggle("hidden", phase === "anon");
+      openModal("member-gate");
+    } else {
+      closeModal("member-gate");
+    }
+  }
+
+  async function recheckApproval() {
+    await refreshAutoApproveStatus();
+    await loadAuth();
+    if (isApproved()) {
+      await ensureContentLoaded();
+      toast("審核已通過，歡迎", "success");
+    } else {
+      toast(state.autoApprove.open ? "名額可能已滿，仍在等待站長審核" : "仍在等待站長審核", "warning");
+    }
+  }
+
+  async function ensureContentLoaded() {
+    if (!isApproved() || state.contentLoaded) return;
+    state.contentLoaded = true;
+    try {
+      renderPlatformSkeletons();
+      await Promise.all([loadWorks(), loadLeaderboardData(), loadFavoriteCounts()]);
+      await loadWeeklyLeaderboardData();
+      drawAll();
+      renderLibrary(true);
+      renderLeaderboard();
+      const loc = parseLocationHash();
+      switchView(loc.view || readRememberedView());
+      if (loc.workId && state.workById.has(loc.workId)) {
+        await openWork(loc.workId, { reviewId: loc.reviewId });
+      }
+    } catch (error) {
+      state.contentLoaded = false;
+      console.error("content load failed", error);
+      $("#home-summary").textContent = "資料載入失敗，請稍後重試。";
+      renderPlatformError();
+      toast(`資料載入失敗：${error.message || error}`, "error");
+    }
   }
 
   async function requireMember(actionLabel = "此功能") {
@@ -2038,7 +2154,7 @@
     if (!isApproved()) {
       container.innerHTML = state.autoApproveOpen
         ? '<div class="review-form"><p class="muted">目前開放審核中；若剛登入請重新整理後再評分。</p></div>'
-        : '<div class="review-form"><p class="muted">帳號正在等待管理員審核；公開內容仍可正常瀏覽。</p></div>';
+        : '<div class="review-form"><p class="muted">帳號正在等待站長審核，通過後才能評分。</p></div>';
       return;
     }
     state.currentRating = Number(existing?.rating ?? 5);
@@ -3209,6 +3325,7 @@
     const content = $("#admin-content");
     content.innerHTML = '<div class="empty-state">載入中…</div>';
     if (tab === "users") {
+      await refreshAutoApproveStatus();
       let users;
       let degraded = false;
       const { data, error } = await supabase.rpc("admin_list_users");
@@ -3228,7 +3345,13 @@
       }
       users = users.slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
       const degradedNotice = degraded ? '<div class="empty-state warning">尚未套用 0005 migration（admin_list_users），暫時只顯示 profiles；套用後即可看到信箱與最近登入時間。</div>' : "";
-      content.innerHTML = degradedNotice + `<div class="job-controls"><button class="button button-primary" data-approve-all-pending>一鍵通過全部待審</button></div>` + (users.map(profile => {
+      const windowPanel = `<div class="job-controls">
+        <p class="muted small-note">${escapeHtml(autoApproveWindowText())}</p>
+        <button class="button button-primary" data-auto-approve-hours="6" data-auto-approve-limit="500">開放 6 小時（限 500 人）</button>
+        <button class="button button-secondary" data-auto-approve-hours="0">立即關閉開放</button>
+        <button class="button button-secondary" data-approve-all-pending>一鍵通過全部待審</button>
+      </div>`;
+      content.innerHTML = degradedNotice + windowPanel + (users.map(profile => {
         const email = cleanName(profile.email) || (degraded ? "需套用 migration" : "（無信箱）");
         const lastSignIn = profile.last_sign_in_at ? new Date(profile.last_sign_in_at).toLocaleString("zh-TW") : (degraded ? "需套用 migration" : "尚未登入");
         return `<div class="admin-row"><div><h4>${escapeHtml(memberName(profile))}</h4><p>${escapeHtml(email)} · ${escapeHtml(profile.role)} · ${escapeHtml(profile.status)}</p><small>最近登入：${escapeHtml(lastSignIn)}</small></div><div class="admin-actions">${profile.role === "admin" ? "" : `${profile.status === "pending" ? `<button class="button button-primary" data-approve-user="${profile.id}">通過</button>` : ""}<button class="button button-secondary" data-suspend-user="${profile.id}" data-suspend="${profile.status === "suspended" ? "false" : "true"}">${profile.status === "suspended" ? "解除停權" : "停權"}</button>`}</div></div>`;
@@ -3538,6 +3661,9 @@
     $("#age-leave")?.addEventListener("click", () => { location.href = "https://www.google.com/"; });
     if (localStorage.getItem("acg_age_confirmed") === "1") closeModal("age-gate");
     bindClick("#login-button", login);
+    bindClick("#member-gate-login", login);
+    bindClick("#member-gate-logout", logout);
+    bindClick("#member-gate-recheck", event => withBusyButton(event.currentTarget, "檢查中…", recheckApproval));
     bindClick("#logout-button", logout);
     bindClick("#clear-auth-button", clearAuthStorage);
     bindClick("#auth-clear-storage-button", clearAuthStorage);
@@ -3604,7 +3730,7 @@
       }
       switchView(loc.view || readRememberedView());
     });
-    document.addEventListener("keydown", event => { if (event.key === "Escape") $$(".modal.open:not(#age-gate)").forEach(modal => closeModal(modal.id)); });
+    document.addEventListener("keydown", event => { if (event.key === "Escape") $$(".modal.open:not(#age-gate):not(#member-gate)").forEach(modal => closeModal(modal.id)); });
     document.addEventListener("submit", event => {
       const form = event.target;
       if (!form || form.tagName !== "FORM") return;
@@ -3623,7 +3749,7 @@
     });
     document.addEventListener("click", async event => {
       try {
-      if (event.target.classList?.contains("modal") && event.target.id !== "age-gate") {
+      if (event.target.classList?.contains("modal") && event.target.id !== "age-gate" && event.target.id !== "member-gate") {
         closeModal(event.target.id);
         return;
       }
@@ -3659,6 +3785,20 @@
       if (target.dataset.deleteGame) deleteGame(target.dataset.deleteGame);
       if (target.dataset.deleteGameComment) deleteGameComment(target.dataset.deleteGameComment, target.dataset.gameId);
       if (target.dataset.adminTab) loadAdmin(target.dataset.adminTab);
+      if (target.dataset.autoApproveHours !== undefined) {
+        await withBusyButton(target, "設定中…", async () => {
+          const hours = Number(target.dataset.autoApproveHours);
+          const rawLimit = target.dataset.autoApproveLimit;
+          const { error } = await supabase.rpc("set_auto_approve_window", {
+            hours,
+            member_limit: rawLimit ? Number(rawLimit) : null
+          });
+          if (error) return toast(formatApiError(error), "error");
+          await refreshAutoApproveStatus();
+          toast(hours === 0 ? "已關閉自動通過" : `已開放 ${hours} 小時自動通過`, "success");
+          loadAdmin("users");
+        });
+      }
       if (target.dataset.approveAllPending) {
         await withBusyButton(target, "核准中…", async () => {
           const { data, error } = await supabase.rpc("approve_all_pending");
@@ -3724,6 +3864,7 @@
         state.authLoading = false;
         state.favorites.clear();
         state.preferenceTags.clear();
+        state.contentLoaded = false;
         updateAuthUi();
         return;
       }
@@ -3732,24 +3873,16 @@
       }
     });
     await handleAuthCallback();
-    renderPlatformSkeletons();
-    $("#home-summary").textContent = "正在讀取作品資料…";
+    $("#home-summary").textContent = "正在確認登入與審核狀態…";
     try {
-      await Promise.all([loadWorks(), loadLeaderboardData(), loadFavoriteCounts()]);
-      await loadWeeklyLeaderboardData();
       await loadAuth();
-      drawAll();
-      renderLibrary(true); renderLeaderboard();
-      const loc = parseLocationHash();
-      switchView(loc.view || readRememberedView());
-      if (loc.workId && state.workById.has(loc.workId)) {
-        await openWork(loc.workId, { reviewId: loc.reviewId });
-      }
+      if (isApproved()) await ensureContentLoaded();
+      else applyMemberGate();
     } catch (error) {
       console.error(error);
-      $("#home-summary").textContent = "資料載入失敗，請稍後重試。";
-      renderPlatformError();
+      $("#home-summary").textContent = "初始化失敗，請稍後重試。";
       toast(`初始化失敗：${error.message}`, "error");
+      applyMemberGate();
     }
   }
 
