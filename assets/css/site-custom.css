@@ -718,7 +718,7 @@ html[data-theme] table {
  * and only a flat dark/black field remains.
  */
 body {
-    background-color: #1e252d;
+    background-color: #0b1412;
     background-image: url("../../images/bg.jpg");
     background-size: cover;
     background-position: center center;
@@ -734,6 +734,9 @@ body {
     height: 100vh !important;
     object-fit: cover;
     object-position: center center;
+    /* Crop any residual frame edges from the source video/poster */
+    transform: scale(1.04);
+    transform-origin: center center;
     z-index: 0 !important;
     pointer-events: none;
 }

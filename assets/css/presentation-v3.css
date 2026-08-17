@@ -24,7 +24,7 @@ body {
 }
 
 body {
-  background-color: #151b24 !important;
+  background-color: #0b1412 !important;
   background-image: url("../../images/bg.jpg") !important;
   background-size: cover !important;
   background-position: center center !important;
@@ -36,7 +36,9 @@ body {
   z-index: 0 !important;
   opacity: 1;
   visibility: visible;
-  background: #151b24 url("../../images/bg.jpg") center / cover no-repeat;
+  background: #0b1412 url("../../images/bg.jpg") center / cover no-repeat;
+  transform: scale(1.04);
+  transform-origin: center center;
 }
 
 #wrapper {
