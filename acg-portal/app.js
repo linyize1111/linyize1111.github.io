@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "2.0.3";
+  const APP_VERSION = "2.0.4";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,has_hidden_tags,created_at,exposure_level";
   const GAME_IMAGE_HOSTS = [
     "cdn.akamai.steamstatic.com",
@@ -122,6 +122,7 @@
     libraryVisible: 60,
     librarySeed: crypto.randomUUID?.() || String(Date.now()),
     bulkWorks: [],
+    homeShowingRandom: false,
     currentWork: null,
     currentReviews: new Map(),
     currentGameId: null,
@@ -235,7 +236,7 @@
     return tags.filter(Boolean);
   }
 
-  function tagRowHtml(work, min = 3, max = 5) {
+  function tagRowHtml(work, max = 3) {
     const tags = sanitizePublicTags(publicTagsOf(work)).slice(0, max);
     if (!tags.length) return "";
     const shown = tags.map(tag => {
@@ -689,7 +690,8 @@
     if (workMatch) {
       return { view: "home", workId: workMatch[1], reviewId: workMatch[2] || null };
     }
-    const viewNames = ["home", "random", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin"];
+    const viewNames = ["home", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin"];
+    if (raw === "random") return { view: "home", workId: null, reviewId: null };
     if (viewNames.includes(raw)) return { view: raw, workId: null, reviewId: null };
     return { view: null, workId: null, reviewId: null };
   }
@@ -853,12 +855,15 @@
   function clearAuthCallbackUrl() {
     const url = new URL(location.href);
     ["code", "error", "error_description", "state"].forEach(key => url.searchParams.delete(key));
-    const viewNames = ["home", "random", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin"];
+    const viewNames = ["home", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin"];
     const hashBody = location.hash.replace(/^#/, "");
     const hashParams = new URLSearchParams(hashBody.includes("=") ? hashBody : "");
     const hasAuthHash = hashParams.has("access_token") || hashParams.has("refresh_token") || hashParams.has("error");
     let viewHash = "";
-    if (!hasAuthHash && viewNames.includes(hashBody)) viewHash = `#${hashBody}`;
+    if (!hasAuthHash) {
+      if (hashBody === "random") viewHash = "#home";
+      else if (viewNames.includes(hashBody)) viewHash = `#${hashBody}`;
+    }
     const cleaned = `${url.pathname}${url.search ? url.search : ""}${viewHash}`.replace(/\?$/, "");
     history.replaceState({}, document.title, cleaned);
     authDebug("url cleaned", { path: cleaned });
@@ -974,7 +979,11 @@
   }
 
   function copyLineForWork(work) {
-    return formatWorkCode(work);
+    return String(work?.work_id || "").replace(/\D/g, "") || formatWorkCode(work);
+  }
+
+  function copyCodeDigits(work) {
+    return String(work?.work_id || "").replace(/\D/g, "");
   }
 
   function ratingLabel(value) {
@@ -984,13 +993,12 @@
   function ratingScaleHtml(selected) {
     const values = Array.from({ length: 11 }, (_, i) => i - 5);
     return `
-      <div class="rating-scale" role="group" aria-label="評分 -5 到 +5">
-        <div class="rating-scale-hints">
-          <span>超雷</span><span>普通</span><span>神作</span>
+      <div class="rating-scale rating-scale-compact" role="group" aria-label="評分 -5 到 +5">
+        <div class="rating-quick-row">
+          ${values.map(value => `<button type="button" class="rating-quick${value === selected ? " selected" : ""}" data-rating="${value}" aria-label="${value > 0 ? "+" : ""}${value} ${ratingLabel(value)}">${value > 0 ? "+" : ""}${value}</button>`).join("")}
         </div>
         <input type="range" class="rating-slider" id="rating-slider" min="-5" max="5" step="1" value="${selected}" aria-valuetext="${ratingLabel(selected)}">
-        <div class="rating-chips">${values.map(value => `<button type="button" class="rating-chip${value === selected ? " selected" : ""}" data-rating="${value}" aria-label="${value > 0 ? "+" : ""}${value} ${ratingLabel(value)}"><span class="rating-chip-value">${value > 0 ? "+" : ""}${value}</span><span class="rating-chip-label">${ratingLabel(value)}</span></button>`).join("")}</div>
-        <p class="rating-current">目前：<strong id="rating-current-value">${selected > 0 ? "+" : ""}${selected}</strong> <span id="rating-current-label">${ratingLabel(selected)}</span></p>
+        <p class="rating-current">目前 <strong id="rating-current-value">${selected > 0 ? "+" : ""}${selected}</strong> · <span id="rating-current-label">${ratingLabel(selected)}</span></p>
       </div>`;
   }
 
@@ -1075,6 +1083,7 @@
   }
 
   function renderHomeArchive() {
+    state.homeShowingRandom = false;
     const grid = $("#home-archive-grid");
     if (!grid) return;
     const query = $("#home-search")?.value || "";
@@ -1097,37 +1106,38 @@
         : "還沒有收藏或紀錄。先去作品庫或用編號搜尋。";
     }
     grid.innerHTML = rows.slice(0, 60).map(archiveTicketHtml).join("")
-      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor.png?v=2.0.3" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
+      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor.png?v=2.0.4" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
   }
 
   function randomPool() {
-    const scope = $("#random-scope")?.value || "all";
-    const platform = $("#random-platform")?.value || "all";
-    const excludeWatched = $("#random-exclude-watched")?.checked;
-    const tag = normalize($("#random-tag")?.value || "");
+    const scope = $("#home-random-scope")?.value || "all";
+    const platform = state.homePlatform || "all";
+    const excludeWatched = $("#home-random-exclude-watched")?.checked;
+    const tag = normalize($("#home-random-tag")?.value || "");
     return state.works.filter(work => {
       if (platform !== "all" && work.platform !== platform) return false;
       if (scope === "favorites" && !state.favorites.has(work.id)) return false;
       if (scope === "watchlist" && !state.watchlist.has(work.id)) return false;
       if (excludeWatched && state.watched.has(work.id)) return false;
-      if (tag && !publicTagsOf(work).some(item => normalize(item).includes(tag))) return false;
+      if (tag && !sanitizePublicTags(publicTagsOf(work)).some(item => normalize(item).includes(tag))) return false;
       return work.exposure_level !== "RESTRICTED";
     });
+  }
+
+  function renderHomeRandomResults(works) {
+    const grid = $("#home-archive-grid");
+    if (!grid) return;
+    grid.innerHTML = (works || []).map(archiveTicketHtml).join("") || '<div class="empty-state">沒有符合條件的作品可抽</div>';
   }
 
   function drawRandom(count) {
     const pool = randomPool();
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     state.bulkWorks = shuffled.slice(0, count);
-    if ($("#random-summary")) $("#random-summary").textContent = `從 ${pool.length.toLocaleString()} 筆 STANDARD 抽出 ${state.bulkWorks.length} 張`;
-    renderRandomResults(state.bulkWorks);
-    switchView("random");
-  }
-
-  function renderRandomResults(works) {
-    const grid = $("#random-grid");
-    if (!grid) return;
-    grid.innerHTML = (works || []).map(archiveTicketHtml).join("") || '<div class="empty-state">沒有符合條件的作品可抽</div>';
+    state.homeShowingRandom = true;
+    if ($("#home-summary")) $("#home-summary").textContent = `從 ${pool.length.toLocaleString()} 筆 STANDARD 抽出 ${state.bulkWorks.length} 張`;
+    renderHomeRandomResults(state.bulkWorks);
+    switchView("home");
   }
 
   async function renderCollection() {
@@ -1231,12 +1241,45 @@
     const { data, error } = await supabase.rpc("get_work_rating_histogram", { target_work: workId });
     if (error) { node.innerHTML = ""; return; }
     const counts = data || {};
-    const max = Math.max(1, ...Object.values(counts).map(Number));
-    node.innerHTML = Array.from({ length: 11 }, (_, i) => i - 5).map(score => {
-      const n = Number(counts[String(score)] || 0);
-      const pct = Math.round((n / max) * 100);
-      return `<div class="histogram-row"><span>${score > 0 ? "+" : ""}${score}</span><div class="histogram-bar"><i style="width:${pct}%"></i></div><span>${n}</span></div>`;
-    }).join("");
+    const scores = Array.from({ length: 11 }, (_, i) => i - 5);
+    const values = scores.map(score => Number(counts[String(score)] || 0));
+    const total = values.reduce((sum, n) => sum + n, 0);
+    const max = Math.max(1, ...values);
+    if (!total) {
+      node.innerHTML = '<p class="rating-dist-empty muted">尚無評分分布</p>';
+      return;
+    }
+    const weighted = scores.reduce((sum, score, i) => sum + score * values[i], 0) / total;
+    const avgLabel = weighted > 0 ? `+${weighted.toFixed(1)}` : weighted.toFixed(1);
+    const nonZero = scores.filter((_, i) => values[i] > 0);
+    const showAll = nonZero.length === scores.length;
+    node.innerHTML = `
+      <div class="rating-dist" data-dist-expanded="${showAll ? "1" : "0"}">
+        <div class="rating-dist-head">
+          <span>${total} 則評分</span>
+          <span>平均 ${avgLabel}</span>
+        </div>
+        <div class="rating-dist-chart" role="img" aria-label="評分分布直方圖">
+          ${scores.map((score, i) => {
+            const n = values[i];
+            const hidden = !showAll && !n ? ' hidden' : '';
+            const pct = Math.round((n / max) * 100);
+            return `<div class="rating-dist-col${hidden}" data-score="${score}"><div class="rating-dist-bar-wrap"><i class="rating-dist-bar" style="height:${pct}%"></i></div><span class="rating-dist-label">${score > 0 ? "+" : ""}${score}</span><span class="rating-dist-count">${n || ""}</span></div>`;
+          }).join("")}
+        </div>
+        ${showAll ? "" : `<button type="button" class="rating-dist-toggle button button-secondary">展開完整分布（${nonZero.length}/${scores.length} 格有資料）</button>`}
+      </div>`;
+    node.querySelector(".rating-dist-toggle")?.addEventListener("click", () => {
+      const dist = node.querySelector(".rating-dist");
+      if (!dist) return;
+      const expanded = dist.dataset.distExpanded === "1";
+      dist.dataset.distExpanded = expanded ? "0" : "1";
+      dist.querySelectorAll(".rating-dist-col.hidden").forEach(col => col.classList.toggle("hidden", expanded));
+      const btn = dist.querySelector(".rating-dist-toggle");
+      if (btn) btn.textContent = expanded
+        ? `展開完整分布（${nonZero.length}/${scores.length} 格有資料）`
+        : "收合分布";
+    });
   }
 
   async function savePrivateNote() {
@@ -1734,7 +1777,7 @@
 
   function archiveTicketHtml(work) {
     const code = formatWorkCode(work);
-    const tags = tagRowHtml(work, 3, 5);
+    const tags = tagRowHtml(work);
     const fav = state.favorites.has(work.id);
     const watched = state.watched.has(work.id);
     const watchlist = state.watchlist.has(work.id);
@@ -1870,7 +1913,8 @@
   async function copySingleWork(workId) {
     const work = state.workById.get(workId);
     if (!work) return;
-    await copyText(copyLineForWork(work), "已複製車號");
+    const digits = copyCodeDigits(work);
+    await copyText(digits, digits ? `已複製車號 ${digits}` : "已複製車號");
   }
 
   function rankingScoreHtml(item) {
@@ -2474,9 +2518,9 @@
           <p class="work-code" id="detail-title">${escapeHtml(formatWorkCode(work))}</p>
           <h2>${escapeHtml(displayTitleOf(work))}</h2>
           <p>${escapeHtml(displayAuthorOf(work))}${work.language ? ` · ${escapeHtml(work.language)}` : ""} · ${escapeHtml(work.exposure_level === "RESTRICTED" ? "僅自己的資料庫" : "STANDARD")}</p>
-          ${tagRowHtml(work, 5)}
+          ${tagRowHtml(work)}
           ${scoreBadgeHtml(work.id)}
-          <div id="rating-histogram" class="histogram"></div>
+          <div id="rating-histogram" class="rating-dist-panel"></div>
           <div class="detail-actions">
             <button type="button" class="button button-secondary ${state.favorites.has(work.id) ? "active" : ""}" data-favorite="${work.id}">${state.favorites.has(work.id) ? "已收藏" : "收藏"}</button>
             <button type="button" class="button button-secondary ${state.watched.has(work.id) ? "active" : ""}" data-watched="${work.id}">${state.watched.has(work.id) ? "已看" : "標為已看"}</button>
@@ -4022,7 +4066,8 @@
   }
 
   function switchView(view) {
-    const allowed = new Set(["home", "random", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin", "landing"]);
+    const allowed = new Set(["home", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin", "landing"]);
+    if (view === "random") view = "home";
     if (!isApproved() && view !== "landing") view = "landing";
     if (!allowed.has(view)) view = isApproved() ? "home" : "landing";
     if (view === "admin") {
@@ -4044,8 +4089,10 @@
     $$(".view").forEach(section => section.classList.toggle("active", section.id === `view-${view}`));
     $$("[data-view]").forEach(link => link.classList.toggle("active", link.dataset.view === view));
     $("#main-nav")?.classList.remove("open");
-    if (view === "home") renderHomeArchive();
-    if (view === "random") renderRandomResults(state.bulkWorks);
+    if (view === "home") {
+      if (state.homeShowingRandom && state.bulkWorks.length) renderHomeRandomResults(state.bulkWorks);
+      else renderHomeArchive();
+    }
     if (view === "library") renderLibrary(true);
     if (view === "leaderboard") renderLeaderboard();
     if (view === "collection") renderCollection();
@@ -4105,6 +4152,8 @@
     $("#age-enter")?.addEventListener("click", () => { localStorage.setItem("acg_age_confirmed", "1"); closeModal("age-gate"); });
     $("#age-leave")?.addEventListener("click", () => { location.href = "https://www.google.com/"; });
     if (localStorage.getItem("acg_age_confirmed") === "1") closeModal("age-gate");
+    else openModal("age-gate");
+    syncBodyScrollLock();
     bindClick("#login-button", login);
     bindClick("#landing-login", login);
     bindClick("#logout-button", logout);
@@ -4129,9 +4178,6 @@
     bindClick("#draw-one-button", () => drawRandom(1));
     bindClick("#draw-five-button", () => drawRandom(5));
     bindClick("#draw-ten-button", () => drawRandom(10));
-    bindClick("#random-one", () => drawRandom(1));
-    bindClick("#random-five", () => drawRandom(5));
-    bindClick("#random-ten", () => drawRandom(10));
     bindClick("#submit-work-send", submitWorkIdOnly);
     $$("[data-home-platform]").forEach(btn => btn.addEventListener("click", () => {
       state.homePlatform = btn.dataset.homePlatform;
