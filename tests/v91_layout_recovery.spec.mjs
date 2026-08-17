@@ -133,7 +133,7 @@ async function shot(page, name) {
     };
   });
   assert.ok(a.naturalWidth > 0, "about image must load");
-  assert.ok(a.imgW >= 100 && a.imgW <= 200, `compact avatar width ${a.imgW}`);
+  assert.ok(a.imgW >= 100 && a.imgW <= 240, `compact avatar width ${a.imgW}`);
   assert.ok(a.maxLeftDiff <= 4, `left edges diff ${a.maxLeftDiff} lefts=${a.lefts}`);
   assert.equal(a.quotePre, false);
   assert.equal(a.profileDisplay, "block");

@@ -266,6 +266,11 @@
         if (accidentalCode) {
           el.innerHTML = esc(normalized).replace(/\n/g, "<br />");
         }
+        if (el.classList.contains("about-profile__body") || el.getAttribute("data-about-folds") === "1") {
+          if (typeof window.LYZEnhanceAboutMarkdownFolds === "function") {
+            window.LYZEnhanceAboutMarkdownFolds(el);
+          }
+        }
       } else if (mode === "multiline") {
         el.innerHTML = esc(normalizeSiteCopyMarkdown(raw)).replace(/\n/g, "<br />");
       } else {

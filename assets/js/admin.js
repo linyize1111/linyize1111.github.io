@@ -2315,6 +2315,10 @@
         preview.className =
           "sec-preview about-markdown" +
           (activeSectionKey === "about.heading" ? " about-markdown--intro" : "");
+        if (activeSectionKey === "about.body" && typeof window.LYZEnhanceAboutMarkdownFolds === "function") {
+          preview.removeAttribute("data-folds-ready");
+          window.LYZEnhanceAboutMarkdownFolds(preview);
+        }
       } else {
         preview.className = "sec-preview markdown-body";
       }

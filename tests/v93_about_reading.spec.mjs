@@ -67,8 +67,8 @@ const layout = await page.evaluate(() => {
 assert.equal(layout.profileDisplay, "block");
 assert.ok(layout.bodyBelowMasthead, "body must sit under masthead, not beside avatar");
 assert.equal(layout.sideBySideBody, false);
-assert.ok(layout.mediaWidth < 220, `avatar should be compact, got ${layout.mediaWidth}`);
-assert.ok(layout.bodyWidth > 500, `body should use reading width, got ${layout.bodyWidth}`);
+assert.ok(layout.mediaWidth < 240, `avatar should be compact, got ${layout.mediaWidth}`);
+assert.ok(layout.bodyWidth > 700, `body should use shell width, got ${layout.bodyWidth}`);
 
 const md = await page.evaluate(() => {
   const hasMarked = typeof window.marked !== "undefined";

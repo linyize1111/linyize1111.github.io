@@ -3143,9 +3143,11 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 
 .about-page {
-  width: min(100%, 42rem);
+  width: 100%;
+  max-width: none;
   margin: 0 auto;
-  padding: 0 clamp(1rem, 3vw, 1.5rem) 3rem;
+  padding: 0 clamp(0.25rem, 1.5vw, 0.75rem) 3rem;
+  box-sizing: border-box;
 }
 .about-profile {
   display: block;
@@ -3154,9 +3156,14 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 .about-profile__masthead {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1.25rem 1.75rem;
+  gap: 1.5rem clamp(1.5rem, 4vw, 3rem);
   align-items: start;
-  margin: 0 0 2rem;
+  margin: 0 0 2.25rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+[data-theme="light"] .about-profile__masthead {
+  border-bottom-color: rgba(20, 24, 36, 0.08);
 }
 .about-profile.media-failed .about-profile__masthead {
   grid-template-columns: minmax(0, 1fr);
@@ -3164,6 +3171,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 .about-profile__identity {
   min-width: 0;
   text-align: left;
+  max-width: 46rem;
 }
 .about-updated {
   margin: 0 0 0.75rem;
@@ -3193,6 +3201,9 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   text-align: left;
   width: 100%;
   max-width: none;
+}
+.about-profile__body.about-markdown > p {
+  max-width: 46rem;
 }
 
 /* ========== V9.2 About Markdown scope (NOT article / HTML5 UP .markdown-body) ========== */
@@ -3252,6 +3263,91 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   background: currentColor;
   opacity: 0.12;
   min-width: 2rem;
+}
+
+/* Collapsible ## sections on About body */
+.about-markdown--folds > .about-fold {
+  margin: 0 0 0.7rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+[data-theme="light"] .about-markdown--folds > .about-fold {
+  border-color: rgba(20, 24, 36, 0.08);
+  background: rgba(20, 24, 36, 0.025);
+}
+.about-fold__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  list-style: none;
+  cursor: pointer;
+  padding: 0.95rem 1.15rem;
+  user-select: none;
+}
+.about-fold__summary::-webkit-details-marker {
+  display: none;
+}
+.about-fold__summary::marker {
+  content: "";
+}
+.about-fold__summary::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid var(--about-accent, #18bfef);
+  border-bottom: 2px solid var(--about-accent, #18bfef);
+  transform: rotate(-45deg);
+  flex-shrink: 0;
+  opacity: 0.85;
+  transition: transform 0.18s ease;
+  margin-top: -0.1rem;
+}
+.about-fold[open] > .about-fold__summary::before {
+  transform: rotate(45deg);
+}
+.about-fold__heading,
+.about-markdown .about-fold__heading {
+  display: block;
+  margin: 0 !important;
+  flex: 1;
+  font-size: clamp(1.12rem, 1.7vw, 1.35rem) !important;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.about-fold__heading::after,
+.about-markdown .about-fold__heading::after {
+  display: none !important;
+  content: none !important;
+}
+.about-fold__panel {
+  padding: 0 1.2rem 1.15rem 2.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+[data-theme="light"] .about-fold__panel {
+  border-top-color: rgba(20, 24, 36, 0.06);
+}
+.about-fold__panel > :first-child {
+  margin-top: 0.95rem;
+}
+.about-fold__panel > :last-child {
+  margin-bottom: 0;
+}
+@media (min-width: 960px) {
+  .about-markdown--folds {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    align-items: start;
+  }
+  .about-markdown--folds > :not(.about-fold) {
+    grid-column: 1 / -1;
+    max-width: 46rem;
+  }
+  .about-markdown--folds > .about-fold {
+    margin: 0;
+  }
 }
 .about-markdown h3 {
   font-size: 1.15rem;
@@ -3371,7 +3467,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 
 .about-profile__media {
   margin: 0;
-  width: 148px;
+  width: clamp(168px, 18vw, 220px);
   justify-self: end;
   padding: 8px;
   border-radius: 16px;
@@ -3409,8 +3505,8 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 .about-trajectory__grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.85rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
 }
 .about-trajectory__card {
   margin: 0;
@@ -3442,9 +3538,15 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   }
   .about-profile__media {
     order: -1;
-    width: min(132px, 42vw);
+    width: min(148px, 42vw);
     margin-inline: 0;
     justify-self: start;
+  }
+  .about-trajectory__grid {
+    grid-template-columns: 1fr;
+  }
+  .about-fold__panel {
+    padding-left: 1.2rem;
   }
 }
 
