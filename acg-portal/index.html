@@ -7,36 +7,36 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src 'none'; media-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com https://xpztpetskjohuxrpgmcm.supabase.co https://cdn.akamai.steamstatic.com https://shared.akamai.steamstatic.com https://steamcdn-a.akamaihd.net https://cdn.cloudflare.steamstatic.com https://img.dlsite.jp https://www.dlsite.com; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co; upgrade-insecure-requests">
-  <title>夜鹿導師 V2 / YORU ARCHIVE</title>
-  <meta name="description" content="夜鹿導師 V2 / 私人作品紀錄與評分工具">
-  <meta property="og:title" content="夜鹿導師 V2 / 私人作品紀錄與評分工具">
-  <meta property="og:description" content="收藏、評分，還有偶爾翻回去看的那些編號。僅限審核會員。">
+  <title>你的夜鹿導師 | ACG Portal</title>
+  <meta name="description" content="私人整理的 ACG 收藏與評分倉庫，僅限審核會員瀏覽。">
+  <meta property="og:title" content="你的夜鹿導師 | ACG Portal">
+  <meta property="og:description" content="私人整理的 ACG 收藏與評分倉庫。V2 已加強隱私，僅限審核會員。">
   <meta property="og:type" content="website">
-  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=2.0.0">
+  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=2.0.1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2.0.0">
+  <link rel="stylesheet" href="styles.css?v=2.0.1">
 </head>
 <body>
   <div class="ambient ambient-one"></div>
   <div class="ambient ambient-two"></div>
 
   <header class="site-header">
-    <a class="brand" href="#home" aria-label="夜鹿導師首頁">
-      <span class="brand-mark"><img src="assets/yoru-icon.png?v=2.0.0" alt=""></span>
-      <span><strong>夜鹿導師</strong><small>YORU ARCHIVE</small></span>
+    <a class="brand" href="#home" aria-label="ACG Portal 首頁">
+      <span class="brand-mark"><img src="assets/yoru-icon.png?v=2.0.1" alt=""></span>
+      <span><strong>夜鹿導師</strong><small>ACG PORTAL</small></span>
     </a>
     <nav id="main-nav" class="main-nav" aria-label="主要導覽">
-      <a href="#home" data-view="home">夜鹿導師</a>
-      <a href="#random" data-view="random">隨機</a>
-      <a href="#library" data-view="library">作品庫</a>
-      <a href="#leaderboard" data-view="leaderboard">排行榜</a>
-      <a href="#collection" data-view="collection">我的收藏</a>
-      <a href="#games" data-view="games">遊戲評鑑</a>
-      <a href="#discuss" data-view="discuss">討論</a>
-      <a href="#profile" data-view="profile">個人頁</a>
-      <a href="#admin" data-view="admin" class="admin-only hidden">Admin</a>
+      <a href="#home" data-view="home">🎲 隨機抽卡</a>
+      <a href="#random" data-view="random">🎯 隨機</a>
+      <a href="#library" data-view="library">📚 作品庫</a>
+      <a href="#leaderboard" data-view="leaderboard">🏆 排行榜</a>
+      <a href="#collection" data-view="collection">⭐ 我的收藏</a>
+      <a href="#games" data-view="games">🎮 遊戲評鑑</a>
+      <a href="#discuss" data-view="discuss">💬 討論</a>
+      <a href="#profile" data-view="profile">👤 個人頁</a>
+      <a href="#admin" data-view="admin" class="admin-only hidden">⚙ 管理後台</a>
     </nav>
     <div class="auth-area">
       <button id="login-button" class="button button-primary">登入</button>
@@ -61,17 +61,24 @@
 
   <main>
     <section id="view-landing" class="view">
-      <div class="landing">
-        <img class="mentor-image landing-mentor" src="assets/yoru-mentor.png?v=2.0.0" alt="夜鹿導師">
-        <p class="eyebrow">YORU ARCHIVE 2.0</p>
-        <h1>夜鹿導師</h1>
-        <p class="landing-kicker">收藏、評分，還有偶爾翻回去看的那些編號。</p>
-        <div class="landing-copy">
-          <p>這是一份<strong>私人作品紀錄與評分工具</strong>。站上不放封面、不放連結、不提供取得方式；只留下編號、標題與你自己的紀錄。</p>
-          <p>未登入看不到作品庫、排行榜或會員內容。新會員需經站長手動審核。</p>
+      <div class="landing hero">
+        <div class="mentor-heading">
+          <div>
+            <p class="eyebrow">CURATED DISCOVERY</p>
+            <h1>你的夜鹿導師</h1>
+            <p class="hero-sub">私人整理的 ACG 收藏與評分倉庫，僅限審核會員。</p>
+          </div>
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.0.1" alt="夜鹿導師">
+        </div>
+        <div class="site-note">
+          <p>本站永遠不營利、不放廣告，單純為了方便整理、記錄與分享個人精選。這裡只是小弟方便自己跟各位開導身心靈的倉庫。</p>
+          <p>V2 已加強隱私：站上<strong>不放封面、不放外部連結</strong>、不提供取得方式；只留下 N/J 編號、標題與你自己的紀錄。個人頁預設全部私人。</p>
+          <p>內容幾乎都是站長自己的喜好，盡量只挑中文翻譯版本；癖好不合請用搜尋或篩選。看到奇怪的作品可以負評或回報；也歡迎推薦作品編號，我會審核後再決定是否上架。</p>
+          <p class="github-callout">以前請大家低調使用、別 star 別亂分享——現在站已安全多了，<strong>分享網址沒關係</strong>。若覺得這個小站有用，拜託到 GitHub 幫我按個 ★：<a href="https://github.com/linyize1111/acg-portal" target="_blank" rel="noopener noreferrer">linyize1111/acg-portal ↗</a></p>
         </div>
         <div class="landing-actions">
           <button id="landing-login" class="button button-primary" type="button">登入 / 建立帳號</button>
+          <a class="button button-secondary github-star-button" href="https://github.com/linyize1111/acg-portal" target="_blank" rel="noopener noreferrer">GitHub ★ Star</a>
         </div>
         <div class="landing-cards">
           <article>
@@ -79,8 +86,8 @@
             <p>本工具記錄成人向作品編號。繼續即表示你已達所在地法定成年年齡。</p>
           </article>
           <article>
-            <h3>隱私</h3>
-            <p>個人頁預設全部私人。你可以選擇公開統計、評論或收藏，也能一鍵全部設為私人。</p>
+            <h3>會員</h3>
+            <p>未登入看不到作品庫、排行榜或會員內容。新會員需經站長手動審核。</p>
           </article>
           <article>
             <h3>規則</h3>
@@ -95,13 +102,16 @@
       <div class="hero">
         <div class="mentor-heading">
           <div>
-            <p class="eyebrow">MY ARCHIVE</p>
-            <h1>夜鹿導師</h1>
-            <p class="hero-sub">YORU ARCHIVE · 「收藏、評分，還有偶爾翻回去看的那些編號。」</p>
+            <p class="eyebrow">CURATED DISCOVERY</p>
+            <h1>你的夜鹿導師</h1>
           </div>
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.0.1" alt="夜鹿導師">
         </div>
         <div class="site-note">
-          <p>先看自己的資料庫。這裡是紀錄工具，不是探索站，也不放任何作品圖像或外部連結。</p>
+          <p>本站永遠不營利、不放廣告，單純為了方便整理、記錄與分享個人精選。</p>
+          <p>這是紀錄工具，不是探索站：不放作品圖像、不放外部連結，只留下 N/J 編號與你自己的評分。</p>
+          <p>內容幾乎都是站長自己的喜好，盡量只挑中文翻譯版本；癖好不合請用搜尋或篩選。看到奇怪的作品可以負評或回報給我。</p>
+          <p class="github-callout">V2 已加強隱私與安全，<strong>分享網址沒問題了</strong>。若覺得有用，歡迎到 <a href="https://github.com/linyize1111/acg-portal" target="_blank" rel="noopener noreferrer">GitHub 幫我按 star ↗</a>。</p>
         </div>
         <div class="search-row">
           <div class="platform-switch" role="group" aria-label="平台">
@@ -305,8 +315,8 @@
   <div id="age-gate" class="modal open" role="dialog" aria-modal="true" aria-labelledby="age-title">
     <div class="modal-card age-card">
       <span class="age-mark">18+</span>
-      <h2 id="age-title">年齡確認</h2>
-      <p>夜鹿導師是私人作品紀錄工具，內容為成人向編號與評分。繼續即表示你已達所在地法定成年年齡。</p>
+      <h2 id="age-title">成人內容確認</h2>
+      <p>夜鹿導師記錄成人向 ACG 作品編號與評分。繼續即表示你已達所在地法定成年年齡，並自願瀏覽。</p>
       <div class="modal-actions">
         <button id="age-leave" class="button button-secondary">離開</button>
         <button id="age-enter" class="button button-primary">我已成年，進入</button>
@@ -359,7 +369,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"
     integrity="sha384-z2hqtpr/vSDZ8zSjLOiNgnR/mpU799AD93s6rvkNJLI6Hl0YlKXEhDtREzNT749S" crossorigin="anonymous"></script>
-  <script src="config.js?v=2.0.0"></script>
-  <script src="app.js?v=2.0.0"></script>
+  <script src="config.js?v=2.0.1"></script>
+  <script src="app.js?v=2.0.1"></script>
 </body>
 </html>
