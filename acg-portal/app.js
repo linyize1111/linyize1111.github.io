@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   "use strict";
 
   const config = window.ACG_CONFIG;
@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "1.9.0";
+  const APP_VERSION = "1.9.1";
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -871,7 +871,9 @@
     renderSourceStatus();
 
     const activeWorks = await fetchAll("works", query => query.eq("status", "active"));
-    state.works = dedupeWorks(activeWorks.filter(work => work.is_ai !== true));
+    // Admins can read quarantined works, but browsing should match what
+    // members see; they stay reachable from the admin works tab.
+    state.works = dedupeWorks(activeWorks.filter(work => work.is_ai !== true && work.quarantined !== true));
     state.workById = new Map(state.works.map(work => [work.id, work]));
     if (!Object.values(state.sourceStats).some(stats => stats.total > 0 || stats.active > 0)) {
       state.sourceStats = summarizeSourceStats(state.works);
@@ -3358,7 +3360,14 @@
       }).join("") || '<div class="empty-state">目前沒有會員</div>');
     } else if (tab === "works") {
       state.adminWorks = await fetchAll("works", query => query.order("updated_at", { ascending: false }));
-      content.innerHTML = `<div class="job-controls"><button class="button button-primary" data-new-work>＋ 手動新增（車號）</button><input id="admin-work-search" type="search" placeholder="搜尋車號、標題、作者或標籤…"></div><p id="admin-work-summary" class="muted"></p><div id="admin-work-list"></div>`;
+      const quarantined = state.adminWorks.filter(work => work.quarantined).length;
+      const released = state.adminWorks.filter(work => work.quarantine_override).length;
+      content.innerHTML = `<div class="job-controls"><button class="button button-primary" data-new-work>＋ 手動新增（車號）</button><input id="admin-work-search" type="search" placeholder="搜尋車號、標題、作者或標籤…"></div>
+        <div class="job-controls">
+          <p class="muted small-note">風險隔離：${quarantined.toLocaleString()} 筆已隱藏（會員看不到）、${released.toLocaleString()} 筆已手動放行。搜尋「隔離」可只看被隱藏的作品。</p>
+          <button class="button button-secondary" data-rescan-quarantine>重新掃描可疑作品</button>
+        </div>
+        <p id="admin-work-summary" class="muted"></p><div id="admin-work-list"></div>`;
       renderAdminWorks();
     } else if (tab === "reports") {
       let reports = [];
@@ -3434,9 +3443,20 @@
     const list = $("#admin-work-list");
     if (!list) return;
     const query = $("#admin-work-search")?.value || "";
-    const rows = state.adminWorks.filter(work => workMatches(work, query));
-    $("#admin-work-summary").textContent = `${rows.length.toLocaleString()} 筆；畫面顯示前 200 筆`;
-    list.innerHTML = rows.slice(0, 200).map(work => `<div class="admin-row with-thumb"><img class="admin-work-thumb" src="${escapeHtml(imageUrl(work.cover_url))}" alt=""><div><h4>${escapeHtml(work.title)}</h4><p>${escapeHtml(work.platform)} · ${escapeHtml(work.work_id)} · ${escapeHtml(work.status)}</p></div><div class="admin-actions"><button class="button button-secondary" data-edit-work="${work.id}">編輯</button><button class="button button-secondary" data-toggle-work="${work.id}" data-status="${work.status === "active" ? "inactive" : "active"}">${work.status === "active" ? "標記失效" : "恢復"}</button></div></div>`).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
+    const onlyQuarantined = /隔離|隱藏/.test(query);
+    const rows = state.adminWorks.filter(work => onlyQuarantined ? work.quarantined : workMatches(work, query));
+    $("#admin-work-summary").textContent = onlyQuarantined
+      ? `${rows.length.toLocaleString()} 筆被風險隔離；畫面顯示前 200 筆`
+      : `${rows.length.toLocaleString()} 筆；畫面顯示前 200 筆`;
+    list.innerHTML = rows.slice(0, 200).map(work => {
+      const quarantineBadge = work.quarantined
+        ? `<span class="job-badge failed">已隔離${work.quarantine_reason ? `：${escapeHtml(work.quarantine_reason)}` : ""}</span>`
+        : (work.quarantine_override ? '<span class="job-badge">已放行</span>' : "");
+      const quarantineButton = work.quarantined
+        ? `<button class="button button-secondary" data-quarantine-work="${work.id}" data-hide="false">解除隔離</button>`
+        : `<button class="button button-secondary" data-quarantine-work="${work.id}" data-hide="true">隔離</button>`;
+      return `<div class="admin-row with-thumb"><img class="admin-work-thumb" src="${escapeHtml(imageUrl(work.cover_url))}" alt=""><div><h4>${escapeHtml(work.title)}</h4><p>${escapeHtml(work.platform)} · ${escapeHtml(work.work_id)} · ${escapeHtml(work.status)}</p>${quarantineBadge}</div><div class="admin-actions"><button class="button button-secondary" data-edit-work="${work.id}">編輯</button><button class="button button-secondary" data-toggle-work="${work.id}" data-status="${work.status === "active" ? "inactive" : "active"}">${work.status === "active" ? "標記失效" : "恢復"}</button>${quarantineButton}</div></div>`;
+    }).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
   }
 
   async function loadJobs() {
@@ -3785,6 +3805,28 @@
       if (target.dataset.deleteGame) deleteGame(target.dataset.deleteGame);
       if (target.dataset.deleteGameComment) deleteGameComment(target.dataset.deleteGameComment, target.dataset.gameId);
       if (target.dataset.adminTab) loadAdmin(target.dataset.adminTab);
+      if (target.dataset.rescanQuarantine !== undefined) {
+        await withBusyButton(target, "掃描中…", async () => {
+          const { data, error } = await supabase.rpc("rescan_work_quarantine");
+          if (error) return toast(formatApiError(error), "error");
+          toast(`掃描完成：新增隱藏 ${Number(data?.changed || 0)} 筆，目前共 ${Number(data?.quarantined_total || 0)} 筆被隱藏`, "success");
+          await loadWorks();
+          await loadAdmin("works");
+        });
+      }
+      if (target.dataset.quarantineWork) {
+        const hide = target.dataset.hide === "true";
+        await withBusyButton(target, hide ? "隔離中…" : "解除中…", async () => {
+          const { error } = await supabase.rpc("set_work_quarantine", {
+            target_work: target.dataset.quarantineWork,
+            hide
+          });
+          if (error) return toast(formatApiError(error), "error");
+          toast(hide ? "已隱藏，會員看不到了" : "已解除隔離並標記放行", "success");
+          await loadWorks();
+          await loadAdmin("works");
+        });
+      }
       if (target.dataset.autoApproveHours !== undefined) {
         await withBusyButton(target, "設定中…", async () => {
           const hours = Number(target.dataset.autoApproveHours);
