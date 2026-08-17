@@ -5,31 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co; upgrade-insecure-requests">
-  <title>你的夜鹿導師 | ACG Portal</title>
-  <meta name="description" content="私人整理的 ACG 收藏與內容推薦入口，僅限審核會員瀏覽。">
-  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=1.3.10">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src 'none'; media-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com https://xpztpetskjohuxrpgmcm.supabase.co https://cdn.akamai.steamstatic.com https://shared.akamai.steamstatic.com https://steamcdn-a.akamaihd.net https://cdn.cloudflare.steamstatic.com https://img.dlsite.jp https://www.dlsite.com; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co; upgrade-insecure-requests">
+  <title>夜鹿導師 V2 / YORU ARCHIVE</title>
+  <meta name="description" content="夜鹿導師 V2 / 私人作品紀錄與評分工具">
+  <meta property="og:title" content="夜鹿導師 V2 / 私人作品紀錄與評分工具">
+  <meta property="og:description" content="收藏、評分，還有偶爾翻回去看的那些編號。僅限審核會員。">
+  <meta property="og:type" content="website">
+  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=2.0.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=1.9.1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=2.0.0">
 </head>
 <body>
   <div class="ambient ambient-one"></div>
   <div class="ambient ambient-two"></div>
 
   <header class="site-header">
-    <a class="brand" href="#home" aria-label="ACG Portal 首頁">
-      <span class="brand-mark"><img src="assets/yoru-icon.png?v=1.3.10" alt=""></span>
-      <span><strong>夜鹿導師</strong><small>ACG PORTAL</small></span>
+    <a class="brand" href="#home" aria-label="夜鹿導師首頁">
+      <span class="brand-mark"><img src="assets/yoru-icon.png?v=2.0.0" alt=""></span>
+      <span><strong>夜鹿導師</strong><small>YORU ARCHIVE</small></span>
     </a>
     <nav id="main-nav" class="main-nav" aria-label="主要導覽">
-      <a href="#home" data-view="home">🎲 隨機抽卡</a>
-      <a href="#library" data-view="library">📚 圖書館</a>
-      <a href="#leaderboard" data-view="leaderboard">🏆 排行榜</a>
-      <a href="#games" data-view="games">🎮 遊戲評鑑</a>
-      <a href="#feedback" data-view="feedback">✉ 意見反饋</a>
-      <a href="#admin" data-view="admin" class="admin-only hidden">⚙ 管理後台</a>
+      <a href="#home" data-view="home">夜鹿導師</a>
+      <a href="#random" data-view="random">隨機</a>
+      <a href="#library" data-view="library">作品庫</a>
+      <a href="#leaderboard" data-view="leaderboard">排行榜</a>
+      <a href="#collection" data-view="collection">我的收藏</a>
+      <a href="#games" data-view="games">遊戲評鑑</a>
+      <a href="#discuss" data-view="discuss">討論</a>
+      <a href="#profile" data-view="profile">個人頁</a>
+      <a href="#admin" data-view="admin" class="admin-only hidden">Admin</a>
     </nav>
     <div class="auth-area">
       <button id="login-button" class="button button-primary">登入</button>
@@ -44,70 +51,122 @@
     </div>
   </header>
 
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav" aria-label="行動導覽">
+    <a href="#home" data-view="home">首頁</a>
+    <a href="#random" data-view="random">隨機</a>
+    <a href="#library" data-view="library">作品庫</a>
+    <a href="#collection" data-view="collection">收藏</a>
+    <a href="#profile" data-view="profile">我的</a>
+  </nav>
+
   <main>
-    <section id="view-home" class="view active">
+    <section id="view-landing" class="view">
+      <div class="landing">
+        <img class="mentor-image landing-mentor" src="assets/yoru-mentor.png?v=2.0.0" alt="夜鹿導師">
+        <p class="eyebrow">YORU ARCHIVE 2.0</p>
+        <h1>夜鹿導師</h1>
+        <p class="landing-kicker">收藏、評分，還有偶爾翻回去看的那些編號。</p>
+        <div class="landing-copy">
+          <p>這是一份<strong>私人作品紀錄與評分工具</strong>。站上不放封面、不放連結、不提供取得方式；只留下編號、標題與你自己的紀錄。</p>
+          <p>未登入看不到作品庫、排行榜或會員內容。新會員需經站長手動審核。</p>
+        </div>
+        <div class="landing-actions">
+          <button id="landing-login" class="button button-primary" type="button">登入 / 建立帳號</button>
+        </div>
+        <div class="landing-cards">
+          <article>
+            <h3>18+</h3>
+            <p>本工具記錄成人向作品編號。繼續即表示你已達所在地法定成年年齡。</p>
+          </article>
+          <article>
+            <h3>隱私</h3>
+            <p>個人頁預設全部私人。你可以選擇公開統計、評論或收藏，也能一鍵全部設為私人。</p>
+          </article>
+          <article>
+            <h3>規則</h3>
+            <p>禁止張貼外部網址、下載方式或違規描述。違規內容會被拒絕，草稿會保留讓你改。</p>
+          </article>
+        </div>
+        <p id="landing-status" class="muted"></p>
+      </div>
+    </section>
+
+    <section id="view-home" class="view">
       <div class="hero">
         <div class="mentor-heading">
           <div>
-            <p class="eyebrow">CURATED DISCOVERY</p>
-            <h1>你的夜鹿導師</h1>
+            <p class="eyebrow">MY ARCHIVE</p>
+            <h1>夜鹿導師</h1>
+            <p class="hero-sub">YORU ARCHIVE · 「收藏、評分，還有偶爾翻回去看的那些編號。」</p>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=1.3.9" alt="夜鹿導師">
         </div>
         <div class="site-note">
-          <p>本站永遠不營利、不放廣告，單純為了方便整理、記錄與分享個人精選。</p>
-          <p>內容幾乎都是站長自己的喜好，盡量只挑中文翻譯版本；如果癖好不太合，建議直接用搜尋或篩選。推薦清單已經清洗過，理論上不會出現任何獵奇作品，但仍可能有誤植或漏網之魚，看到奇怪的作品可以負評或回報給我。(並非中文翻譯也可以回報給我)</p>
-          <p>也歡迎推薦作品或提供我建議，我會審核後再決定是否上架。最後拜託各位大佬低調使用：如果看得出來這是 GitHub/免費服務架的，也請先別 star 也別張揚亂分享，這裡只是小弟方便自己跟各位開導身心靈的倉庫。</p>
+          <p>先看自己的資料庫。這裡是紀錄工具，不是探索站，也不放任何作品圖像或外部連結。</p>
         </div>
         <div class="search-row">
+          <div class="platform-switch" role="group" aria-label="平台">
+            <button type="button" class="platform-chip active" data-home-platform="all">全部</button>
+            <button type="button" class="platform-chip" data-home-platform="nhentai">N</button>
+            <button type="button" class="platform-chip" data-home-platform="18comic">J</button>
+          </div>
           <label class="search-box">
             <span>⌕</span>
-            <input id="home-search" type="search" placeholder="精確車號、標題、作者或標籤…" autocomplete="off">
+            <input id="home-search" type="search" inputmode="numeric" placeholder="N-123456 / J-123456 或標題…" autocomplete="off">
           </label>
-          <button id="draw-all-button" class="button button-primary">🎲 全部更新</button>
-          <button id="draw-five-button" class="button button-secondary">一次 5 本</button>
-          <button id="draw-ten-button" class="button button-secondary">一次 10 本</button>
-          <button id="reset-draw-history-button" class="button button-secondary" title="清除各平台卡片背面與加抽清單的本機抽取紀錄">🗑️ 重置抽取紀錄</button>
+          <button id="draw-one-button" class="button button-secondary">隨機 1</button>
+          <button id="draw-five-button" class="button button-secondary">隨機 5</button>
+          <button id="draw-ten-button" class="button button-primary">隨機 10</button>
         </div>
-        <div class="filter-row">
-          <select id="home-filter-scope" aria-label="抽卡範圍">
-            <option value="all">範圍：全部作品</option>
-            <option value="favorites">範圍：我的收藏</option>
-          </select>
-          <select id="home-filter-week" aria-label="收錄時間篩選">
-            <option value="all">收錄：全部</option>
-            <option value="week">收錄：本週新收錄</option>
-          </select>
-        </div>
-        <p id="home-summary" class="muted">正在讀取作品資料…</p>
-        <div id="source-status-grid" class="source-status-grid" aria-live="polite"></div>
+        <p id="home-summary" class="muted">正在讀取你的資料庫…</p>
+        <div id="home-archive-grid" class="ticket-grid"></div>
       </div>
-      <div id="platform-cards" class="platform-grid" aria-live="polite"></div>
-      <div id="bulk-draw-panel" class="bulk-draw-panel hidden" aria-live="polite">
-        <div class="section-heading compact">
-          <div><p class="eyebrow">BATCH DRAW</p><h2>本輪加抽清單</h2></div>
-          <button id="clear-bulk-button" class="button button-secondary">清空</button>
+    </section>
+
+    <section id="view-random" class="view">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">RANDOM</p>
+          <h2>隨機抽取</h2>
+          <p>只抽 STANDARD 作品。可用收藏、待看、排除已看與平台／標籤過濾。</p>
         </div>
-        <div id="bulk-draw-list" class="bulk-draw-list"></div>
       </div>
+      <div class="search-row">
+        <select id="random-scope" aria-label="抽取範圍">
+          <option value="all">全部</option>
+          <option value="favorites">我的收藏</option>
+          <option value="watchlist">待看清單</option>
+        </select>
+        <label class="check-inline"><input id="random-exclude-watched" type="checkbox"> 排除已看</label>
+        <select id="random-platform" aria-label="平台">
+          <option value="all">N + J</option>
+          <option value="nhentai">N · Nhentai</option>
+          <option value="18comic">J · 禁漫</option>
+        </select>
+        <input id="random-tag" type="search" placeholder="安全標籤（選填）">
+        <button id="random-one" class="button button-secondary">抽 1</button>
+        <button id="random-five" class="button button-secondary">抽 5</button>
+        <button id="random-ten" class="button button-primary">抽 10</button>
+      </div>
+      <p id="random-summary" class="muted"></p>
+      <div id="random-grid" class="ticket-grid"></div>
     </section>
 
     <section id="view-library" class="view">
       <div class="section-heading">
-        <div><p class="eyebrow">COLLECTION</p><h2>圖書館</h2><p>瀏覽所有有效內容；搜尋支援拼字容錯。</p></div>
+        <div><p class="eyebrow">LIBRARY</p><h2>作品庫</h2><p>只顯示可公開瀏覽的 STANDARD 紀錄卡。搜尋標題不會找到 RESTRICTED 作品；精確編號可以。</p></div>
         <div class="filters">
           <select id="library-platform" aria-label="平台篩選">
             <option value="all">全部平台</option>
-            <option value="nhentai">Nhentai</option>
-            <option value="18comic">禁漫</option>
-            <option value="hanime">Hanime</option>
-            <option value="pixiv">Pixiv</option>
+            <option value="nhentai">N · Nhentai</option>
+            <option value="18comic">J · 禁漫</option>
           </select>
           <select id="library-scope" aria-label="收藏篩選">
             <option value="all">全部作品</option>
             <option value="favorites">我的收藏</option>
+            <option value="watched">已看</option>
+            <option value="watchlist">待看</option>
           </select>
-          <input id="library-search" type="search" placeholder="搜尋作品…">
+          <input id="library-search" type="search" placeholder="編號、標題、作者、安全標籤…">
         </div>
       </div>
       <div class="filter-row library-filters">
@@ -122,20 +181,18 @@
         </select>
       </div>
       <p id="library-summary" class="muted"></p>
-      <div id="library-grid" class="library-grid"></div>
+      <div id="library-grid" class="ticket-grid"></div>
       <button id="library-more" class="button button-secondary centered hidden">載入更多</button>
     </section>
 
     <section id="view-leaderboard" class="view">
       <div class="section-heading">
-        <div><p class="eyebrow">BAYESIAN RANKING</p><h2>排行榜 <button type="button" class="info-badge" data-tooltip="分數 -5～+5；總榜用貝氏加權，本週榜只看本週主評論。" aria-label="排行榜分數說明">?</button></h2><p>總榜與本週榜並存：總榜看長期口碑，本週榜看近期討論熱度。</p></div>
+        <div><p class="eyebrow">BAYESIAN RANKING</p><h2>排行榜 <button type="button" class="info-badge" data-tooltip="分數 -5～+5；總榜用貝氏加權，本週榜只看本週主評論。僅 STANDARD。" aria-label="排行榜分數說明">?</button></h2><p>總榜與本週榜並存，只列入 STANDARD 作品。</p></div>
         <div class="filters">
           <select id="ranking-platform" aria-label="排行榜平台">
             <option value="all">全部平台</option>
-            <option value="nhentai">Nhentai</option>
-            <option value="18comic">禁漫</option>
-            <option value="hanime">Hanime</option>
-            <option value="pixiv">Pixiv</option>
+            <option value="nhentai">N · Nhentai</option>
+            <option value="18comic">J · 禁漫</option>
           </select>
           <span id="ranking-order-wrap">
             <select id="ranking-order" aria-label="排行榜順序">
@@ -150,22 +207,52 @@
         <button type="button" class="ranking-tab" data-ranking-tab="weekly">本週排行</button>
       </div>
       <div id="ranking-explainer-alltime" class="ranking-explainer">
-        <p><strong>評分怎麼看？</strong>每人可給 <b>-5～+5</b>：<b>-5</b> 超雷、<b>0</b> 普通、<b>+5</b> 神作。這只是主觀感受，僅供參考。</p>
-        <p><strong>總榜怎麼算？</strong>不是只看平均分，而是用<b>貝氏加權</b>：評分越少，分數越靠近全站平均，避免一兩票就衝高或墊底。</p>
+        <p><strong>評分怎麼看？</strong>每人可給 <b>-5～+5</b>：<b>-5</b> 超雷、<b>0</b> 普通、<b>+5</b> 神作。</p>
+        <p><strong>總榜怎麼算？</strong>貝氏加權：評分越少，分數越靠近全站平均。</p>
       </div>
       <div id="ranking-explainer-weekly" class="ranking-explainer hidden">
-        <p><strong>本週排行怎麼算？</strong>統計<b>週一 00:00（台北時間）</b>起新增的<b>主評論</b>（含評分、非回覆）。同一作品本週評論越多、分數越高，排名越前。</p>
-        <p>本週榜也套用較輕的貝氏加權（m=4），避免一兩則極端評分就霸榜；與總榜分開計算，不互相覆蓋。</p>
+        <p><strong>本週排行</strong>統計週一 00:00（台北時間）起新增的主評論，較輕的貝氏加權（m=4）。</p>
       </div>
       <div id="ranking-list" class="ranking-list"></div>
     </section>
 
+    <section id="view-collection" class="view">
+      <div class="section-heading">
+        <div><p class="eyebrow">OWNER ARCHIVE</p><h2>我的收藏</h2><p>收藏、已看、待看與評分紀錄。RESTRICTED 作品只出現在這裡，不會進作品庫或排行榜。</p></div>
+        <div class="filters">
+          <select id="collection-filter" aria-label="狀態">
+            <option value="all">全部紀錄</option>
+            <option value="favorites">收藏</option>
+            <option value="watched">已看</option>
+            <option value="watchlist">待看</option>
+            <option value="rated">已評分</option>
+          </select>
+        </div>
+      </div>
+      <p id="collection-summary" class="muted"></p>
+      <div id="collection-grid" class="ticket-grid"></div>
+    </section>
+
     <section id="view-games" class="view">
       <div class="section-heading">
-        <div><p class="eyebrow">OWNER'S NOTES</p><h2>遊戲評鑑</h2><p>站長撰寫評鑑，登入會員可以留言交流。</p></div>
+        <div><p class="eyebrow">OWNER'S NOTES</p><h2>遊戲評鑑</h2><p>站長撰寫評鑑。封面僅顯示 Steam／DLsite 等允許來源；官方連結可開，盜版連結不會出現。</p></div>
         <button id="new-game-button" class="button button-primary admin-only hidden">＋ 新增評鑑</button>
       </div>
       <div id="games-grid" class="games-grid"></div>
+    </section>
+
+    <section id="view-discuss" class="view">
+      <div class="section-heading">
+        <div><p class="eyebrow">DISCUSSION</p><h2>討論</h2><p>近期 STANDARD 作品的評分與留言。RESTRICTED 不會出現在這裡。</p></div>
+      </div>
+      <div id="discuss-list" class="discuss-list"></div>
+    </section>
+
+    <section id="view-profile" class="view">
+      <div class="section-heading">
+        <div><p class="eyebrow">PROFILE</p><h2>個人頁</h2><p>預設全部私人。公開項目需自行開啟。</p></div>
+      </div>
+      <div id="profile-panel" class="profile-panel"></div>
     </section>
 
     <section id="view-feedback" class="view">
@@ -173,19 +260,25 @@
         <div class="feedback-card">
           <p class="eyebrow">CONTACT</p>
           <h2>意見反饋</h2>
-          <p>登入並通過審核後可寄送。內容公開給已審核會員看；不需要再回覆，有問題請直接新開一則或請站長處理。</p>
-          <p class="muted small-note">送出後按鈕會進入載入中；若剛送過同類型內容，系統會請你稍等約 10 秒再試，不需要連按。</p>
+          <p>請描述建議或問題。不要貼外部作品網址。</p>
           <textarea id="feedback-body" maxlength="2000" placeholder="請描述建議或問題…"></textarea>
           <div class="form-footer"><span id="feedback-count">0 / 2000</span><button id="feedback-send" class="button button-primary">寄送意見</button></div>
           <div id="feedback-thread-list" class="feedback-thread-list"><p class="muted">載入中…</p></div>
         </div>
         <div class="feedback-card">
           <p class="eyebrow">SUBMISSION</p>
-          <h2>推薦作品給站長</h2>
-          <p>貼上 Discord 車號、作品網址或推薦理由。Nhentai / 禁漫 / Pixiv 會先進待同步佇列，之後由同步流程匯入作品庫。這裡不提供留言回覆串。</p>
-          <p class="muted small-note">若畫面顯示送出中，代表系統正在處理，請不要重複按。太快重送時會提示稍候再試。</p>
-          <textarea id="recommendation-body" maxlength="2000" placeholder="例：nhentai #123456 / 禁漫連結 / Pixiv 作品網址…"></textarea>
-          <div class="form-footer"><span id="recommendation-count">0 / 2000</span><button id="recommendation-send" class="button button-primary">送出推薦</button></div>
+          <h2>推薦作品</h2>
+          <p>只接受平台＋編號。重複的會提示「這筆已經在資料庫。」</p>
+          <div class="submit-id-row">
+            <select id="submit-platform" aria-label="平台">
+              <option value="nhentai">N · Nhentai</option>
+              <option value="18comic">J · 禁漫</option>
+            </select>
+            <input id="submit-work-id" inputmode="numeric" pattern="[0-9]*" maxlength="12" placeholder="只填數字 ID">
+            <button id="submit-work-send" class="button button-primary" type="button">送出編號</button>
+          </div>
+          <textarea id="recommendation-body" maxlength="2000" placeholder="選填說明（不要貼網址）…"></textarea>
+          <div class="form-footer"><span id="recommendation-count">0 / 2000</span><button id="recommendation-send" class="button button-secondary">附加說明並送出</button></div>
           <div id="recommendation-thread-list" class="feedback-thread-list"><p class="muted">載入中…</p></div>
         </div>
       </div>
@@ -193,12 +286,14 @@
 
     <section id="view-admin" class="view">
       <div class="section-heading">
-        <div><p class="eyebrow">ADMIN CONTROL</p><h2>管理後台</h2><p>會員審核、內容管理、檢舉與爬蟲喚醒。</p></div>
+        <div><p class="eyebrow">ADMIN CONTROL</p><h2>管理後台</h2><p>會員審核改為手動。作品管理不顯示封面或來源連結。</p></div>
       </div>
       <p id="admin-status-bar" class="admin-status-bar muted small-note" aria-live="polite">載入登入狀態…</p>
       <div class="admin-tabs" role="tablist">
         <button data-admin-tab="users" class="active">會員審核</button>
         <button data-admin-tab="works">作品管理</button>
+        <button data-admin-tab="tags">標籤審核</button>
+        <button data-admin-tab="submissions">投稿佇列</button>
         <button data-admin-tab="reports">檢舉</button>
         <button data-admin-tab="feedback">意見箱</button>
         <button data-admin-tab="jobs">爬蟲與紀錄</button>
@@ -207,25 +302,11 @@
     </section>
   </main>
 
-  <div id="member-gate" class="modal" role="dialog" aria-modal="true" aria-labelledby="member-gate-title">
-    <div class="modal-card age-card gate-card">
-      <span class="age-mark gate-mark" aria-hidden="true">🔒</span>
-      <h2 id="member-gate-title">僅限審核會員</h2>
-      <p id="member-gate-message">本站所有內容都要先登入、並經站長審核通過後才看得到。</p>
-      <p id="member-gate-window" class="muted small-note"></p>
-      <div class="modal-actions">
-        <button id="member-gate-login" class="button button-primary" type="button">登入 / 建立帳號</button>
-        <button id="member-gate-recheck" class="button button-secondary hidden" type="button">重新檢查審核狀態</button>
-        <button id="member-gate-logout" class="button button-secondary hidden" type="button">登出</button>
-      </div>
-    </div>
-  </div>
-
   <div id="age-gate" class="modal open" role="dialog" aria-modal="true" aria-labelledby="age-title">
     <div class="modal-card age-card">
       <span class="age-mark">18+</span>
-      <h2 id="age-title">成人內容確認</h2>
-      <p>本網站包含成人向 ACG 資訊與封面。繼續即表示你已達所在地法定成年年齡，並自願瀏覽。</p>
+      <h2 id="age-title">年齡確認</h2>
+      <p>夜鹿導師是私人作品紀錄工具，內容為成人向編號與評分。繼續即表示你已達所在地法定成年年齡。</p>
       <div class="modal-actions">
         <button id="age-leave" class="button button-secondary">離開</button>
         <button id="age-enter" class="button button-primary">我已成年，進入</button>
@@ -253,7 +334,7 @@
       <div class="auth-header">
         <span class="auth-mark" aria-hidden="true">🦌</span>
         <h2 id="auth-title">登入夜鹿導師</h2>
-        <p class="muted">本站僅限會員：登入並經站長審核通過後才看得到內容。開放時段內登入會自動通過。</p>
+        <p class="muted">登入後需經站長手動審核，通過才看得到作品紀錄。</p>
       </div>
       <div class="auth-options">
         <button id="google-login-button" class="button button-primary auth-google" type="button">使用 Google 登入</button>
@@ -270,7 +351,7 @@
         <button id="password-signup-button" class="button button-secondary" type="button">第一次來：建立帳號</button>
         <button id="auth-clear-storage-button" class="button button-secondary" type="button">清除本站登入資料</button>
       </div>
-      <p id="auth-help" class="muted small-note auth-help">沒有帳號就按「建立帳號」；會寄確認信，點完再回來登入。開放審核時會自動通過；否則需等站長審核才能看到內容。</p>
+      <p id="auth-help" class="muted small-note auth-help">沒有帳號就按「建立帳號」。確認信後回來登入，並等待站長審核。</p>
     </div>
   </div>
 
@@ -278,7 +359,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"
     integrity="sha384-z2hqtpr/vSDZ8zSjLOiNgnR/mpU799AD93s6rvkNJLI6Hl0YlKXEhDtREzNT749S" crossorigin="anonymous"></script>
-  <script src="config.js?v=1.9.1"></script>
-  <script src="app.js?v=1.9.1"></script>
+  <script src="config.js?v=2.0.0"></script>
+  <script src="app.js?v=2.0.0"></script>
 </body>
 </html>

@@ -7,9 +7,7 @@ window.ACG_CONFIG = Object.freeze({
   supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwenRwZXRza2pvaHV4cnBnbWNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxNzkxNjUsImV4cCI6MjA5ODc1NTE2NX0.c_hrG4w-u1swTVpp1yYnFJNVErhyplryiEF_8P-qCJA",
   workerUrl: ACG_WORKER_URL,
   manualSyncUrl: "https://github.com/linyize1111/acg-portal/actions/workflows/scheduled-sync.yml",
-  // "auto" makes the frontend read Supabase Auth settings at runtime. Once
-  // the provider is enabled in Supabase, Google login becomes available
-  // without another frontend deployment.
   googleProviderEnabled: "auto",
-  platforms: ["nhentai", "18comic", "hanime", "pixiv"]
+  platforms: ["nhentai", "18comic"],
+  version: "2.0.0"
 });

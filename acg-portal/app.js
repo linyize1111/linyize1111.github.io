@@ -16,7 +16,22 @@
     }
   });
 
-  const APP_VERSION = "1.9.1";
+  const APP_VERSION = "2.0.0";
+  const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,has_hidden_tags,created_at,exposure_level";
+  const GAME_IMAGE_HOSTS = [
+    "cdn.akamai.steamstatic.com",
+    "shared.akamai.steamstatic.com",
+    "steamcdn-a.akamaihd.net",
+    "cdn.cloudflare.steamstatic.com",
+    "img.dlsite.jp",
+    "www.dlsite.com",
+    "lh3.googleusercontent.com",
+    "lh4.googleusercontent.com",
+    "lh5.googleusercontent.com",
+    "lh6.googleusercontent.com",
+    "xpztpetskjohuxrpgmcm.supabase.co"
+  ];
+  const OFFICIAL_GAME_HOSTS = ["steampowered.com", "steamcommunity.com", "dlsite.com"];
   const PROFILE_WAIT_MS = 5000;
   const PROFILE_POLL_MS = 120;
   const CANONICAL_AUTH_REDIRECT = "https://linyize1111.github.io/acg-portal/";
@@ -93,6 +108,11 @@
     profileReady: false,
     profiles: new Map(),
     favorites: new Set(),
+    watched: new Set(),
+    watchlist: new Set(),
+    libraryByWork: new Map(),
+    notesByWork: new Map(),
+    homePlatform: "all",
     preferenceTags: new Map(),
     libraryVisible: 60,
     librarySeed: crypto.randomUUID?.() || String(Date.now()),
@@ -125,6 +145,80 @@
     return String(value ?? "").replace(/[&<>'"]/g, char => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
     })[char]);
+  }
+
+  function formatWorkCode(work) {
+    if (!work) return "";
+    if (work.platform === "nhentai") return `N-${work.work_id}`;
+    if (work.platform === "18comic") return `J-${work.work_id}`;
+    return String(work.work_id || "");
+  }
+
+  function displayTitleOf(work) {
+    return work?.display_title || work?.title || "未命名";
+  }
+
+  function displayAuthorOf(work) {
+    return work?.display_author || work?.author || "Unknown";
+  }
+
+  function publicTagsOf(work) {
+    const tags = Array.isArray(work?.public_tags) ? work.public_tags : [];
+    return tags.filter(Boolean);
+  }
+
+  function tagRowHtml(work, max = 3) {
+    const tags = publicTagsOf(work);
+    if (!tags.length && !work?.has_hidden_tags) return "";
+    const shown = tags.slice(0, max).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`);
+    const extraSafe = tags.length - max;
+    if (extraSafe > 0) shown.push(`<span class="tag">+${extraSafe}</span>`);
+    if (work?.has_hidden_tags) shown.push('<span class="tag tag-hidden" title="部分標籤已隱藏">🥑</span>');
+    return `<div class="tag-row">${shown.join("")}</div>`;
+  }
+
+  function projectMemberWork(row) {
+    if (!row) return null;
+    return {
+      id: row.id,
+      platform: row.platform,
+      work_id: row.work_id,
+      display_title: row.display_title,
+      display_author: row.display_author,
+      title: row.display_title,
+      author: row.display_author,
+      language: row.language,
+      public_tags: row.public_tags || [],
+      tags: row.public_tags || [],
+      has_hidden_tags: Boolean(row.has_hidden_tags),
+      created_at: row.created_at,
+      exposure_level: row.exposure_level || "STANDARD"
+    };
+  }
+
+  function parseWorkCode(raw) {
+    const text = String(raw || "").trim().toUpperCase().replace(/\s+/g, "");
+    const match = text.match(/^([NJ])-?(\d{1,12})$/);
+    if (!match) return null;
+    return { platform: match[1] === "N" ? "nhentai" : "18comic", work_id: match[2], code: `${match[1]}-${match[2]}` };
+  }
+
+  function sanitizeReviewBody(raw, { admin = false } = {}) {
+    const text = String(raw || "");
+    if (admin) return escapeHtml(text);
+    const stripped = text.replace(/https?:\/\/\S+/gi, "[外部連結已隱藏]")
+      .replace(/www\.\S+/gi, "[外部連結已隱藏]")
+      .replace(/discord\.gg\/\S+/gi, "[外部連結已隱藏]");
+    return escapeHtml(stripped);
+  }
+
+  function isOfficialGameUrl(url) {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, "");
+      return OFFICIAL_GAME_HOSTS.some(allowed => host === allowed || host.endsWith(`.${allowed}`));
+    } catch {
+      return false;
+    }
   }
 
   function debounce(fn, wait = 220) {
@@ -336,11 +430,11 @@
 
   function searchableFields(work) {
     return [
+      { value: formatWorkCode(work), weight: 140 },
       { value: work.work_id, weight: 120 },
-      { value: work.title, weight: 75 },
-      ...((work.title_alt || []).map(value => ({ value, weight: 55 }))),
-      { value: work.author, weight: 48 },
-      ...((work.tags || []).map(value => ({ value, weight: 34 }))),
+      { value: displayTitleOf(work), weight: 75 },
+      { value: displayAuthorOf(work), weight: 48 },
+      ...((work.public_tags || []).map(value => ({ value, weight: 34 }))),
     ].map(field => ({ ...field, normalized: normalize(field.value) })).filter(field => field.normalized);
   }
 
@@ -375,12 +469,19 @@
     return total + Math.max(0, rating + 5) + stableRandom(work.id) * .01;
   }
 
-  function imageUrl(url) {
-    if (!url) return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect fill="#171b2d" width="100%" height="100%"/><text fill="#737b96" x="50%" y="50%" text-anchor="middle" font-size="32">NO COVER</text></svg>'
+  function imageUrl(url, { kind = "game" } = {}) {
+    const placeholder = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect fill="#171b2d" width="100%" height="100%"/><text fill="#737b96" x="50%" y="50%" text-anchor="middle" font-size="28">NO COVER</text></svg>'
     );
-    if (url.includes("pximg.net")) return url.replace(/https?:\/\/i\.pximg\.net/, "https://i.pixiv.re");
-    return url;
+    if (kind === "work") return placeholder;
+    if (!url) return placeholder;
+    try {
+      const host = new URL(url, location.origin).hostname.replace(/^www\./, "");
+      if (GAME_IMAGE_HOSTS.some(allowed => host === allowed || host.endsWith(`.${allowed}`))) return url;
+    } catch {
+      return placeholder;
+    }
+    return placeholder;
   }
 
   function isApproved() { return state.profile?.status === "active"; }
@@ -801,10 +902,7 @@
   }
 
   function copyLineForWork(work) {
-    if (work.platform === "nhentai") return String(work.work_id || "");
-    const title = String(work.title || "").trim();
-    const url = String(work.source_url || "").trim();
-    return title && url ? `${title}\n${url}` : (title || url);
+    return formatWorkCode(work);
   }
 
   function passesWorkFilters(work, prefix = "home") {
@@ -855,7 +953,7 @@
   async function fetchAll(table, queryBuilder) {
     const rows = [];
     for (let offset = 0; ; offset += 1000) {
-      let query = supabase.from(table).select("*").range(offset, offset + 999);
+      let query = supabase.from(table).select(table === "member_works_safe" ? MEMBER_WORK_COLUMNS : "*").range(offset, offset + 999);
       query = queryBuilder ? queryBuilder(query) : query;
       const { data, error } = await query;
       if (error) throw error;
@@ -865,25 +963,215 @@
   }
 
   async function loadWorks() {
-    renderPlatformSkeletons();
-    state.sourceStats = await loadSourceStatus();
-    $("#home-summary").textContent = "同步狀態已更新，正在讀取可抽選作品…";
-    renderSourceStatus();
-
-    const activeWorks = await fetchAll("works", query => query.eq("status", "active"));
-    // Admins can read quarantined works, but browsing should match what
-    // members see; they stay reachable from the admin works tab.
-    state.works = dedupeWorks(activeWorks.filter(work => work.is_ai !== true && work.quarantined !== true));
+    const activeWorks = await fetchAll("member_works_safe");
+    state.works = dedupeWorks((activeWorks || []).map(projectMemberWork).filter(Boolean));
     state.workById = new Map(state.works.map(work => [work.id, work]));
-    if (!Object.values(state.sourceStats).some(stats => stats.total > 0 || stats.active > 0)) {
-      state.sourceStats = summarizeSourceStats(state.works);
+    const nCount = state.works.filter(w => w.platform === "nhentai").length;
+    const jCount = state.works.filter(w => w.platform === "18comic").length;
+    if ($("#home-summary")) {
+      $("#home-summary").textContent = `作品庫 ${state.works.length.toLocaleString()} 筆 STANDARD（N ${nCount.toLocaleString()} / J ${jCount.toLocaleString()}）`;
     }
-    const readySources = config.platforms.filter(platform => platformStats(platform).active > 0).length;
-    const workerNote = config.workerUrl
-      ? (state.workerStatus.available === false ? "（背景同步 API 暫時不可用，狀態改用作品庫估算）" : "")
-      : "（同步狀態依 Supabase 作品庫與紀錄顯示）";
-    $("#home-summary").textContent = `目前可抽選 ${state.works.length.toLocaleString()} 筆通過驗證的作品；${readySources} / ${config.platforms.length} 個來源已有 active 內容${workerNote}`;
-    renderSourceStatus();
+    renderHomeArchive();
+  }
+
+  function renderHomeArchive() {
+    const grid = $("#home-archive-grid");
+    if (!grid) return;
+    const query = $("#home-search")?.value || "";
+    const platform = state.homePlatform || "all";
+    let rows = state.works.filter(work =>
+      (platform === "all" || work.platform === platform) &&
+      (state.favorites.has(work.id) || state.watched.has(work.id) || state.watchlist.has(work.id) || workMatches(work, query))
+    );
+    if (!query && platform === "all") {
+      rows = state.works.filter(work => state.favorites.has(work.id) || state.watched.has(work.id) || state.watchlist.has(work.id));
+    } else {
+      rows = state.works.filter(work =>
+        (platform === "all" || work.platform === platform) &&
+        workMatches(work, query)
+      );
+    }
+    if ($("#home-summary") && isApproved()) {
+      $("#home-summary").textContent = rows.length
+        ? `我的資料庫 ${rows.length.toLocaleString()} 筆（收藏 ${state.favorites.size}／已看 ${state.watched.size}／待看 ${state.watchlist.size}）`
+        : "還沒有收藏或紀錄。先去作品庫或用編號搜尋。";
+    }
+    grid.innerHTML = rows.slice(0, 60).map(archiveTicketHtml).join("")
+      || `<div class="empty-state"><img class="landing-mentor" src="assets/yoru-mentor.png?v=2.0.0" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
+  }
+
+  function randomPool() {
+    const scope = $("#random-scope")?.value || "all";
+    const platform = $("#random-platform")?.value || "all";
+    const excludeWatched = $("#random-exclude-watched")?.checked;
+    const tag = normalize($("#random-tag")?.value || "");
+    return state.works.filter(work => {
+      if (platform !== "all" && work.platform !== platform) return false;
+      if (scope === "favorites" && !state.favorites.has(work.id)) return false;
+      if (scope === "watchlist" && !state.watchlist.has(work.id)) return false;
+      if (excludeWatched && state.watched.has(work.id)) return false;
+      if (tag && !publicTagsOf(work).some(item => normalize(item).includes(tag))) return false;
+      return work.exposure_level !== "RESTRICTED";
+    });
+  }
+
+  function drawRandom(count) {
+    const pool = randomPool();
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    state.bulkWorks = shuffled.slice(0, count);
+    if ($("#random-summary")) $("#random-summary").textContent = `從 ${pool.length.toLocaleString()} 筆 STANDARD 抽出 ${state.bulkWorks.length} 張`;
+    renderRandomResults(state.bulkWorks);
+    switchView("random");
+  }
+
+  function renderRandomResults(works) {
+    const grid = $("#random-grid");
+    if (!grid) return;
+    grid.innerHTML = (works || []).map(archiveTicketHtml).join("") || '<div class="empty-state">沒有符合條件的作品可抽</div>';
+  }
+
+  async function renderCollection() {
+    const grid = $("#collection-grid");
+    if (!grid) return;
+    const { data, error } = await supabase.rpc("get_my_archive");
+    if (error) {
+      grid.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+      return;
+    }
+    const filter = $("#collection-filter")?.value || "all";
+    let rows = (data || []).map(projectMemberWork).filter(Boolean);
+    const raw = data || [];
+    rows = raw.filter(row => {
+      if (filter === "favorites") return row.favorite;
+      if (filter === "watched") return row.watched;
+      if (filter === "watchlist") return row.watchlist;
+      if (filter === "rated") return row.my_rating != null;
+      return true;
+    }).map(row => {
+      const work = projectMemberWork(row);
+      if (row.favorite) state.favorites.add(work.id);
+      if (row.watched) state.watched.add(work.id);
+      if (row.watchlist) state.watchlist.add(work.id);
+      if (row.note_body) state.notesByWork.set(work.id, row.note_body);
+      state.workById.set(work.id, work);
+      return work;
+    });
+    if ($("#collection-summary")) $("#collection-summary").textContent = `${rows.length} 筆私人紀錄`;
+    grid.innerHTML = rows.map(archiveTicketHtml).join("") || '<div class="empty-state">還沒有收藏、已看或待看紀錄</div>';
+  }
+
+  async function renderDiscuss() {
+    const list = $("#discuss-list");
+    if (!list) return;
+    const { data, error } = await supabase.from("reviews").select("id,work_id,user_id,rating,body,created_at,parent_id").eq("status", "visible").is("parent_id", null).order("created_at", { ascending: false }).limit(40);
+    if (error) {
+      list.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+      return;
+    }
+    await loadProfilesForReviews(data || []);
+    list.innerHTML = (data || []).map(review => {
+      const work = state.workById.get(review.work_id);
+      if (!work || work.exposure_level === "RESTRICTED") return "";
+      return `<article class="discuss-item" data-open-work="${review.work_id}">
+        <p class="ranking-code">${escapeHtml(formatWorkCode(work))}</p>
+        <h3>${escapeHtml(displayTitleOf(work))}</h3>
+        <p>${escapeHtml(memberName(state.profiles.get(review.user_id)))} · ${review.rating > 0 ? "+" : ""}${review.rating}</p>
+        <p>${review.body ? sanitizeReviewBody(review.body) : "（僅評分）"}</p>
+      </article>`;
+    }).join("") || '<div class="empty-state">還沒有公開討論</div>';
+  }
+
+  function renderProfile() {
+    const panel = $("#profile-panel");
+    if (!panel || !state.profile) return;
+    const p = state.profile;
+    panel.innerHTML = `
+      <div class="privacy-card">
+        <h3>${escapeHtml(myDisplayName())}</h3>
+        <p class="muted">個人頁預設私人。公開項目需自行打開。</p>
+        <label class="check-inline"><input id="privacy-private" type="checkbox" ${p.profile_private !== false ? "checked" : ""}> 個人頁設為私人</label>
+        <label class="check-inline"><input id="privacy-stats" type="checkbox" ${p.show_stats ? "checked" : ""}> 公開統計</label>
+        <label class="check-inline"><input id="privacy-comments" type="checkbox" ${p.show_comments ? "checked" : ""}> 公開評論</label>
+        <label class="check-inline"><input id="privacy-library" type="checkbox" ${p.show_library ? "checked" : ""}> 公開收藏／已看</label>
+        <div class="detail-actions">
+          <button class="button button-primary" id="save-privacy">儲存隱私設定</button>
+          <button class="button button-secondary" id="all-private">全部設為私人</button>
+        </div>
+      </div>
+      <div class="privacy-card">
+        <p>收藏 ${state.favorites.size} · 已看 ${state.watched.size} · 待看 ${state.watchlist.size}</p>
+        <p><a class="button button-secondary" href="#feedback" data-view="feedback">意見與投稿</a></p>
+      </div>`;
+    $("#save-privacy")?.addEventListener("click", savePrivacy);
+    $("#all-private")?.addEventListener("click", async () => {
+      const { data, error } = await supabase.rpc("set_all_private");
+      if (error) return toast(error.message, "error");
+      if (data) state.profile = data;
+      renderProfile();
+      toast("已全部設為私人", "success");
+    });
+  }
+
+  async function savePrivacy() {
+    const makePrivate = $("#privacy-private")?.checked;
+    const { data, error } = await supabase.rpc("set_profile_privacy", {
+      make_private: makePrivate,
+      stats_public: $("#privacy-stats")?.checked,
+      comments_public: $("#privacy-comments")?.checked,
+      library_public: $("#privacy-library")?.checked
+    });
+    if (error) return toast(error.message, "error");
+    if (data) state.profile = data;
+    toast("隱私設定已儲存", "success");
+  }
+
+  async function renderRatingHistogram(workId) {
+    const node = $("#rating-histogram");
+    if (!node) return;
+    const { data, error } = await supabase.rpc("get_work_rating_histogram", { target_work: workId });
+    if (error) { node.innerHTML = ""; return; }
+    const counts = data || {};
+    const max = Math.max(1, ...Object.values(counts).map(Number));
+    node.innerHTML = Array.from({ length: 11 }, (_, i) => i - 5).map(score => {
+      const n = Number(counts[String(score)] || 0);
+      const pct = Math.round((n / max) * 100);
+      return `<div class="histogram-row"><span>${score > 0 ? "+" : ""}${score}</span><div class="histogram-bar"><i style="width:${pct}%"></i></div><span>${n}</span></div>`;
+    }).join("");
+  }
+
+  async function savePrivateNote() {
+    if (!state.currentWork || !await requireMember()) return;
+    const body = ($("#private-note")?.value || "").trim();
+    const { error } = await supabase.from("private_notes").upsert({
+      user_id: state.session.user.id,
+      work_id: state.currentWork.id,
+      body
+    });
+    if (error) return toast(error.message, "error");
+    state.notesByWork.set(state.currentWork.id, body);
+    toast("筆記已儲存", "success");
+  }
+
+  async function lookupExactCode(raw) {
+    const parsed = parseWorkCode(raw);
+    if (!parsed) return null;
+    const local = state.works.find(work => work.platform === parsed.platform && work.work_id === parsed.work_id);
+    if (local) return local;
+    const { data, error } = await supabase.rpc("lookup_work_by_code", { code: parsed.code });
+    if (error) { toast(error.message, "error"); return null; }
+    const row = Array.isArray(data) ? data[0] : data;
+    const work = projectMemberWork(row);
+    if (work) state.workById.set(work.id, work);
+    return work;
+  }
+
+  async function submitWorkIdOnly() {
+    if (!await requireMember()) return;
+    const platform = $("#submit-platform")?.value;
+    const workId = $("#submit-work-id")?.value;
+    const { data, error } = await supabase.rpc("submit_work_id", { platform, work_id: workId });
+    if (error) return toast(error.message, "error");
+    toast(data?.message || (data?.duplicate ? "這筆已經在資料庫." : "已送出"), data?.ok ? "success" : "warning");
   }
 
   async function loadSourceStatus() {
@@ -1057,9 +1345,9 @@
       return {
         work_id: workId,
         platform: work.platform,
-        title: work.title,
-        author: work.author,
-        cover_url: work.cover_url,
+        external_id: work.work_id,
+        title: displayTitleOf(work),
+        author: displayAuthorOf(work),
         review_count: stats.count,
         raw_average: rawAverage,
         weighted_score: weighted
@@ -1342,32 +1630,28 @@
     toast("作品已永久刪除", "success");
   }
 
-  function workCardHtml(work) {
-    if (state.cardSideByPlatform[work.platform] === "back") return workCardBackHtml(work.platform);
-    const tags = (work.tags || []).slice(0, 4).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
+  function archiveTicketHtml(work) {
+    const tags = tagRowHtml(work, 3);
+    const fav = state.favorites.has(work.id);
+    const watched = state.watched.has(work.id);
+    const watchlist = state.watchlist.has(work.id);
     return `
-      <article class="work-card" data-card="${escapeHtml(work.platform)}">
-        <span class="platform-badge">${escapeHtml(PLATFORM_LABELS[work.platform])}</span>
-        <div class="cover-wrap">
-          <a class="cover-link" href="${escapeHtml(work.source_url)}" target="_blank" rel="noopener noreferrer" data-source-open="${work.id}" aria-label="開啟 ${escapeHtml(work.title)} 來源">
-            <img class="work-card-cover" src="${escapeHtml(imageUrl(work.cover_url))}" alt="${escapeHtml(work.title)}" loading="lazy">
-          </a>
-          ${adminDeleteButtonHtml(work.id)}
-          ${favoriteButtonHtml(work.id)}
-        </div>
-        <div class="work-card-shade"></div>
-        <div class="work-card-body">
-          <h3>${escapeHtml(work.title)}</h3>
-          ${scoreBadgeHtml(work.id)}
-          <div class="work-card-meta">${escapeHtml(work.author)}<br>ID ${escapeHtml(work.work_id)}</div>
-          <div class="tag-row">${tags}</div>
-          <div class="card-actions">
-            <button class="button button-secondary" data-open-work="${work.id}">查看與評分</button>
-            <button class="button button-secondary" data-flip-card="${escapeHtml(work.platform)}">${escapeHtml(platformFlipLabel(work.platform))}</button>
-            <button class="button button-primary" data-refresh-platform="${escapeHtml(work.platform)}" aria-label="更新 ${escapeHtml(PLATFORM_LABELS[work.platform])}">↻</button>
-          </div>
+      <article class="archive-ticket" data-open-work="${work.id}">
+        <p class="work-code">${escapeHtml(formatWorkCode(work))}</p>
+        <h3>${escapeHtml(displayTitleOf(work))}</h3>
+        <p class="ticket-meta">${escapeHtml(displayAuthorOf(work))}${work.language ? ` · ${escapeHtml(work.language)}` : ""}</p>
+        ${scoreBadgeHtml(work.id, true)}
+        ${tags}
+        <div class="ticket-actions">
+          <button type="button" class="state-chip ${fav ? "active" : ""}" data-favorite="${work.id}">收藏</button>
+          <button type="button" class="state-chip ${watched ? "active" : ""}" data-watched="${work.id}">已看</button>
+          <button type="button" class="state-chip ${watchlist ? "active" : ""}" data-watchlist="${work.id}">待看</button>
         </div>
       </article>`;
+  }
+
+  function workCardHtml(work) {
+    return archiveTicketHtml(work);
   }
 
   function workCardBackHtml(platform) {
@@ -1380,7 +1664,7 @@
         <h3>${isNhentai ? "最近抽過的車號" : "最近抽過的作品"}</h3>
         <p class="muted">${isNhentai ? "刷新卡片會自動記錄；點車號可開詳情，一鍵可複製本張卡片背面的全部車號。" : "刷新卡片會自動記錄；點作品可開詳情，一鍵可複製標題與來源連結。"}</p>
         <div class="card-history-list">
-          ${works.map(work => `<button class="card-history-item" data-open-work="${work.id}"><strong>${escapeHtml(isNhentai ? work.work_id : work.title)}</strong><small>${escapeHtml(isNhentai ? work.title : work.source_url || work.work_id)}</small></button>`).join("") || '<p class="muted">這張卡片還沒有抽取紀錄。</p>'}
+          ${works.map(work => `<button class="card-history-item" data-open-work="${work.id}"><strong>${escapeHtml(formatWorkCode(work))}</strong><small>${escapeHtml(displayTitleOf(work))}</small></button>`).join("") || '<p class="muted">這張卡片還沒有抽取紀錄。</p>'}
         </div>
         <div class="card-actions">
           <button class="button button-secondary" data-copy-card-ids="${escapeHtml(platform)}">${escapeHtml(platformCopyLabel(platform))}</button>
@@ -1445,9 +1729,11 @@
     const scope = $("#library-scope")?.value || "all";
     let rows = state.works.filter(work =>
       (platform === "all" || work.platform === platform) &&
-      (scope !== "favorites" || state.favorites.has(work.id)) &&
-      workMatches(work, query) &&
-      passesWorkFilters(work, "library")
+      (scope === "all"
+        || (scope === "favorites" && state.favorites.has(work.id))
+        || (scope === "watched" && state.watched.has(work.id))
+        || (scope === "watchlist" && state.watchlist.has(work.id))) &&
+      workMatches(work, query)
     );
     if (scope === "favorites" && !state.session) {
       rows = [];
@@ -1464,20 +1750,7 @@
     $("#library-summary").textContent = scope === "favorites" && !state.session
       ? "請先登入後查看你的收藏"
       : librarySummaryText(works, query);
-    $("#library-grid").innerHTML = works.slice(0, state.libraryVisible).map(work => `
-      <article class="library-item">
-        <a class="cover-link" href="${escapeHtml(work.source_url)}" target="_blank" rel="noopener noreferrer" data-source-open="${work.id}" aria-label="開啟 ${escapeHtml(work.title)} 來源">
-          <img src="${escapeHtml(imageUrl(work.cover_url))}" alt="${escapeHtml(work.title)}" loading="lazy">
-        </a>
-        ${adminDeleteButtonHtml(work.id)}
-        ${favoriteButtonHtml(work.id)}
-        <div class="library-item-body">
-          <h3>${escapeHtml(work.title)}</h3>
-          <p>${escapeHtml(PLATFORM_LABELS[work.platform])} · ${escapeHtml(work.author)}</p>
-          ${scoreBadgeHtml(work.id, true)}
-          <button class="button button-secondary library-review-button" data-open-work="${work.id}">看評論與分數</button>
-        </div>
-      </article>`).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
+    $("#library-grid").innerHTML = works.slice(0, state.libraryVisible).map(archiveTicketHtml).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
     $("#library-more").classList.toggle("hidden", works.length <= state.libraryVisible);
   }
 
@@ -1486,22 +1759,7 @@
     const list = $("#bulk-draw-list");
     if (!panel || !list) return;
     panel.classList.toggle("hidden", !state.bulkWorks.length);
-    list.innerHTML = state.bulkWorks.map(work => `
-      <article class="bulk-draw-item">
-        <a class="cover-link" href="${escapeHtml(work.source_url)}" target="_blank" rel="noopener noreferrer" data-source-open="${work.id}" aria-label="開啟 ${escapeHtml(work.title)} 來源">
-          <img src="${escapeHtml(imageUrl(work.cover_url))}" alt="${escapeHtml(work.title)}" loading="lazy">
-        </a>
-        ${favoriteButtonHtml(work.id)}
-        <div class="bulk-draw-body">
-          <h3>${escapeHtml(work.title)}</h3>
-          <p>${escapeHtml(PLATFORM_LABELS[work.platform])} · ID ${escapeHtml(work.work_id)}</p>
-          ${scoreBadgeHtml(work.id, true)}
-          <div class="card-actions compact">
-            <button class="button button-secondary" data-open-work="${work.id}">查看與評分</button>
-            <button class="button button-secondary" data-copy-single="${work.id}">${escapeHtml(platformCopyLabel(work.platform))}</button>
-          </div>
-        </div>
-      </article>`).join("");
+    list.innerHTML = state.bulkWorks.map(archiveTicketHtml).join("");
   }
 
   async function copySingleWork(workId) {
@@ -1535,8 +1793,11 @@
     $("#ranking-list").innerHTML = rows.map((item, index) => `
       <article class="ranking-row" data-open-work="${item.work_id}">
         <div class="ranking-number">#${index + 1}</div>
-        <img src="${escapeHtml(imageUrl(item.cover_url))}" alt="" loading="lazy">
-        <div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(PLATFORM_LABELS[item.platform])} · ${escapeHtml(item.author)} · ${item.review_count} 則評分</p></div>
+        <div>
+          <p class="ranking-code">${escapeHtml(formatWorkCode({ platform: item.platform, work_id: item.external_id || item.work_id }))}</p>
+          <h3>${escapeHtml(item.title)}</h3>
+          <p>${escapeHtml(PLATFORM_LABELS[item.platform] || item.platform)} · ${escapeHtml(item.author || "")} · ${item.review_count} 則評分</p>
+        </div>
         ${rankingScoreHtml(item)}
       </article>`).join("") || `<div class="empty-state">${emptyHint}</div>`;
   }
@@ -1548,8 +1809,11 @@
     $("#ranking-list").innerHTML = rows.map((item, index) => `
       <article class="ranking-row" data-open-work="${item.work_id}">
         <div class="ranking-number">#${index + 1}</div>
-        <img src="${escapeHtml(imageUrl(item.cover_url))}" alt="" loading="lazy">
-        <div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(PLATFORM_LABELS[item.platform])} · ${escapeHtml(item.author)} · 本週 ${item.review_count} 則主評論</p></div>
+        <div>
+          <p class="ranking-code">${escapeHtml(formatWorkCode({ platform: item.platform, work_id: item.external_id || item.work_id }))}</p>
+          <h3>${escapeHtml(item.title)}</h3>
+          <p>${escapeHtml(PLATFORM_LABELS[item.platform] || item.platform)} · ${escapeHtml(item.author || "")} · 本週 ${item.review_count} 則主評論</p>
+        </div>
         ${rankingScoreHtml(item)}
       </article>`).join("") || '<div class="empty-state">本週還沒有新的主評論；週一 00:00（台北時間）起算的評分活動會出現在這裡。</div>';
   }
@@ -1648,7 +1912,7 @@
           state.profileReady = Boolean(data);
           if (!data) toast("正在建立會員資料，部分功能可能暫時不可用", "warning");
         }
-        const favoritesOk = await loadFavorites();
+        const favoritesOk = await loadLibraryStates();
         if (favoritesOk) await loadPreferences();
       } catch (error) {
         console.error("loadAuth failed", error);
@@ -1913,36 +2177,23 @@
   }
 
   function applyMemberGate() {
-    const gate = $("#member-gate");
-    if (!gate) return;
     const phase = memberGateState();
-    const blocked = phase !== "ok" && phase !== "loading";
-    document.body.classList.toggle("gated", blocked);
-    const message = $("#member-gate-message");
-    const windowNote = $("#member-gate-window");
-    const loginButton = $("#member-gate-login");
-    const recheckButton = $("#member-gate-recheck");
-    const logoutButton = $("#member-gate-logout");
-
-    if (blocked) {
-      if (phase === "anon") {
-        if (message) message.textContent = "本站所有內容都要先登入、並經站長審核通過後才看得到。";
-        if (windowNote) windowNote.textContent = autoApproveWindowText();
-      } else if (phase === "suspended") {
-        if (message) message.textContent = "這個帳號已被停權，無法瀏覽內容。如有誤會請聯絡站長。";
-        if (windowNote) windowNote.textContent = "";
-      } else {
-        if (message) message.textContent = "帳號已建立，正在等待站長審核。通過後重新整理就能看到全部內容。";
-        if (windowNote) windowNote.textContent = state.autoApprove.open
-          ? `${autoApproveWindowText()}若剛好卡在名額邊界，可按下方重新檢查。`
-          : autoApproveWindowText();
-      }
-      loginButton?.classList.toggle("hidden", phase !== "anon");
-      recheckButton?.classList.toggle("hidden", phase !== "pending");
-      logoutButton?.classList.toggle("hidden", phase === "anon");
-      openModal("member-gate");
-    } else {
-      closeModal("member-gate");
+    const blocked = phase !== "ok";
+    document.body.classList.toggle("gated", blocked && phase !== "loading");
+    const status = $("#landing-status");
+    if (phase === "loading") {
+      if (status) status.textContent = "正在確認登入狀態…";
+    } else if (phase === "anon") {
+      if (status) status.textContent = "登入並通過站長審核後，才能進入你的資料庫。";
+    } else if (phase === "suspended") {
+      if (status) status.textContent = "這個帳號已被停權。";
+    } else if (phase === "pending") {
+      if (status) status.textContent = "帳號已建立，正在等待站長手動審核。通過後重新整理即可進入。";
+    } else if (status) {
+      status.textContent = "";
+    }
+    if (!blocked && phase === "ok") {
+      $("#view-landing")?.classList.remove("active");
     }
   }
 
@@ -1961,22 +2212,18 @@
     if (!isApproved() || state.contentLoaded) return;
     state.contentLoaded = true;
     try {
-      renderPlatformSkeletons();
-      await Promise.all([loadWorks(), loadLeaderboardData(), loadFavoriteCounts()]);
+      await Promise.all([loadWorks(), loadLeaderboardData(), loadFavoriteCounts(), loadLibraryStates()]);
       await loadWeeklyLeaderboardData();
-      drawAll();
+      renderHomeArchive();
       renderLibrary(true);
       renderLeaderboard();
       const loc = parseLocationHash();
-      switchView(loc.view || readRememberedView());
-      if (loc.workId && state.workById.has(loc.workId)) {
-        await openWork(loc.workId, { reviewId: loc.reviewId });
-      }
+      switchView(loc.view || "home");
+      if (loc.workId) await openWork(loc.workId, { reviewId: loc.reviewId });
     } catch (error) {
       state.contentLoaded = false;
       console.error("content load failed", error);
-      $("#home-summary").textContent = "資料載入失敗，請稍後重試。";
-      renderPlatformError();
+      if ($("#home-summary")) $("#home-summary").textContent = "資料載入失敗，請稍後重試。";
       toast(`資料載入失敗：${error.message || error}`, "error");
     }
   }
@@ -2009,6 +2256,28 @@
     return true;
   }
 
+  async function loadLibraryStates() {
+    if (!state.session || !isApproved()) return false;
+    const { data, error } = await supabase.from("library_states").select("work_id,favorite,watched,watchlist,watched_at");
+    if (error) {
+      console.warn("library_states read failed, falling back to favorites", error);
+      return loadFavorites();
+    }
+    state.libraryByWork = new Map();
+    state.favorites = new Set();
+    state.watched = new Set();
+    state.watchlist = new Set();
+    for (const row of data || []) {
+      state.libraryByWork.set(row.work_id, row);
+      if (row.favorite) state.favorites.add(row.work_id);
+      if (row.watched) state.watched.add(row.work_id);
+      if (row.watchlist) state.watchlist.add(row.work_id);
+    }
+    const favFallback = await supabase.from("favorites").select("work_id").eq("user_id", state.session.user.id);
+    for (const row of favFallback.data || []) state.favorites.add(row.work_id);
+    return true;
+  }
+
   async function loadFavorites() {
     if (!state.session) return false;
     const { data, error } = await supabase.from("favorites").select("work_id").eq("user_id", state.session.user.id);
@@ -2018,6 +2287,32 @@
     }
     state.favorites = new Set((data || []).map(item => item.work_id));
     return true;
+  }
+
+  async function setLibraryFlag(workId, flag) {
+    if (!await requireMember()) return;
+    const current = state.libraryByWork.get(workId) || { favorite: state.favorites.has(workId), watched: state.watched.has(workId), watchlist: state.watchlist.has(workId) };
+    const next = {
+      set_favorite: flag === "favorite" ? !current.favorite : current.favorite,
+      set_watched: flag === "watched" ? !current.watched : current.watched,
+      set_watchlist: flag === "watchlist" ? !current.watchlist : current.watchlist
+    };
+    const { data, error } = await supabase.rpc("upsert_library_state", {
+      target_work: workId,
+      set_favorite: next.set_favorite,
+      set_watched: next.set_watched,
+      set_watchlist: next.set_watchlist
+    });
+    if (error) return toast(error.message, "error");
+    const row = data || next;
+    state.libraryByWork.set(workId, { work_id: workId, favorite: row.favorite, watched: row.watched, watchlist: row.watchlist, watched_at: row.watched_at });
+    if (row.favorite) state.favorites.add(workId); else state.favorites.delete(workId);
+    if (row.watched) state.watched.add(workId); else state.watched.delete(workId);
+    if (row.watchlist) state.watchlist.add(workId); else state.watchlist.delete(workId);
+    renderHomeArchive();
+    if ($("#view-library")?.classList.contains("active")) renderLibrary();
+    if ($("#view-collection")?.classList.contains("active")) renderCollection();
+    if (state.currentWork?.id === workId) await openWork(workId);
   }
 
   async function loadPreferences() {
@@ -2041,22 +2336,7 @@
   }
 
   async function toggleFavorite(workId) {
-    if (!await requireMember()) return;
-    if (state.favorites.has(workId)) {
-      const { error } = await supabase.from("favorites").delete().eq("user_id", state.session.user.id).eq("work_id", workId);
-      if (error) return toast(error.message, "error");
-      state.favorites.delete(workId);
-      toast("已取消收藏");
-    } else {
-      const { error } = await supabase.from("favorites").insert({ user_id: state.session.user.id, work_id: workId });
-      if (error) return toast(error.message, "error");
-      state.favorites.add(workId);
-      toast("已加入收藏", "success");
-    }
-    updateFavoriteButtons(workId);
-    await loadPreferences();
-    if ($("#view-library").classList.contains("active")) renderLibrary();
-    renderBulkDraw();
+    return setLibraryFlag(workId, "favorite");
   }
 
   function updateFavoriteButtons(workId) {
@@ -2077,25 +2357,33 @@
   }
 
   async function openWork(workId, { reviewId = null } = {}) {
-    const work = state.workById.get(workId);
+    let work = state.workById.get(workId);
+    if (!work) {
+      const { data } = await supabase.rpc("lookup_work_by_code", { code: String(workId) });
+      work = projectMemberWork(Array.isArray(data) ? data[0] : data);
+      if (work) state.workById.set(work.id, work);
+    }
     if (!work) return;
     state.currentWork = work;
-    const tags = (work.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
+    const mine = state.libraryByWork.get(work.id) || {};
     $("#detail-content").innerHTML = `
       <div class="detail-hero">
-        <a class="cover-link" href="${escapeHtml(work.source_url)}" target="_blank" rel="noopener noreferrer" data-source-open="${work.id}" aria-label="開啟 ${escapeHtml(work.title)} 來源">
-          <img class="detail-cover" src="${escapeHtml(imageUrl(work.cover_url))}" alt="${escapeHtml(work.title)}">
-        </a>
         <div class="detail-info">
-          <p class="eyebrow">${escapeHtml(PLATFORM_LABELS[work.platform])} · ID ${escapeHtml(work.work_id)}</p>
-          <h2 id="detail-title">${escapeHtml(work.title)}</h2>
-          <p>${escapeHtml(work.author)}${work.publisher ? ` · ${escapeHtml(work.publisher)}` : ""}</p>
-          <div class="tag-row">${tags || '<span class="muted">尚無標籤</span>'}</div>
+          <p class="work-code" id="detail-title">${escapeHtml(formatWorkCode(work))}</p>
+          <h2>${escapeHtml(displayTitleOf(work))}</h2>
+          <p>${escapeHtml(displayAuthorOf(work))}${work.language ? ` · ${escapeHtml(work.language)}` : ""} · ${escapeHtml(work.exposure_level === "RESTRICTED" ? "僅自己的資料庫" : "STANDARD")}</p>
+          ${tagRowHtml(work, 5)}
+          ${scoreBadgeHtml(work.id)}
+          <div id="rating-histogram" class="histogram"></div>
           <div class="detail-actions">
-            <a class="button button-primary" href="${escapeHtml(work.source_url)}" target="_blank" rel="noopener noreferrer">前往來源 ↗</a>
-            ${favoriteButtonHtml(work.id, true)}
-            <button class="button button-secondary" data-similar="${work.id}">推薦相似</button>
+            <button type="button" class="button button-secondary ${state.favorites.has(work.id) ? "active" : ""}" data-favorite="${work.id}">${state.favorites.has(work.id) ? "已收藏" : "收藏"}</button>
+            <button type="button" class="button button-secondary ${state.watched.has(work.id) ? "active" : ""}" data-watched="${work.id}">${state.watched.has(work.id) ? "已看" : "標為已看"}</button>
+            <button type="button" class="button button-secondary ${state.watchlist.has(work.id) ? "active" : ""}" data-watchlist="${work.id}">${state.watchlist.has(work.id) ? "在待看" : "加入待看"}</button>
           </div>
+          <label>私人筆記（僅自己可見，純文字 500 字）
+            <textarea id="private-note" class="note-box" maxlength="500" placeholder="不寫網址、HTML 或 Markdown">${escapeHtml(state.notesByWork.get(work.id) || mine.note_body || "")}</textarea>
+          </label>
+          <button type="button" class="button button-secondary" id="save-private-note">儲存筆記</button>
         </div>
       </div>
       <div class="review-area">
@@ -2106,6 +2394,8 @@
     openModal("detail-modal");
     recordView(work.id);
     await renderReviews(work.id);
+    await renderRatingHistogram(work.id);
+    $("#save-private-note")?.addEventListener("click", savePrivateNote);
     scrollToReview(reviewId);
   }
 
@@ -2207,7 +2497,9 @@
       const stats = voteStats.get(review.id) || { up: 0, down: 0, mine: 0 };
       const canDelete = reviewDeletable(review);
       const canEdit = reviewEditable(review);
-      const bodyHtml = review.body ? `<p>${escapeHtml(review.body)}</p>` : '<p class="muted">（僅評分，無文字評論）</p>';
+      const bodyHtml = review.body
+        ? `<p>${sanitizeReviewBody(review.body, { admin: isAdmin() })}</p>`
+        : '<p class="muted">（僅評分，無文字評論）</p>';
       return `<article class="review" data-review="${review.id}">
         ${adminVoteHint(review.id, stats)}
         <div class="review-header"><strong>${escapeHtml(memberName(profile))}${profile?.role === "admin" ? " · ADMIN" : ""}</strong>${review.rating === null ? "" : `<span>${review.rating > 0 ? "+" : ""}${review.rating}</span>`}</div>
@@ -2230,16 +2522,17 @@
     if (!await requireMember() || !state.currentWork) return;
     const body = ($("#review-body")?.value || "").trim();
     if (body.length > 500) return toast("評論最多 500 字", "warning");
-    const { data: existing } = await supabase.from("reviews").select("id").eq("work_id", state.currentWork.id).eq("user_id", state.session.user.id).is("parent_id", null).maybeSingle();
-    const request = existing
-      ? supabase.from("reviews").update({ body, rating: state.currentRating }).eq("id", existing.id)
-      : supabase.from("reviews").insert({ work_id: state.currentWork.id, user_id: state.session.user.id, body, rating: state.currentRating });
-    const { error } = await request;
+    const { error } = await supabase.rpc("submit_work_review", {
+      target_work: state.currentWork.id,
+      rating: state.currentRating,
+      body: body || null,
+      parent_id: null
+    });
     if (error) {
-      const dup = /duplicate key|unique|one_root_per_user/i.test(error.message);
-      return toast(dup ? "你已經評分過這件作品了" : error.message, "error");
+      toast(error.message, "error");
+      return;
     }
-    toast(existing ? "評分已更新" : "評分已送出", "success");
+    toast("評分已送出", "success");
     await renderReviews(state.currentWork.id);
     await loadLeaderboardData();
     await loadPreferences();
@@ -2249,7 +2542,12 @@
     if (!await requireMember() || !state.currentWork) return;
     const body = $(`#reply-body-${parentId}`)?.value.trim();
     if (!body || body.length > 300) return toast("回覆需為 1～300 字", "warning");
-    const { error } = await supabase.from("reviews").insert({ work_id: state.currentWork.id, user_id: state.session.user.id, parent_id: parentId, body, rating: null });
+    const { error } = await supabase.rpc("submit_work_review", {
+      target_work: state.currentWork.id,
+      rating: null,
+      body,
+      parent_id: parentId
+    });
     if (error) return toast(error.message, "error");
     await renderReviews(state.currentWork.id);
   }
@@ -2622,8 +2920,8 @@
       metaBits.push(`<span>演出：${escapeHtml(GAME_CG_TYPE_LABELS[game.cg_type] || game.cg_type)}</span>`);
     }
     if (game.release_date) metaBits.push(`<span>發售：${escapeHtml(String(game.release_date).slice(0, 10))}</span>`);
-    const sourceLink = game.source_url
-      ? `<p class="game-source-link"><a href="${escapeHtml(game.source_url)}" target="_blank" rel="noopener noreferrer">來源頁面</a></p>`
+    const sourceLink = game.source_url && isOfficialGameUrl(game.source_url)
+      ? `<p class="game-source-link"><a href="${escapeHtml(game.source_url)}" target="_blank" rel="noopener noreferrer">官方頁面</a></p>`
       : "";
     const labelTags = mergeGameLabelTags(game.tags, game.genres);
     const labelRow = labelTags.length
@@ -2834,7 +3132,7 @@
           ${genres ? `<small class="muted">${escapeHtml(genres)}</small>` : ""}
           <div class="game-autofill-card-actions">
             <button type="button" class="button button-primary button-compact" data-autofill-apply="${index}">${applyLabel}</button>
-            ${item.source_url ? `<a class="button button-secondary button-compact" href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer">開來源</a>` : ""}
+            ${item.source_url && isOfficialGameUrl(item.source_url) ? `<a class="button button-secondary button-compact" href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer">開官方頁</a>` : ""}
           </div>
         </div>
       </article>`;
@@ -3348,9 +3646,7 @@
       users = users.slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
       const degradedNotice = degraded ? '<div class="empty-state warning">尚未套用 0005 migration（admin_list_users），暫時只顯示 profiles；套用後即可看到信箱與最近登入時間。</div>' : "";
       const windowPanel = `<div class="job-controls">
-        <p class="muted small-note">${escapeHtml(autoApproveWindowText())}</p>
-        <button class="button button-primary" data-auto-approve-hours="6" data-auto-approve-limit="500">開放 6 小時（限 500 人）</button>
-        <button class="button button-secondary" data-auto-approve-hours="0">立即關閉開放</button>
+        <p class="muted small-note">自動通過已關閉。新會員一律待審，請手動通過。</p>
         <button class="button button-secondary" data-approve-all-pending>一鍵通過全部待審</button>
       </div>`;
       content.innerHTML = degradedNotice + windowPanel + (users.map(profile => {
@@ -3369,6 +3665,20 @@
         </div>
         <p id="admin-work-summary" class="muted"></p><div id="admin-work-list"></div>`;
       renderAdminWorks();
+    } else if (tab === "tags") {
+      const { data, error } = await supabase.from("tag_review_queue").select("tag_norm,tag_raw,hit_count,status,created_at").eq("status", "pending").order("hit_count", { ascending: false }).limit(200);
+      if (error) {
+        content.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+        return;
+      }
+      content.innerHTML = (data || []).map(row => `<div class="admin-row"><div><h4>${escapeHtml(row.tag_raw)}</h4><p>出現 ${row.hit_count} 次</p></div><div class="admin-actions"><button class="button button-primary" data-tag-allow="${escapeHtml(row.tag_norm)}">ALLOW</button><button class="button button-danger" data-tag-hide="${escapeHtml(row.tag_norm)}">HIDE</button></div></div>`).join("") || '<div class="empty-state">沒有待審標籤</div>';
+    } else if (tab === "submissions") {
+      const { data, error } = await supabase.from("pending_work_submissions").select("id,platform,work_id,status,created_at,user_id").order("created_at", { ascending: false }).limit(200);
+      if (error) {
+        content.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+        return;
+      }
+      content.innerHTML = (data || []).map(row => `<div class="admin-row"><div><h4>${row.platform === "nhentai" ? "N" : "J"}-${escapeHtml(row.work_id)}</h4><p>${escapeHtml(row.status)} · ${new Date(row.created_at).toLocaleString("zh-TW")}</p></div></div>`).join("") || '<div class="empty-state">沒有投稿</div>';
     } else if (tab === "reports") {
       let reports = [];
       let loadNote = "";
@@ -3455,7 +3765,7 @@
       const quarantineButton = work.quarantined
         ? `<button class="button button-secondary" data-quarantine-work="${work.id}" data-hide="false">解除隔離</button>`
         : `<button class="button button-secondary" data-quarantine-work="${work.id}" data-hide="true">隔離</button>`;
-      return `<div class="admin-row with-thumb"><img class="admin-work-thumb" src="${escapeHtml(imageUrl(work.cover_url))}" alt=""><div><h4>${escapeHtml(work.title)}</h4><p>${escapeHtml(work.platform)} · ${escapeHtml(work.work_id)} · ${escapeHtml(work.status)}</p>${quarantineBadge}</div><div class="admin-actions"><button class="button button-secondary" data-edit-work="${work.id}">編輯</button><button class="button button-secondary" data-toggle-work="${work.id}" data-status="${work.status === "active" ? "inactive" : "active"}">${work.status === "active" ? "標記失效" : "恢復"}</button>${quarantineButton}</div></div>`;
+      return `<div class="admin-row"><div><h4>${escapeHtml(formatWorkCode(work))} · ${escapeHtml(work.title)}</h4><p>${escapeHtml(work.platform)} · ${escapeHtml(work.exposure_level || "")} · ${escapeHtml(work.status)}${isAdmin() ? ` · 原文：${escapeHtml(work.title)}` : ""}</p>${quarantineBadge}</div><div class="admin-actions"><button class="button button-secondary" data-edit-work="${work.id}">編輯</button><button class="button button-secondary" data-toggle-work="${work.id}" data-status="${work.status === "active" ? "inactive" : "active"}">${work.status === "active" ? "標記失效" : "恢復"}</button>${quarantineButton}</div></div>`;
     }).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
   }
 
@@ -3603,8 +3913,9 @@
   }
 
   function switchView(view) {
-    const allowed = new Set(["home", "library", "leaderboard", "games", "feedback", "admin"]);
-    if (!allowed.has(view)) view = "home";
+    const allowed = new Set(["home", "random", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin", "landing"]);
+    if (!isApproved() && view !== "landing") view = "landing";
+    if (!allowed.has(view)) view = isApproved() ? "home" : "landing";
     if (view === "admin") {
       if (!state.session) {
         toast("請先登入才能進入管理後台", "warning");
@@ -3617,16 +3928,21 @@
         view = "home";
       }
     }
-    if (location.hash.slice(1) !== view) {
+    if (location.hash.slice(1) !== view && view !== "landing") {
       history.replaceState(null, "", `#${view}`);
     }
-    rememberView(view);
+    rememberView(view === "landing" ? "home" : view);
     $$(".view").forEach(section => section.classList.toggle("active", section.id === `view-${view}`));
     $$("[data-view]").forEach(link => link.classList.toggle("active", link.dataset.view === view));
-    $("#main-nav").classList.remove("open");
+    $("#main-nav")?.classList.remove("open");
+    if (view === "home") renderHomeArchive();
+    if (view === "random") renderRandomResults(state.bulkWorks);
     if (view === "library") renderLibrary(true);
     if (view === "leaderboard") renderLeaderboard();
+    if (view === "collection") renderCollection();
     if (view === "games") loadGames();
+    if (view === "discuss") renderDiscuss();
+    if (view === "profile") renderProfile();
     if (view === "feedback") loadFeedbackThreads();
     if (view === "admin") loadAdmin(state.adminTab || "users");
   }
@@ -3681,9 +3997,7 @@
     $("#age-leave")?.addEventListener("click", () => { location.href = "https://www.google.com/"; });
     if (localStorage.getItem("acg_age_confirmed") === "1") closeModal("age-gate");
     bindClick("#login-button", login);
-    bindClick("#member-gate-login", login);
-    bindClick("#member-gate-logout", logout);
-    bindClick("#member-gate-recheck", event => withBusyButton(event.currentTarget, "檢查中…", recheckApproval));
+    bindClick("#landing-login", login);
     bindClick("#logout-button", logout);
     bindClick("#clear-auth-button", clearAuthStorage);
     bindClick("#auth-clear-storage-button", clearAuthStorage);
@@ -3703,20 +4017,31 @@
       switchView(view);
       toggleMobileMenu(false);
     }));
-    bindClick("#draw-all-button", drawAll);
-    bindClick("#draw-five-button", () => drawBatch(5));
-    bindClick("#draw-ten-button", () => drawBatch(10));
-    bindClick("#reset-draw-history-button", () => resetDrawHistory());
-    bindClick("#clear-bulk-button", () => { state.bulkWorks = []; renderBulkDraw(); });
-    $("#home-search")?.addEventListener("input", debounce(drawAll));
-    $("#home-filter-scope")?.addEventListener("change", () => {
-      if ($("#home-filter-scope").value === "favorites" && !state.session) {
-        toast("請先登入後才可抽「我的收藏」", "warning");
-        login();
+    bindClick("#draw-one-button", () => drawRandom(1));
+    bindClick("#draw-five-button", () => drawRandom(5));
+    bindClick("#draw-ten-button", () => drawRandom(10));
+    bindClick("#random-one", () => drawRandom(1));
+    bindClick("#random-five", () => drawRandom(5));
+    bindClick("#random-ten", () => drawRandom(10));
+    bindClick("#submit-work-send", submitWorkIdOnly);
+    $$("[data-home-platform]").forEach(btn => btn.addEventListener("click", () => {
+      state.homePlatform = btn.dataset.homePlatform;
+      $$("[data-home-platform]").forEach(node => node.classList.toggle("active", node === btn));
+      renderHomeArchive();
+    }));
+    $("#home-search")?.addEventListener("input", debounce(async () => {
+      const q = $("#home-search").value;
+      const parsed = parseWorkCode(q);
+      if (parsed) {
+        const work = await lookupExactCode(q);
+        if (work) {
+          await openWork(work.id);
+          return;
+        }
       }
-      drawAll();
-    });
-    $("#home-filter-week")?.addEventListener("change", drawAll);
+      renderHomeArchive();
+    }));
+    $("#collection-filter")?.addEventListener("change", renderCollection);
     $("#library-platform")?.addEventListener("change", () => renderLibrary(true));
     $("#library-scope")?.addEventListener("change", () => renderLibrary(true));
     $("#library-sort")?.addEventListener("change", () => renderLibrary(true));
@@ -3792,7 +4117,9 @@
       if (target.dataset.copySingle) copySingleWork(target.dataset.copySingle);
       if (target.dataset.sourceOpen) recordView(target.dataset.sourceOpen, "source");
       if (target.dataset.openWork) openWork(target.dataset.openWork);
-      if (target.dataset.favorite) toggleFavorite(target.dataset.favorite);
+      if (target.dataset.favorite) { event.stopPropagation(); toggleFavorite(target.dataset.favorite); }
+      if (target.dataset.watched) { event.stopPropagation(); setLibraryFlag(target.dataset.watched, "watched"); }
+      if (target.dataset.watchlist) { event.stopPropagation(); setLibraryFlag(target.dataset.watchlist, "watchlist"); }
       if (target.dataset.similar) recommendSimilar(target.dataset.similar);
       if (target.dataset.rating !== undefined) { state.currentRating = Number(target.dataset.rating); $$("[data-rating]").forEach(button => button.classList.toggle("selected", Number(button.dataset.rating) === state.currentRating)); }
       if (target.dataset.reply) { if (!await requireMember()) return; $(`#reply-${target.dataset.reply}`).innerHTML = `<form data-reply-form="${target.dataset.reply}" class="review-form"><textarea id="reply-body-${target.dataset.reply}" maxlength="300" required placeholder="回覆（最多 300 字）…"></textarea><button class="button button-primary">送出回覆</button></form>`; }
@@ -3804,7 +4131,16 @@
       if (target.dataset.editGame) { const { data } = await supabase.from("games").select("*").eq("id", target.dataset.editGame).single(); await gameEditor(data); }
       if (target.dataset.deleteGame) deleteGame(target.dataset.deleteGame);
       if (target.dataset.deleteGameComment) deleteGameComment(target.dataset.deleteGameComment, target.dataset.gameId);
-      if (target.dataset.adminTab) loadAdmin(target.dataset.adminTab);
+      if (target.dataset.tagAllow) {
+        const { error } = await supabase.rpc("admin_set_tag_decision", { tag_norm: target.dataset.tagAllow, decision: "allow" });
+        toast(error ? error.message : "已允許此標籤", error ? "error" : "success");
+        if (!error) loadAdmin("tags");
+      }
+      if (target.dataset.tagHide) {
+        const { error } = await supabase.rpc("admin_set_tag_decision", { tag_norm: target.dataset.tagHide, decision: "hide" });
+        toast(error ? error.message : "已隱藏此標籤", error ? "error" : "success");
+        if (!error) loadAdmin("tags");
+      }
       if (target.dataset.rescanQuarantine !== undefined) {
         await withBusyButton(target, "掃描中…", async () => {
           const { data, error } = await supabase.rpc("rescan_work_quarantine");
