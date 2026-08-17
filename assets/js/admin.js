@@ -2264,6 +2264,35 @@
           .replace(/"/g, "&quot;");
   }
 
+  function isAboutMarkdownKey(key) {
+    return key === "about.body" || key === "about.heading";
+  }
+
+  function normalizePreviewMarkdown(raw) {
+    if (typeof window.LYZNormalizeSiteCopyMarkdown === "function") {
+      return window.LYZNormalizeSiteCopyMarkdown(raw);
+    }
+    var text = String(raw == null ? "" : raw).replace(/\r\n/g, "\n");
+    text = text.replace(/^\n+/, "").replace(/\n+$/, "");
+    var lines = text.split("\n");
+    var nonEmpty = lines.filter(function (l) { return l.trim().length; });
+    if (nonEmpty.length) {
+      var indents = nonEmpty.map(function (l) {
+        var m = l.match(/^[ \t]+/);
+        return m ? m[0].length : 0;
+      });
+      var min = Math.min.apply(null, indents);
+      if (min > 0) {
+        lines = lines.map(function (l) {
+          if (!l.trim()) return "";
+          return l.slice(min);
+        });
+        text = lines.join("\n");
+      }
+    }
+    return text;
+  }
+
   function updateSectionPreview() {
     var preview = $("sec-preview");
     var ta = $("sec-value");
@@ -2272,14 +2301,85 @@
     var val = ta.value || "";
     if (!val.trim()) {
       preview.innerHTML = '<span class="muted">（使用 fallback／空白）</span>';
+      preview.className = "sec-preview";
       return;
     }
     if (meta.mode === "markdown" && window.SB && typeof window.SB.renderMarkdown === "function") {
-      preview.innerHTML = window.SB.renderMarkdown(val);
-      preview.className = "sec-preview markdown-body";
+      var html = window.SB.renderMarkdown(normalizePreviewMarkdown(val));
+      // Accidental indented code → plain breaks (same guard as public site copy)
+      if (html.indexOf("<pre>") >= 0 && String(val).indexOf("```") < 0) {
+        html = escapeHtml(normalizePreviewMarkdown(val)).replace(/\n/g, "<br />");
+      }
+      preview.innerHTML = html;
+      if (isAboutMarkdownKey(activeSectionKey)) {
+        preview.className =
+          "sec-preview about-markdown" +
+          (activeSectionKey === "about.heading" ? " about-markdown--intro" : "");
+      } else {
+        preview.className = "sec-preview markdown-body";
+      }
+    } else if (meta.mode === "multiline") {
+      preview.innerHTML = escapeHtml(val).replace(/\n/g, "<br />");
+      preview.className = "sec-preview";
     } else {
       preview.innerHTML = escapeHtml(val).replace(/\n/g, "<br />");
       preview.className = "sec-preview";
+    }
+  }
+
+  function wrapSecMarkdown(prefix, suffix, placeholder) {
+    var ta = $("sec-value");
+    if (!ta) return;
+    var start = ta.selectionStart || 0;
+    var end = ta.selectionEnd || 0;
+    var value = ta.value || "";
+    var selected = value.slice(start, end) || placeholder || "";
+    var next = value.slice(0, start) + prefix + selected + suffix + value.slice(end);
+    ta.value = next;
+    var cursor = start + prefix.length + selected.length;
+    ta.focus();
+    ta.setSelectionRange(start + prefix.length, cursor);
+    sectionDirty = true;
+    updateSectionPreview();
+  }
+
+  function applySecMarkdownAction(action) {
+    var ta = $("sec-value");
+    if (!ta) return;
+    if (action === "bold") return wrapSecMarkdown("**", "**", "粗體");
+    if (action === "italic") return wrapSecMarkdown("*", "*", "斜體");
+    if (action === "h2") return wrapSecMarkdown("\n## ", "\n", "小標");
+    if (action === "h3") return wrapSecMarkdown("\n### ", "\n", "次標");
+    if (action === "ul") {
+      var start = ta.selectionStart || 0;
+      var end = ta.selectionEnd || 0;
+      var chunk = (ta.value || "").slice(start, end) || "項目";
+      var listed = chunk
+        .split(/\n/)
+        .map(function (line) {
+          var t = line.replace(/^\s*[-*]\s+/, "").trim();
+          return t ? "- " + t : "- ";
+        })
+        .join("\n");
+      ta.setRangeText(listed, start, end, "end");
+      sectionDirty = true;
+      updateSectionPreview();
+      return;
+    }
+    if (action === "quote") return wrapSecMarkdown("\n> ", "\n", "引用一句話");
+    if (action === "link") return wrapSecMarkdown("[", "](https://)", "連結文字");
+    if (action === "hr") return wrapSecMarkdown("\n\n---\n\n", "", "");
+    if (action === "code") return wrapSecMarkdown("`", "`", "code");
+  }
+
+  function syncSecMarkdownChrome(key) {
+    var meta = sectionMeta(key || "");
+    var toolbar = $("sec-md-toolbar");
+    var help = $("sec-md-help");
+    var show = meta.mode === "markdown";
+    if (toolbar) toolbar.classList.toggle("hidden", !show);
+    if (help) {
+      help.classList.toggle("hidden", !show || !isAboutMarkdownKey(key));
     }
   }
 
@@ -2379,6 +2479,7 @@
     }
     sectionDirty = false;
     renderSectionsNav();
+    syncSecMarkdownChrome(key);
     updateSectionPreview();
   }
 
@@ -2580,6 +2681,13 @@
       $("sec-value").addEventListener("input", function () {
         sectionDirty = true;
         updateSectionPreview();
+      });
+    }
+    if ($("sec-md-toolbar")) {
+      $("sec-md-toolbar").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-md]");
+        if (!btn) return;
+        applySecMarkdownAction(btn.getAttribute("data-md"));
       });
     }
 

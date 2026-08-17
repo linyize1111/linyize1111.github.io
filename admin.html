@@ -1,4 +1,4 @@
-﻿<!DOCTYPE HTML>
+<!DOCTYPE HTML>
 <html lang="zh-Hant">
 
 <head>
@@ -24,7 +24,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;900&display=swap">
-    <link rel="stylesheet" href="assets/css/admin.css?v=v9.1-layout-recovery-1" />
+    <link rel="stylesheet" href="assets/css/admin.css?v=v9.2-about-markdown-1" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9.2-about-markdown-1" />
 </head>
 
 <body class="admin">
@@ -489,7 +490,7 @@
                                     <iframe
                                         id="frontend-preview-frame"
                                         title="前台預覽"
-                                        src="admin-preview.html?v=v9.1-layout-recovery-1"
+                                        src="admin-preview.html?v=v9.2-about-markdown-1"
                                         sandbox="allow-scripts allow-same-origin"
                                     ></iframe>
                                 </div>
@@ -536,7 +537,31 @@
                         </div>
                         <div class="field full">
                             <label for="sec-value">文案</label>
+                            <div id="sec-md-toolbar" class="sec-md-toolbar hidden" role="toolbar" aria-label="Markdown 工具列">
+                                <button type="button" class="sec-md-btn" data-md="bold" title="粗體 **文字**"><b>B</b></button>
+                                <button type="button" class="sec-md-btn" data-md="italic" title="斜體 *文字*"><i>I</i></button>
+                                <button type="button" class="sec-md-btn" data-md="h2" title="小標 ##">H2</button>
+                                <button type="button" class="sec-md-btn" data-md="h3" title="次標 ###">H3</button>
+                                <button type="button" class="sec-md-btn" data-md="ul" title="清單 -">• 清單</button>
+                                <button type="button" class="sec-md-btn" data-md="quote" title="引用 >">❝</button>
+                                <button type="button" class="sec-md-btn" data-md="link" title="連結 [文字](url)">連結</button>
+                                <button type="button" class="sec-md-btn" data-md="hr" title="分隔線 ---">—</button>
+                                <button type="button" class="sec-md-btn" data-md="code" title="行內碼 `code`">`code`</button>
+                            </div>
                             <textarea id="sec-value" rows="14" placeholder="網站內容…" spellcheck="true"></textarea>
+                            <details id="sec-md-help" class="sec-md-help hidden">
+                                <summary>About Markdown 可用語法</summary>
+                                <ul>
+                                    <li><code>**粗體**</code>　<code>*斜體*</code></li>
+                                    <li><code>## 小標</code>　<code>### 次標</code>（不會變全大寫）</li>
+                                    <li><code>- 清單項目</code></li>
+                                    <li><code>&gt; 引用一句話</code></li>
+                                    <li><code>[連結文字](https://…)</code></li>
+                                    <li><code>---</code> 輕量分隔線</li>
+                                    <li><code>`INTP`</code> 輕量行內碼</li>
+                                    <li>請勿整段空白縮排（會被誤判成 code block）</li>
+                                </ul>
+                            </details>
                         </div>
                         <div class="sec-preview-wrap">
                             <div class="pane-label">站上大致會長這樣</div>
@@ -583,17 +608,17 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 
     <script src="assets/js/supabase-config.js"></script>
-    <script src="assets/js/supabase-client.js?v=v9.1-layout-recovery-1"></script>
+    <script src="assets/js/supabase-client.js?v=v9.2-about-markdown-1"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/site-copy-schema.js?v=v9.1-layout-recovery-1"></script>
-    <script src="assets/js/site-sections.js?v=v9.1-layout-recovery-1"></script>
-    <script src="assets/js/presentation-registry.js?v=v9.1-layout-recovery-1"></script>
-    <script src="assets/js/article-media.js?v=v9.1-layout-recovery-1"></script>
-    <script src="assets/js/article-renderer.js?v=v9.1-layout-recovery-1"></script>
+    <script src="assets/js/site-copy-schema.js?v=v9.2-about-markdown-1"></script>
+    <script src="assets/js/site-sections.js?v=v9.2-about-markdown-1"></script>
+    <script src="assets/js/presentation-registry.js?v=v9.2-about-markdown-1"></script>
+    <script src="assets/js/article-media.js?v=v9.2-about-markdown-1"></script>
+    <script src="assets/js/article-renderer.js?v=v9.2-about-markdown-1"></script>
     <script src="assets/js/ai-editorial-schema.js?v=semantic-card-1"></script>
     <script src="assets/js/ai-editorial-client.js?v=ai-v3-1"></script>
-    <script src="assets/js/preview-fixture.js?v=v9.1-layout-recovery-1"></script>
-    <script src="assets/js/admin.js?v=v9.1-layout-recovery-1"></script>
+    <script src="assets/js/preview-fixture.js?v=v9.2-about-markdown-1"></script>
+    <script src="assets/js/admin.js?v=v9.2-about-markdown-1"></script>
 </body>
 
 </html>

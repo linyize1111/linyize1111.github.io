@@ -3187,31 +3187,184 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   text-align: left;
   opacity: 0.95;
 }
-.about-profile__quote pre,
-.about-profile__quote code {
-  all: unset;
-  display: block;
-  white-space: pre-wrap;
-  font: inherit;
-  background: transparent;
-  color: inherit;
-}
 .about-profile__body {
   text-align: left;
-  font-size: 1.0625rem;
-  line-height: 1.85;
 }
-.about-profile__body p {
-  margin: 0 0 1.1em;
+
+/* ========== V9.2 About Markdown scope (NOT article / HTML5 UP .markdown-body) ========== */
+.about-markdown {
+  --about-accent: #18bfef;
+  --about-link: #18bfef;
+  --about-text-muted: rgba(20, 24, 36, 0.72);
+  --about-code-bg: rgba(20, 24, 36, 0.06);
+  --about-heading: #141824;
+  color: inherit;
   text-align: left;
 }
-.about-profile__body pre {
-  background: transparent !important;
-  padding: 0 !important;
-  border: 0 !important;
-  white-space: pre-wrap;
-  font: inherit !important;
+[data-theme="dark"] .about-markdown,
+[data-theme="glass"] .about-markdown {
+  --about-text-muted: rgba(232, 236, 244, 0.72);
+  --about-code-bg: rgba(255, 255, 255, 0.08);
+  --about-heading: #f3f6fb;
 }
+.about-markdown p {
+  margin: 0 0 1.15em;
+  max-width: none;
+  text-align: left;
+  font-size: 1.03rem;
+  line-height: 1.9;
+}
+.about-markdown strong,
+.about-markdown b {
+  font-weight: 700;
+  color: var(--about-heading);
+}
+.about-markdown em,
+.about-markdown i {
+  font-style: italic;
+  opacity: 0.9;
+}
+.about-markdown h2,
+.about-markdown h3,
+.about-markdown h4 {
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  text-align: left;
+  color: var(--about-heading);
+  font-weight: 700;
+  line-height: 1.35;
+}
+.about-markdown h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: clamp(1.35rem, 2vw, 1.65rem);
+  margin: 2.2em 0 0.75em;
+}
+.about-markdown h2::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.12;
+  min-width: 2rem;
+}
+.about-markdown h3 {
+  font-size: 1.15rem;
+  margin: 1.8em 0 0.65em;
+}
+.about-markdown ul {
+  list-style: disc !important;
+  padding-left: 1.35rem;
+  margin: 0.8rem 0 1.4rem;
+}
+.about-markdown ol {
+  list-style: decimal !important;
+  padding-left: 1.45rem;
+  margin: 0.8rem 0 1.4rem;
+}
+.about-markdown li {
+  margin: 0.3em 0;
+  line-height: 1.75;
+  text-align: left;
+}
+.about-markdown li::before {
+  content: none !important;
+}
+.about-markdown blockquote {
+  margin: 1.5rem 0;
+  padding: 0.45rem 0 0.45rem 1rem;
+  border-left: 2px solid var(--about-accent);
+  background: transparent !important;
+  font-style: italic;
+  color: var(--about-text-muted);
+  opacity: 1;
+}
+.about-markdown blockquote p {
+  margin: 0 0 0.55em;
+  font-size: inherit;
+  line-height: 1.8;
+}
+.about-markdown blockquote p:last-child {
+  margin-bottom: 0;
+}
+.about-markdown a {
+  color: var(--about-link);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(24, 191, 239, 0.35);
+  box-shadow: none !important;
+  background: none !important;
+}
+.about-markdown a:hover {
+  color: #3dcef8;
+  border-bottom-color: rgba(61, 206, 248, 0.7);
+}
+.about-markdown hr {
+  width: 100%;
+  margin: 2rem 0;
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(20, 24, 36, 0.25),
+    transparent
+  );
+}
+[data-theme="dark"] .about-markdown hr,
+[data-theme="glass"] .about-markdown hr {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+}
+.about-markdown code {
+  padding: 0.08em 0.32em;
+  border-radius: 5px;
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--about-code-bg) !important;
+  color: inherit;
+  border: 0;
+  white-space: pre-wrap;
+}
+.about-markdown pre {
+  margin: 1.25rem 0;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: var(--about-code-bg) !important;
+  border: 1px solid rgba(20, 24, 36, 0.08);
+  overflow-x: auto;
+  white-space: pre;
+  font: inherit;
+}
+.about-markdown pre code {
+  padding: 0;
+  background: transparent !important;
+  font-size: 0.88em;
+  white-space: pre;
+}
+/* Intro / quote: keep poem-like, no giant h2 divider */
+.about-markdown--intro {
+  font-size: clamp(1.15rem, 2.2vw, 1.45rem);
+  font-weight: 600;
+  line-height: 1.65;
+}
+.about-markdown--intro p {
+  margin: 0 0 0.35em;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: inherit;
+}
+.about-markdown--intro p:last-child {
+  margin-bottom: 0;
+}
+.about-markdown--intro h2::after {
+  display: none;
+}
+
 .about-profile__media {
   margin: 0;
   width: min(100%, 460px);

@@ -773,6 +773,50 @@ body.admin.editor-open { overflow: hidden; }
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
   font-size: 0.95rem; line-height: 1.7;
 }
+.sec-md-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.35rem 0 0.55rem;
+}
+.sec-md-toolbar.hidden { display: none; }
+.sec-md-btn {
+  appearance: none;
+  border: 1px solid var(--a-border);
+  background: rgba(255,255,255,0.05);
+  color: inherit;
+  border-radius: 8px;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.sec-md-btn:hover {
+  border-color: rgba(24, 191, 239, 0.45);
+  background: rgba(24, 191, 239, 0.1);
+}
+.sec-md-help {
+  margin: 0.55rem 0 0;
+  font-size: 0.86rem;
+  color: var(--a-muted);
+}
+.sec-md-help.hidden { display: none; }
+.sec-md-help summary {
+  cursor: pointer;
+  color: inherit;
+  margin-bottom: 0.35rem;
+}
+.sec-md-help ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+  line-height: 1.65;
+}
+.sec-md-help code {
+  font-size: 0.84em;
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+}
 .sec-preview-wrap {
   margin-top: 1rem;
   border: 1px solid var(--a-border);
@@ -783,6 +827,17 @@ body.admin.editor-open { overflow: hidden; }
 .sec-preview {
   padding: 1rem 1.15rem 1.35rem;
   line-height: 1.75; font-size: 1rem; min-height: 4rem;
+}
+/* About-scoped preview should feel like the public profile, not github-markdown */
+.sec-preview.about-markdown {
+  background: rgba(255, 255, 255, 0.03);
+  max-width: 42rem;
+}
+.sec-preview.about-markdown--intro {
+  font-size: 1.2rem;
+  border-left: 2px solid #18bfef;
+  padding-left: 1rem;
+  margin: 0.5rem 1rem 1rem;
 }
 .sec-preview:empty::before {
   content: "預覽會顯示在這裡…";

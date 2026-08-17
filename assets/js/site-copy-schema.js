@@ -356,9 +356,9 @@
       page: "about",
       group: "介紹",
       label: "關於我 · 引言標題",
-      description: "關於我頁引言／詩句標題（支援 Markdown）",
-      mode: "multiline",
-      fallback: "月季花四季盛放\n說起來，落花時節就是花開時節呢。",
+      description: "關於我頁引言／詩句（Markdown）。常用換行、斜體；避免整段縮排以免變成 code block。",
+      mode: "markdown",
+      fallback: "月季花四季盛放\n\n說起來，落花時節就是花開時節呢。",
       pageUrl: "about.html"
     },
     {
@@ -366,7 +366,8 @@
       page: "about",
       group: "介紹",
       label: "關於我 · 內文",
-      description: "關於我頁自我介紹正文（支援 Markdown）",
+      description:
+        "關於我自我介紹（Markdown）。可用 **粗體**、*斜體*、## 小標、- 清單、> 引用、[連結](url)、---`。縮排請勿整段空格。",
       mode: "markdown",
       fallback:
         "**您好，我是林佾則。**目前就讀於國立中山大學資訊工程學系。\n\n" +
