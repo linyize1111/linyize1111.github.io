@@ -607,7 +607,15 @@ body.gated .site-header { position: static; }
 .copy-code-btn { width: 34px; height: 34px; border: 1px solid rgba(115,87,255,.28); border-radius: 10px; color: #d9d0ff; background: rgba(115,87,255,.12); font-size: 14px; }
 .copy-code-btn:hover { border-color: rgba(115,87,255,.55); background: rgba(115,87,255,.22); }
 .tag-chip { cursor: pointer; border: 1px solid rgba(115,87,255,.18); background: rgba(115,87,255,.08); color: #ddd6ff; font: inherit; }
-.tag-copyable:hover { border-color: rgba(115,87,255,.45); background: rgba(115,87,255,.16); }
+.tag-chip:hover { border-color: rgba(115,87,255,.45); background: rgba(115,87,255,.16); }
+.tag-static {
+  cursor: default;
+  pointer-events: none;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: #c5c9d8;
+  font: inherit;
+}
 .tag-overflow, .tag-hidden-note {
   cursor: default;
   border: 1px solid rgba(255,255,255,.12);

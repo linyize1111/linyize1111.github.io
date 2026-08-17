@@ -16,8 +16,10 @@
     }
   });
 
-  const APP_VERSION = "2.1.0-rc1";
-  const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,has_hidden_tags,created_at,exposure_level";
+  const APP_VERSION = "2.1.0-rc2";
+  const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class";
+  const MEMBER_WORKS_VIEW = "member_works_v21";
+  const SENSITIVE_TAG_MESSAGE = "此標籤僅作作品 metadata 顯示，不提供分類探索。";
   const GAME_IMAGE_HOSTS = [
     "cdn.akamai.steamstatic.com",
     "shared.akamai.steamstatic.com",
@@ -39,7 +41,6 @@
   const DRAW_HISTORY_KEY = "acg_draw_history_v1";
 
   const PLATFORM_LABELS = { nhentai: "N", "18comic": "JM", hanime: "動畫", pixiv: "插畫" };
-  const FORBIDDEN_DISPLAY_TAGS = new Set(["皮炎", "內蛇", "鄭太", "強鹼", "口膠", "🥑"]);
   const RATING_LABELS = {
     "-5": "超雷", "-4": "很差", "-3": "偏弱", "-2": "不太好", "-1": "略差",
     "0": "普通", "1": "還行", "2": "不錯", "3": "好看", "4": "很棒", "5": "神作"
@@ -167,23 +168,42 @@
     return PLATFORM_LABELS[platform] || platform || "";
   }
 
-  function isForbiddenDisplayTag(tag) {
-    return FORBIDDEN_DISPLAY_TAGS.has(String(tag || "").trim());
-  }
-
   function sanitizePublicTags(tags) {
     const input = Array.isArray(tags) ? tags : [];
     const out = [];
     const seen = new Set();
     for (const raw of input) {
       const tag = String(raw || "").trim();
-      if (!tag || isForbiddenDisplayTag(tag)) continue;
+      if (!tag) continue;
       const key = normalize(tag);
       if (!key || seen.has(key)) continue;
       out.push(tag);
       seen.add(key);
     }
     return out;
+  }
+
+  function displayTagItems(work) {
+    const seen = new Set();
+    const items = [];
+    for (const tag of sanitizePublicTags(work?.public_tags)) {
+      const key = normalize(tag);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      items.push({ name: tag, interactive: true });
+    }
+    for (const tag of sanitizePublicTags(work?.static_tags)) {
+      const key = normalize(tag);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      items.push({ name: tag, interactive: false });
+    }
+    return items;
+  }
+
+  function isDiscoveryRestricted(work) {
+    const policy = String(work?.policy_class || "");
+    return policy === "MINOR_DIRECT" || policy === "MINOR_EXPLICIT_TITLE";
   }
 
   function validateMemberText(raw, { field = "內容" } = {}) {
@@ -198,16 +218,11 @@
     if (/(download|magnet|torrent|how to (find|get|download)|怎麼[拿找下]|下載|獲取方式|上车|上車|種子|磁力)/i.test(text)) {
       return `${field}不可包含取得／下載方式。`;
     }
-    if (/(\+?\d{2,4}[-\s]?\d{3,4}[-\s]?\d{3,4}|line\s*id|wechat|telegram\s*@|whatsapp|discord\s*tag|@[a-z0-9_]{5,})/i.test(text)) {
+    if (/(\+?\d{2,4}[-\s]?\d{3,4}[-\s]?\d{3,4}|line\s*id|wechat|telegram\s*@|whatsapp|discord\s*tag)/i.test(text)) {
       return `${field}不可包含聯絡方式或個資。`;
     }
-    const graphic = [
-      /\b(loli|lolicon|shota|shotacon|toddler|preteen|underage|bestiality|zoophilia|necrophilia|snuff|guro|rape|gangbang|netorare)\b/i,
-      /(ロリ|ショタ|蘿莉|萝莉|正太|獸姦|獣姦|輪姦|強姦|中出|口交|肛交|触手|調教|凌辱)/,
-      /\b(penis|vagina|anal|ahegao|nakadashi|creampie|cumshot|fellatio|cunnilingus|paizuri|futanari|tentacle|bondage|bdsm|scat)\b/i
-    ];
-    if (graphic.some(re => re.test(text))) {
-      return `${field}不可包含露骨性描述或違規詞彙。`;
+    if (/<[^>]+>|iframe|javascript:/i.test(text)) {
+      return `${field}不可包含 HTML 或嵌入內容。`;
     }
     return null;
   }
@@ -235,17 +250,21 @@
     return tags.filter(Boolean);
   }
 
-  function tagChipHtml(tag) {
-    return `<button type="button" class="tag tag-chip tag-copyable" data-copy-tag="${escapeHtml(tag)}" title="點擊複製標籤">${escapeHtml(tag)}<span class="tag-copy-icon" aria-hidden="true">⧉</span></button>`;
+  function tagChipHtml(tag, { interactive = true } = {}) {
+    if (!interactive) {
+      return `<span class="tag tag-static" title="僅作 metadata 顯示">${escapeHtml(tag)}</span>`;
+    }
+    return `<button type="button" class="tag tag-chip" data-search-tag="${escapeHtml(tag)}" title="以此標籤探索">${escapeHtml(tag)}</button>`;
   }
 
   function tagRowHtml(work, { max = 3, expand = false } = {}) {
-    const tags = sanitizePublicTags(publicTagsOf(work));
+    const items = displayTagItems(work);
     const hidden = Boolean(work?.has_hidden_tags);
-    if (!tags.length && !hidden) return "";
-    const shown = expand ? tags : tags.slice(0, max);
-    const overflow = expand ? 0 : Math.max(0, tags.length - shown.length);
-    const chips = shown.map(tagChipHtml);
+    const hiddenTitle = Boolean(work?.has_hidden_title);
+    if (!items.length && !hidden && !hiddenTitle) return "";
+    const shown = expand ? items : items.slice(0, max);
+    const overflow = expand ? 0 : Math.max(0, items.length - shown.length);
+    const chips = shown.map(item => tagChipHtml(item.name, { interactive: item.interactive }));
     if (overflow) {
       chips.push(`<span class="tag tag-overflow" title="還有 ${overflow} 個標籤">+${overflow}</span>`);
     }
@@ -267,10 +286,12 @@
       author: row.display_author,
       language: row.language,
       public_tags: row.public_tags || [],
+      static_tags: row.static_tags || [],
       tags: row.public_tags || [],
       has_hidden_tags: Boolean(row.has_hidden_tags),
+      has_hidden_title: Boolean(row.has_hidden_title),
       created_at: row.created_at,
-      exposure_level: row.exposure_level || "STANDARD"
+      policy_class: row.policy_class || "NONE"
     };
   }
 
@@ -1094,7 +1115,7 @@
   async function fetchAll(table, queryBuilder) {
     const rows = [];
     for (let offset = 0; ; offset += 1000) {
-      let query = supabase.from(table).select(table === "member_works_safe" ? MEMBER_WORK_COLUMNS : "*").range(offset, offset + 999);
+      let query = supabase.from(table).select(table === MEMBER_WORKS_VIEW || table === "member_works_safe" ? MEMBER_WORK_COLUMNS : "*").range(offset, offset + 999);
       query = queryBuilder ? queryBuilder(query) : query;
       const { data, error } = await query;
       if (error) throw error;
@@ -1104,13 +1125,13 @@
   }
 
   async function loadWorks() {
-    const activeWorks = await fetchAll("member_works_safe");
+    const activeWorks = await fetchAll(MEMBER_WORKS_VIEW);
     state.works = dedupeWorks((activeWorks || []).map(projectMemberWork).filter(Boolean));
     state.workById = new Map(state.works.map(work => [work.id, work]));
     const nCount = state.works.filter(w => w.platform === "nhentai").length;
     const jCount = state.works.filter(w => w.platform === "18comic").length;
     if ($("#home-summary")) {
-      $("#home-summary").textContent = `作品庫 ${state.works.length.toLocaleString()} 筆 STANDARD（N ${nCount.toLocaleString()} / JM ${jCount.toLocaleString()}）`;
+      $("#home-summary").textContent = `作品庫 ${state.works.length.toLocaleString()} 筆 MEMBER ARCHIVE（N ${nCount.toLocaleString()} / JM ${jCount.toLocaleString()}）`;
     }
     renderHomeArchive();
   }
@@ -1141,7 +1162,7 @@
         : "還沒有收藏或紀錄。先去作品庫或用編號搜尋。";
     }
     grid.innerHTML = rows.slice(0, 60).map(archiveTicketHtml).join("")
-      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor.png?v=2.1.0-rc1" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
+      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor.png?v=2.1.0-rc2" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
   }
 
   function randomPool() {
@@ -1155,7 +1176,8 @@
       if (scope === "watchlist" && !state.watchlist.has(work.id)) return false;
       if (excludeWatched && state.watched.has(work.id)) return false;
       if (tag && !sanitizePublicTags(publicTagsOf(work)).some(item => normalize(item).includes(tag))) return false;
-      return work.exposure_level !== "RESTRICTED";
+      if (scope === "favorites" || scope === "watchlist") return true;
+      return !isDiscoveryRestricted(work);
     });
   }
 
@@ -1170,7 +1192,7 @@
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     state.bulkWorks = shuffled.slice(0, count);
     state.homeShowingRandom = true;
-    if ($("#home-summary")) $("#home-summary").textContent = `從 ${pool.length.toLocaleString()} 筆 STANDARD 抽出 ${state.bulkWorks.length} 張`;
+    if ($("#home-summary")) $("#home-summary").textContent = `從 ${pool.length.toLocaleString()} 筆 Archive 抽出 ${state.bulkWorks.length} 張`;
     renderHomeRandomResults(state.bulkWorks);
     switchView("home");
   }
@@ -1216,7 +1238,7 @@
     await loadProfilesForReviews(data || []);
     list.innerHTML = (data || []).map(review => {
       const work = state.workById.get(review.work_id);
-      if (!work || work.exposure_level === "RESTRICTED") return "";
+      if (!work || isDiscoveryRestricted(work)) return "";
       return `<article class="discuss-item" data-open-work="${review.work_id}">
         <p class="ranking-code">${escapeHtml(formatWorkCode(work))}</p>
         <h3>${escapeHtml(displayTitleOf(work))}</h3>
@@ -1596,7 +1618,7 @@
       : 0;
     state.weeklyLeaderboard = [...grouped.entries()].map(([workId, stats]) => {
       const work = state.workById.get(workId);
-      if (!work) return null;
+      if (!work || isDiscoveryRestricted(work)) return null;
       const rawAverage = stats.count ? stats.sum / stats.count : 0;
       const weighted = (stats.count / (stats.count + 4)) * rawAverage + (4 / (stats.count + 4)) * globalAverage;
       return {
@@ -1983,6 +2005,11 @@
     return `${works.length.toLocaleString()} 筆符合條件；排序：${sortLabels[mode] || sortLabels.default}`;
   }
 
+  function isSensitiveDiscoveryError(error) {
+    const text = `${error?.message || ""} ${error?.hint || ""} ${error?.details || ""}`;
+    return /SENSITIVE_TAG_DISCOVERY_DISABLED/.test(text) || text.includes(SENSITIVE_TAG_MESSAGE);
+  }
+
   async function runHomeSmartSearch(query) {
     const q = String(query || "").trim();
     if (!q) {
@@ -2001,6 +2028,11 @@
       for (const work of rows) state.workById.set(work.id, work);
       state.homeSearchIds = rows.map(work => work.id);
     } catch (error) {
+      if (isSensitiveDiscoveryError(error)) {
+        state.homeSearchIds = [];
+        toast(SENSITIVE_TAG_MESSAGE, "warning");
+        return;
+      }
       console.warn("search_works_smart unavailable; falling back to client filter", error);
       state.homeSearchIds = null;
     }
@@ -2025,6 +2057,11 @@
       for (const work of rows) state.workById.set(work.id, work);
       state.librarySearchIds = rows.map(work => work.id);
     } catch (error) {
+      if (isSensitiveDiscoveryError(error)) {
+        state.librarySearchIds = [];
+        toast(SENSITIVE_TAG_MESSAGE, "warning");
+        return;
+      }
       console.warn("search_works_smart unavailable; falling back to client filter", error);
       state.librarySearchIds = null;
     } finally {
@@ -2687,7 +2724,7 @@
         <div class="detail-info">
           <p class="work-code" id="detail-title">${escapeHtml(formatWorkCode(work))}</p>
           <h2>${escapeHtml(displayTitleOf(work))}</h2>
-          <p>${escapeHtml(displayAuthorOf(work))}${work.language ? ` · ${escapeHtml(work.language)}` : ""} · ${escapeHtml(work.exposure_level === "RESTRICTED" ? "僅自己的資料庫" : "STANDARD")}</p>
+          <p>${escapeHtml(displayAuthorOf(work))}${work.language ? ` · ${escapeHtml(work.language)}` : ""}</p>
           ${tagRowHtml(work, { expand: true })}
           ${scoreBadgeHtml(work.id)}
           <div id="rating-histogram" class="rating-dist-panel"></div>
@@ -4476,6 +4513,16 @@
       if (target.dataset.copyCode) {
         event.stopPropagation();
         copySingleWork(target.dataset.copyCode);
+      }
+      if (target.dataset.searchTag) {
+        event.stopPropagation();
+        const tag = target.dataset.searchTag;
+        location.hash = "library";
+        switchView("library");
+        if ($("#library-search")) $("#library-search").value = tag;
+        await runLibrarySmartSearch(tag);
+        renderLibrary(true);
+        return;
       }
       if (target.dataset.copyTag) {
         event.stopPropagation();
