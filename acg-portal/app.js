@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "2.0.2";
+  const APP_VERSION = "2.0.3";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,has_hidden_tags,created_at,exposure_level";
   const GAME_IMAGE_HOSTS = [
     "cdn.akamai.steamstatic.com",
@@ -38,7 +38,12 @@
   const EDIT_WINDOW_MS = 30 * 60 * 1000;
   const DRAW_HISTORY_KEY = "acg_draw_history_v1";
 
-  const PLATFORM_LABELS = { nhentai: "Nhentai", "18comic": "禁漫", hanime: "Hanime", pixiv: "Pixiv" };
+  const PLATFORM_LABELS = { nhentai: "N", "18comic": "JM", hanime: "動畫", pixiv: "插畫" };
+  const LOLO_TAG_PATTERN = /\b(loli|lolicon|lolita|toddler|toddlercon|preteen|underage)\b|ロリ|蘿莉|萝莉|幼女|幼児|児童|童女|小学生|小學生/i;
+  const RATING_LABELS = {
+    "-5": "超雷", "-4": "很差", "-3": "偏弱", "-2": "不太好", "-1": "略差",
+    "0": "普通", "1": "還行", "2": "不錯", "3": "好看", "4": "很棒", "5": "神作"
+  };
   /**
    * 遊戲評鑑分項 v2：1–10 或 N/A；總分＝非 null 等權平均。
    * 氛圍＝音樂／UI／節奏沉浸；動態＝動圖／動畫品質。見 docs/GAME-REVIEW-SCORING.md
@@ -150,8 +155,71 @@
   function formatWorkCode(work) {
     if (!work) return "";
     if (work.platform === "nhentai") return `N-${work.work_id}`;
-    if (work.platform === "18comic") return `J-${work.work_id}`;
+    if (work.platform === "18comic") return `JM-${work.work_id}`;
     return String(work.work_id || "");
+  }
+
+  function platformLabel(platform) {
+    return PLATFORM_LABELS[platform] || platform || "";
+  }
+
+  function isLoliTag(tag) {
+    return LOLO_TAG_PATTERN.test(String(tag || ""));
+  }
+
+  function sanitizePublicTags(tags) {
+    const input = Array.isArray(tags) ? tags : [];
+    const out = [];
+    let hasAvocado = false;
+    for (const raw of input) {
+      const tag = String(raw || "").trim();
+      if (!tag) continue;
+      if (tag === "🥑" || isLoliTag(tag)) {
+        if (!hasAvocado) {
+          out.push("🥑");
+          hasAvocado = true;
+        }
+        continue;
+      }
+      out.push(tag);
+    }
+    return out;
+  }
+
+  function validateMemberText(raw, { field = "內容" } = {}) {
+    const text = String(raw || "").trim();
+    if (!text) return null;
+    if (/https?:\/\/|www\.|discord\.gg|t\.me\/|magnet:|ftp:\/\/|hxxps?:\/\//i.test(text)) {
+      return `${field}不可包含網址或外部連結。`;
+    }
+    if (/magnet:|torrent|\.torrent|ed2k:|bt:\/\/|mega\.(?:nz|co)|mediafire|gdrive|google drive|onedrive|dropbox|pan\.baidu/i.test(text)) {
+      return `${field}不可包含下載、磁力或雲端連結。`;
+    }
+    if (/(download|magnet|torrent|how to (find|get|download)|怎麼[拿找下]|下載|獲取方式|上车|上車|種子|磁力)/i.test(text)) {
+      return `${field}不可包含取得／下載方式。`;
+    }
+    if (/(\+?\d{2,4}[-\s]?\d{3,4}[-\s]?\d{3,4}|line\s*id|wechat|telegram\s*@|whatsapp|discord\s*tag|@[a-z0-9_]{5,})/i.test(text)) {
+      return `${field}不可包含聯絡方式或個資。`;
+    }
+    const graphic = [
+      /\b(loli|lolicon|shota|shotacon|toddler|preteen|underage|bestiality|zoophilia|necrophilia|snuff|guro|rape|gangbang|netorare)\b/i,
+      /(ロリ|ショタ|蘿莉|萝莉|正太|獸姦|獣姦|輪姦|強姦|中出|口交|肛交|触手|調教|凌辱)/,
+      /\b(penis|vagina|anal|ahegao|nakadashi|creampie|cumshot|fellatio|cunnilingus|paizuri|futanari|tentacle|bondage|bdsm|scat)\b/i
+    ];
+    if (graphic.some(re => re.test(text))) {
+      return `${field}不可包含露骨性描述或違規詞彙。`;
+    }
+    return null;
+  }
+
+  async function copyText(text, successMessage) {
+    if (!text) return toast("沒有可複製的內容", "warning");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(successMessage || "已複製", "success");
+    } catch {
+      toast("複製失敗，請手動選取", "error");
+    }
   }
 
   function displayTitleOf(work) {
@@ -167,13 +235,15 @@
     return tags.filter(Boolean);
   }
 
-  function tagRowHtml(work, max = 3) {
-    const tags = publicTagsOf(work);
-    if (!tags.length && !work?.has_hidden_tags) return "";
-    const shown = tags.slice(0, max).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`);
-    const extraSafe = tags.length - max;
-    if (extraSafe > 0) shown.push(`<span class="tag">+${extraSafe}</span>`);
-    if (work?.has_hidden_tags) shown.push('<span class="tag tag-hidden" title="部分標籤已隱藏">🥑</span>');
+  function tagRowHtml(work, min = 3, max = 5) {
+    const tags = sanitizePublicTags(publicTagsOf(work)).slice(0, max);
+    if (!tags.length) return "";
+    const shown = tags.map(tag => {
+      const copyable = tag !== "🥑";
+      const copyAttr = copyable ? ` data-copy-tag="${escapeHtml(tag)}"` : "";
+      const icon = copyable ? '<span class="tag-copy-icon" aria-hidden="true">⧉</span>' : "";
+      return `<button type="button" class="tag tag-chip${copyable ? " tag-copyable" : " tag-avocado"}"${copyAttr} title="${copyable ? "點擊複製標籤" : "已遮蔽的題材標籤"}">${escapeHtml(tag)}${icon}</button>`;
+    });
     return `<div class="tag-row">${shown.join("")}</div>`;
   }
 
@@ -198,9 +268,11 @@
 
   function parseWorkCode(raw) {
     const text = String(raw || "").trim().toUpperCase().replace(/\s+/g, "");
-    const match = text.match(/^([NJ])-?(\d{1,12})$/);
+    const match = text.match(/^(N|JM|J)-?(\d{1,12})$/);
     if (!match) return null;
-    return { platform: match[1] === "N" ? "nhentai" : "18comic", work_id: match[2], code: `${match[1]}-${match[2]}` };
+    const platform = match[1] === "N" ? "nhentai" : "18comic";
+    const prefix = match[1] === "N" ? "N" : "JM";
+    return { platform, work_id: match[2], code: `${prefix}-${match[2]}` };
   }
 
   function sanitizeReviewBody(raw, { admin = false } = {}) {
@@ -617,7 +689,7 @@
     if (workMatch) {
       return { view: "home", workId: workMatch[1], reviewId: workMatch[2] || null };
     }
-    const viewNames = ["home", "library", "leaderboard", "games", "feedback", "admin"];
+    const viewNames = ["home", "random", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin"];
     if (viewNames.includes(raw)) return { view: raw, workId: null, reviewId: null };
     return { view: null, workId: null, reviewId: null };
   }
@@ -781,7 +853,7 @@
   function clearAuthCallbackUrl() {
     const url = new URL(location.href);
     ["code", "error", "error_description", "state"].forEach(key => url.searchParams.delete(key));
-    const viewNames = ["home", "library", "leaderboard", "games", "feedback", "admin"];
+    const viewNames = ["home", "random", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin"];
     const hashBody = location.hash.replace(/^#/, "");
     const hashParams = new URLSearchParams(hashBody.includes("=") ? hashBody : "");
     const hasAuthHash = hashParams.has("access_token") || hashParams.has("refresh_token") || hashParams.has("error");
@@ -893,16 +965,44 @@
     return `<span class="${cls}" title="${count ? `${count} 則評分 · 平均 ${label}` : "尚無評分"}">${label}${count ? `<small>${count} 則</small>` : ""}</span>`;
   }
 
-  function platformFlipLabel(platform) {
-    return platform === "nhentai" ? "車號" : "資訊";
+  function platformFlipLabel(_platform) {
+    return "車號";
   }
 
-  function platformCopyLabel(platform) {
-    return platform === "nhentai" ? "複製車號" : "複製標題/連結";
+  function platformCopyLabel(_platform) {
+    return "複製車號";
   }
 
   function copyLineForWork(work) {
     return formatWorkCode(work);
+  }
+
+  function ratingLabel(value) {
+    return RATING_LABELS[String(value)] || String(value);
+  }
+
+  function ratingScaleHtml(selected) {
+    const values = Array.from({ length: 11 }, (_, i) => i - 5);
+    return `
+      <div class="rating-scale" role="group" aria-label="評分 -5 到 +5">
+        <div class="rating-scale-hints">
+          <span>超雷</span><span>普通</span><span>神作</span>
+        </div>
+        <input type="range" class="rating-slider" id="rating-slider" min="-5" max="5" step="1" value="${selected}" aria-valuetext="${ratingLabel(selected)}">
+        <div class="rating-chips">${values.map(value => `<button type="button" class="rating-chip${value === selected ? " selected" : ""}" data-rating="${value}" aria-label="${value > 0 ? "+" : ""}${value} ${ratingLabel(value)}"><span class="rating-chip-value">${value > 0 ? "+" : ""}${value}</span><span class="rating-chip-label">${ratingLabel(value)}</span></button>`).join("")}</div>
+        <p class="rating-current">目前：<strong id="rating-current-value">${selected > 0 ? "+" : ""}${selected}</strong> <span id="rating-current-label">${ratingLabel(selected)}</span></p>
+      </div>`;
+  }
+
+  function syncRatingUi(value) {
+    state.currentRating = Number(value);
+    const slider = $("#rating-slider");
+    if (slider) slider.value = String(state.currentRating);
+    $$("[data-rating]").forEach(button => button.classList.toggle("selected", Number(button.dataset.rating) === state.currentRating));
+    const valueNode = $("#rating-current-value");
+    const labelNode = $("#rating-current-label");
+    if (valueNode) valueNode.textContent = state.currentRating > 0 ? `+${state.currentRating}` : String(state.currentRating);
+    if (labelNode) labelNode.textContent = ratingLabel(state.currentRating);
   }
 
   function passesWorkFilters(work, prefix = "home") {
@@ -969,7 +1069,7 @@
     const nCount = state.works.filter(w => w.platform === "nhentai").length;
     const jCount = state.works.filter(w => w.platform === "18comic").length;
     if ($("#home-summary")) {
-      $("#home-summary").textContent = `作品庫 ${state.works.length.toLocaleString()} 筆 STANDARD（N ${nCount.toLocaleString()} / J ${jCount.toLocaleString()}）`;
+      $("#home-summary").textContent = `作品庫 ${state.works.length.toLocaleString()} 筆 STANDARD（N ${nCount.toLocaleString()} / JM ${jCount.toLocaleString()}）`;
     }
     renderHomeArchive();
   }
@@ -997,7 +1097,7 @@
         : "還沒有收藏或紀錄。先去作品庫或用編號搜尋。";
     }
     grid.innerHTML = rows.slice(0, 60).map(archiveTicketHtml).join("")
-      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor.png?v=2.0.2" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
+      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor.png?v=2.0.3" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
   }
 
   function randomPool() {
@@ -1142,6 +1242,8 @@
   async function savePrivateNote() {
     if (!state.currentWork || !await requireMember()) return;
     const body = ($("#private-note")?.value || "").trim();
+    const violation = validateMemberText(body, { field: "私人筆記" });
+    if (violation) return toast(violation, "warning");
     const { error } = await supabase.from("private_notes").upsert({
       user_id: state.session.user.id,
       work_id: state.currentWork.id,
@@ -1631,13 +1733,17 @@
   }
 
   function archiveTicketHtml(work) {
-    const tags = tagRowHtml(work, 3);
+    const code = formatWorkCode(work);
+    const tags = tagRowHtml(work, 3, 5);
     const fav = state.favorites.has(work.id);
     const watched = state.watched.has(work.id);
     const watchlist = state.watchlist.has(work.id);
     return `
       <article class="archive-ticket" data-open-work="${work.id}">
-        <p class="work-code">${escapeHtml(formatWorkCode(work))}</p>
+        <div class="ticket-head">
+          <p class="work-code">${escapeHtml(code)}</p>
+          <button type="button" class="copy-code-btn" data-copy-code="${work.id}" title="複製車號" aria-label="複製車號">⧉</button>
+        </div>
         <h3>${escapeHtml(displayTitleOf(work))}</h3>
         <p class="ticket-meta">${escapeHtml(displayAuthorOf(work))}${work.language ? ` · ${escapeHtml(work.language)}` : ""}</p>
         ${scoreBadgeHtml(work.id, true)}
@@ -1657,12 +1763,11 @@
   function workCardBackHtml(platform) {
     const ids = state.recentByPlatform[platform] || [];
     const works = ids.map(id => state.workById.get(id)).filter(Boolean);
-    const isNhentai = platform === "nhentai";
     return `
       <article class="work-card card-back" data-card="${escapeHtml(platform)}">
-        <span class="platform-badge">${escapeHtml(PLATFORM_LABELS[platform])}</span>
-        <h3>${isNhentai ? "最近抽過的車號" : "最近抽過的作品"}</h3>
-        <p class="muted">${isNhentai ? "刷新卡片會自動記錄；點車號可開詳情，一鍵可複製本張卡片背面的全部車號。" : "刷新卡片會自動記錄；點作品可開詳情，一鍵可複製標題與來源連結。"}</p>
+        <span class="platform-badge">${escapeHtml(platformLabel(platform))}</span>
+        <h3>最近抽過的車號</h3>
+        <p class="muted">刷新卡片會自動記錄；點車號可開詳情，一鍵可複製本張卡片背面的全部車號。</p>
         <div class="card-history-list">
           ${works.map(work => `<button class="card-history-item" data-open-work="${work.id}"><strong>${escapeHtml(formatWorkCode(work))}</strong><small>${escapeHtml(displayTitleOf(work))}</small></button>`).join("") || '<p class="muted">這張卡片還沒有抽取紀錄。</p>'}
         </div>
@@ -1694,11 +1799,11 @@
       .map(id => state.workById.get(id))
       .filter(Boolean);
     if (!works.length) {
-      return toast(platform === "nhentai" ? "這張卡片還沒有可複製的車號" : "這張卡片還沒有可複製的作品", "warning");
+      return toast("這張卡片還沒有可複製的車號", "warning");
     }
     const lines = works.map(copyLineForWork).filter(Boolean);
-    await navigator.clipboard.writeText(lines.join("\n\n"));
-    toast(platform === "nhentai" ? `已複製 ${lines.length} 個車號` : `已複製 ${lines.length} 筆標題/連結`, "success");
+    await navigator.clipboard.writeText(lines.join("\n"));
+    toast(`已複製 ${lines.length} 個車號`, "success");
   }
 
   function librarySortMode() {
@@ -1765,10 +1870,7 @@
   async function copySingleWork(workId) {
     const work = state.workById.get(workId);
     if (!work) return;
-    const text = copyLineForWork(work);
-    if (!text) return toast("沒有可複製的內容", "warning");
-    await navigator.clipboard.writeText(text);
-    toast(work.platform === "nhentai" ? "已複製車號" : "已複製標題/連結", "success");
+    await copyText(copyLineForWork(work), "已複製車號");
   }
 
   function rankingScoreHtml(item) {
@@ -1796,7 +1898,7 @@
         <div>
           <p class="ranking-code">${escapeHtml(formatWorkCode({ platform: item.platform, work_id: item.external_id || item.work_id }))}</p>
           <h3>${escapeHtml(item.title)}</h3>
-          <p>${escapeHtml(PLATFORM_LABELS[item.platform] || item.platform)} · ${escapeHtml(item.author || "")} · ${item.review_count} 則評分</p>
+          <p>${escapeHtml(platformLabel(item.platform))} · ${escapeHtml(item.author || "")} · ${item.review_count} 則評分</p>
         </div>
         ${rankingScoreHtml(item)}
       </article>`).join("") || `<div class="empty-state">${emptyHint}</div>`;
@@ -1812,7 +1914,7 @@
         <div>
           <p class="ranking-code">${escapeHtml(formatWorkCode({ platform: item.platform, work_id: item.external_id || item.work_id }))}</p>
           <h3>${escapeHtml(item.title)}</h3>
-          <p>${escapeHtml(PLATFORM_LABELS[item.platform] || item.platform)} · ${escapeHtml(item.author || "")} · 本週 ${item.review_count} 則主評論</p>
+          <p>${escapeHtml(platformLabel(item.platform))} · ${escapeHtml(item.author || "")} · 本週 ${item.review_count} 則主評論</p>
         </div>
         ${rankingScoreHtml(item)}
       </article>`).join("") || '<div class="empty-state">本週還沒有新的主評論；週一 00:00（台北時間）起算的評分活動會出現在這裡。</div>';
@@ -2453,10 +2555,11 @@
     container.innerHTML = `
       <form id="review-form" class="review-form">
         <div><strong>${existing ? "編輯你的評分" : "留下你的評分"}</strong><p class="muted">每件作品限一則主評論；評分 -5 ~ +5 必填，評論文字選填（最多 500 字）。</p></div>
-        <div class="rating-picker">${Array.from({ length: 11 }, (_, i) => i - 5).map(value => `<button type="button" data-rating="${value}" class="${value === state.currentRating ? "selected" : ""}">${value > 0 ? "+" : ""}${value}</button>`).join("")}</div>
+        ${ratingScaleHtml(state.currentRating)}
         <textarea id="review-body" maxlength="500" placeholder="選填：分享你的心得…">${escapeHtml(existing?.body || "")}</textarea>
         <button class="button button-primary" type="submit">${existing ? "儲存修改" : "送出評分"}</button>
       </form>`;
+    $("#rating-slider")?.addEventListener("input", event => syncRatingUi(event.target.value));
   }
 
   async function loadProfilesForReviews(reviews) {
@@ -2522,6 +2625,8 @@
     if (!await requireMember() || !state.currentWork) return;
     const body = ($("#review-body")?.value || "").trim();
     if (body.length > 500) return toast("評論最多 500 字", "warning");
+    const violation = validateMemberText(body, { field: "評論" });
+    if (violation) return toast(violation, "warning");
     const { error } = await supabase.rpc("submit_work_review", {
       target_work: state.currentWork.id,
       rating: state.currentRating,
@@ -2542,6 +2647,8 @@
     if (!await requireMember() || !state.currentWork) return;
     const body = $(`#reply-body-${parentId}`)?.value.trim();
     if (!body || body.length > 300) return toast("回覆需為 1～300 字", "warning");
+    const violation = validateMemberText(body, { field: "回覆" });
+    if (violation) return toast(violation, "warning");
     const { error } = await supabase.rpc("submit_work_review", {
       target_work: state.currentWork.id,
       rating: null,
@@ -3548,6 +3655,8 @@
     const button = isRecommendation ? $("#recommendation-send") : $("#feedback-send");
     const body = textarea.value.trim();
     if (!body || body.length > 2000) return toast("意見內容需為 1～2000 字", "warning");
+    const violation = validateMemberText(body, { field: isRecommendation ? "推薦說明" : "意見" });
+    if (violation) return toast(violation, "warning");
     await withBusyButton(button, isRecommendation ? "送出中…" : "寄送中…", async () => {
       const { error } = await supabase.from("feedback").insert({
         user_id: state.session.user.id,
@@ -3678,7 +3787,7 @@
         content.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
         return;
       }
-      content.innerHTML = (data || []).map(row => `<div class="admin-row"><div><h4>${row.platform === "nhentai" ? "N" : "J"}-${escapeHtml(row.work_id)}</h4><p>${escapeHtml(row.status)} · ${new Date(row.created_at).toLocaleString("zh-TW")}</p></div></div>`).join("") || '<div class="empty-state">沒有投稿</div>';
+      content.innerHTML = (data || []).map(row => `<div class="admin-row"><div><h4>${row.platform === "nhentai" ? "N" : "JM"}-${escapeHtml(row.work_id)}</h4><p>${escapeHtml(row.status)} · ${new Date(row.created_at).toLocaleString("zh-TW")}</p></div></div>`).join("") || '<div class="empty-state">沒有投稿</div>';
     } else if (tab === "reports") {
       let reports = [];
       let loadNote = "";
@@ -3820,7 +3929,7 @@
       $("#editor-content").innerHTML = `<h2 id="editor-title">手動新增作品</h2><form id="work-ingest-form" class="editor-form">
         <label>平台<select id="ingest-platform">${config.platforms.map(platform => `<option value="${platform}">${PLATFORM_LABELS[platform]}</option>`).join("")}</select></label>
         <label>車號（外部 ID）<input id="ingest-external-id" required placeholder="例：123456"></label>
-        <p class="muted small-note">Nhentai / 禁漫 / Pixiv 會直接進入待同步佇列，下一次 GitHub Actions 同步就會抓取標題、封面、作者與標籤。Hanime 目前仍需走既有播放清單同步。</p>
+        <p class="muted small-note">N / JM 平台的新編號會進入待同步佇列，下一次 GitHub Actions 同步就會抓取標題、作者與標籤（站內不顯示封面或來源連結）。動畫平台目前仍需走既有播放清單同步。</p>
         <button class="button button-primary">加入同步佇列</button></form>`;
     }
     openModal("editor-modal");
@@ -3855,7 +3964,7 @@
     const externalId = $("#ingest-external-id").value.trim();
     if (!externalId) return toast("請輸入車號", "warning");
     if (platform === "hanime") {
-      return toast("Hanime 目前不支援單筆車號新增，請改走既有播放清單同步。", "warning");
+      return toast("動畫平台目前不支援單筆車號新增，請改走既有播放清單同步。", "warning");
     }
     try {
       if (!config.workerUrl) {
@@ -4122,13 +4231,21 @@
         toast("已清除這張卡片的抽取紀錄", "success");
       }
       if (target.dataset.copySingle) copySingleWork(target.dataset.copySingle);
+      if (target.dataset.copyCode) {
+        event.stopPropagation();
+        copySingleWork(target.dataset.copyCode);
+      }
+      if (target.dataset.copyTag) {
+        event.stopPropagation();
+        await copyText(target.dataset.copyTag, `已複製標籤「${target.dataset.copyTag}」`);
+      }
       if (target.dataset.sourceOpen) recordView(target.dataset.sourceOpen, "source");
       if (target.dataset.openWork) openWork(target.dataset.openWork);
       if (target.dataset.favorite) { event.stopPropagation(); toggleFavorite(target.dataset.favorite); }
       if (target.dataset.watched) { event.stopPropagation(); setLibraryFlag(target.dataset.watched, "watched"); }
       if (target.dataset.watchlist) { event.stopPropagation(); setLibraryFlag(target.dataset.watchlist, "watchlist"); }
       if (target.dataset.similar) recommendSimilar(target.dataset.similar);
-      if (target.dataset.rating !== undefined) { state.currentRating = Number(target.dataset.rating); $$("[data-rating]").forEach(button => button.classList.toggle("selected", Number(button.dataset.rating) === state.currentRating)); }
+      if (target.dataset.rating !== undefined) syncRatingUi(target.dataset.rating);
       if (target.dataset.reply) { if (!await requireMember()) return; $(`#reply-${target.dataset.reply}`).innerHTML = `<form data-reply-form="${target.dataset.reply}" class="review-form"><textarea id="reply-body-${target.dataset.reply}" maxlength="300" required placeholder="回覆（最多 300 字）…"></textarea><button class="button button-primary">送出回覆</button></form>`; }
       if (target.dataset.vote) voteReview(target.dataset.reviewId, Number(target.dataset.vote));
       if (target.dataset.editReview) editReview(target.dataset.editReview);
