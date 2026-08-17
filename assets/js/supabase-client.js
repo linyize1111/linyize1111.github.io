@@ -119,9 +119,10 @@
         html = "<pre></pre>";
       }
     } else {
+      // marked missing: never wrap the whole bio in <pre> (looks like broken Markdown)
       var d = document.createElement("div");
       d.textContent = text;
-      html = "<pre style='white-space:pre-wrap'>" + d.innerHTML + "</pre>";
+      html = d.innerHTML.replace(/\n/g, "<br />");
     }
     return sanitizeHtml(html);
   }

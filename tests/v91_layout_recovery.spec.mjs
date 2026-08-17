@@ -103,7 +103,7 @@ async function shot(page, name) {
 {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await page.goto(`${origin}/about.html`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".about-profile__copy > h1");
+  await page.waitForSelector(".about-profile__identity > h1");
   await page.waitForFunction(() => {
     const img = document.querySelector(".about-profile__media img");
     const profile = document.querySelector(".about-profile");
@@ -112,12 +112,14 @@ async function shot(page, name) {
   const a = await page.evaluate(() => {
     const img = document.querySelector(".about-profile__media img");
     const q = document.querySelector(".about-profile__quote");
-    const title = document.querySelector(".about-profile__copy > h1");
+    const title = document.querySelector(".about-profile__identity > h1");
     const body = document.querySelector(".about-profile__body");
     const updated = document.querySelector(".about-updated");
     const traj = document.querySelector(".about-trajectory > h2");
     const lefts = [updated, title, q, body, traj].map((el) => el.getBoundingClientRect().left);
     const ir = img.getBoundingClientRect();
+    const bodyRect = body.getBoundingClientRect();
+    const mediaRect = document.querySelector(".about-profile__media").getBoundingClientRect();
     return {
       naturalWidth: img.naturalWidth,
       imgW: ir.width,
@@ -125,15 +127,17 @@ async function shot(page, name) {
       maxLeftDiff: Math.max(...lefts) - Math.min(...lefts),
       quotePre: !!q.querySelector("pre"),
       quoteCode: !!q.querySelector("code"),
-      alignItems: getComputedStyle(document.querySelector(".about-profile")).alignItems,
+      profileDisplay: getComputedStyle(document.querySelector(".about-profile")).display,
+      bodyBelowMedia: bodyRect.top >= mediaRect.bottom - 8 || bodyRect.top >= document.querySelector(".about-profile__masthead").getBoundingClientRect().bottom - 2,
       mediaFailed: document.querySelector(".about-profile").classList.contains("media-failed"),
     };
   });
   assert.ok(a.naturalWidth > 0, "about image must load");
-  assert.ok(a.imgW >= 280, `image width ${a.imgW}`);
+  assert.ok(a.imgW >= 100 && a.imgW <= 200, `compact avatar width ${a.imgW}`);
   assert.ok(a.maxLeftDiff <= 4, `left edges diff ${a.maxLeftDiff} lefts=${a.lefts}`);
   assert.equal(a.quotePre, false);
-  assert.equal(a.alignItems, "start");
+  assert.equal(a.profileDisplay, "block");
+  assert.ok(a.bodyBelowMedia, "markdown body must not sit beside the avatar");
   await shot(page, "about-after-1440.png");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(200);

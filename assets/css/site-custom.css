@@ -3143,25 +3143,27 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 
 .about-page {
-  width: min(100%, 1180px);
+  width: min(100%, 42rem);
   margin: 0 auto;
   padding: 0 clamp(1rem, 3vw, 1.5rem) 3rem;
 }
 .about-profile {
-  display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.82fr);
-  gap: clamp(3rem, 6vw, 6rem);
-  align-items: start;
-  margin: clamp(1.5rem, 4vw, 3rem) auto clamp(3rem, 6vw, 5rem);
+  display: block;
+  margin: clamp(1.5rem, 4vw, 2.75rem) auto clamp(2.5rem, 5vw, 4rem);
 }
-.about-profile.media-failed {
+.about-profile__masthead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.25rem 1.75rem;
+  align-items: start;
+  margin: 0 0 2rem;
+}
+.about-profile.media-failed .about-profile__masthead {
   grid-template-columns: minmax(0, 1fr);
 }
-.about-profile__copy {
-  max-width: 64ch;
+.about-profile__identity {
+  min-width: 0;
   text-align: left;
-  justify-self: start;
-  width: 100%;
 }
 .about-updated {
   margin: 0 0 0.75rem;
@@ -3169,7 +3171,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   font-size: 0.9rem;
   letter-spacing: 0.04em;
 }
-.about-profile__copy > h1 {
+.about-profile__identity > h1 {
   margin: 0 0 1.1rem;
   text-align: left;
   color: #18bfef;
@@ -3177,7 +3179,7 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   line-height: 1.2;
 }
 .about-profile__quote {
-  margin: 0 0 1.5rem;
+  margin: 0;
   padding-left: 1rem;
   border-left: 2px solid #18bfef;
   background: transparent;
@@ -3189,6 +3191,8 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 .about-profile__body {
   text-align: left;
+  width: 100%;
+  max-width: none;
 }
 
 /* ========== V9.2 About Markdown scope (NOT article / HTML5 UP .markdown-body) ========== */
@@ -3367,23 +3371,25 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 
 .about-profile__media {
   margin: 0;
-  width: min(100%, 460px);
+  width: 148px;
   justify-self: end;
-  padding: 10px;
-  border-radius: 18px;
+  padding: 8px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.055);
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: none;
   overflow: hidden;
+  flex-shrink: 0;
 }
 .about-profile__media img {
   display: block;
   width: 100%;
   height: auto;
-  object-fit: contain;
+  aspect-ratio: 1;
+  object-fit: cover;
   position: relative;
   z-index: 1;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 .about-profile__ambient {
   opacity: 0.23;
@@ -3393,8 +3399,8 @@ body.admin-gated-page.admin-gate-ok #wrapper {
   display: none;
 }
 .about-trajectory {
-  margin: 3.5rem auto 2rem;
-  max-width: 1180px;
+  margin: 3rem auto 2rem;
+  max-width: none;
 }
 .about-trajectory > h2 {
   text-align: left;
@@ -3403,8 +3409,8 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 .about-trajectory__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem 1.15rem;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
 }
 .about-trajectory__card {
   margin: 0;
@@ -3430,18 +3436,15 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 
 @media (max-width: 900px) {
-  .about-profile {
+  .about-profile__masthead {
     grid-template-columns: 1fr;
-    gap: 1.75rem;
+    gap: 1.25rem;
   }
   .about-profile__media {
     order: -1;
-    max-width: 28rem;
-    margin-inline: auto;
-    justify-self: center;
-  }
-  .about-trajectory__grid {
-    grid-template-columns: 1fr;
+    width: min(132px, 42vw);
+    margin-inline: 0;
+    justify-self: start;
   }
 }
 

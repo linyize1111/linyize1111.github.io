@@ -50,22 +50,24 @@ const browser = await chromium.launch({ headless: true });
   const about = await page.evaluate(() => {
     const img = document.querySelector(".about-profile__media img");
     const st = img && getComputedStyle(img);
-    const copy = document.querySelector(".about-profile__copy");
+    const identity = document.querySelector(".about-profile__identity");
     return {
-      hasGrid: !!document.querySelector(".about-profile"),
+      hasProfile: !!document.querySelector(".about-profile"),
       objectFit: st && st.objectFit,
       width: st && st.width,
       height: st && st.height,
-      copyAlign: copy && getComputedStyle(copy).textAlign,
+      identityAlign: identity && getComputedStyle(identity).textAlign,
+      stacked: getComputedStyle(document.querySelector(".about-profile")).display === "block",
       cards: document.querySelectorAll(".about-trajectory__card").length,
       no350: !document.body.innerHTML.includes("350px"),
     };
   });
-  assert.equal(about.hasGrid, true);
-  assert.equal(about.objectFit, "contain");
+  assert.equal(about.hasProfile, true);
+  assert.equal(about.objectFit, "cover");
+  assert.equal(about.stacked, true);
   assert.equal(about.cards, 4);
   assert.equal(about.no350, true);
-  assert.equal(about.copyAlign, "left");
+  assert.equal(about.identityAlign, "left");
   await page.screenshot({ path: path.join(artifacts, "about-after-1440.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: path.join(artifacts, "about-after-390.png"), fullPage: true });

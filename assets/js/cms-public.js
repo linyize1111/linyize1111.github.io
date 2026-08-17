@@ -251,10 +251,20 @@
       if (entry && entry.mode) mode = el.getAttribute("data-section-mode") || entry.mode;
       var raw = map[key];
       if (mode === "markdown" && window.SB && typeof window.SB.renderMarkdown === "function") {
-        el.innerHTML = window.SB.renderMarkdown(normalizeSiteCopyMarkdown(raw));
-        // Guard: accidental indented code blocks for site copy
-        if (el.querySelector("pre > code") && String(raw).indexOf("```") < 0) {
-          el.innerHTML = esc(normalizeSiteCopyMarkdown(raw)).replace(/\n/g, "<br />");
+        var normalized = normalizeSiteCopyMarkdown(raw);
+        el.innerHTML = window.SB.renderMarkdown(normalized);
+        // Guard: whole-document accidental code block (indent / missing marked fallback)
+        var onlyPre =
+          el.children.length === 1 &&
+          el.firstElementChild &&
+          el.firstElementChild.tagName === "PRE";
+        var accidentalCode =
+          String(raw).indexOf("```") < 0 &&
+          (onlyPre ||
+            (el.querySelector("pre > code") &&
+              el.querySelectorAll("p,h1,h2,h3,ul,ol,blockquote").length === 0));
+        if (accidentalCode) {
+          el.innerHTML = esc(normalized).replace(/\n/g, "<br />");
         }
       } else if (mode === "multiline") {
         el.innerHTML = esc(normalizeSiteCopyMarkdown(raw)).replace(/\n/g, "<br />");
