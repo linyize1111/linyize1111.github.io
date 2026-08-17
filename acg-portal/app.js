@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "2.0.4";
+  const APP_VERSION = "2.0.5";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,has_hidden_tags,created_at,exposure_level";
   const GAME_IMAGE_HOSTS = [
     "cdn.akamai.steamstatic.com",
@@ -608,9 +608,6 @@
       const message = "尚未登入，請先登入";
       toast(message, "warning");
       return { ok: false, message };
-    }
-    if (state.authLoading || !state.profileReady) {
-      toast("管理員權限載入中，請稍候再試", "warning");
     }
     const profile = await waitForProfile();
     if (!profile) {
@@ -1310,13 +1307,33 @@
     return work;
   }
 
-  async function submitWorkIdOnly() {
+  function adminWorkTitle(work) {
+    return work?.display_title || work?.title || "（無標題）";
+  }
+
+  async function fetchAdminWorks() {
+    try {
+      state.adminWorks = await fetchAll("works", query => query.order("updated_at", { ascending: false }));
+      return { ok: true };
+    } catch (error) {
+      console.error("fetchAdminWorks failed", error);
+      return { ok: false, message: formatApiError(error) };
+    }
+  }
+
+  async function submitWorkIdOnly(source = "feedback") {
     if (!await requireMember()) return;
-    const platform = $("#submit-platform")?.value;
-    const workId = $("#submit-work-id")?.value;
+    const platform = $(source === "home" ? "#home-submit-platform" : "#submit-platform")?.value;
+    const workId = $(source === "home" ? "#home-submit-work-id" : "#submit-work-id")?.value?.trim();
+    if (!platform || !workId) return toast("請選平台並填寫數字 ID", "warning");
+    if (!/^\d+$/.test(workId)) return toast("車號只能填數字", "warning");
     const { data, error } = await supabase.rpc("submit_work_id", { platform, work_id: workId });
     if (error) return toast(error.message, "error");
     toast(data?.message || (data?.duplicate ? "這筆已經在資料庫." : "已送出"), data?.ok ? "success" : "warning");
+    if (source === "home") {
+      const input = $("#home-submit-work-id");
+      if (input) input.value = "";
+    }
   }
 
   async function loadSourceStatus() {
@@ -3768,15 +3785,17 @@
 
   async function loadAdmin(tab = state.adminTab) {
     updateAdminStatusBar();
+    const content = $("#admin-content");
+    if (!content) return;
     const gate = await ensureAdmin("管理後台");
     if (!gate.ok) {
-      $("#admin-content").innerHTML = `<div class="empty-state form-error">載入失敗：${escapeHtml(gate.message)}</div>`;
+      content.innerHTML = `<div class="empty-state form-error">載入失敗：${escapeHtml(gate.message)}</div>`;
       return;
     }
     state.adminTab = tab;
     $$("[data-admin-tab]").forEach(button => button.classList.toggle("active", button.dataset.adminTab === tab));
-    const content = $("#admin-content");
     content.innerHTML = '<div class="empty-state">載入中…</div>';
+    try {
     if (tab === "users") {
       await refreshAutoApproveStatus();
       let users;
@@ -3808,7 +3827,11 @@
         return `<div class="admin-row"><div><h4>${escapeHtml(memberName(profile))}</h4><p>${escapeHtml(email)} · ${escapeHtml(profile.role)} · ${escapeHtml(profile.status)}</p><small>最近登入：${escapeHtml(lastSignIn)}</small></div><div class="admin-actions">${profile.role === "admin" ? "" : `${profile.status === "pending" ? `<button class="button button-primary" data-approve-user="${profile.id}">通過</button>` : ""}<button class="button button-secondary" data-suspend-user="${profile.id}" data-suspend="${profile.status === "suspended" ? "false" : "true"}">${profile.status === "suspended" ? "解除停權" : "停權"}</button>`}</div></div>`;
       }).join("") || '<div class="empty-state">目前沒有會員</div>');
     } else if (tab === "works") {
-      state.adminWorks = await fetchAll("works", query => query.order("updated_at", { ascending: false }));
+      const worksResult = await fetchAdminWorks();
+      if (!worksResult.ok) {
+        content.innerHTML = `<div class="empty-state form-error">讀取作品失敗：${escapeHtml(worksResult.message)}<p class="muted small-note">請確認已登入管理員帳號，且 V2 migration（0026）已套用。</p></div>`;
+        return;
+      }
       const quarantined = state.adminWorks.filter(work => work.quarantined).length;
       const released = state.adminWorks.filter(work => work.quarantine_override).length;
       content.innerHTML = `<div class="job-controls"><button class="button button-primary" data-new-work>＋ 手動新增（車號）</button><input id="admin-work-search" type="search" placeholder="搜尋車號、標題、作者或標籤…"></div>
@@ -3900,6 +3923,10 @@
       renderSourceStatus("#admin-source-status-grid");
       await loadJobs();
     }
+    } catch (error) {
+      console.error("loadAdmin failed", error);
+      content.innerHTML = `<div class="empty-state form-error">管理後台載入失敗：${escapeHtml(formatApiError(error))}</div>`;
+    }
   }
 
   function renderAdminWorks() {
@@ -3918,7 +3945,7 @@
       const quarantineButton = work.quarantined
         ? `<button class="button button-secondary" data-quarantine-work="${work.id}" data-hide="false">解除隔離</button>`
         : `<button class="button button-secondary" data-quarantine-work="${work.id}" data-hide="true">隔離</button>`;
-      return `<div class="admin-row"><div><h4>${escapeHtml(formatWorkCode(work))} · ${escapeHtml(work.title)}</h4><p>${escapeHtml(work.platform)} · ${escapeHtml(work.exposure_level || "")} · ${escapeHtml(work.status)}${isAdmin() ? ` · 原文：${escapeHtml(work.title)}` : ""}</p>${quarantineBadge}</div><div class="admin-actions"><button class="button button-secondary" data-edit-work="${work.id}">編輯</button><button class="button button-secondary" data-toggle-work="${work.id}" data-status="${work.status === "active" ? "inactive" : "active"}">${work.status === "active" ? "標記失效" : "恢復"}</button>${quarantineButton}</div></div>`;
+      return `<div class="admin-row"><div><h4>${escapeHtml(formatWorkCode(work))} · ${escapeHtml(adminWorkTitle(work))}</h4><p>${escapeHtml(work.platform)} · ${escapeHtml(work.exposure_level || "")} · ${escapeHtml(work.status)}${isAdmin() ? ` · 原文：${escapeHtml(work.title || work.display_title || "")}` : ""}</p>${quarantineBadge}</div><div class="admin-actions"><button class="button button-secondary" data-edit-work="${work.id}">編輯</button><button class="button button-secondary" data-toggle-work="${work.id}" data-status="${work.status === "active" ? "inactive" : "active"}">${work.status === "active" ? "標記失效" : "恢復"}</button>${quarantineButton}</div></div>`;
     }).join("") || '<div class="empty-state">沒有符合條件的作品</div>';
   }
 
@@ -4074,10 +4101,7 @@
       if (!state.session) {
         toast("請先登入才能進入管理後台", "warning");
         view = "home";
-      } else if (state.authLoading || !state.profileReady) {
-        toast("管理員權限載入中，請稍候再試", "warning");
-        view = "home";
-      } else if (!isAdmin()) {
+      } else if (state.profileReady && !state.authLoading && !isAdmin()) {
         toast(`你不是管理員（目前角色：${state.profile?.role || "member"}）`, "warning");
         view = "home";
       }
@@ -4178,7 +4202,11 @@
     bindClick("#draw-one-button", () => drawRandom(1));
     bindClick("#draw-five-button", () => drawRandom(5));
     bindClick("#draw-ten-button", () => drawRandom(10));
-    bindClick("#submit-work-send", submitWorkIdOnly);
+    bindClick("#submit-work-send", () => submitWorkIdOnly("feedback"));
+    bindClick("#home-submit-send", () => submitWorkIdOnly("home"));
+    $$("[data-admin-tab]").forEach(button => {
+      button.addEventListener("click", () => loadAdmin(button.dataset.adminTab));
+    });
     $$("[data-home-platform]").forEach(btn => btn.addEventListener("click", () => {
       state.homePlatform = btn.dataset.homePlatform;
       $$("[data-home-platform]").forEach(node => node.classList.toggle("active", node === btn));
@@ -4301,6 +4329,7 @@
       if (target.dataset.editGame) { const { data } = await supabase.from("games").select("*").eq("id", target.dataset.editGame).single(); await gameEditor(data); }
       if (target.dataset.deleteGame) deleteGame(target.dataset.deleteGame);
       if (target.dataset.deleteGameComment) deleteGameComment(target.dataset.deleteGameComment, target.dataset.gameId);
+      if (target.dataset.adminTab) loadAdmin(target.dataset.adminTab);
       if (target.dataset.tagAllow) {
         const { error } = await supabase.rpc("admin_set_tag_decision", { tag_norm: target.dataset.tagAllow, decision: "allow" });
         toast(error ? error.message : "已允許此標籤", error ? "error" : "success");
