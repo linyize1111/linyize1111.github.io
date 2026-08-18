@@ -9,6 +9,6 @@ window.ACG_CONFIG = Object.freeze({
   manualSyncUrl: "https://github.com/linyize1111/acg-portal/actions/workflows/scheduled-sync.yml",
   googleProviderEnabled: "auto",
   platforms: ["nhentai", "18comic"],
-  version: "2.1.0",
-  githubRepoUrl: "https://github.com/linyize1111/acg-portal"
+  version: "2.1.1",
+  githubRepoUrl: "https://github.com/linyize1111/yoru-archive"
 });

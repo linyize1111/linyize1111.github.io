@@ -137,19 +137,29 @@ main { position: relative; z-index: 3; width: min(1420px, 92vw); margin: 0 auto;
 }
 .site-note p { margin: 0 0 12px; }
 .site-note p:last-child { margin-bottom: 0; }
-.site-note .github-callout {
-  margin-top: 4px;
+.site-note .github-cta-wrap {
+  margin: 14px 0 0;
   padding-top: 12px;
   border-top: 1px solid rgba(255,255,255,.08);
-  color: #d7ddf0;
 }
-.site-note .github-callout a {
-  color: #c4b5ff;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+a.github-star-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
-.site-note .github-callout a:hover { color: white; }
+a.github-star-cta:hover { color: #fff; }
+@media (max-width: 430px) {
+  a.github-star-cta { white-space: normal; text-align: center; }
+}
 .filter-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 14px; }
 .filter-row select, .filters select, .filters input[type="search"], .search-box input, .email-login input {
   min-height: 44px; padding: 10px 14px; border: 1px solid rgba(255,255,255,.22); border-radius: 14px;
@@ -657,7 +667,58 @@ body.gated .site-header { position: static; }
   font-size: 12px;
   text-align: center;
 }
-.site-footer a { color: #c5b8ff; }
+.trial-banner {
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 203, 102, .28);
+  border-radius: 16px;
+  background: rgba(255, 203, 102, .08);
+  color: #f4e6c3;
+  line-height: 1.75;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: pre-line;
+}
+.ops-grid { display: grid; gap: 12px; }
+.ops-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.ops-card h3 { margin: 0 0 10px; font-size: 16px; }
+.ops-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 0; }
+.ops-metrics div { font-size: 13px; color: var(--muted); }
+.ops-metrics strong { display: block; color: #f7f8ff; font-size: 16px; }
+.ops-emergency {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(255,101,119,.35);
+  border-radius: 16px;
+  background: rgba(255,101,119,.08);
+}
+.ops-emergency .button, .ops-actions .button, .ops-pending .button {
+  min-height: 48px;
+  width: 100%;
+  justify-content: center;
+}
+.ops-actions { display: grid; gap: 10px; }
+.ops-help { font-size: 12px; color: var(--muted); line-height: 1.7; margin: 0; }
+.ops-pending-row { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.ops-pending-row:last-child { border-bottom: 0; }
+.maintenance-banner {
+  margin: 16px 0;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,203,102,.3);
+  background: rgba(255,203,102,.1);
+  font-weight: 800;
+}
+@media (max-width: 430px) {
+  .ops-metrics { grid-template-columns: 1fr; }
+  .admin-tabs button { min-height: 44px; }
+}
 .tag-copy-icon { margin-left: 4px; opacity: .65; font-size: 10px; }
 .archive-ticket h3 { margin: 0; font-size: 15px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .archive-ticket .ticket-meta { color: var(--muted); font-size: 12px; line-height: 1.5; }

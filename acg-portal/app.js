@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "2.1.0";
+  const APP_VERSION = "2.1.1";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class";
   const MEMBER_WORKS_VIEW = "member_works_v21";
   const SENSITIVE_TAG_MESSAGE = "此標籤僅作作品 metadata 顯示，不提供分類探索。";
@@ -134,11 +134,13 @@
     editingGameId: null,
     adminWorks: [],
     currentRating: 5,
-    adminTab: "users",
+    adminTab: "ops",
     workerStatus: { available: null, lastError: null },
     googleProviderEnabled: null,
     autoApproveOpen: false,
     autoApprove: { open: false, until: null, memberLimit: null, used: 0, remaining: null },
+    runtimeStatus: null,
+    lastClaimReason: null,
     authResolved: false,
     contentLoaded: false,
     reviewStatsByWork: new Map(),
@@ -1163,7 +1165,7 @@
         : "還沒有收藏或紀錄。先去作品庫或用編號搜尋。";
     }
     grid.innerHTML = rows.slice(0, 60).map(archiveTicketHtml).join("")
-      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor.png?v=2.1.0-rc2" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
+      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor.png?v=2.1.1" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
   }
 
   function randomPool() {
@@ -1301,6 +1303,12 @@
           <button class="button button-secondary" id="request-account-deletion" type="button">刪除帳號申請</button>
         </div>
         <p class="muted small-note"><a href="#privacy" data-view="privacy">隱私權政策</a> · <a href="#terms" data-view="terms">使用條款／社群規則</a></p>
+      </div>
+      <div class="privacy-card profile-github-card">
+        <p class="eyebrow">SUPPORT</p>
+        <h3>覺得夜鹿導師有幫到你？</h3>
+        <p class="muted small-note">歡迎到 GitHub 幫這個專案留個 Star ⭐</p>
+        <p><a class="button button-secondary github-star-cta" href="${escapeHtml(config.githubRepoUrl)}" target="_blank" rel="noopener noreferrer">⭐ GitHub / Star this project</a></p>
       </div>`;
     $("#save-privacy")?.addEventListener("click", savePrivacy);
     $("#profile-submit-send")?.addEventListener("click", () => submitWorkIdOnly("profile"));
@@ -2184,39 +2192,68 @@
 
   async function refreshAutoApproveStatus() {
     try {
-      const { data, error } = await supabase.rpc("get_auto_approve_status");
+      const { data, error } = await supabase.rpc("get_runtime_status");
       if (error) throw error;
+      state.runtimeStatus = data || {};
       state.autoApprove = {
-        open: Boolean(data?.open),
-        until: data?.auto_approve_until || null,
-        memberLimit: data?.member_limit == null ? null : Number(data.member_limit),
-        used: Number(data?.used || 0),
-        remaining: data?.remaining == null ? null : Number(data.remaining)
+        open: Boolean(data?.trial_open),
+        until: data?.trial_end || null,
+        memberLimit: null,
+        used: 0,
+        remaining: null
       };
       state.autoApproveOpen = state.autoApprove.open;
     } catch (error) {
-      console.warn("get_auto_approve_status failed", error);
-      state.autoApprove = { open: false, until: null, memberLimit: null, used: 0, remaining: null };
-      state.autoApproveOpen = false;
+      try {
+        const { data, error: fallbackError } = await supabase.rpc("get_auto_approve_status");
+        if (fallbackError) throw fallbackError;
+        state.runtimeStatus = data || {};
+        state.autoApprove = {
+          open: Boolean(data?.open),
+          until: data?.auto_approve_until || null,
+          memberLimit: data?.member_limit == null ? null : Number(data.member_limit),
+          used: Number(data?.used || 0),
+          remaining: data?.remaining == null ? null : Number(data.remaining)
+        };
+        state.autoApproveOpen = state.autoApprove.open;
+      } catch (inner) {
+        console.warn("get_runtime_status failed", error || inner);
+        state.runtimeStatus = null;
+        state.autoApprove = { open: false, until: null, memberLimit: null, used: 0, remaining: null };
+        state.autoApproveOpen = false;
+      }
     }
+    renderTrialBanner();
     return state.autoApproveOpen;
+  }
+
+  function renderTrialBanner() {
+    const el = $("#trial-banner");
+    if (!el) return;
+    const rt = state.runtimeStatus || {};
+    if (rt.site_mode === "MAINTENANCE" && rt.maintenance_message) {
+      el.hidden = false;
+      el.textContent = rt.maintenance_message;
+      return;
+    }
+    if (rt.registration_closed) {
+      el.hidden = false;
+      el.textContent = "目前暫停新會員註冊，已有帳號仍可正常登入。";
+      return;
+    }
+    if (rt.trial_notice) {
+      el.hidden = false;
+      el.textContent = "今日 08:00–18:00 開放試營運。\n登入／建立帳號即可直接使用，不需等待審核，限額 2000 人。";
+      return;
+    }
+    el.hidden = true;
+    el.textContent = "";
   }
 
   function autoApproveWindowText() {
     const info = state.autoApprove;
     if (!info.open) return "目前未開放自動通過：登入後需等站長手動審核。";
-    const parts = [];
-    if (info.until) {
-      const remainMs = new Date(info.until).getTime() - Date.now();
-      if (Number.isFinite(remainMs) && remainMs > 0) {
-        const hours = Math.floor(remainMs / 3600000);
-        const minutes = Math.max(Math.round((remainMs % 3600000) / 60000), 1);
-        parts.push(hours > 0 ? `還有約 ${hours} 小時 ${minutes} 分` : `還有約 ${minutes} 分`);
-      }
-    }
-    if (info.remaining != null) parts.push(`剩 ${info.remaining} / ${info.memberLimit} 個名額`);
-    const detail = parts.length ? `（${parts.join("、")}）` : "";
-    return `現在是開放時段：登入後會自動成為會員，不用等審核${detail}。`;
+    return "現在是開放時段：登入／建立帳號後會自動成為會員，不用等審核。";
   }
 
   async function claimAutoApprovalIfNeeded(profile) {
@@ -2224,6 +2261,7 @@
     try {
       const { data, error } = await supabase.rpc("claim_auto_approval");
       if (error) throw error;
+      state.lastClaimReason = data?.reason || null;
       if (data?.approved) {
         const { data: refreshed } = await supabase.from("profiles").select("*").eq("id", profile.id).maybeSingle();
         return refreshed || { ...profile, status: "active" };
@@ -2544,9 +2582,18 @@
     } else if (phase === "suspended") {
       if (status) status.textContent = "這個帳號已被停權。";
     } else if (phase === "pending") {
-      if (status) status.textContent = "帳號已建立，正在等待站長手動審核。通過後重新整理即可進入。";
+      if (status) {
+        status.textContent = state.lastClaimReason === "limit_reached"
+          ? "今日免審核名額已滿。帳號已建立，之後由站長人工審核。"
+          : "帳號已建立，等待站長審核。";
+      }
     } else if (status) {
       status.textContent = "";
+    }
+    const rt = state.runtimeStatus || {};
+    if (phase === "ok" && rt.site_mode === "MAINTENANCE" && !isAdmin()) {
+      document.body.classList.add("gated");
+      if (status) status.textContent = rt.maintenance_message || "網站目前暫停服務，站長正在處理問題，請稍後再回來。";
     }
     if (!blocked && phase === "ok") {
       $("#view-landing")?.classList.remove("active");
@@ -2565,6 +2612,11 @@
   }
 
   async function ensureContentLoaded() {
+    const rt = state.runtimeStatus || {};
+    if (rt.site_mode === "MAINTENANCE" && !isAdmin()) {
+      if ($("#home-summary")) $("#home-summary").textContent = rt.maintenance_message || "網站目前暫停服務，站長正在處理問題，請稍後再回來。";
+      return;
+    }
     if (!isApproved() || state.contentLoaded) return;
     state.contentLoaded = true;
     try {
@@ -2598,7 +2650,7 @@
       }
     }
     if (state.profile?.status === "pending") {
-      toast(state.autoApproveOpen ? "帳號資料尚未就緒，請稍候再試或重新整理" : "帳號仍在等待管理員審核", "warning");
+      toast(state.lastClaimReason === "limit_reached" ? "今日免審核名額已滿，請等待站長審核" : (state.autoApproveOpen ? "帳號資料尚未就緒，請稍候再試或重新整理" : "帳號仍在等待管理員審核"), "warning");
       return false;
     }
     if (state.profile?.status === "suspended") {
@@ -2607,6 +2659,15 @@
     }
     if (!isApproved()) {
       toast(`帳號狀態為 ${state.profile?.status || "未知"}，無法使用${actionLabel}`, "warning");
+      return false;
+    }
+    const mode = state.runtimeStatus?.site_mode;
+    if (mode === "READ_ONLY" && !isAdmin()) {
+      toast("目前為全站唯讀，暫時不能修改資料。", "warning");
+      return false;
+    }
+    if (mode === "MAINTENANCE" && !isAdmin()) {
+      toast(state.runtimeStatus?.maintenance_message || "網站目前暫停服務，站長正在處理問題，請稍後再回來。", "warning");
       return false;
     }
     return true;
@@ -3992,6 +4053,89 @@
     $$("[data-admin-tab]").forEach(button => button.classList.toggle("active", button.dataset.adminTab === tab));
     content.innerHTML = '<div class="empty-state">載入中…</div>';
     try {
+    if (tab === "ops") {
+      const { data, error } = await supabase.rpc("admin_runtime_status");
+      if (error) {
+        content.innerHTML = `<div class="empty-state form-error">無法載入營運狀態：${escapeHtml(error.message)}</div>`;
+        return;
+      }
+      const { data: audit } = await supabase.rpc("admin_list_audit", { limit_n: 20 });
+      const { data: users } = await supabase.rpc("admin_list_users");
+      const pending = (users || []).filter(u => u.status === "pending" && u.role !== "admin");
+      const fmt = (v) => v ? new Date(v).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" }) : "—";
+      const trialLabel = data.trial_open ? "OPEN" : "CLOSED";
+      content.innerHTML = `
+        <div class="ops-grid">
+          <div class="ops-card">
+            <h3>網站狀態</h3>
+            <div class="ops-metrics">
+              <div>網站狀態<strong>${escapeHtml(data.site_mode || "NORMAL")}</strong></div>
+              <div>今日免審核註冊<strong>${trialLabel}</strong></div>
+              <div>免審核已用 / 上限<strong>${Number(data.used || 0)} / ${data.cap == null ? "—" : data.cap}</strong></div>
+              <div>剩餘名額<strong>${data.remaining == null ? "—" : data.remaining}</strong></div>
+              <div>絕對上限<strong>${escapeHtml(String(data.absolute_cap || 2000))}</strong></div>
+              <div>永久會員<strong>${Number(data.approved_members || 0)}</strong></div>
+              <div>Pending<strong>${Number(data.pending_members || 0)}</strong></div>
+              <div>新會員模式<strong>${escapeHtml(data.registration_mode || "")}</strong></div>
+              <div>開始<strong>${fmt(data.trial_start)}</strong></div>
+              <div>結束<strong>${fmt(data.trial_end)}</strong></div>
+              <div>最後操作<strong>${escapeHtml(data.last_action || "—")}</strong></div>
+              <div>最後操作時間<strong>${fmt(data.last_action_at)}</strong></div>
+            </div>
+          </div>
+          <div class="ops-emergency">
+            <p class="ops-help">緊急控制（立刻改伺服器狀態，不必重新佈署）</p>
+            <button class="button button-danger" data-ops-reg="MANUAL_APPROVAL">暫停新會員自動通過</button>
+            <button class="button button-secondary" data-ops-reg="LIMITED_AUTO_APPROVE">恢復限額自動通過</button>
+            <button class="button button-danger" data-ops-mode="READ_ONLY">全站唯讀</button>
+            <button class="button button-danger" data-ops-mode="MAINTENANCE">進入維護模式</button>
+            <button class="button button-primary" data-ops-mode="NORMAL">恢復正常</button>
+          </div>
+          <div class="ops-card ops-actions">
+            <h3>免審核名額</h3>
+            <p class="ops-help">降低名額不會踢出現有會員，只會停止新的自動通過。</p>
+            <label>新上限（不可超過 ${escapeHtml(String(data.absolute_cap || 2000))}）
+              <input id="ops-cap-input" type="number" min="0" max="${Number(data.absolute_cap || 2000)}" value="${Number(data.cap || 0)}">
+            </label>
+            <button class="button button-secondary" data-ops-cap>調整名額</button>
+            <button class="button button-secondary" data-ops-close-auto>立即停止免審核</button>
+            <label>接下來幾個新帳號免審核
+              <input id="ops-finite-count" type="number" min="1" max="${Number(data.absolute_cap || 2000)}" value="100">
+            </label>
+            <label>時長
+              <select id="ops-finite-mins">
+                <option value="30">30 分鐘</option>
+                <option value="60">1 小時</option>
+                <option value="180">3 小時</option>
+              </select>
+            </label>
+            <button class="button button-secondary" data-ops-finite>重新開放（有限期）</button>
+          </div>
+          <p class="ops-help">這些控制會立刻改伺服器狀態，不必重新佈署。暫停免審核只影響新帳號自動通過；全站唯讀讓會員只能看不能寫；維護模式會暫時關掉一般會員內容，管理員仍可進來恢復。</p>
+          <div class="ops-card ops-pending">
+            <h3>待審會員（${pending.length}）</h3>
+            ${pending.slice(0, 40).map(u => `
+              <div class="ops-pending-row">
+                <div>
+                  <strong>${escapeHtml(memberName(u))}</strong>
+                  <p class="muted">${escapeHtml(u.email || "（無信箱）")} · ${fmt(u.created_at)}</p>
+                </div>
+                <div class="ops-actions">
+                  <button class="button button-primary" data-approve-user="${u.id}">通過</button>
+                  <button class="button button-danger" data-suspend-user="${u.id}" data-suspend="true">拒絕</button>
+                  <label class="check-inline"><input type="checkbox" data-ops-select="${u.id}"> 選取</label>
+                </div>
+              </div>
+            `).join("") || '<p class="muted">目前沒有待審會員</p>'}
+            ${pending.length ? '<button class="button button-secondary" data-ops-bulk-approve>通過已選取</button>' : ""}
+          </div>
+          <div class="ops-card">
+            <h3>最近操作</h3>
+            ${(audit || []).map(row => `<p class="muted">${fmt(row.created_at)} · ${escapeHtml(row.action)}</p>`).join("") || '<p class="muted">尚無紀錄</p>'}
+          </div>
+        </div>`;
+      return;
+    }
     if (tab === "users") {
       await refreshAutoApproveStatus();
       let users;
@@ -4616,8 +4760,58 @@
         toast(error ? error.message : "申請狀態已更新（未自動刪除帳號）", error ? "error" : "success");
         if (!error) loadAdmin("users");
       }
-      if (target.dataset.approveUser) { const { error } = await supabase.rpc("approve_user", { target_user: target.dataset.approveUser, approve: true }); toast(error ? error.message : "會員已通過", error ? "error" : "success"); if (!error) loadAdmin("users"); }
-      if (target.dataset.suspendUser) { const { error } = await supabase.rpc("set_user_suspension", { target_user: target.dataset.suspendUser, suspend: target.dataset.suspend === "true" }); toast(error ? error.message : "會員狀態已更新", error ? "error" : "success"); if (!error) loadAdmin("users"); }
+      if (target.dataset.opsMode) {
+        const mode = target.dataset.opsMode;
+        if (mode === "MAINTENANCE") {
+          const typed = window.prompt("進入維護模式會暫停一般會員內容。請輸入 MAINTENANCE 確認。管理員仍可進來恢復。");
+          if (typed !== "MAINTENANCE") return toast("已取消", "warning");
+        } else if (mode === "READ_ONLY") {
+          if (!window.confirm("確認切換成全站唯讀？會員仍可瀏覽，但不能評分、收藏或留言。")) return;
+        } else if (mode === "NORMAL") {
+          if (!window.confirm(`確認恢復正常？目前模式：${state.runtimeStatus?.site_mode || "未知"}`)) return;
+        }
+        const { error } = await supabase.rpc("admin_set_site_mode", { new_mode: mode });
+        toast(error ? error.message : `網站狀態：${mode}`, error ? "error" : "success");
+        if (!error) { await refreshAutoApproveStatus(); loadAdmin("ops"); }
+      }
+      if (target.dataset.opsReg) {
+        const mode = target.dataset.opsReg;
+        if (!window.confirm(mode === "MANUAL_APPROVAL" ? "確認暫停新會員自動通過？" : "確認恢復限額自動通過？僅在排程時段內有效。")) return;
+        const { error } = await supabase.rpc("admin_set_registration_mode", { new_mode: mode });
+        toast(error ? error.message : "註冊模式已更新", error ? "error" : "success");
+        if (!error) { await refreshAutoApproveStatus(); loadAdmin("ops"); }
+      }
+      if (target.dataset.opsCap !== undefined) {
+        const cap = Number($("#ops-cap-input")?.value);
+        if (!window.confirm(`確認將免審核上限改成 ${cap}？已通過的會員不會被取消。`)) return;
+        const { error } = await supabase.rpc("admin_set_trial_cap", { new_cap: cap });
+        toast(error ? error.message : "名額已更新", error ? "error" : "success");
+        if (!error) loadAdmin("ops");
+      }
+      if (target.dataset.opsCloseAuto !== undefined) {
+        if (!window.confirm("確認立即停止免審核？之後新帳號改為人工審核。")) return;
+        const { error } = await supabase.rpc("admin_close_auto_approve");
+        toast(error ? error.message : "已停止免審核", error ? "error" : "success");
+        if (!error) { await refreshAutoApproveStatus(); loadAdmin("ops"); }
+      }
+      if (target.dataset.opsFinite !== undefined) {
+        const count = Number($("#ops-finite-count")?.value);
+        const minutes = Number($("#ops-finite-mins")?.value);
+        if (!window.confirm(`確認開放接下來 ${count} 個新帳號免審核，為期 ${minutes} 分鐘？這會重設已用名額計數。`)) return;
+        const { error } = await supabase.rpc("admin_set_auto_approve", { slot_count: count, minutes });
+        toast(error ? error.message : "已重新開放有限期免審核", error ? "error" : "success");
+        if (!error) { await refreshAutoApproveStatus(); loadAdmin("ops"); }
+      }
+      if (target.dataset.opsBulkApprove !== undefined) {
+        const ids = $$("[data-ops-select]:checked").map(el => el.dataset.opsSelect).filter(Boolean);
+        if (!ids.length) return toast("請先選取會員", "warning");
+        if (!window.confirm(`確認通過已選取的 ${ids.length} 位待審會員？`)) return;
+        const { data, error } = await supabase.rpc("admin_approve_pending", { user_ids: ids });
+        toast(error ? error.message : `已通過 ${Number(data?.approved || 0)} 位`, error ? "error" : "success");
+        if (!error) loadAdmin("ops");
+      }
+      if (target.dataset.approveUser) { const { error } = await supabase.rpc("approve_user", { target_user: target.dataset.approveUser, approve: true }); toast(error ? error.message : "會員已通過", error ? "error" : "success"); if (!error) loadAdmin(state.adminTab || "ops"); }
+      if (target.dataset.suspendUser) { const { error } = await supabase.rpc("set_user_suspension", { target_user: target.dataset.suspendUser, suspend: target.dataset.suspend === "true" }); toast(error ? error.message : "會員狀態已更新", error ? "error" : "success"); if (!error) loadAdmin(state.adminTab || "ops"); }
       if (target.dataset.runJob) runJob(target.dataset.runJob);
       if (target.dataset.refreshJobs !== undefined) loadJobs();
       if (target.dataset.newWork !== undefined) editWork();
