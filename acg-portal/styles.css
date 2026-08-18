@@ -48,6 +48,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .error-text { color: #ff8f9c; overflow-wrap: anywhere; }
 .centered { display: block; margin: 28px auto 0; }
 
+.env-banner {
+  position: sticky; top: 0; z-index: 80;
+  display: none; padding: 6px 12px;
+  background: #c45c12; color: #fff;
+  font-size: 12px; font-weight: 800; letter-spacing: .12em;
+  text-align: center;
+}
+.env-banner:not([hidden]) { display: block; }
+body.env-local .env-banner { display: block; }
+
 .ambient { position: fixed; border-radius: 50%; filter: blur(100px); opacity: .18; pointer-events: none; z-index: 0; }
 .ambient-one { width: 460px; height: 460px; background: #633cff; top: -180px; left: -160px; }
 .ambient-two { width: 520px; height: 520px; background: #a82fff; right: -240px; top: 36%; }

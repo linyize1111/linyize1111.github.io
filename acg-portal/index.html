@@ -6,25 +6,26 @@
   <meta name="color-scheme" content="dark">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src 'none'; media-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com https://xpztpetskjohuxrpgmcm.supabase.co https://cdn.akamai.steamstatic.com https://shared.akamai.steamstatic.com https://steamcdn-a.akamaihd.net https://cdn.cloudflare.steamstatic.com https://img.dlsite.jp https://www.dlsite.com; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src 'none'; media-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com https://xpztpetskjohuxrpgmcm.supabase.co https://cdn.akamai.steamstatic.com https://shared.akamai.steamstatic.com https://steamcdn-a.akamaihd.net https://cdn.cloudflare.steamstatic.com https://img.dlsite.jp https://www.dlsite.com; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co; upgrade-insecure-requests">
   <title>你的夜鹿導師 | ACG Portal</title>
   <meta name="description" content="私人會員制 ACG metadata／評分工具。本站不提供作品圖片、下載或來源連結。">
   <meta property="og:title" content="你的夜鹿導師 | ACG Portal">
   <meta property="og:description" content="私人整理的 ACG 編號與評分倉庫。僅限審核會員。本站不提供作品圖片、下載或來源連結。">
   <meta property="og:type" content="website">
-  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=2.1.0-rc2">
+  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=2.1.0-rc3">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2.1.0-rc2">
+  <link rel="stylesheet" href="styles.css?v=2.1.0-rc3">
 </head>
 <body>
+  <div id="env-banner" class="env-banner" hidden>LOCAL · 非生產環境</div>
   <div class="ambient ambient-one"></div>
   <div class="ambient ambient-two"></div>
 
   <header class="site-header">
     <a class="brand" href="#home" aria-label="ACG Portal 首頁">
-      <span class="brand-mark"><img src="assets/yoru-icon.png?v=2.1.0-rc2" alt=""></span>
+      <span class="brand-mark"><img src="assets/yoru-icon.png?v=2.1.0-rc3" alt=""></span>
       <span><strong>夜鹿導師</strong><small>ACG PORTAL</small></span>
     </a>
     <nav id="main-nav" class="main-nav" aria-label="主要導覽">
@@ -68,7 +69,7 @@
             <h1>你的夜鹿導師</h1>
             <p class="hero-tagline">上數學課啦！</p>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.1.0-rc2" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.1.0-rc3" alt="夜鹿導師">
         </div>
         <div class="site-note">
           <p>私人 ACG 作品紀錄、收藏與評分工具。</p>
@@ -104,7 +105,7 @@
             <h1>你的夜鹿導師</h1>
             <p class="hero-tagline">上數學課啦！</p>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.1.0-rc2" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.1.0-rc3" alt="夜鹿導師">
         </div>
         <div class="site-note">
           <p>私人 ACG 作品紀錄、收藏與評分工具。</p>
@@ -381,9 +382,8 @@
 
   <div id="toast-region" class="toast-region" aria-live="polite"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"
-    integrity="sha384-z2hqtpr/vSDZ8zSjLOiNgnR/mpU799AD93s6rvkNJLI6Hl0YlKXEhDtREzNT749S" crossorigin="anonymous"></script>
-  <script src="config.js?v=2.1.0-rc2"></script>
-  <script src="app.js?v=2.1.0-rc2"></script>
+  <script src="vendor/supabase.min.js?v=2.49.8"></script>
+  <script src="config.js?v=2.1.0-rc3"></script>
+  <script src="app.js?v=2.1.0-rc3"></script>
 </body>
 </html>

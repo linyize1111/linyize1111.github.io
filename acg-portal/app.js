@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "2.1.0-rc2";
+  const APP_VERSION = "2.1.0-rc3";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class";
   const MEMBER_WORKS_VIEW = "member_works_v21";
   const SENSITIVE_TAG_MESSAGE = "此標籤僅作作品 metadata 顯示，不提供分類探索。";
@@ -1021,7 +1021,8 @@
     const label = formatAverageScore(stats);
     const count = stats?.review_count || 0;
     const cls = compact ? "score-badge compact" : "score-badge";
-    return `<span class="${cls}" title="${count ? `${count} 則評分 · 平均 ${label}` : "尚無評分"}">${label}${count ? `<small>${count} 則</small>` : ""}</span>`;
+    const title = count ? `${count} 則評分 · 平均 ${label}` : "尚無評分";
+    return `<span class="${cls}" title="${escapeHtml(title)}">${escapeHtml(label)}${count ? `<small>${escapeHtml(String(count))} 則</small>` : ""}</span>`;
   }
 
   function platformFlipLabel(_platform) {
@@ -2489,7 +2490,9 @@
         statusLabel = labels[state.profile?.status] || "建立資料中";
       }
       $("#profile-status").textContent = statusLabel;
-      $("#profile-avatar").src = state.profile?.avatar_url || state.session.user.user_metadata?.avatar_url || imageUrl("");
+      $("#profile-avatar").src = imageUrl(
+        state.profile?.avatar_url || state.session.user.user_metadata?.avatar_url || ""
+      );
     }
     const gameBtn = $("#new-game-button");
     const adminNav = $('a[data-view="admin"]');
@@ -3879,6 +3882,9 @@
     event.preventDefault(); if (!await requireMember()) return;
     const gameId = event.currentTarget.dataset.gameId;
     const body = $("#game-comment-body").value.trim();
+    if (!body || body.length > 500) return toast("留言需為 1～500 字", "warning");
+    const violation = validateMemberText(body, { field: "遊戲留言" });
+    if (violation) return toast(violation, "warning");
     const { error } = await supabase.from("game_comments").insert({ game_id: gameId, user_id: state.session.user.id, body });
     if (error) return toast(error.message, "error");
     await openGame(gameId);
@@ -4651,7 +4657,20 @@
     });
   }
 
+  function markEnvironment() {
+    const local = location.protocol === "file:"
+      || ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+    const banner = $("#env-banner");
+    if (!banner) return;
+    if (local) {
+      banner.hidden = false;
+      banner.textContent = "LOCAL · 非生產環境";
+      document.body.classList.add("env-local");
+    }
+  }
+
   async function init() {
+    markEnvironment();
     bindEvents();
     loadDrawHistory();
     detectGoogleProvider();
