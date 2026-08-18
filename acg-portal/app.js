@@ -16,7 +16,7 @@
     }
   });
 
-  const APP_VERSION = "2.1.0-rc3";
+  const APP_VERSION = "2.1.0";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class";
   const MEMBER_WORKS_VIEW = "member_works_v21";
   const SENSITIVE_TAG_MESSAGE = "此標籤僅作作品 metadata 顯示，不提供分類探索。";
