@@ -5,6 +5,7 @@
   const MANUAL_SYNC_WORKFLOW_HINT = "actions/workflows/scheduled-sync.yml";
   const AUTH_STORAGE_KEY = "acg-portal-auth";
   const VIEW_STORAGE_KEY = "acg_portal_last_view";
+  const ADMIN_TAB_KEY = "acg_portal_admin_tab";
   const supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
     auth: {
       persistSession: true,
@@ -16,10 +17,49 @@
     }
   });
 
-  const APP_VERSION = "2.1.1";
-  const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class";
+  const APP_VERSION = "2.2.0";
+  const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class,plot_axis";
+  const MEMBER_WORK_COLUMNS_LEGACY = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class";
   const MEMBER_WORKS_VIEW = "member_works_v21";
   const SENSITIVE_TAG_MESSAGE = "此標籤僅作作品 metadata 顯示，不提供分類探索。";
+  const PRIVACY_ONBOARD_KEY = "yoru-privacy-onboarded";
+
+  function resolveSiteFlavor() {
+    const hostLocal = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)
+      || location.protocol === "file:";
+    const requested = config?.flavor === "local";
+    if (requested && hostLocal) return "local";
+    return "public";
+  }
+
+  function localApiBase() {
+    if (!isLocalFlavor()) return "";
+    if (location.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) && location.port === "8000") {
+      return "";
+    }
+    return String(config.localApiUrl || config.workerUrl || "http://127.0.0.1:8000").replace(/\/$/, "");
+  }
+
+  async function localApi(path, { method = "GET", body = null } = {}) {
+    if (!isLocalFlavor()) throw new Error("本機 API 未設定");
+    const base = localApiBase();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error("需要管理員登入");
+    const res = await fetch(`${base}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const text = await res.text();
+    let json = null;
+    try { json = text ? JSON.parse(text) : null; } catch { /* ignore */ }
+    if (!res.ok) throw new Error(json?.detail || text || res.statusText);
+    return json;
+  }
   const GAME_IMAGE_HOSTS = [
     "cdn.akamai.steamstatic.com",
     "shared.akamai.steamstatic.com",
@@ -119,6 +159,11 @@
     libraryByWork: new Map(),
     notesByWork: new Map(),
     homePlatform: "all",
+    homePlot: "all",
+    libraryPlot: "all",
+    siteFlavor: resolveSiteFlavor(),
+    tagAutoResolved: false,
+    submissionPreviewAuto: false,
     preferenceTags: new Map(),
     libraryVisible: 60,
     librarySeed: crypto.randomUUID?.() || String(Date.now()),
@@ -263,10 +308,13 @@
     const items = displayTagItems(work);
     const hidden = Boolean(work?.has_hidden_tags);
     const hiddenTitle = Boolean(work?.has_hidden_title);
-    if (!items.length && !hidden && !hiddenTitle) return "";
+    const plot = plotPillHtml(work);
+    if (!items.length && !hidden && !hiddenTitle && !plot) return "";
     const shown = expand ? items : items.slice(0, max);
     const overflow = expand ? 0 : Math.max(0, items.length - shown.length);
-    const chips = shown.map(item => tagChipHtml(item.name, { interactive: item.interactive }));
+    const chips = [];
+    if (plot) chips.push(plot);
+    shown.forEach(item => chips.push(tagChipHtml(item.name, { interactive: item.interactive })));
     if (overflow) {
       chips.push(`<span class="tag tag-overflow" title="還有 ${overflow} 個標籤">+${overflow}</span>`);
     }
@@ -293,8 +341,29 @@
       has_hidden_tags: Boolean(row.has_hidden_tags),
       has_hidden_title: Boolean(row.has_hidden_title),
       created_at: row.created_at,
-      policy_class: row.policy_class || "NONE"
+      policy_class: row.policy_class || "NONE",
+      plot_axis: row.plot_axis || "other"
     };
+  }
+
+  function plotAxisOf(work) {
+    return String(work?.plot_axis || "other");
+  }
+
+  function matchesPlotFilter(work, filter) {
+    const axis = plotAxisOf(work);
+    const f = filter || "all";
+    if (f === "all") return true;
+    if (f === "exclude_ntr") return axis !== "ntr";
+    return axis === f;
+  }
+
+  function plotPillHtml(work) {
+    const axis = plotAxisOf(work);
+    if (axis === "ntr") return '<span class="tag plot-pill plot-ntr">NTR</span>';
+    if (axis === "pure_love") return '<span class="tag plot-pill plot-pure">純愛</span>';
+    if (axis === "noncon") return '<span class="tag plot-pill plot-noncon">凌辱</span>';
+    return "";
   }
 
   function parseWorkCode(raw) {
@@ -601,11 +670,22 @@
     return total + Math.max(0, rating + 5) + stableRandom(work.id) * .01;
   }
 
-  function imageUrl(url, { kind = "game" } = {}) {
+  function imageUrl(url, { kind = "game", platform = "", workId = "" } = {}) {
     const placeholder = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect fill="#171b2d" width="100%" height="100%"/><text fill="#737b96" x="50%" y="50%" text-anchor="middle" font-size="28">NO COVER</text></svg>'
     );
-    if (kind === "work") return placeholder;
+    // Public Pages: work covers never render.
+    if (kind === "work" && !isLocalFlavor()) return placeholder;
+    if (kind === "work" && isLocalFlavor()) {
+      const base = localApiBase();
+      const qs = url && String(url).startsWith("https://")
+        ? `url=${encodeURIComponent(url)}`
+        : (platform && workId
+          ? `platform=${encodeURIComponent(platform)}&work_id=${encodeURIComponent(workId)}`
+          : "");
+      if (!qs) return placeholder;
+      return `${base}/api/local/cover-proxy?${qs}`;
+    }
     if (!url) return placeholder;
     try {
       const host = new URL(url, location.origin).hostname.replace(/^www\./, "");
@@ -618,6 +698,68 @@
 
   function isApproved() { return state.profile?.status === "active"; }
   function isAdmin() { return isApproved() && state.profile?.role === "admin"; }
+  function isLocalFlavor() { return state.siteFlavor === "local"; }
+
+  function supportTipUrl() {
+    const raw = String(config.supportTipUrl || config.buyMeACoffeeUrl || "").trim();
+    let parsed;
+    try { parsed = new URL(raw); } catch { return ""; }
+    if (parsed.protocol !== "https:") return "";
+    const host = parsed.hostname.toLowerCase();
+    const allowed = new Set([
+      "portaly.cc",
+      "www.portaly.cc",
+      "p.ecpay.com.tw",
+      "payment.ecpay.com.tw",
+      "www.opay.tw",
+      "payment.opay.tw",
+      "buymeacoffee.com",
+      "www.buymeacoffee.com"
+    ]);
+    if (!allowed.has(host)) return "";
+    parsed.hash = "";
+    return parsed.href;
+  }
+
+  function coffeeCtaHtml() {
+    const url = supportTipUrl();
+    if (!url) return "";
+    return `<p><a class="button button-secondary coffee-cta" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"><span data-inline-icon="coffee"></span> 請站長喝杯咖啡（自願）</a></p>`;
+  }
+
+  function applySupportTipCtas() {
+    const url = supportTipUrl();
+    $$("[data-tip-cta]").forEach(el => {
+      if (!url) {
+        el.hidden = true;
+        el.removeAttribute("href");
+        return;
+      }
+      el.hidden = false;
+      el.href = url;
+    });
+    $$("[data-tip-cta-wrap]").forEach(el => {
+      el.hidden = !url;
+    });
+  }
+
+  function hydrateChromeIcons() {
+    const icons = window.yoruIcons;
+    if (!icons?.icon) return;
+    $$("[data-nav-icon]").forEach(el => {
+      const name = el.dataset.navIcon;
+      const label = el.textContent.trim();
+      el.innerHTML = icons.navLabel(name, label);
+    });
+    $$("[data-icon]").forEach(el => {
+      if (el.dataset.iconHydrated) return;
+      el.innerHTML = icons.icon(el.dataset.icon, { size: 18 });
+      el.dataset.iconHydrated = "1";
+    });
+    $$("[data-inline-icon]").forEach(el => {
+      el.innerHTML = icons.icon(el.dataset.inlineIcon, { size: 16, className: "inline-icon" });
+    });
+  }
 
   async function fetchProfileOnce() {
     if (!state.session) return null;
@@ -740,11 +882,27 @@
     try { localStorage.setItem(VIEW_STORAGE_KEY, view); } catch (_) { /* ignore */ }
   }
 
+  function rememberAdminTab(tab) {
+    try { localStorage.setItem(ADMIN_TAB_KEY, tab); } catch (_) { /* ignore */ }
+  }
+
+  function readRememberedAdminTab() {
+    try {
+      const saved = localStorage.getItem(ADMIN_TAB_KEY);
+      if (saved) return saved;
+    } catch (_) { /* ignore */ }
+    return "ops";
+  }
+
   function parseLocationHash() {
     const raw = location.hash.replace(/^#/, "").trim();
     const workMatch = /^work-([0-9a-f-]{36})(?:-review-([0-9a-f-]{36}))?$/i.exec(raw);
     if (workMatch) {
-      return { view: "home", workId: workMatch[1], reviewId: workMatch[2] || null };
+      return { view: null, workId: workMatch[1], reviewId: workMatch[2] || null };
+    }
+    const shareMatch = /^share\/([A-Za-z0-9_-]{8,64})$/.exec(raw);
+    if (shareMatch) {
+      return { view: "collection", shareToken: shareMatch[1], workId: null, reviewId: null };
     }
     const viewNames = ["home", "library", "leaderboard", "collection", "games", "discuss", "profile", "feedback", "admin", "privacy", "terms"];
     if (raw === "random") return { view: "home", workId: null, reviewId: null };
@@ -821,6 +979,7 @@
   }
 
   function memberName(profile, fallback = "會員") {
+    if (profile?.status === "deleted") return "已註銷會員";
     return cleanName(profile?.display_name) || fallback;
   }
 
@@ -1115,10 +1274,12 @@
     return [...byId.values()];
   }
 
-  async function fetchAll(table, queryBuilder) {
+  async function fetchAll(table, queryBuilder, columns = null) {
     const rows = [];
+    const selectCols = columns
+      || ((table === MEMBER_WORKS_VIEW || table === "member_works_safe") ? MEMBER_WORK_COLUMNS : "*");
     for (let offset = 0; ; offset += 1000) {
-      let query = supabase.from(table).select(table === MEMBER_WORKS_VIEW || table === "member_works_safe" ? MEMBER_WORK_COLUMNS : "*").range(offset, offset + 999);
+      let query = supabase.from(table).select(selectCols).range(offset, offset + 999);
       query = queryBuilder ? queryBuilder(query) : query;
       const { data, error } = await query;
       if (error) throw error;
@@ -1128,7 +1289,17 @@
   }
 
   async function loadWorks() {
-    const activeWorks = await fetchAll(MEMBER_WORKS_VIEW);
+    let activeWorks;
+    try {
+      activeWorks = await fetchAll(MEMBER_WORKS_VIEW);
+    } catch (error) {
+      const msg = String(error?.message || error || "");
+      if (/plot_axis/i.test(msg)) {
+        activeWorks = await fetchAll(MEMBER_WORKS_VIEW, null, MEMBER_WORK_COLUMNS_LEGACY);
+      } else {
+        throw error;
+      }
+    }
     state.works = dedupeWorks((activeWorks || []).map(projectMemberWork).filter(Boolean));
     state.workById = new Map(state.works.map(work => [work.id, work]));
     const nCount = state.works.filter(w => w.platform === "nhentai").length;
@@ -1171,10 +1342,12 @@
   function randomPool() {
     const scope = $("#home-random-scope")?.value || "all";
     const platform = state.homePlatform || "all";
+    const plot = $("#home-random-plot")?.value || state.homePlot || "all";
     const excludeWatched = $("#home-random-exclude-watched")?.checked;
     const tag = normalize($("#home-random-tag")?.value || "");
     return state.works.filter(work => {
       if (platform !== "all" && work.platform !== platform) return false;
+      if (!matchesPlotFilter(work, plot)) return false;
       if (scope === "favorites" && !state.favorites.has(work.id)) return false;
       if (scope === "watchlist" && !state.watchlist.has(work.id)) return false;
       if (excludeWatched && state.watched.has(work.id)) return false;
@@ -1198,6 +1371,154 @@
     if ($("#home-summary")) $("#home-summary").textContent = `從 ${pool.length.toLocaleString()} 筆 Archive 抽出 ${state.bulkWorks.length} 張`;
     renderHomeRandomResults(state.bulkWorks);
     switchView("home");
+  }
+
+  async function resolveSafePendingTags({ silentEmpty = false } = {}) {
+    const { data, error } = await supabase.rpc("admin_resolve_pending_tags");
+    if (error) {
+      toast(formatApiError(error), "error");
+      return false;
+    }
+    const allowed = data?.allowed || 0;
+    const hidden = data?.hidden_legal_risk || 0;
+    const skipped = data?.skipped || 0;
+    if (!allowed && !hidden) {
+      if (!silentEmpty) toast("沒有待處理標籤", "info");
+      return false;
+    }
+    toast(`標籤已處理：允許 ${allowed}、隱藏違法疑慮 ${hidden}${skipped ? `、略過 ${skipped}` : ""}`, "success");
+    return true;
+  }
+
+  async function autoLoadSubmissionPreviews(rows) {
+    const wall = $("#local-preview-wall");
+    const pending = (rows || []).filter(r => r.status === "pending" && (r.platform === "nhentai" || r.platform === "18comic"));
+    if (!pending.length) {
+      await renderLocalPreviewWall();
+      return;
+    }
+    if (wall) wall.innerHTML = `<p class="muted">正在自動抓取預覽圖 0/${pending.length}…</p>`;
+    let done = 0;
+    for (const row of pending) {
+      try {
+        await localApi("/api/local/ingest-preview", {
+          method: "POST",
+          body: { platform: row.platform, work_id: String(row.work_id), submission_id: row.id }
+        });
+      } catch { /* keep going */ }
+      done += 1;
+      if (wall) wall.innerHTML = `<p class="muted">正在自動抓取預覽圖 ${done}/${pending.length}…</p>`;
+      if (done % 4 === 0) await renderLocalPreviewWall();
+    }
+    await renderLocalPreviewWall();
+    toast(`投稿預覽已自動載入 ${done} 筆`, "success");
+  }
+
+  async function renderLocalPreviewWall() {
+    const wall = $("#local-preview-wall");
+    if (!wall || !isLocalFlavor()) return;
+    try {
+      const rows = await localApi("/api/local/previews");
+      wall.innerHTML = (rows || []).filter(r => r.status === "preview" || r.status === "error").map(row => {
+        const code = `${row.platform === "nhentai" ? "N" : "JM"}-${row.work_id}`;
+        const img = imageUrl(row.cover_url || "", { kind: "work", platform: row.platform, workId: row.work_id });
+        const jump = adminWorkSourceUrl({ platform: row.platform, work_id: row.work_id });
+        return `<article class="local-preview-card">
+          ${coverJumpHtml(img, jump)}
+          <div>
+            <h4>${escapeHtml(code)}</h4>
+            <p>${escapeHtml(row.title || "（無標題）")}</p>
+            <p class="muted">${escapeHtml(row.author || "")}${row.status === "error" ? ` · ${escapeHtml(row.error_message || "error")}` : ""}</p>
+            ${row.status === "preview" ? `<div class="admin-actions">
+              <button class="button button-primary" data-local-promote="${row.id}" data-target="public">加入公開庫</button>
+              <button class="button button-secondary" data-local-promote="${row.id}" data-target="local_only">只留本機</button>
+              <button class="button button-danger" data-local-reject="${row.id}">拒絕</button>
+            </div>` : ""}
+          </div>
+        </article>`;
+      }).join("") || '<p class="muted small-note">尚無預覽。先按「一鍵抓取待處理預覽」。</p>';
+    } catch (error) {
+      wall.innerHTML = `<p class="muted small-note">預覽牆無法載入：${escapeHtml(error.message || error)}。請確認 start-local-full.ps1 已啟動。</p>`;
+    }
+  }
+
+  function maybePrivacyOnboard() {
+    if (!isApproved() || !state.profile) return;
+    try {
+      if (localStorage.getItem(PRIVACY_ONBOARD_KEY) === "1") return;
+      localStorage.setItem(PRIVACY_ONBOARD_KEY, "1");
+    } catch { return; }
+    const preset = currentPrivacyPreset(state.profile);
+    const labels = { all_private: "全部保密", stats_comments: "統計與評論公開（收藏仍私）", full_public: "連收藏也公開" };
+    toast(`隱私提醒：目前是「${labels[preset] || preset}」。可在個人頁調整。`, "info");
+  }
+
+  async function renderAnnouncements() {
+    const boards = [$("#announcement-board"), $("#landing-announcement-board")].filter(Boolean);
+    if (!boards.length) return;
+    const { data, error } = await supabase.rpc("list_published_announcements", { limit_n: 5 });
+    if (error || !data?.length) {
+      boards.forEach(board => { board.hidden = true; board.innerHTML = ""; });
+      return;
+    }
+    const html = `<div class="announcement-head">${window.yoruIcons?.icon("megaphone", { size: 18 }) || ""}<strong>站務公告</strong></div>` + data.map(row => {
+      const body = escapeHtml(row.body || "").replace(/\n/g, "<br>");
+      const summary = escapeHtml(row.summary || String(row.body || "").slice(0, 120));
+      const when = row.published_at ? new Date(row.published_at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" }) : "";
+      return `<article class="announcement-item ${row.pinned ? "pinned" : ""}">
+        <header><span class="announcement-badge">公告</span><h3>${escapeHtml(row.title)}</h3><time>${escapeHtml(when)}</time></header>
+        <p class="announcement-summary">${summary}</p>
+        <details><summary>展開全文</summary><div class="announcement-body">${body}</div></details>
+      </article>`;
+    }).join("");
+    boards.forEach(board => {
+      board.hidden = false;
+      board.innerHTML = html;
+    });
+  }
+
+  async function shareCollection() {
+    if (!await requireMember()) return;
+    const filter = $("#collection-filter")?.value || "favorites";
+    const { data, error } = await supabase.rpc("create_collection_share", { filter_name: filter });
+    if (error) return toast(formatApiError(error), "error");
+    const token = data?.token;
+    const count = data?.count || 0;
+    const shareUrl = `${location.origin}${location.pathname.replace(/\/index\.html$/i, "/")}#share/${token}`;
+    const { data: detail } = await supabase.rpc("get_collection_share", { share_token: token });
+    const lines = (detail?.works || []).slice(0, 40).map(w => {
+      const code = w.platform === "nhentai" ? `N-${w.work_id}` : `JM-${w.work_id}`;
+      return `${code} ${w.display_title || ""}`.trim();
+    });
+    const text = `夜鹿導師分享（${filter} ${count} 本）\n${lines.join("\n")}\n${shareUrl}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "夜鹿導師收藏分享", text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        toast("已複製分享文字（含車號與連結）", "success");
+      }
+    } catch {
+      await copyText(text, "已複製分享文字");
+    }
+  }
+
+  async function openSharedCollection(token) {
+    if (!await requireMember()) return;
+    const { data, error } = await supabase.rpc("get_collection_share", { share_token: token });
+    if (error || !data?.ok) {
+      toast(error?.message || "分享連結無效或已過期", "error");
+      return;
+    }
+    const works = (data.works || []).map(projectMemberWork).filter(Boolean);
+    works.forEach(w => state.workById.set(w.id, w));
+    switchView("collection");
+    const grid = $("#collection-grid");
+    if ($("#collection-summary")) $("#collection-summary").textContent = `好友分享的清單（${works.length} 本，唯讀）`;
+    if (grid) {
+      grid.innerHTML = works.map(work => archiveTicketHtml(work, { shared: true })).join("")
+        || '<div class="empty-state">這份分享沒有可顯示的作品</div>';
+    }
   }
 
   async function renderCollection() {
@@ -1255,6 +1576,7 @@
     const panel = $("#profile-panel");
     if (!panel || !state.profile) return;
     const p = state.profile;
+    const preset = currentPrivacyPreset(p);
     panel.innerHTML = `
       <div class="privacy-card profile-stats-card">
         <h3>${escapeHtml(myDisplayName())}</h3>
@@ -1283,12 +1605,11 @@
       </div>` : ""}
       <div class="privacy-card">
         <p class="eyebrow">PRIVACY</p>
-        <h3>隱私設定</h3>
-        <p class="muted">個人頁預設私人。公開項目需自行打開。</p>
-        <label class="check-inline"><input id="privacy-private" type="checkbox" ${p.profile_private !== false ? "checked" : ""}> 個人頁設為私人</label>
-        <label class="check-inline"><input id="privacy-stats" type="checkbox" ${p.show_stats ? "checked" : ""}> 公開統計</label>
-        <label class="check-inline"><input id="privacy-comments" type="checkbox" ${p.show_comments ? "checked" : ""}> 公開評論</label>
-        <label class="check-inline"><input id="privacy-library" type="checkbox" ${p.show_library ? "checked" : ""}> 公開收藏／已看</label>
+        <h3>好友能看到什麼</h3>
+        <p class="muted">選一種模式即可。收藏預設只有自己看得到。</p>
+        <label class="privacy-preset"><input type="radio" name="privacy-preset" value="all_private" ${preset === "all_private" ? "checked" : ""}> <strong>全部保密</strong><span class="muted"> — 別人看不到你的統計、評論與收藏。</span></label>
+        <label class="privacy-preset"><input type="radio" name="privacy-preset" value="stats_comments" ${preset === "stats_comments" ? "checked" : ""}> <strong>只公開統計與評論</strong><span class="muted"> — 別人看得到評分次數與你寫的評論；收藏仍只有你看得到。</span></label>
+        <label class="privacy-preset"><input type="radio" name="privacy-preset" value="full_public" ${preset === "full_public" ? "checked" : ""}> <strong>公開收藏與評論</strong><span class="muted"> — 統計、評論與收藏清單都公開。</span></label>
         <div class="detail-actions">
           <button class="button button-primary" id="save-privacy">儲存隱私設定</button>
           <button class="button button-secondary" id="all-private">全部設為私人</button>
@@ -1307,20 +1628,34 @@
       <div class="privacy-card profile-github-card">
         <p class="eyebrow">SUPPORT</p>
         <h3>覺得夜鹿導師有幫到你？</h3>
-        <p class="muted small-note">歡迎到 GitHub 幫這個專案留個 Star ⭐</p>
-        <p><a class="button button-secondary github-star-cta" href="${escapeHtml(config.githubRepoUrl)}" target="_blank" rel="noopener noreferrer">⭐ GitHub / Star this project</a></p>
+        <p class="muted small-note">歡迎到 GitHub 幫這個專案留個 Star。贊助完全自願，不贊助也能完整使用。</p>
+        <p><a class="button button-secondary github-star-cta" href="${escapeHtml(config.githubRepoUrl)}" target="_blank" rel="noopener noreferrer"><span data-inline-icon="star"></span> GitHub / Star this project</a></p>
+        ${coffeeCtaHtml()}
       </div>`;
     $("#save-privacy")?.addEventListener("click", savePrivacy);
     $("#profile-submit-send")?.addEventListener("click", () => submitWorkIdOnly("profile"));
     $("#download-my-data")?.addEventListener("click", downloadMyData);
     $("#request-account-deletion")?.addEventListener("click", requestAccountDeletion);
-    $("#all-private")?.addEventListener("click", async () => {
-      const { data, error } = await supabase.rpc("set_all_private");
-      if (error) return toast(error.message, "error");
-      if (data) state.profile = data;
-      renderProfile();
-      toast("已全部設為私人", "success");
+    window.yoruIcons?.icon && $$("#profile-panel [data-inline-icon]").forEach(el => {
+      el.innerHTML = window.yoruIcons.icon(el.dataset.inlineIcon, { size: 16 });
     });
+    $("#all-private")?.addEventListener("click", async () => {
+      const { data, error } = await supabase.rpc("set_privacy_preset", { preset: "all_private" });
+      if (error) {
+        const fallback = await supabase.rpc("set_all_private");
+        if (fallback.error) return toast(fallback.error.message, "error");
+        if (fallback.data) state.profile = fallback.data;
+      } else if (data) state.profile = data;
+      renderProfile();
+      toast("目前：全部保密", "success");
+    });
+  }
+
+  function currentPrivacyPreset(p) {
+    if (!p) return "all_private";
+    if (p.profile_private === false && p.show_library) return "full_public";
+    if (p.profile_private === false && (p.show_stats || p.show_comments)) return "stats_comments";
+    return "all_private";
   }
 
   async function downloadMyData() {
@@ -1344,16 +1679,21 @@
   }
 
   async function savePrivacy() {
-    const makePrivate = $("#privacy-private")?.checked;
-    const { data, error } = await supabase.rpc("set_profile_privacy", {
-      make_private: makePrivate,
-      stats_public: $("#privacy-stats")?.checked,
-      comments_public: $("#privacy-comments")?.checked,
-      library_public: $("#privacy-library")?.checked
-    });
+    const preset = document.querySelector('input[name="privacy-preset"]:checked')?.value || "all_private";
+    let data; let error;
+    ({ data, error } = await supabase.rpc("set_privacy_preset", { preset }));
+    if (error) {
+      const map = {
+        all_private: { make_private: true, stats_public: false, comments_public: false, library_public: false },
+        stats_comments: { make_private: false, stats_public: true, comments_public: true, library_public: false },
+        full_public: { make_private: false, stats_public: true, comments_public: true, library_public: true }
+      };
+      ({ data, error } = await supabase.rpc("set_profile_privacy", map[preset] || map.all_private));
+    }
     if (error) return toast(error.message, "error");
     if (data) state.profile = data;
-    toast("隱私設定已儲存", "success");
+    const labels = { all_private: "全部保密", stats_comments: "統計與評論公開", full_public: "連收藏也公開" };
+    toast(`目前：${labels[preset] || preset}`, "success");
   }
 
   async function renderRatingHistogram(workId) {
@@ -1895,9 +2235,49 @@
     return `<button class="${label ? "button button-secondary" : "quick-favorite"} ${active ? "active" : ""}" data-favorite="${escapeHtml(workId)}" aria-label="${active ? "取消收藏" : "加入收藏"}" title="${active ? "取消收藏" : "加入收藏"}">${label ? `${favoriteIcon(workId)} ${active ? "已收藏" : "收藏"}` : favoriteIcon(workId)}</button>`;
   }
 
+  function adminWorkSourceUrl(work) {
+    if (!isAdmin() || !isLocalFlavor()) return "";
+    const id = String(work?.work_id || "").replace(/[^\w-]/g, "");
+    if (!id) return "";
+    if (work.platform === "nhentai") return `https://nhentai.net/g/${id}/`;
+    if (work.platform === "18comic") return `https://18comic.vip/album/${id}/`;
+    return "";
+  }
+
+  function coverJumpHtml(src, href, extraClass = "") {
+    const img = `<img src="${escapeHtml(src)}" alt="" loading="lazy">`;
+    if (!href) return img;
+    return `<a class="cover-jump${extraClass ? ` ${extraClass}` : ""}" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" title="開啟來源／官方頁">${img}</a>`;
+  }
+
+  function workCoverHtml(work, { detail = false } = {}) {
+    if (!isLocalFlavor()) return "";
+    const src = imageUrl(work.cover_url || "", { kind: "work", platform: work.platform, workId: work.work_id });
+    const jump = adminWorkSourceUrl(work);
+    return `<div class="ticket-cover${detail ? " detail-work-cover" : ""}">${coverJumpHtml(src, jump)}</div>`;
+  }
+
   function adminDeleteButtonHtml(workId) {
-    if (!isAdmin()) return "";
-    return `<button class="card-admin-delete" data-purge-work="${escapeHtml(workId)}" aria-label="永久刪除此作品" title="永久刪除此作品">🗑</button>`;
+    if (!isAdmin() || !workId) return "";
+    return `<button type="button" class="card-admin-delete" data-purge-work="${escapeHtml(workId)}" aria-label="永久刪除此作品" title="永久刪除此作品">${window.yoruIcons?.icon("trash", { size: 14 }) || "×"}</button>`;
+  }
+
+  function activeViewName() {
+    const el = document.querySelector("main .view.active");
+    return el?.id?.replace(/^view-/, "") || readRememberedView();
+  }
+
+  function refreshActiveView() {
+    const view = activeViewName();
+    if (view === "home") {
+      if (state.homeShowingRandom && state.bulkWorks.length) renderHomeRandomResults(state.bulkWorks);
+      else renderHomeArchive();
+    } else if (view === "library") renderLibrary();
+    else if (view === "collection") renderCollection();
+    else if (view === "leaderboard") renderLeaderboard();
+    else if (view === "discuss") renderDiscuss();
+    else if (view === "games") loadGames();
+    else if (view === "admin") loadAdmin(state.adminTab || readRememberedAdminTab());
   }
 
   async function purgeWork(workId) {
@@ -1910,34 +2290,39 @@
     state.adminWorks = state.adminWorks.filter(item => item.id !== workId);
     state.works = state.works.filter(item => item.id !== workId);
     state.workById.delete(workId);
+    state.bulkWorks = state.bulkWorks.filter(item => item.id !== workId);
     config.platforms.forEach(platform => {
       if (state.currentByPlatform[platform]?.id === workId) drawPlatform(platform);
     });
-    if ($("#view-admin")?.classList.contains("active")) renderAdminWorks();
-    if ($("#view-library")?.classList.contains("active")) renderLibrary();
+    refreshActiveView();
     toast("作品已永久刪除", "success");
   }
 
-  function archiveTicketHtml(work) {
+  function archiveTicketHtml(work, { shared = false } = {}) {
     const code = formatWorkCode(work);
     const tags = tagRowHtml(work);
     const fav = state.favorites.has(work.id);
     const watched = state.watched.has(work.id);
     const watchlist = state.watchlist.has(work.id);
+    const cover = workCoverHtml(work);
     return `
       <article class="archive-ticket" data-open-work="${work.id}">
+        ${adminDeleteButtonHtml(work.id)}
+        ${cover}
         <div class="ticket-head">
           <p class="work-code">${escapeHtml(code)}</p>
-          <button type="button" class="copy-code-btn" data-copy-code="${work.id}" title="複製車號" aria-label="複製車號">⧉</button>
+          <button type="button" class="copy-code-btn" data-copy-code="${work.id}" title="複製車號" aria-label="複製車號">${window.yoruIcons?.icon("copy", { size: 14 }) || "copy"}</button>
         </div>
         <h3>${escapeHtml(displayTitleOf(work))}</h3>
         <p class="ticket-meta">${escapeHtml(displayAuthorOf(work))}${work.language ? ` · ${escapeHtml(work.language)}` : ""}</p>
         ${scoreBadgeHtml(work.id, true)}
         ${tags}
         <div class="ticket-actions">
-          <button type="button" class="state-chip ${fav ? "active" : ""}" data-favorite="${work.id}">收藏</button>
+          ${shared
+            ? `<button type="button" class="state-chip" data-share-watchlist="${work.id}">加入我的待看</button>`
+            : `<button type="button" class="state-chip ${fav ? "active" : ""}" data-favorite="${work.id}">收藏</button>
           <button type="button" class="state-chip ${watched ? "active" : ""}" data-watched="${work.id}">已看</button>
-          <button type="button" class="state-chip ${watchlist ? "active" : ""}" data-watchlist="${work.id}">待看</button>
+          <button type="button" class="state-chip ${watchlist ? "active" : ""}" data-watchlist="${work.id}">待看</button>`}
         </div>
       </article>`;
   }
@@ -2082,6 +2467,7 @@
     const platform = $("#library-platform").value;
     const query = $("#library-search").value;
     const scope = $("#library-scope")?.value || "all";
+    const plot = $("#library-plot")?.value || state.libraryPlot || "all";
     let rows;
     if (state.librarySearchIds && normalize(query)) {
       rows = state.librarySearchIds
@@ -2095,6 +2481,7 @@
     }
     rows = rows.filter(work =>
       (platform === "all" || work.platform === platform) &&
+      matchesPlotFilter(work, plot) &&
       (scope === "all"
         || (scope === "favorites" && state.favorites.has(work.id))
         || (scope === "watched" && state.watched.has(work.id))
@@ -2156,6 +2543,7 @@
       : "目前全站評分還很少，有人評分後才會出現在排行榜（不會顯示假的 5.0）。";
     $("#ranking-list").innerHTML = rows.map((item, index) => `
       <article class="ranking-row" data-open-work="${item.work_id}">
+        ${adminDeleteButtonHtml(item.work_id)}
         <div class="ranking-number">#${index + 1}</div>
         <div>
           <p class="ranking-code">${escapeHtml(formatWorkCode({ platform: item.platform, work_id: item.external_id || item.work_id }))}</p>
@@ -2172,6 +2560,7 @@
     rows = rows.slice(0, 30);
     $("#ranking-list").innerHTML = rows.map((item, index) => `
       <article class="ranking-row" data-open-work="${item.work_id}">
+        ${adminDeleteButtonHtml(item.work_id)}
         <div class="ranking-number">#${index + 1}</div>
         <div>
           <p class="ranking-code">${escapeHtml(formatWorkCode({ platform: item.platform, work_id: item.external_id || item.work_id }))}</p>
@@ -2302,6 +2691,15 @@
           toast(`讀取會員資料失敗：${formatApiError(profileError)}`, "error");
         } else {
           if (data?.status === "pending") data = await claimAutoApprovalIfNeeded(data);
+          if (data?.status === "deleted") {
+            toast("此帳號已註銷", "warning");
+            await supabase.auth.signOut();
+            state.session = null;
+            state.profile = null;
+            state.favorites.clear();
+            state.preferenceTags.clear();
+            return;
+          }
           state.profile = data;
           state.profileReady = Boolean(data);
           if (!data) toast("正在建立會員資料，部分功能可能暫時不可用", "warning");
@@ -2320,6 +2718,7 @@
           updateAdminStatusBar();
           loadAuthPromise = null;
           if (isApproved()) void ensureContentLoaded();
+          if (isApproved()) maybePrivacyOnboard();
         }
         renderBulkDraw();
         if ($("#view-library")?.classList.contains("active")) renderLibrary();
@@ -2544,7 +2943,7 @@
     } else {
       if (gameBtn) {
         gameBtn.disabled = false;
-        gameBtn.textContent = "＋ 新增評鑑";
+        gameBtn.textContent = "新增評鑑";
       }
       $$(".admin-only").forEach(node => node.classList.toggle("hidden", !isAdmin()));
     }
@@ -2626,7 +3025,7 @@
       renderLibrary(true);
       renderLeaderboard();
       const loc = parseLocationHash();
-      switchView(loc.view || "home");
+      switchView(loc.view || readRememberedView());
       if (loc.workId) await openWork(loc.workId, { reviewId: loc.reviewId });
     } catch (error) {
       state.contentLoaded = false;
@@ -2785,6 +3184,7 @@
     const mine = state.libraryByWork.get(work.id) || {};
     $("#detail-content").innerHTML = `
       <div class="detail-hero">
+        ${isLocalFlavor() ? workCoverHtml(work, { detail: true }) : ""}
         <div class="detail-info">
           <p class="work-code" id="detail-title">${escapeHtml(formatWorkCode(work))}</p>
           <h2>${escapeHtml(displayTitleOf(work))}</h2>
@@ -2832,7 +3232,6 @@
     if (!state.workById.has(resolvedWorkId)) return toast("作品已下架或不存在", "warning");
     const hash = reviewId ? `#work-${resolvedWorkId}-review-${reviewId}` : `#work-${resolvedWorkId}`;
     history.replaceState(null, "", hash);
-    switchView("home");
     await openWork(resolvedWorkId, { reviewId: reviewId || null });
   }
 
@@ -3320,9 +3719,10 @@
     if (error) return toast(error.message, "error");
     $("#games-grid").innerHTML = (data || []).map(game => {
       const labels = mergeGameLabelTags(game.tags, game.genres).slice(0, 3);
+      const jump = isAdmin() && isOfficialGameUrl(game.source_url) ? game.source_url : "";
       return `
       <article class="game-card" data-open-game="${game.id}">
-        <img src="${escapeHtml(imageUrl(game.cover_url))}" alt="${escapeHtml(game.name)}" loading="lazy">
+        ${coverJumpHtml(imageUrl(game.cover_url), jump)}
         <div><h3>${escapeHtml(game.name)}</h3>${gameScoreSummaryHtml(game, { compact: true })}<div class="tag-row">${labels.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div></div>
       </article>`;
     }).join("") || '<div class="empty-state">站長尚未發表遊戲評鑑</div>';
@@ -3351,7 +3751,7 @@
       : "";
     $("#editor-content").innerHTML = `
       <h2 id="editor-title">${escapeHtml(game.name)}</h2>
-      <img class="detail-cover" src="${escapeHtml(imageUrl(game.cover_url))}" alt="">
+      ${coverJumpHtml(imageUrl(game.cover_url), isAdmin() && isOfficialGameUrl(game.source_url) ? game.source_url : "", "detail-cover-jump")}
       ${metaBits.length ? `<div class="game-meta-row">${metaBits.join("")}</div>` : ""}
       ${sourceLink}
       ${gameScoreSummaryHtml(game)}
@@ -4050,6 +4450,7 @@
       return;
     }
     state.adminTab = tab;
+    rememberAdminTab(tab);
     $$("[data-admin-tab]").forEach(button => button.classList.toggle("active", button.dataset.adminTab === tab));
     content.innerHTML = '<div class="empty-state">載入中…</div>';
     try {
@@ -4073,7 +4474,7 @@
               <div>今日免審核註冊<strong>${trialLabel}</strong></div>
               <div>免審核已用 / 上限<strong>${Number(data.used || 0)} / ${data.cap == null ? "—" : data.cap}</strong></div>
               <div>剩餘名額<strong>${data.remaining == null ? "—" : data.remaining}</strong></div>
-              <div>絕對上限<strong>${escapeHtml(String(data.absolute_cap || 2000))}</strong></div>
+              <div>絕對上限<strong>${escapeHtml(String(data.absolute_cap || 5000))}</strong></div>
               <div>永久會員<strong>${Number(data.approved_members || 0)}</strong></div>
               <div>Pending<strong>${Number(data.pending_members || 0)}</strong></div>
               <div>新會員模式<strong>${escapeHtml(data.registration_mode || "")}</strong></div>
@@ -4094,19 +4495,21 @@
           <div class="ops-card ops-actions">
             <h3>免審核名額</h3>
             <p class="ops-help">降低名額不會踢出現有會員，只會停止新的自動通過。</p>
-            <label>新上限（不可超過 ${escapeHtml(String(data.absolute_cap || 2000))}）
-              <input id="ops-cap-input" type="number" min="0" max="${Number(data.absolute_cap || 2000)}" value="${Number(data.cap || 0)}">
+            <label>新上限（不可超過 ${escapeHtml(String(data.absolute_cap || 5000))}）
+              <input id="ops-cap-input" type="number" min="0" max="${Number(data.absolute_cap || 5000)}" value="${Number(data.cap || 0)}">
             </label>
             <button class="button button-secondary" data-ops-cap>調整名額</button>
             <button class="button button-secondary" data-ops-close-auto>立即停止免審核</button>
             <label>接下來幾個新帳號免審核
-              <input id="ops-finite-count" type="number" min="1" max="${Number(data.absolute_cap || 2000)}" value="100">
+              <input id="ops-finite-count" type="number" min="1" max="${Number(data.absolute_cap || 5000)}" value="100">
             </label>
             <label>時長
               <select id="ops-finite-mins">
                 <option value="30">30 分鐘</option>
                 <option value="60">1 小時</option>
                 <option value="180">3 小時</option>
+                <option value="720">12 小時</option>
+                <option value="1440" selected>24 小時</option>
               </select>
             </label>
             <button class="button button-secondary" data-ops-finite>重新開放（有限期）</button>
@@ -4158,7 +4561,7 @@
       users = users.slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
       const degradedNotice = degraded ? '<div class="empty-state warning">尚未套用 0005 migration（admin_list_users），暫時只顯示 profiles；套用後即可看到信箱與最近登入時間。</div>' : "";
       const windowPanel = `<div class="job-controls">
-        <p class="muted small-note">自動通過已關閉。新會員一律待審，請手動通過。</p>
+        <p class="muted small-note">新會員預設待審（免審核時段除外）。可一鍵通過全部 pending。</p>
         <button class="button button-secondary" data-approve-all-pending>一鍵通過全部待審</button>
       </div>`;
       const { data: deletions } = await supabase
@@ -4167,9 +4570,9 @@
         .eq("status", "pending")
         .order("created_at", { ascending: false })
         .limit(50);
-      const deletionPanel = `<div class="job-controls"><p class="muted small-note">刪除帳號申請（人工處理，不會自動刪 FK）</p>${
-        (deletions || []).map(row => `<div class="admin-row"><div><h4>${escapeHtml(row.user_id)}</h4><p>${escapeHtml(row.reason || "（未填原因）")} · ${new Date(row.created_at).toLocaleString("zh-TW")}</p></div><div class="admin-actions"><button class="button button-secondary" data-deletion-status="${row.id}" data-status="rejected">駁回</button><button class="button button-primary" data-deletion-status="${row.id}" data-status="completed">標記完成</button></div></div>`).join("") || '<p class="muted small-note">目前沒有待處理申請</p>'
-      }</div>`;
+      const deletionPanel = `<div class="job-controls"><h3>刪除帳號申請（${(deletions || []).length}）</h3><p class="muted small-note">執行刪除會註銷暱稱並保留評分（顯示「已註銷會員」）。</p>${
+        (deletions || []).map(row => `<div class="admin-row"><div><h4>${escapeHtml(row.user_id)}</h4><p>${escapeHtml(row.reason || "（未填原因）")} · ${new Date(row.created_at).toLocaleString("zh-TW")}</p></div><div class="admin-actions"><button class="button button-secondary" data-deletion-status="${row.id}" data-status="rejected">駁回</button><button class="button button-secondary" data-deletion-status="${row.id}" data-status="completed">僅標記完成</button><button class="button button-danger" data-fulfill-deletion="${row.id}">執行刪除並標記完成</button></div></div>`).join("") || '<p class="muted small-note">目前沒有待處理申請</p>'
+      }${(deletions || []).length > 1 ? '<button class="button button-danger" data-fulfill-all-deletions>執行全部待處理刪除申請</button>' : ""}</div>`;
       content.innerHTML = degradedNotice + windowPanel + deletionPanel + (users.map(profile => {
         const email = cleanName(profile.email) || (degraded ? "需套用 migration" : "（無信箱）");
         const lastSignIn = profile.last_sign_in_at ? new Date(profile.last_sign_in_at).toLocaleString("zh-TW") : (degraded ? "需套用 migration" : "尚未登入");
@@ -4183,27 +4586,95 @@
       }
       const quarantined = state.adminWorks.filter(work => work.quarantined).length;
       const released = state.adminWorks.filter(work => work.quarantine_override).length;
-      content.innerHTML = `<div class="job-controls"><button class="button button-primary" data-new-work>＋ 手動新增（車號）</button><input id="admin-work-search" type="search" placeholder="搜尋車號、標題、作者或標籤…"></div>
+      content.innerHTML = `<div class="job-controls"><button class="button button-primary" data-new-work>手動新增（車號）</button><input id="admin-work-search" type="search" placeholder="搜尋車號、標題、作者或標籤…"></div>
         <div class="job-controls">
           <p class="muted small-note">風險隔離：${quarantined.toLocaleString()} 筆已隱藏（會員看不到）、${released.toLocaleString()} 筆已手動放行。搜尋「隔離」可只看被隱藏的作品。</p>
           <button class="button button-secondary" data-rescan-quarantine>重新掃描可疑作品</button>
         </div>
         <p id="admin-work-summary" class="muted"></p><div id="admin-work-list"></div>`;
       renderAdminWorks();
+    } else if (tab === "announcements") {
+      const { data, error } = await supabase.rpc("admin_list_announcements");
+      if (error) {
+        content.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+        return;
+      }
+      content.innerHTML = `
+        <div class="job-controls">
+          <h3>發佈公告</h3>
+          <input id="ann-title" maxlength="80" placeholder="標題（最多 80 字）">
+          <input id="ann-summary" maxlength="200" placeholder="摘要（選填）">
+          <textarea id="ann-body" maxlength="4000" rows="6" placeholder="本文（純文字）"></textarea>
+          <label class="check-inline"><input id="ann-pinned" type="checkbox"> 置頂</label>
+          <select id="ann-audience"><option value="members">會員</option><option value="public">訪客也可見</option></select>
+          <button class="button button-primary" data-ann-publish>發佈</button>
+        </div>
+        ${(data || []).map(row => `
+          <div class="admin-row">
+            <div>
+              <h4>${row.pinned ? "[置頂] " : ""}${escapeHtml(row.title)} · ${escapeHtml(row.status)}</h4>
+              <p>${escapeHtml(row.summary || row.body.slice(0, 120))}</p>
+              <small>${row.published_at ? new Date(row.published_at).toLocaleString("zh-TW") : "未發佈"} · ${escapeHtml(row.audience)}</small>
+            </div>
+            <div class="admin-actions">
+              ${row.status === "published" ? `<button class="button button-secondary" data-ann-archive="${row.id}">下架</button>` : `<button class="button button-primary" data-ann-repub="${row.id}">重新發佈</button>`}
+            </div>
+          </div>`).join("") || '<div class="empty-state">尚無公告</div>'}`;
     } else if (tab === "tags") {
       const { data, error } = await supabase.from("tag_review_queue").select("tag_norm,tag_raw,hit_count,status,created_at").eq("status", "pending").order("hit_count", { ascending: false }).limit(200);
       if (error) {
         content.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
         return;
       }
-      content.innerHTML = (data || []).map(row => `<div class="admin-row"><div><h4>${escapeHtml(row.tag_raw)}</h4><p>出現 ${row.hit_count} 次</p></div><div class="admin-actions"><button class="button button-primary" data-tag-allow="${escapeHtml(row.tag_norm)}">ALLOW</button><button class="button button-danger" data-tag-hide="${escapeHtml(row.tag_norm)}">HIDE</button></div></div>`).join("") || '<div class="empty-state">沒有待審標籤</div>';
-    } else if (tab === "submissions") {
-      const { data, error } = await supabase.from("pending_work_submissions").select("id,platform,work_id,status,created_at,user_id").order("created_at", { ascending: false }).limit(200);
-      if (error) {
-        content.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
-        return;
+      const pending = data || [];
+      content.innerHTML = `<div class="job-controls"><p class="muted small-note">爬蟲抓到、但尚未決定要不要給會員搜尋／顯示的標籤會出現在這裡。<br>開啟此頁會自動：把未成年／獸交等<strong>違法疑慮</strong>標籤隱藏，其餘全部允許顯示與搜尋。</p><button class="button button-primary" data-tag-resolve-safe type="button">排除違法疑慮後全部允許</button> <input id="admin-tag-filter" type="search" placeholder="篩選標籤…"></div>` + (pending.map(row => `<div class="admin-row" data-tag-row><div><h4>${escapeHtml(row.tag_raw)}</h4><p>出現 ${row.hit_count} 次 · ${escapeHtml(row.tag_norm)}</p></div><div class="admin-actions"><button class="button button-primary" data-tag-norm="${encodeURIComponent(row.tag_norm)}" data-tag-decision="allow">允許顯示與搜尋</button><button class="button button-danger" data-tag-norm="${encodeURIComponent(row.tag_norm)}" data-tag-decision="hide">對會員隱藏</button></div></div>`).join("") || '<div class="empty-state">沒有待審標籤（已自動處理過的不會再出現）</div>');
+      $("#admin-tag-filter")?.addEventListener("input", event => {
+        const q = normalize(event.target.value);
+        $$("[data-tag-row]").forEach(row => {
+          row.hidden = q && !normalize(row.textContent).includes(q);
+        });
+      });
+      if (pending.length && !state.tagAutoResolved) {
+        state.tagAutoResolved = true;
+        resolveSafePendingTags({ silentEmpty: true }).then(did => { if (did) loadAdmin("tags"); });
       }
-      content.innerHTML = (data || []).map(row => `<div class="admin-row"><div><h4>${row.platform === "nhentai" ? "N" : "JM"}-${escapeHtml(row.work_id)}</h4><p>${escapeHtml(row.status)} · ${new Date(row.created_at).toLocaleString("zh-TW")}</p></div></div>`).join("") || '<div class="empty-state">沒有投稿</div>';
+    } else if (tab === "submissions") {
+      let rows = [];
+      const listed = await supabase.rpc("admin_list_pending_submissions", { limit_n: 200 });
+      if (listed.error) {
+        const { data, error } = await supabase.from("pending_work_submissions").select("id,platform,work_id,status,created_at,user_id").order("created_at", { ascending: false }).limit(200);
+        if (error) {
+          content.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+          return;
+        }
+        rows = (data || []).map(row => ({ ...row, already_in_db: false, status_label: row.status }));
+      } else {
+        rows = listed.data || [];
+      }
+      const counts = {
+        pending: rows.filter(r => r.status === "pending").length,
+        accepted: rows.filter(r => r.status === "accepted").length,
+        kept_local: rows.filter(r => r.status === "kept_local").length,
+        rejected: rows.filter(r => r.status === "rejected").length
+      };
+      content.innerHTML = `<div class="job-controls"><p class="muted small-note">待處理 ${counts.pending}｜已公開入庫 ${counts.accepted}｜僅本機 ${counts.kept_local}｜已拒絕 ${counts.rejected}<br>${isLocalFlavor() ? "本機完整版：進入此頁會自動抓取預覽圖，不必再按「預覽」。" : "封面預覽請在本機完整版執行。公開站可直接拒絕或標記狀態。"}</p>${isLocalFlavor() ? '<button class="button button-secondary" data-local-ingest-pending>重新抓取預覽</button> <button class="button button-secondary" data-local-refresh-previews>重新載入預覽牆</button>' : ""}</div><div id="local-preview-wall" class="local-preview-wall"></div>` + (rows.map(row => {
+        const code = `${row.platform === "nhentai" ? "N" : "JM"}-${row.work_id}`;
+        const thumb = isLocalFlavor()
+          ? coverJumpHtml(
+              imageUrl("", { kind: "work", platform: row.platform, workId: row.work_id }),
+              adminWorkSourceUrl({ platform: row.platform, work_id: row.work_id }),
+              "admin-row-cover-jump"
+            )
+          : "";
+        return `<div class="admin-row admin-row-with-cover"><div class="admin-row-main">${thumb}<div><h4>${escapeHtml(code)}</h4><p>${escapeHtml(row.status_label || row.status)} · ${new Date(row.created_at).toLocaleString("zh-TW")}${row.already_in_db ? " · 已在資料庫" : ""}</p></div></div><div class="admin-actions">${row.status === "pending" ? `<button class="button button-primary" data-submission-status="${row.id}" data-status="accepted">加入公開庫佇列</button><button class="button button-secondary" data-submission-status="${row.id}" data-status="kept_local">僅本機</button><button class="button button-danger" data-submission-status="${row.id}" data-status="rejected">拒絕</button>` : ""}</div></div>`;
+      }).join("") || '<div class="empty-state">沒有投稿</div>');
+      if (isLocalFlavor()) {
+        renderLocalPreviewWall().catch(() => {});
+        if (!state.submissionPreviewAuto) {
+          state.submissionPreviewAuto = true;
+          autoLoadSubmissionPreviews(rows).catch(err => toast(`自動預覽失敗：${err.message || err}`, "warning"));
+        }
+      }
     } else if (tab === "reports") {
       let reports = [];
       let loadNote = "";
@@ -4474,7 +4945,7 @@
     if (view === "discuss") renderDiscuss();
     if (view === "profile") renderProfile();
     if (view === "feedback") loadFeedbackThreads();
-    if (view === "admin") loadAdmin(state.adminTab || "users");
+    if (view === "admin") loadAdmin(state.adminTab || readRememberedAdminTab());
   }
 
   function editorFormEvent(form) {
@@ -4581,8 +5052,16 @@
       renderHomeArchive();
     }));
     $("#collection-filter")?.addEventListener("change", renderCollection);
+    $("#collection-share-button")?.addEventListener("click", () => shareCollection());
     $("#library-platform")?.addEventListener("change", () => renderLibrary(true));
     $("#library-scope")?.addEventListener("change", () => renderLibrary(true));
+    $("#library-plot")?.addEventListener("change", () => {
+      state.libraryPlot = $("#library-plot").value;
+      renderLibrary(true);
+    });
+    $("#home-random-plot")?.addEventListener("change", () => {
+      state.homePlot = $("#home-random-plot").value;
+    });
     $("#library-sort")?.addEventListener("change", () => renderLibrary(true));
     $("#library-search")?.addEventListener("input", debounce(async () => {
       const q = $("#library-search").value;
@@ -4610,10 +5089,14 @@
     bindClick("#feedback-send", () => sendFeedback("feedback"));
     window.addEventListener("hashchange", async () => {
       const loc = parseLocationHash();
+      if (loc.shareToken) {
+        await openSharedCollection(loc.shareToken);
+        return;
+      }
       if (loc.workId) {
         if (!state.workById.has(loc.workId)) await loadWorks();
         if (state.workById.has(loc.workId)) {
-          switchView(loc.view || "home");
+          switchView(loc.view || readRememberedView());
           await openWork(loc.workId, { reviewId: loc.reviewId });
           return;
         }
@@ -4645,6 +5128,7 @@
       }
       if (!event.target.closest("#main-nav") && !event.target.closest("#mobile-menu-button")) toggleMobileMenu(false);
       const target = event.target.closest("button,a,article"); if (!target) return;
+      if (target.classList.contains("cover-jump") || target.closest("a.cover-jump")) return;
       if (target.tagName === "BUTTON") flashButton(target);
       if (target.dataset.closeModal) closeModal(target.dataset.closeModal);
       if (target.dataset.login !== undefined) login();
@@ -4695,9 +5179,27 @@
       if (target.dataset.deleteGame) deleteGame(target.dataset.deleteGame);
       if (target.dataset.deleteGameComment) deleteGameComment(target.dataset.deleteGameComment, target.dataset.gameId);
       if (target.dataset.adminTab) loadAdmin(target.dataset.adminTab);
+      if (target.dataset.tagResolveSafe !== undefined) {
+        await withBusyButton(target, "處理中…", async () => {
+          const did = await resolveSafePendingTags();
+          if (did) loadAdmin("tags");
+        });
+      }
+      if (target.dataset.tagNorm && target.dataset.tagDecision) {
+        const tagNorm = decodeURIComponent(target.dataset.tagNorm);
+        const decision = target.dataset.tagDecision;
+        await withBusyButton(target, decision === "allow" ? "允許中…" : "隱藏中…", async () => {
+          const { data, error } = await supabase.rpc("admin_set_tag_decision", { tag_norm: tagNorm, decision });
+          if (error) return toast(formatApiError(error), "error");
+          const qn = data?.queue_updated ?? "?";
+          const wn = data?.works_touched ?? "?";
+          toast(decision === "allow" ? `已允許 ${tagNorm}（queue ${qn}、作品 ${wn}）` : `已隱藏 ${tagNorm}`, "success");
+          loadAdmin("tags");
+        });
+      }
       if (target.dataset.tagAllow) {
-        const { error } = await supabase.rpc("admin_set_tag_decision", { tag_norm: target.dataset.tagAllow, decision: "allow" });
-        toast(error ? error.message : "已允許此標籤", error ? "error" : "success");
+        const { data, error } = await supabase.rpc("admin_set_tag_decision", { tag_norm: target.dataset.tagAllow, decision: "allow" });
+        toast(error ? error.message : `已允許此標籤（作品 ${data?.works_touched ?? "?"}）`, error ? "error" : "success");
         if (!error) loadAdmin("tags");
       }
       if (target.dataset.tagHide) {
@@ -4743,13 +5245,158 @@
       }
       if (target.dataset.approveAllPending) {
         await withBusyButton(target, "核准中…", async () => {
-          const { data, error } = await supabase.rpc("approve_all_pending");
+          let data; let error;
+          ({ data, error } = await supabase.rpc("admin_approve_all_pending"));
+          if (error) ({ data, error } = await supabase.rpc("approve_all_pending"));
           const count = (data && typeof data === "object" && data.approved != null)
             ? Number(data.approved)
             : Number(data || 0);
-          toast(error ? error.message : `已通過 ${Number.isFinite(count) ? count : 0} 位會員`, error ? "error" : "success");
+          const remaining = data?.remaining_pending;
+          toast(error ? error.message : `已通過 ${Number.isFinite(count) ? count : 0} 位會員${remaining != null ? `（剩餘 pending ${remaining}）` : ""}`, error ? "error" : "success");
           if (!error) loadAdmin("users");
         });
+      }
+      if (target.dataset.fulfillDeletion) {
+        const typed = window.prompt("確認執行刪除？請輸入 DELETE");
+        if (typed !== "DELETE") return toast("已取消", "warning");
+        await withBusyButton(target, "刪除中…", async () => {
+          const { data, error } = await supabase.rpc("admin_fulfill_account_deletion", { request_id: target.dataset.fulfillDeletion });
+          toast(error ? error.message : (data?.ok ? "已註銷並標記完成" : JSON.stringify(data)), error ? "error" : "success");
+          if (!error) loadAdmin("users");
+        });
+      }
+      if (target.dataset.fulfillAllDeletions !== undefined) {
+        const typed = window.prompt("確認執行全部待處理刪除申請？請輸入 DELETE");
+        if (typed !== "DELETE") return toast("已取消", "warning");
+        const { data: pending } = await supabase.from("request_account_deletion").select("id").eq("status", "pending");
+        let ok = 0; let fail = 0;
+        for (const row of pending || []) {
+          const { error } = await supabase.rpc("admin_fulfill_account_deletion", { request_id: row.id });
+          if (error) fail += 1; else ok += 1;
+        }
+        toast(`刪除完成：成功 ${ok}，失敗 ${fail}`, fail ? "warning" : "success");
+        loadAdmin("users");
+      }
+      if (target.dataset.submissionStatus) {
+        const { error } = await supabase.rpc("admin_set_submission_status", {
+          submission_id: target.dataset.submissionStatus,
+          new_status: target.dataset.status
+        });
+        if (error) {
+          const { error: e2 } = await supabase.from("pending_work_submissions").update({ status: target.dataset.status }).eq("id", target.dataset.submissionStatus);
+          toast(e2 ? e2.message : "投稿狀態已更新", e2 ? "error" : "success");
+        } else toast("投稿狀態已更新", "success");
+        state.submissionPreviewAuto = false;
+        loadAdmin("submissions");
+      }
+      if (target.dataset.localIngestPending !== undefined) {
+        await withBusyButton(target, "抓取中…", async () => {
+          const out = await localApi("/api/local/ingest-pending-batch", { method: "POST", body: {} });
+          toast(`已處理 ${out?.count || 0} 筆預覽`, "success");
+          await renderLocalPreviewWall();
+        });
+      }
+      if (target.dataset.localRefreshPreviews !== undefined) {
+        await renderLocalPreviewWall();
+      }
+      if (target.dataset.localPreviewOne) {
+        await withBusyButton(target, "預覽中…", async () => {
+          await localApi("/api/local/ingest-preview", {
+            method: "POST",
+            body: {
+              platform: target.dataset.platform,
+              work_id: target.dataset.workId,
+              submission_id: target.dataset.localPreviewOne
+            }
+          });
+          toast("預覽已更新", "success");
+          await renderLocalPreviewWall();
+        });
+      }
+      if (target.dataset.localPromote) {
+        await withBusyButton(target, "處理中…", async () => {
+          await localApi("/api/local/promote-preview", {
+            method: "POST",
+            body: { preview_id: target.dataset.localPromote, target: target.dataset.target }
+          });
+          toast(target.dataset.target === "public" ? "已加入公開庫" : "已標記僅本機", "success");
+          await renderLocalPreviewWall();
+          loadAdmin("submissions");
+        });
+      }
+      if (target.dataset.localReject) {
+        await withBusyButton(target, "拒絕中…", async () => {
+          await localApi("/api/local/reject-preview", {
+            method: "POST",
+            body: { preview_id: target.dataset.localReject }
+          });
+          toast("已拒絕", "success");
+          await renderLocalPreviewWall();
+          loadAdmin("submissions");
+        });
+      }
+      if (target.dataset.shareWatchlist) {
+        event.stopPropagation();
+        const workId = target.dataset.shareWatchlist;
+        if (!await requireMember()) return;
+        const current = state.libraryByWork.get(workId) || { favorite: state.favorites.has(workId), watched: state.watched.has(workId), watchlist: state.watchlist.has(workId) };
+        if (current.watchlist) return toast("已在待看清單", "info");
+        const { error } = await supabase.rpc("upsert_library_state", {
+          target_work: workId,
+          set_favorite: current.favorite,
+          set_watched: current.watched,
+          set_watchlist: true
+        });
+        if (error) return toast(error.message, "error");
+        state.watchlist.add(workId);
+        state.libraryByWork.set(workId, { ...current, watchlist: true });
+        toast("已加入待看", "success");
+      }
+      if (target.dataset.annPublish !== undefined) {
+        const title = $("#ann-title")?.value?.trim();
+        const body = $("#ann-body")?.value?.trim();
+        if (!title || !body) return toast("請填標題與本文", "warning");
+        const { error } = await supabase.rpc("admin_upsert_announcement", {
+          target_id: null,
+          ann_title: title,
+          ann_body: body,
+          ann_summary: $("#ann-summary")?.value?.trim() || null,
+          ann_pinned: $("#ann-pinned")?.checked || false,
+          ann_status: "published",
+          ann_audience: $("#ann-audience")?.value || "members"
+        });
+        toast(error ? error.message : "公告已發佈", error ? "error" : "success");
+        if (!error) { loadAdmin("announcements"); renderAnnouncements(); }
+      }
+      if (target.dataset.annArchive) {
+        const { data: row } = await supabase.from("site_announcements").select("*").eq("id", target.dataset.annArchive).single();
+        if (!row) return toast("找不到公告", "error");
+        const { error } = await supabase.rpc("admin_upsert_announcement", {
+          target_id: row.id,
+          ann_title: row.title,
+          ann_body: row.body,
+          ann_summary: row.summary,
+          ann_pinned: row.pinned,
+          ann_status: "archived",
+          ann_audience: row.audience
+        });
+        toast(error ? error.message : "已下架", error ? "error" : "success");
+        if (!error) { loadAdmin("announcements"); renderAnnouncements(); }
+      }
+      if (target.dataset.annRepub) {
+        const { data: row } = await supabase.from("site_announcements").select("*").eq("id", target.dataset.annRepub).single();
+        if (!row) return toast("找不到公告", "error");
+        const { error } = await supabase.rpc("admin_upsert_announcement", {
+          target_id: row.id,
+          ann_title: row.title,
+          ann_body: row.body,
+          ann_summary: row.summary,
+          ann_pinned: row.pinned,
+          ann_status: "published",
+          ann_audience: row.audience
+        });
+        toast(error ? error.message : "已重新發佈", error ? "error" : "success");
+        if (!error) { loadAdmin("announcements"); renderAnnouncements(); }
       }
       if (target.dataset.deletionStatus) {
         const { error } = await supabase.from("request_account_deletion").update({
@@ -4817,7 +5464,12 @@
       if (target.dataset.newWork !== undefined) editWork();
       if (target.dataset.editWork) editWork(target.dataset.editWork);
       if (target.dataset.toggleWork) { const { error } = await supabase.from("works").update({ status: target.dataset.status }).eq("id", target.dataset.toggleWork); toast(error ? error.message : "作品狀態已更新", error ? "error" : "success"); if (!error) { await loadWorks(); loadAdmin("works"); } }
-      if (target.dataset.purgeWork) purgeWork(target.dataset.purgeWork);
+      if (target.dataset.purgeWork) {
+        event.stopPropagation();
+        event.preventDefault();
+        await purgeWork(target.dataset.purgeWork);
+        return;
+      }
       if (target.dataset.deleteFeedback && confirm("確定刪除此則意見？")) {
         const { error } = await supabase.from("feedback").delete().eq("id", target.dataset.deleteFeedback);
         toast(error ? error.message : "已刪除", error ? "error" : "success");
@@ -4856,18 +5508,40 @@
       || ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
     const banner = $("#env-banner");
     if (!banner) return;
-    if (local) {
-      banner.hidden = false;
-      banner.textContent = "LOCAL · 非生產環境";
-      document.body.classList.add("env-local");
+    if (!local) return;
+    banner.hidden = false;
+    document.body.classList.add("env-local");
+    if (isLocalFlavor()) {
+      document.body.classList.add("flavor-local");
+      const onApiOrigin = location.port === "8000";
+      banner.textContent = onApiOrigin
+        ? "本機完整版（可以顯示封面）· 這不是公開站 · 請勿把這個畫面當成 GitHub Pages"
+        : "本機完整版設定已開啟，但你開的是靜態埠 " + (location.port || "?") + " — 封面請改開 http://127.0.0.1:8000/ （START_YORU_FULL 會開這個）";
+      banner.classList.toggle("env-banner-warn", !onApiOrigin);
+      fetch(`${localApiBase() || ""}/health`).then(r => r.json()).then(info => {
+        if (!info?.local_full) {
+          banner.textContent += " ｜本機 API 沒有開 LOCAL_FULL，封面會失敗。請用 START_YORU_FULL.bat 重開。";
+          banner.classList.add("env-banner-warn");
+        }
+      }).catch(() => {
+        banner.textContent += " ｜連不到本機 API。請先跑 START_YORU_FULL.bat，再開 http://127.0.0.1:8000/";
+        banner.classList.add("env-banner-warn");
+      });
+    } else {
+      banner.textContent = "本機「公開站預覽」（沒有封面，行為跟 GitHub Pages 一樣）· 要看封面請改用桌面「夜鹿導師-本機完整版」";
     }
   }
 
   async function init() {
     markEnvironment();
+    state.adminTab = readRememberedAdminTab();
+    applySupportTipCtas();
+    hydrateChromeIcons();
     bindEvents();
     loadDrawHistory();
     detectGoogleProvider();
+    renderAnnouncements().catch(() => {});
+    const bootShare = parseLocationHash();
     supabase.auth.onAuthStateChange((event, session) => {
       authDebug("auth state", { event, hasSession: Boolean(session) });
       state.session = session;
@@ -4892,6 +5566,10 @@
       await loadAuth();
       if (isApproved()) await ensureContentLoaded();
       else applyMemberGate();
+      renderAnnouncements().catch(() => {});
+      if (bootShare.shareToken && isApproved()) {
+        await openSharedCollection(bootShare.shareToken);
+      }
     } catch (error) {
       console.error(error);
       $("#home-summary").textContent = "初始化失敗，請稍後重試。";

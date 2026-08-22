@@ -1,17 +1,16 @@
-const ACG_WORKER_URL = window.location.protocol === "file:"
-  ? "http://127.0.0.1:8000"
-  : "";
-
-// Copy to config.js and fill in your own project values.
-// supabaseAnonKey is the browser publishable/anon key (client-side configuration).
-// Never put privileged service credentials, database passwords, or JWTs in this file.
-window.ACG_CONFIG = Object.freeze({
+window.ACG_CONFIG = {
   supabaseUrl: "https://YOUR_PROJECT.supabase.co",
-  supabaseAnonKey: "YOUR_SUPABASE_PUBLISHABLE_ANON_KEY",
-  workerUrl: ACG_WORKER_URL,
-  manualSyncUrl: "",
+  supabaseAnonKey: "YOUR_ANON_KEY",
+  workerUrl: "",
+  localApiUrl: "",
+  manualSyncUrl: "https://github.com/OWNER/REPO/actions/workflows/scheduled-sync.yml",
   googleProviderEnabled: "auto",
   platforms: ["nhentai", "18comic"],
-  version: "2.1.1",
-  githubRepoUrl: "https://github.com/linyize1111/yoru-archive"
-});
+  version: "2.2.0",
+  flavor: "public",
+  // Local-only override: create config.local.js with flavor:"local" and localApiUrl.
+  // Never deploy config.local.js to GitHub Pages.
+  githubRepoUrl: "https://github.com/linyize1111/yoru-archive",
+  // Voluntary tip jar. Official HTTPS URL only (Portaly / ECPay / O'Pay / BMC). Empty hides the button.
+  supportTipUrl: ""
+};

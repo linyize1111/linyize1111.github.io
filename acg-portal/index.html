@@ -6,48 +6,48 @@
   <meta name="color-scheme" content="dark">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src 'none'; media-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com https://xpztpetskjohuxrpgmcm.supabase.co https://cdn.akamai.steamstatic.com https://shared.akamai.steamstatic.com https://steamcdn-a.akamaihd.net https://cdn.cloudflare.steamstatic.com https://img.dlsite.jp https://www.dlsite.com; connect-src 'self' https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-src 'none'; media-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: http://127.0.0.1:8000 http://localhost:8000 https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com https://xpztpetskjohuxrpgmcm.supabase.co https://cdn.akamai.steamstatic.com https://shared.akamai.steamstatic.com https://steamcdn-a.akamaihd.net https://cdn.cloudflare.steamstatic.com https://img.dlsite.jp https://www.dlsite.com; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://xpztpetskjohuxrpgmcm.supabase.co wss://xpztpetskjohuxrpgmcm.supabase.co">
   <title>你的夜鹿導師 | ACG Portal</title>
   <meta name="description" content="私人會員制 ACG metadata／評分工具。本站不提供作品圖片、下載或來源連結。">
   <meta property="og:title" content="你的夜鹿導師 | ACG Portal">
   <meta property="og:description" content="私人整理的 ACG 編號與評分倉庫。僅限審核會員。本站不提供作品圖片、下載或來源連結。">
   <meta property="og:type" content="website">
-  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=2.1.1">
+  <link rel="icon" type="image/png" href="assets/yoru-icon.png?v=2.2.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2.1.1">
+  <link rel="stylesheet" href="styles.css?v=2.2.0">
 </head>
 <body>
-  <div id="env-banner" class="env-banner" hidden>LOCAL · 非生產環境</div>
+  <div id="env-banner" class="env-banner" hidden>本機預覽</div>
   <div class="ambient ambient-one"></div>
   <div class="ambient ambient-two"></div>
 
   <header class="site-header">
     <a class="brand" href="#home" aria-label="ACG Portal 首頁">
-      <span class="brand-mark"><img src="assets/yoru-icon.png?v=2.1.1" alt=""></span>
+      <span class="brand-mark"><img src="assets/yoru-icon.png?v=2.2.0" alt=""></span>
       <span><strong>夜鹿導師</strong><small>ACG PORTAL</small></span>
     </a>
     <nav id="main-nav" class="main-nav" aria-label="主要導覽">
-      <a href="#home" data-view="home">🎲 首頁</a>
-      <a href="#library" data-view="library">📚 作品庫</a>
-      <a href="#leaderboard" data-view="leaderboard">🏆 排行榜</a>
-      <a href="#collection" data-view="collection">⭐ 我的收藏</a>
-      <a href="#games" data-view="games">🎮 遊戲評鑑</a>
-      <a href="#discuss" data-view="discuss">💬 討論</a>
-      <a href="#feedback" data-view="feedback">💬 意見反饋</a>
-      <a href="#profile" data-view="profile">👤 個人頁</a>
+      <a href="#home" data-view="home" data-nav-icon="home">首頁</a>
+      <a href="#library" data-view="library" data-nav-icon="library">作品庫</a>
+      <a href="#leaderboard" data-view="leaderboard" data-nav-icon="trophy">排行榜</a>
+      <a href="#collection" data-view="collection" data-nav-icon="star">我的收藏</a>
+      <a href="#games" data-view="games" data-nav-icon="gamepad">遊戲評鑑</a>
+      <a href="#discuss" data-view="discuss" data-nav-icon="message">討論</a>
+      <a href="#feedback" data-view="feedback" data-nav-icon="message">意見反饋</a>
+      <a href="#profile" data-view="profile" data-nav-icon="user">個人頁</a>
     </nav>
     <div class="auth-area">
       <button id="login-button" class="button button-primary">登入</button>
       <div id="profile-menu" class="profile-menu hidden">
         <img id="profile-avatar" alt="使用者頭像">
         <div><strong id="profile-name"></strong><small id="profile-status"></small></div>
-        <button id="profile-edit-button" class="icon-button" title="修改暱稱">✎</button>
-        <button id="clear-auth-button" class="icon-button hidden" title="清除本站登入資料">⌫</button>
-        <button id="logout-button" class="icon-button" title="登出">↪</button>
+        <button id="profile-edit-button" class="icon-button" title="修改暱稱" data-icon="pencil" aria-label="修改暱稱"></button>
+        <button id="clear-auth-button" class="icon-button hidden" title="清除本站登入資料" data-icon="eraser" aria-label="清除登入資料"></button>
+        <button id="logout-button" class="icon-button" title="登出" data-icon="logout" aria-label="登出"></button>
       </div>
-      <button id="mobile-menu-button" class="icon-button nav-toggle mobile-only" aria-label="開啟選單" aria-expanded="false">☰</button>
+      <button id="mobile-menu-button" class="icon-button nav-toggle mobile-only" aria-label="開啟選單" aria-expanded="false" data-icon="menu"></button>
     </div>
   </header>
 
@@ -63,22 +63,24 @@
   <main>
     <section id="view-landing" class="view">
       <div class="landing hero">
+        <div id="landing-announcement-board" class="announcement-board" hidden></div>
         <div class="mentor-heading">
           <div>
             <p class="eyebrow">MEMBER ARCHIVE</p>
             <h1>你的夜鹿導師</h1>
-            <p class="hero-tagline">上數學課啦！</p>
+            <p class="hero-tagline">上課啦！</p>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.1.1" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.2.0" alt="夜鹿導師">
         </div>
         <div class="site-note">
           <p>私人 ACG 作品紀錄、收藏與評分工具。</p>
-          <p>本站永遠不營利、不放廣告。記錄編號、評分與收藏，方便自己跟各位開導身心靈。</p>
+          <p>本站永遠不會放廣告、沒有任何強制付費內容。記錄編號、評分與收藏，方便自己跟各位開導身心靈。</p>
           <p>本站這個公開版本因為台灣法律的緣故，不提供作品圖片、下載或來源連結了，並先以 N、JM 兩站做試營運，如果未來有餘裕大家也支持的話會持續改良的。</p>
           <p>目前內容幾乎都是站長自己的喜好，盡量只挑中文翻譯版本；癖好不合請善用搜尋或篩選。資料可能有誤植，有問題可以直接回報；個人頁也可以推薦車號給我。</p>
-          <p>如果覺得這個工具好用，歡迎順手到 GitHub 幫我點個 Star ⭐，有任何問題也歡迎回報給我，祝各位開導後可以身心舒暢。</p>
+          <p>如果覺得這個工具好用，歡迎順手到 GitHub 幫我點個 Star；若你願意，也可以自願請站長喝杯咖啡。不贊助、不點 Star 都能完整使用。有任何問題也歡迎回報給我，祝各位開導後可以身心舒暢。</p>
           <p class="github-cta-wrap">
-            <a class="button button-secondary github-star-cta" href="https://github.com/linyize1111/yoru-archive" target="_blank" rel="noopener noreferrer">⭐ GitHub / Star this project</a>
+            <a class="button button-secondary github-star-cta" href="https://github.com/linyize1111/yoru-archive" target="_blank" rel="noopener noreferrer"><span data-inline-icon="star"></span> GitHub / Star this project</a>
+            <a class="button button-secondary coffee-cta" data-tip-cta hidden target="_blank" rel="noopener noreferrer"><span data-inline-icon="coffee"></span> 請站長喝杯咖啡（自願）</a>
           </p>
         </div>
         <div id="trial-banner" class="trial-banner" hidden></div>
@@ -105,22 +107,24 @@
 
     <section id="view-home" class="view">
       <div class="hero">
+        <div id="announcement-board" class="announcement-board" hidden></div>
         <div class="mentor-heading">
           <div>
             <p class="eyebrow">MEMBER ARCHIVE</p>
             <h1>你的夜鹿導師</h1>
-            <p class="hero-tagline">上數學課啦！</p>
+            <p class="hero-tagline">上課啦！</p>
           </div>
-          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.1.1" alt="夜鹿導師">
+          <img class="mentor-image" src="assets/yoru-mentor.png?v=2.2.0" alt="夜鹿導師">
         </div>
         <div class="site-note">
           <p>私人 ACG 作品紀錄、收藏與評分工具。</p>
-          <p>本站永遠不營利、不放廣告。記錄編號、評分與收藏，方便自己跟各位開導身心靈。</p>
+          <p>本站永遠不會放廣告、沒有任何強制付費內容。記錄編號、評分與收藏，方便自己跟各位開導身心靈。</p>
           <p>本站這個公開版本因為台灣法律的緣故，不提供作品圖片、下載或來源連結了，並先以 N、JM 兩站做試營運，如果未來有餘裕大家也支持的話會持續改良的。</p>
           <p>目前內容幾乎都是站長自己的喜好，盡量只挑中文翻譯版本；癖好不合請善用搜尋或篩選。資料可能有誤植，有問題可以直接回報；個人頁也可以推薦車號給我。</p>
-          <p>如果覺得這個工具好用，歡迎順手到 GitHub 幫我點個 Star ⭐，有任何問題也歡迎回報給我，祝各位開導後可以身心舒暢。</p>
+          <p>如果覺得這個工具好用，歡迎順手到 GitHub 幫我點個 Star；若你願意，也可以自願請站長喝杯咖啡。不贊助、不點 Star 都能完整使用。有任何問題也歡迎回報給我，祝各位開導後可以身心舒暢。</p>
           <p class="github-cta-wrap">
-            <a class="button button-secondary github-star-cta" href="https://github.com/linyize1111/yoru-archive" target="_blank" rel="noopener noreferrer">⭐ GitHub / Star this project</a>
+            <a class="button button-secondary github-star-cta" href="https://github.com/linyize1111/yoru-archive" target="_blank" rel="noopener noreferrer"><span data-inline-icon="star"></span> GitHub / Star this project</a>
+            <a class="button button-secondary coffee-cta" data-tip-cta hidden target="_blank" rel="noopener noreferrer"><span data-inline-icon="coffee"></span> 請站長喝杯咖啡（自願）</a>
           </p>
         </div>
         <div class="search-row home-random-row">
@@ -134,12 +138,20 @@
             <option value="favorites">我的收藏</option>
             <option value="watchlist">待看清單</option>
           </select>
+          <select id="home-random-plot" aria-label="劇情篩選">
+            <option value="all">全部劇情</option>
+            <option value="pure_love">只要純愛</option>
+            <option value="exclude_ntr">排除 NTR</option>
+            <option value="ntr">只要 NTR</option>
+            <option value="noncon">凌辱／非合意</option>
+            <option value="other">其他劇情</option>
+          </select>
           <label class="check-inline"><input id="home-random-exclude-watched" type="checkbox"> 排除已看</label>
           <input id="home-random-tag" type="search" placeholder="標籤（選填）">
         </div>
         <div class="search-row">
           <label class="search-box home-search-box">
-            <span>⌕</span>
+            <span data-inline-icon="search"></span>
             <input id="home-search" type="search" placeholder="N-123456 / JM-123456 或標題、作者、標籤…" autocomplete="off">
           </label>
           <button id="draw-one-button" class="button button-secondary">隨機 1</button>
@@ -165,6 +177,14 @@
             <option value="favorites">我的收藏</option>
             <option value="watched">已看</option>
             <option value="watchlist">待看</option>
+          </select>
+          <select id="library-plot" aria-label="劇情篩選">
+            <option value="all">全部劇情</option>
+            <option value="pure_love">只要純愛</option>
+            <option value="exclude_ntr">排除 NTR</option>
+            <option value="ntr">只要 NTR</option>
+            <option value="noncon">凌辱／非合意</option>
+            <option value="other">其他劇情</option>
           </select>
           <input id="library-search" type="search" placeholder="編號、標題、作者、標籤…">
         </div>
@@ -227,6 +247,7 @@
             <option value="watchlist">待看</option>
             <option value="rated">已評分</option>
           </select>
+          <button id="collection-share-button" class="button button-secondary" type="button">分享我的清單</button>
         </div>
       </div>
       <p id="collection-summary" class="muted"></p>
@@ -236,7 +257,7 @@
     <section id="view-games" class="view">
       <div class="section-heading">
         <div><p class="eyebrow">OWNER'S NOTES</p><h2>遊戲評鑑</h2><p>站長撰寫評鑑。封面僅顯示 Steam／DLsite 等允許來源；官方連結可開，盜版連結不會出現。</p></div>
-        <button id="new-game-button" class="button button-primary admin-only hidden">＋ 新增評鑑</button>
+        <button id="new-game-button" class="button button-primary admin-only hidden">新增評鑑</button>
       </div>
       <div id="games-grid" class="games-grid"></div>
     </section>
@@ -276,6 +297,7 @@
       <div class="admin-tabs" role="tablist">
         <button data-admin-tab="ops" class="active">營運控制</button>
         <button data-admin-tab="users">會員審核</button>
+        <button data-admin-tab="announcements">公告</button>
         <button data-admin-tab="works">作品管理</button>
         <button data-admin-tab="tags">標籤審核</button>
         <button data-admin-tab="submissions">投稿佇列</button>
@@ -306,6 +328,7 @@
           <li>Supabase：帳號驗證與資料庫（目前主機區域為 AWS ap-northeast-1／日本）。</li>
           <li>Google OAuth：若你選擇 Google 登入。</li>
           <li>GitHub Pages：託管靜態網頁（HTML/CSS/JS），不存放你的評分資料庫。</li>
+          <li>自願贊助平台（若有開啟）：僅在你主動點擊「請站長喝杯咖啡」時，由該第三方處理付款（適用其隱私政策）。本站不接收信用卡資料，也不嵌入付款小工具。</li>
         </ul>
         <p>資料可能因此儲存或處理於台灣以外地區。</p>
         <h3>你的權利</h3>
@@ -328,6 +351,8 @@
           <li>作品標籤為分類 metadata；本站不代管成人作品本體，亦不提供作品下載、成人圖片或來源連結。</li>
           <li>禁止騷擾、人肉、洩漏個資、垃圾訊息。</li>
           <li>管理員可隱藏或拒絕違規內容、停權帳號，或拒絕上架投稿。處理結果依站務判斷，不保證特定法律效果。</li>
+          <li>本站永遠不會放廣告、沒有任何強制付費內容。是否贊助不影響會員功能；不贊助也能完整使用。</li>
+          <li>自願贊助（若有開啟）經第三方金流處理。贊助不是購買會員、不是解鎖成人內容、也不是購買作品。點擊該連結即離開本站，適用該平台條款。</li>
         </ul>
         <p><a href="#privacy" data-view="privacy">隱私權政策</a></p>
       </article>
@@ -336,7 +361,7 @@
 
   <footer class="site-footer">
     <p>夜鹿導師 · 私人 ACG metadata／評分工具 · 本站不提供作品圖片、下載或來源連結。</p>
-    <p><a href="#privacy" data-view="privacy">隱私權政策</a> · <a href="#terms" data-view="terms">使用條款</a> · <a href="#feedback" data-view="feedback">意見反饋</a> · <a class="footer-github" href="https://github.com/linyize1111/yoru-archive" target="_blank" rel="noopener noreferrer">GitHub ⭐</a></p>
+    <p><a href="#privacy" data-view="privacy">隱私權政策</a> · <a href="#terms" data-view="terms">使用條款</a> · <a href="#feedback" data-view="feedback">意見反饋</a> · <a class="footer-github" href="https://github.com/linyize1111/yoru-archive" target="_blank" rel="noopener noreferrer">GitHub</a><span data-tip-cta-wrap hidden> · <a class="footer-tip" data-tip-cta target="_blank" rel="noopener noreferrer">請站長喝杯咖啡（自願）</a></span></p>
   </footer>
 
   <div id="age-gate" class="modal open" role="dialog" aria-modal="true" aria-labelledby="age-title">
@@ -369,7 +394,7 @@
     <div class="modal-card auth-card">
       <button class="modal-close" data-close-modal="auth-modal" aria-label="關閉">×</button>
       <div class="auth-header">
-        <span class="auth-mark" aria-hidden="true">🦌</span>
+        <img class="auth-mark-img" src="assets/yoru-icon.png?v=2.2.0" alt="" width="48" height="48">
         <h2 id="auth-title">登入夜鹿導師</h2>
         <p class="muted">登入後需經站長手動審核，通過才看得到作品紀錄。</p>
       </div>
@@ -395,7 +420,8 @@
   <div id="toast-region" class="toast-region" aria-live="polite"></div>
 
   <script src="vendor/supabase.min.js?v=2.49.8"></script>
-  <script src="config.js?v=2.1.1"></script>
-  <script src="app.js?v=2.1.1"></script>
+  <script src="config.js?v=2.2.0"></script>
+  <script src="icons.js?v=2.2.0"></script>
+  <script src="boot.js?v=2.2.0"></script>
 </body>
 </html>
