@@ -17,7 +17,7 @@
     }
   });
 
-  const APP_VERSION = "2.2.3";
+  const APP_VERSION = "2.2.4";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class,plot_axis";
   const MEMBER_WORK_COLUMNS_LEGACY = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class";
   const MEMBER_WORKS_VIEW = "member_works_v21";
@@ -209,13 +209,13 @@
     if (!root) return;
     const start = root.nodeType === Node.TEXT_NODE ? root.parentElement : root;
     if (!start || start.nodeType !== Node.ELEMENT_NODE) return;
-    if (start.closest?.("script, style, textarea, input")) return;
+    if (start.closest?.("script, style, textarea, input, .modal")) return;
     const walker = document.createTreeWalker(start, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         if (!node.nodeValue || !node.nodeValue.includes("管理員")) return NodeFilter.FILTER_REJECT;
         const el = node.parentElement;
         if (!el || el.classList.contains("admin-word")) return NodeFilter.FILTER_REJECT;
-        if (el.closest("script, style, textarea, input")) return NodeFilter.FILTER_REJECT;
+        if (el.closest("script, style, textarea, input, .modal")) return NodeFilter.FILTER_REJECT;
         return NodeFilter.FILTER_ACCEPT;
       }
     });
@@ -5081,15 +5081,19 @@
       }
     }, true);
     $("#age-enter")?.addEventListener("click", async () => {
-      localStorage.setItem("acg_age_confirmed", "1");
+      try { localStorage.setItem("acg_age_confirmed", "1"); } catch (_) { /* private mode */ }
       closeModal("age-gate");
       if (state.session) {
         try { await supabase.rpc("acknowledge_age"); } catch (_) { /* optional timestamp only */ }
       }
     });
     $("#age-leave")?.addEventListener("click", () => { location.href = "https://www.google.com/"; });
-    if (localStorage.getItem("acg_age_confirmed") === "1") closeModal("age-gate");
-    else openModal("age-gate");
+    try {
+      if (localStorage.getItem("acg_age_confirmed") === "1") closeModal("age-gate");
+      else openModal("age-gate");
+    } catch (_) {
+      openModal("age-gate");
+    }
     syncBodyScrollLock();
     bindClick("#login-button", login);
     bindClick("#landing-login", login);
@@ -5297,7 +5301,7 @@
         await withBusyButton(target, "掃描中…", async () => {
           const { data, error } = await supabase.rpc("rescan_work_quarantine");
           if (error) return toast(formatApiError(error), "error");
-          toast(`已清除獵奇／極端 ${Number(data?.purged ?? data?.changed || 0)} 筆；庫裡剩餘 ${Number(data?.remaining_grotesque || 0)} 筆`, "success");
+          toast(`已清除獵奇／極端 ${Number(data?.purged ?? data?.changed ?? 0)} 筆；庫裡剩餘 ${Number(data?.remaining_grotesque || 0)} 筆`, "success");
           await loadWorks();
           await loadAdmin("works");
         });
