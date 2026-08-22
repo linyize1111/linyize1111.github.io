@@ -17,7 +17,7 @@
     }
   });
 
-  const APP_VERSION = "2.2.1";
+  const APP_VERSION = "2.2.3";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class,plot_axis";
   const MEMBER_WORK_COLUMNS_LEGACY = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class";
   const MEMBER_WORKS_VIEW = "member_works_v21";
@@ -164,6 +164,7 @@
     siteFlavor: resolveSiteFlavor(),
     tagAutoResolved: false,
     submissionPreviewAuto: false,
+    submissionQueueView: "pending",
     preferenceTags: new Map(),
     libraryVisible: 60,
     librarySeed: crypto.randomUUID?.() || String(Date.now()),
@@ -772,7 +773,12 @@
   function coffeeCtaHtml() {
     const url = supportTipUrl();
     if (!url) return "";
-    return `<p><a class="button button-secondary coffee-cta" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"><span data-inline-icon="coffee"></span> 請站長喝杯咖啡（自願）</a></p>`;
+    return `<p class="coffee-cta-wrap"><a class="button button-secondary coffee-cta" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"><span data-inline-icon="coffee"></span> 請站長喝杯咖啡（自願）</a></p>`;
+  }
+
+  function isSponsorAnnouncement(row) {
+    const title = String(row?.title || "");
+    return title === "開通自願贊助" || title.includes("開通自願贊助");
   }
 
   function applySupportTipCtas() {
@@ -1513,15 +1519,23 @@
       const body = escapeHtml(row.body || "").replace(/\n/g, "<br>");
       const summary = escapeHtml(row.summary || String(row.body || "").slice(0, 120));
       const when = row.published_at ? new Date(row.published_at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" }) : "";
+      const sponsor = isSponsorAnnouncement(row);
+      const cta = sponsor ? coffeeCtaHtml() : "";
       return `<article class="announcement-item ${row.pinned ? "pinned" : ""}">
-        <header><span class="announcement-badge">公告</span><h3>${escapeHtml(row.title)}</h3><time>${escapeHtml(when)}</time></header>
+        <header><span class="announcement-badge">${sponsor ? "贊助" : "公告"}</span><h3>${escapeHtml(row.title)}</h3><time>${escapeHtml(when)}</time></header>
         <p class="announcement-summary">${summary}</p>
+        ${cta}
         <details><summary>展開全文</summary><div class="announcement-body">${body}</div></details>
       </article>`;
     }).join("");
     boards.forEach(board => {
       board.hidden = false;
       board.innerHTML = html;
+      board.querySelectorAll("[data-inline-icon]").forEach(el => {
+        if (window.yoruIcons?.icon) {
+          el.innerHTML = window.yoruIcons.icon(el.dataset.inlineIcon, { size: 16, className: "inline-icon" });
+        }
+      });
     });
   }
 
@@ -1634,7 +1648,7 @@
       <div class="privacy-card profile-submit-card">
         <p class="eyebrow">SUBMISSION</p>
         <h3>投稿作品編號</h3>
-        <p class="muted small-note">選 N 或 JM，只填數字 ID。重複的會提示「這筆已經在資料庫。」</p>
+        <p class="muted small-note">選 N 或 JM，只填數字 ID。重複的會提示「這筆已經在資料庫。」獵奇、極端內容無法投稿，送出當下就會被拒絕。</p>
         <div class="submit-id-row">
           <select id="profile-submit-platform" aria-label="平台">
             <option value="nhentai">N</option>
@@ -1845,6 +1859,7 @@
     if (!/^\d+$/.test(workId)) return toast("車號只能填數字", "warning");
     const { data, error } = await supabase.rpc("submit_work_id", { platform, work_id: workId });
     if (error) return toast(error.message, "error");
+    if (data?.blocked) return toast(data.message || "此編號屬於獵奇／極端內容，無法投稿。", "error");
     toast(data?.message || (data?.duplicate ? "這筆已經在資料庫." : "已送出"), data?.ok ? "success" : "warning");
     const input = $(workIdSel);
     if (input) input.value = "";
@@ -4497,6 +4512,9 @@
       content.innerHTML = `<div class="empty-state form-error">載入失敗：${escapeHtml(gate.message)}</div>`;
       return;
     }
+    if (tab === "submissions" && state.adminTab !== "submissions") {
+      state.submissionQueueView = "pending";
+    }
     state.adminTab = tab;
     rememberAdminTab(tab);
     $$("[data-admin-tab]").forEach(button => button.classList.toggle("active", button.dataset.adminTab === tab));
@@ -4687,25 +4705,45 @@
         resolveSafePendingTags({ silentEmpty: true }).then(did => { if (did) loadAdmin("tags"); });
       }
     } else if (tab === "submissions") {
+      const showProcessed = state.submissionQueueView === "processed";
+      const statusLabel = (status) => ({
+        pending: "待處理",
+        accepted: "已公開入庫",
+        kept_local: "僅站長本機",
+        rejected: "已拒絕",
+        duplicate: "已在庫"
+      }[status] || status);
+      const normalizeRows = (list) => (list || []).map(row => ({
+        ...row,
+        already_in_db: Boolean(row.already_in_db),
+        status_label: row.status_label || statusLabel(row.status)
+      }));
       let rows = [];
       const listed = await supabase.rpc("admin_list_pending_submissions", { limit_n: 200 });
       if (listed.error) {
-        const { data, error } = await supabase.from("pending_work_submissions").select("id,platform,work_id,status,created_at,user_id").order("created_at", { ascending: false }).limit(200);
+        let query = supabase.from("pending_work_submissions").select("id,platform,work_id,status,created_at,user_id").order("created_at", { ascending: false }).limit(200);
+        query = showProcessed ? query.neq("status", "pending") : query.eq("status", "pending");
+        const { data, error } = await query;
         if (error) {
           content.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
           return;
         }
-        rows = (data || []).map(row => ({ ...row, already_in_db: false, status_label: row.status }));
+        rows = normalizeRows(data);
       } else {
-        rows = listed.data || [];
+        const all = listed.data || [];
+        rows = normalizeRows(showProcessed ? all.filter(row => row.status !== "pending") : all.filter(row => row.status === "pending"));
+        if (!showProcessed && !rows.length) {
+          const { data: pendingOnly } = await supabase.from("pending_work_submissions").select("id,platform,work_id,status,created_at,user_id").eq("status", "pending").order("created_at", { ascending: false }).limit(200);
+          if (pendingOnly?.length) rows = normalizeRows(pendingOnly);
+        }
       }
-      const counts = {
-        pending: rows.filter(r => r.status === "pending").length,
-        accepted: rows.filter(r => r.status === "accepted").length,
-        kept_local: rows.filter(r => r.status === "kept_local").length,
-        rejected: rows.filter(r => r.status === "rejected").length
-      };
-      content.innerHTML = `<div class="job-controls"><p class="muted small-note">待處理 ${counts.pending}｜已公開入庫 ${counts.accepted}｜僅本機 ${counts.kept_local}｜已拒絕 ${counts.rejected}<br>${isLocalFlavor() ? "本機完整版：進入此頁會自動抓取預覽圖，不必再按「預覽」。" : "封面預覽請在本機完整版執行。公開站可直接拒絕或標記狀態。"}</p>${isLocalFlavor() ? '<button class="button button-secondary" data-local-ingest-pending>重新抓取預覽</button> <button class="button button-secondary" data-local-refresh-previews>重新載入預覽牆</button>' : ""}</div><div id="local-preview-wall" class="local-preview-wall"></div>` + (rows.map(row => {
+      const toggleBtn = showProcessed
+        ? `<button class="button button-secondary" type="button" data-submission-queue-view="pending">回到待處理佇列</button>`
+        : `<button class="button button-secondary" type="button" data-submission-queue-view="processed">查看已處理</button>`;
+      const note = showProcessed
+        ? `已處理 ${rows.length} 筆（已公開／僅本機／拒絕／重複）。此頁不是工作佇列。`
+        : `僅顯示尚未審核的投稿 ${rows.length} 筆。審核後會立刻從佇列消失。`;
+      content.innerHTML = `<div class="job-controls"><p class="muted small-note">${note}<br>${isLocalFlavor() ? "本機完整版：進入此頁會自動抓取預覽圖，不必再按「預覽」。" : "封面預覽請在本機完整版執行。公開站可直接拒絕或標記狀態。"}</p>${toggleBtn}${isLocalFlavor() ? ' <button class="button button-secondary" data-local-ingest-pending>重新抓取預覽</button> <button class="button button-secondary" data-local-refresh-previews>重新載入預覽牆</button>' : ""}</div><div id="local-preview-wall" class="local-preview-wall"></div>` + (rows.map(row => {
         const code = `${row.platform === "nhentai" ? "N" : "JM"}-${row.work_id}`;
         const thumb = isLocalFlavor()
           ? coverJumpHtml(
@@ -4715,10 +4753,10 @@
             )
           : "";
         return `<div class="admin-row admin-row-with-cover"><div class="admin-row-main">${thumb}<div><h4>${escapeHtml(code)}</h4><p>${escapeHtml(row.status_label || row.status)} · ${new Date(row.created_at).toLocaleString("zh-TW")}${row.already_in_db ? " · 已在資料庫" : ""}</p></div></div><div class="admin-actions">${row.status === "pending" ? `<button class="button button-primary" data-submission-status="${row.id}" data-status="accepted">加入公開庫佇列</button><button class="button button-secondary" data-submission-status="${row.id}" data-status="kept_local">僅本機</button><button class="button button-danger" data-submission-status="${row.id}" data-status="rejected">拒絕</button>` : ""}</div></div>`;
-      }).join("") || '<div class="empty-state">沒有投稿</div>');
+      }).join("") || `<div class="empty-state">${showProcessed ? "沒有已處理紀錄" : "沒有待審投稿"}</div>`);
       if (isLocalFlavor()) {
         renderLocalPreviewWall().catch(() => {});
-        if (!state.submissionPreviewAuto) {
+        if (!showProcessed && !state.submissionPreviewAuto) {
           state.submissionPreviewAuto = true;
           autoLoadSubmissionPreviews(rows).catch(err => toast(`自動預覽失敗：${err.message || err}`, "warning"));
         }
@@ -5259,7 +5297,7 @@
         await withBusyButton(target, "掃描中…", async () => {
           const { data, error } = await supabase.rpc("rescan_work_quarantine");
           if (error) return toast(formatApiError(error), "error");
-          toast(`掃描完成：新增隱藏 ${Number(data?.changed || 0)} 筆，目前共 ${Number(data?.quarantined_total || 0)} 筆被隱藏`, "success");
+          toast(`已清除獵奇／極端 ${Number(data?.purged ?? data?.changed || 0)} 筆；庫裡剩餘 ${Number(data?.remaining_grotesque || 0)} 筆`, "success");
           await loadWorks();
           await loadAdmin("works");
         });
@@ -5325,6 +5363,10 @@
         toast(`刪除完成：成功 ${ok}，失敗 ${fail}`, fail ? "warning" : "success");
         loadAdmin("users");
       }
+      if (target.dataset.submissionQueueView) {
+        state.submissionQueueView = target.dataset.submissionQueueView;
+        await loadAdmin("submissions");
+      }
       if (target.dataset.submissionStatus) {
         const { error } = await supabase.rpc("admin_set_submission_status", {
           submission_id: target.dataset.submissionStatus,
@@ -5335,7 +5377,7 @@
           toast(e2 ? e2.message : "投稿狀態已更新", e2 ? "error" : "success");
         } else toast("投稿狀態已更新", "success");
         state.submissionPreviewAuto = false;
-        loadAdmin("submissions");
+        await loadAdmin("submissions");
       }
       if (target.dataset.localIngestPending !== undefined) {
         await withBusyButton(target, "抓取中…", async () => {
@@ -5369,7 +5411,7 @@
           });
           toast(target.dataset.target === "public" ? "已加入公開庫" : "已標記僅本機", "success");
           await renderLocalPreviewWall();
-          loadAdmin("submissions");
+          await loadAdmin("submissions");
         });
       }
       if (target.dataset.localReject) {
@@ -5380,7 +5422,7 @@
           });
           toast("已拒絕", "success");
           await renderLocalPreviewWall();
-          loadAdmin("submissions");
+          await loadAdmin("submissions");
         });
       }
       if (target.dataset.shareWatchlist) {

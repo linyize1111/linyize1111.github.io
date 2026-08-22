@@ -168,6 +168,9 @@ a.coffee-cta {
 }
 a.github-star-cta:hover,
 a.coffee-cta:hover { color: #fff; }
+.coffee-cta-wrap { margin: 10px 0 0; }
+.announcement-item .coffee-cta-wrap { margin: 10px 0 8px; }
+.footer-coffee { display: flex; justify-content: center; margin-top: 12px; }
 @media (max-width: 430px) {
   a.github-star-cta,
   a.coffee-cta { white-space: normal; text-align: center; }

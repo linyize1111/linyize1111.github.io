@@ -8,7 +8,7 @@
     if (started) return;
     started = true;
     const app = document.createElement("script");
-    app.src = "app.js?v=2.2.1";
+    app.src = "app.js?v=2.2.3";
     document.body.appendChild(app);
   }
   if (!local) {
@@ -16,7 +16,7 @@
     return;
   }
   const s = document.createElement("script");
-  s.src = "config.local.js?v=2.2.1";
+  s.src = "config.local.js?v=2.2.3";
   s.onload = loadApp;
   s.onerror = loadApp;
   document.head.appendChild(s);
