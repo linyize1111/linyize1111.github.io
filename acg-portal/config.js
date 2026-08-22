@@ -12,7 +12,7 @@ window.ACG_CONFIG = {
   manualSyncUrl: "https://github.com/linyize1111/acg-portal/actions/workflows/scheduled-sync.yml",
   googleProviderEnabled: "auto",
   platforms: ["nhentai", "18comic"],
-  version: "2.2.0",
+  version: "2.2.1",
   flavor: "public",
   githubRepoUrl: "https://github.com/linyize1111/yoru-archive",
   // Voluntary tip jar. Official HTTPS URL only (Portaly / ECPay / O'Pay / BMC). Empty hides the button.

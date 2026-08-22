@@ -17,7 +17,7 @@
     }
   });
 
-  const APP_VERSION = "2.2.0";
+  const APP_VERSION = "2.2.1";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class,plot_axis";
   const MEMBER_WORK_COLUMNS_LEGACY = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class";
   const MEMBER_WORKS_VIEW = "member_works_v21";
@@ -202,6 +202,54 @@
     return String(value ?? "").replace(/[&<>'"]/g, char => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
     })[char]);
+  }
+
+  function paintAdminWordsIn(root) {
+    if (!root) return;
+    const start = root.nodeType === Node.TEXT_NODE ? root.parentElement : root;
+    if (!start || start.nodeType !== Node.ELEMENT_NODE) return;
+    if (start.closest?.("script, style, textarea, input")) return;
+    const walker = document.createTreeWalker(start, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        if (!node.nodeValue || !node.nodeValue.includes("管理員")) return NodeFilter.FILTER_REJECT;
+        const el = node.parentElement;
+        if (!el || el.classList.contains("admin-word")) return NodeFilter.FILTER_REJECT;
+        if (el.closest("script, style, textarea, input")) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const node of nodes) {
+      const parts = node.nodeValue.split("管理員");
+      if (parts.length < 2) continue;
+      const frag = document.createDocumentFragment();
+      parts.forEach((part, index) => {
+        if (part) frag.append(part);
+        if (index < parts.length - 1) {
+          const mark = document.createElement("span");
+          mark.className = "admin-word";
+          mark.textContent = "管理員";
+          frag.append(mark);
+        }
+      });
+      node.replaceWith(frag);
+    }
+  }
+
+  function startAdminWordPainter() {
+    paintAdminWordsIn(document.body);
+    const observer = new MutationObserver(records => {
+      observer.disconnect();
+      for (const record of records) {
+        if (record.type === "characterData") paintAdminWordsIn(record.target);
+        for (const added of record.addedNodes) {
+          paintAdminWordsIn(added.nodeType === Node.TEXT_NODE ? added.parentElement : added);
+        }
+      }
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   }
 
   function formatWorkCode(work) {
@@ -1606,7 +1654,7 @@
       <div class="privacy-card">
         <p class="eyebrow">PRIVACY</p>
         <h3>好友能看到什麼</h3>
-        <p class="muted">選一種模式即可。收藏預設只有自己看得到。</p>
+        <p class="muted">選一種模式即可。預設為公開統計、評論與收藏。</p>
         <label class="privacy-preset"><input type="radio" name="privacy-preset" value="all_private" ${preset === "all_private" ? "checked" : ""}> <strong>全部保密</strong><span class="muted"> — 別人看不到你的統計、評論與收藏。</span></label>
         <label class="privacy-preset"><input type="radio" name="privacy-preset" value="stats_comments" ${preset === "stats_comments" ? "checked" : ""}> <strong>只公開統計與評論</strong><span class="muted"> — 別人看得到評分次數與你寫的評論；收藏仍只有你看得到。</span></label>
         <label class="privacy-preset"><input type="radio" name="privacy-preset" value="full_public" ${preset === "full_public" ? "checked" : ""}> <strong>公開收藏與評論</strong><span class="muted"> — 統計、評論與收藏清單都公開。</span></label>
@@ -1652,7 +1700,7 @@
   }
 
   function currentPrivacyPreset(p) {
-    if (!p) return "all_private";
+    if (!p) return "full_public";
     if (p.profile_private === false && p.show_library) return "full_public";
     if (p.profile_private === false && (p.show_stats || p.show_comments)) return "stats_comments";
     return "all_private";
@@ -1679,7 +1727,7 @@
   }
 
   async function savePrivacy() {
-    const preset = document.querySelector('input[name="privacy-preset"]:checked')?.value || "all_private";
+    const preset = document.querySelector('input[name="privacy-preset"]:checked')?.value || "full_public";
     let data; let error;
     ({ data, error } = await supabase.rpc("set_privacy_preset", { preset }));
     if (error) {
@@ -5534,6 +5582,7 @@
 
   async function init() {
     markEnvironment();
+    startAdminWordPainter();
     state.adminTab = readRememberedAdminTab();
     applySupportTipCtas();
     hydrateChromeIcons();

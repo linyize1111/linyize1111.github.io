@@ -45,6 +45,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .mobile-only { display: none; }
 .nav-toggle { display: none; }
 .muted { color: var(--muted); }
+.admin-word {
+  color: #ffd36a;
+  font-weight: 800;
+}
 .error-text { color: #ff8f9c; overflow-wrap: anywhere; }
 .centered { display: block; margin: 28px auto 0; }
 
