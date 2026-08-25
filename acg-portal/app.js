@@ -2307,10 +2307,20 @@
     return "";
   }
 
-  function coverJumpHtml(src, href, extraClass = "") {
-    const img = `<img src="${escapeHtml(src)}" alt="" loading="lazy">`;
+  function coverJumpHtml(src, href, extraClass = "", { width = 600, height = 800, alt = "" } = {}) {
+    const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" width="${width}" height="${height}">`;
     if (!href) return img;
     return `<a class="cover-jump${extraClass ? ` ${extraClass}` : ""}" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" title="開啟來源／官方頁">${img}</a>`;
+  }
+
+  async function compressImageFile(file, opts) {
+    const api = window.YoruCoverEgress;
+    if (!api?.compressImageFile) return { error: "封面壓縮模組未載入" };
+    return api.compressImageFile(file, opts);
+  }
+
+  async function sha256HexOfBlob(blob) {
+    return window.YoruCoverEgress.sha256HexOfBlob(blob);
   }
 
   function workCoverHtml(work, { detail = false } = {}) {
@@ -3778,14 +3788,18 @@
   }
 
   async function loadGames() {
-    const { data, error } = await supabase.from("games").select("*").order("created_at", { ascending: false });
+    // Covers are Storage-backed — narrow select; lazy/decoding attrs limit Cached Egress.
+    const { data, error } = await supabase
+      .from("games")
+      .select("id,name,cover_url,source_url,tags,genres,rating,scores,score_total,grade,created_at")
+      .order("created_at", { ascending: false });
     if (error) return toast(error.message, "error");
     $("#games-grid").innerHTML = (data || []).map(game => {
       const labels = mergeGameLabelTags(game.tags, game.genres).slice(0, 3);
       const jump = isAdmin() && isOfficialGameUrl(game.source_url) ? game.source_url : "";
       return `
       <article class="game-card" data-open-game="${game.id}">
-        ${coverJumpHtml(imageUrl(game.cover_url), jump)}
+        ${coverJumpHtml(imageUrl(game.cover_url), jump, "", { width: 480, height: 640, alt: "" })}
         <div><h3>${escapeHtml(game.name)}</h3>${gameScoreSummaryHtml(game, { compact: true })}<div class="tag-row">${labels.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div></div>
       </article>`;
     }).join("") || '<div class="empty-state">站長尚未發表遊戲評鑑</div>';
@@ -4009,7 +4023,7 @@
       const blocked = item.fetchable === false;
       const applyLabel = blocked ? "僅填標題連結" : "套用此筆";
       return `<article class="game-autofill-card${blocked ? " is-blocked" : ""}">
-        <img src="${escapeHtml(imageUrl(item.cover_url || ""))}" alt="" loading="lazy">
+        <img src="${escapeHtml(imageUrl(item.cover_url || ""))}" alt="" loading="lazy" decoding="async" width="96" height="128">
         <div>
           <div class="game-autofill-card-head">${storeBadgeHtml(item)}<strong>${escapeHtml(item.title || item.product_code || "未命名")}</strong></div>
           <small>${escapeHtml(metaBits.join(" · "))}</small>
@@ -4198,8 +4212,8 @@
         <label>發售日<input id="game-release-date" type="date" value="${escapeHtml(releaseValue)}"></label>
         <label>作品形式<input id="game-work-type" type="text" maxlength="120" value="${escapeHtml(game?.work_type_label || "")}"></label>
         <label>演出類型<select id="game-cg-type">${gameCgTypeOptionsHtml(game?.cg_type || "unknown")}</select></label>
-        <label>上傳封面圖片（可選，≤ 5MB）<input id="game-cover-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
-        <label>或直接填封面網址<input id="game-cover" type="text" inputmode="url" placeholder="https://…" value="${escapeHtml(game?.cover_url || "")}"></label>
+        <label>上傳封面圖片（可選；會壓縮至 ≤960px / ≤400KB）<input id="game-cover-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
+        <label>或直接填封面網址（可手動貼 Steam／DLsite 官方圖；預設仍建議上傳本站壓縮圖）<input id="game-cover" type="text" inputmode="url" placeholder="https://…" value="${escapeHtml(game?.cover_url || "")}"></label>
         ${game?.cover_url ? `<img class="editor-cover-preview" id="game-autofill-cover-preview" src="${escapeHtml(imageUrl(game.cover_url))}" alt="目前封面">` : `<img class="editor-cover-preview hidden" id="game-autofill-cover-preview" alt="封面預覽">`}
         ${gameScoreEditorHtml(game)}
         <label>標籤（逗號分隔，含類型／分類；Steam／DLsite 自動填入會寫入此欄）<input id="game-tags" type="text" value="${escapeHtml(gameLabelsInputValue(game))}" placeholder="例如：ADV, 戀愛, 百合"></label>
@@ -4215,33 +4229,54 @@
   }
 
   async function uploadGameCover(file, timeoutMs = 20000) {
-    if (file.size > 5 * 1024 * 1024) {
-      return { url: null, error: "圖片需小於 5MB" };
+    const api = window.YoruCoverEgress;
+    if (!api?.prepareGameCoverUpload) {
+      return { url: null, error: "封面壓縮模組未載入" };
     }
-    if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
-      return { url: null, error: "僅支援 PNG / JPG / WEBP / GIF" };
+    let uploadCalled = false;
+    const prepared = await api.prepareGameCoverUpload(file, {
+      compressImageFile: api.compressImageFile,
+      sha256HexOfBlob: api.sha256HexOfBlob,
+      getPublicUrl: (path) => supabase.storage.from("game-covers").getPublicUrl(path).data.publicUrl,
+      verifyExisting: async (path, expectedSha) => {
+        try {
+          const url = supabase.storage.from("game-covers").getPublicUrl(path).data.publicUrl;
+          const resp = await fetch(url, { method: "GET", cache: "no-store" });
+          if (!resp.ok) return { ok: false, error: "既有封面無法驗證" };
+          const buf = await resp.arrayBuffer();
+          const actual = await api.sha256HexOfBuffer(buf);
+          if (actual !== expectedSha) return { ok: false, error: "既有物件內容不符，已停止" };
+          return { ok: true };
+        } catch {
+          return { ok: false, error: "既有封面驗證失敗" };
+        }
+      },
+      upload: async (path, uploadFile, options) => {
+        uploadCalled = true;
+        const uploadTask = supabase.storage.from("game-covers").upload(path, uploadFile, options);
+        try {
+          return await Promise.race([
+            uploadTask,
+            sleep(timeoutMs).then(() => ({ error: { message: "圖片上傳逾時，已略過封面並繼續儲存文字內容" } }))
+          ]);
+        } catch (error) {
+          return { error: { message: error.message || "圖片上傳失敗" } };
+        }
+      }
+    });
+    if (prepared.error) {
+      if (/bucket.*not found|not found/i.test(prepared.error) && uploadCalled) {
+        return { url: null, error: "圖片儲存桶尚未建立（需先套用 0005 migration）" };
+      }
+      return { url: null, error: prepared.error };
     }
-    const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
-    const path = `${crypto.randomUUID?.() || Date.now()}.${ext}`;
-    const uploadTask = supabase.storage.from("game-covers").upload(path, file, { contentType: file.type, upsert: false });
-    let result;
-    try {
-      result = await Promise.race([
-        uploadTask,
-        sleep(timeoutMs).then(() => { throw new Error("圖片上傳逾時，已略過封面並繼續儲存文字內容"); })
-      ]);
-    } catch (error) {
-      return { url: null, error: error.message || "圖片上傳失敗" };
-    }
-    const { error } = result;
-    if (error) {
-      const missingBucket = /bucket.*not found|not found/i.test(error.message);
-      return {
-        url: null,
-        error: missingBucket ? "圖片儲存桶尚未建立（需先套用 0005 migration）" : `圖片上傳失敗：${formatApiError(error)}`
-      };
-    }
-    return { url: supabase.storage.from("game-covers").getPublicUrl(path).data.publicUrl, error: null };
+    return {
+      url: prepared.url,
+      error: null,
+      compressed: prepared.compressed,
+      bytes: prepared.bytes,
+      path: prepared.path
+    };
   }
 
   async function saveGame(event) {
