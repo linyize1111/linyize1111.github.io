@@ -1,0 +1,11 @@
+{
+  "exported_at": "2026-08-25T07:01:22.790Z",
+  "architecture": "Plan A static (Markdown/JSON in Git)",
+  "article_count": 46,
+  "section_count": 10,
+  "source": "supabase-anon",
+  "notes": [
+    "Production frontend default remains source=supabase until cutover.",
+    "Analytics snapshot is read-only under Plan A (no visitor writes)."
+  ]
+}

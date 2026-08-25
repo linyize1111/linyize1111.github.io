@@ -15,7 +15,9 @@
 (function () {
   "use strict";
 
-  var CONFIGURED = window.SB && window.SB.isConfigured && window.SB.isConfigured();
+  var CONFIGURED =
+    (window.CmsData && window.CmsData.isReady && window.CmsData.isReady()) ||
+    (window.SB && window.SB.isConfigured && window.SB.isConfigured());
   if (CONFIGURED) window.__CMS_DYNAMIC__ = true;
 
   var CAROUSEL_HINT = /^點擊圖片即前往/;
@@ -214,19 +216,9 @@
 
   async function renderList(container) {
     var section = container.getAttribute("data-section");
-    var client = window.SB.client();
-
     var res;
     try {
-      res = await client
-        .from("articles")
-        .select(
-          "id,section,slug,title,summary,cover,images,category,tags,pdf_url,status,published_at,created_at,updated_at,sort_index"
-        )
-        .eq("section", section)
-        .eq("status", "published")
-        .order("sort_index", { ascending: false })
-        .order("published_at", { ascending: false });
+      res = await window.CmsData.listPublishedArticles(section);
     } catch (e) {
       res = { error: e };
     }
@@ -262,16 +254,7 @@
     var postSection = document.querySelector("#main > section.post");
     if (!contentEl) return false;
 
-    var client = window.SB.client();
-    var q = client
-      .from("articles")
-      .select("title,body,cover,category,published_at,updated_at,section,status")
-      .eq("slug", slug)
-      .eq("status", "published")
-      .limit(1);
-    if (section) q = q.eq("section", section);
-
-    var res = await q;
+    var res = await window.CmsData.getPublishedArticle(slug, section);
     if (res.error || !res.data || !res.data.length) {
       if (titleEl) titleEl.innerText = "404 文章未找到";
       if (statusEl) statusEl.innerText = "Not Found";
@@ -335,8 +318,7 @@
   async function applySections() {
     var nodes = document.querySelectorAll("[data-section-key]");
     if (!nodes.length) return;
-    var client = window.SB.client();
-    var res = await client.from("site_sections").select("key,value");
+    var res = await window.CmsData.getSiteSections();
     if (res.error || !res.data) return;
     var map = {};
     res.data.forEach(function (r) {

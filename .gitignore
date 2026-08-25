@@ -1,0 +1,23 @@
+# Local secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*service_role*
+*service-role*
+
+# Migration dumps / local restore artifacts (keep outside repo preferred)
+personal-site-migration-backups/
+_migration_tmp/
+*.dump
+*.sql.gz
+
+# Node
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/

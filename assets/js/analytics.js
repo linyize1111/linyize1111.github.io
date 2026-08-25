@@ -1,14 +1,26 @@
 /**
- * analytics.js — 主站訪客 / 瀏覽計數（Supabase RPC + 防灌水 RLS）
- * 依賴 window.SB；未設定時完全不動作。
+ * analytics.js — 主站訪客 / 瀏覽計數
+ * - source=supabase：RPC 寫入 + site_analytics 讀取（現行）
+ * - source=static：只顯示 analytics_snapshot.json，不寫入（Plan A）
  */
 (function () {
   "use strict";
 
-  if (!window.SB || !window.SB.isConfigured || !window.SB.isConfigured()) return;
-
   var VISITOR_KEY = "site_visitor_id";
   var SESSION_KEY = "site_view_tracked";
+
+  function dataSource() {
+    return window.CmsData && window.CmsData.source
+      ? window.CmsData.source()
+      : "supabase";
+  }
+
+  function canUseSupabase() {
+    return !!(window.SB && window.SB.isConfigured && window.SB.isConfigured());
+  }
+
+  if (dataSource() === "supabase" && !canUseSupabase()) return;
+  if (dataSource() === "static" && !(window.CmsData && window.CmsData.isReady())) return;
 
   function getVisitorId() {
     try {
@@ -37,6 +49,8 @@
   }
 
   async function trackPageView() {
+    // Plan A static：訪客寫入暫停（可逆；正式 cutover 再決定替代方案）
+    if (dataSource() === "static") return;
     if (document.hidden) return;
     var sessionId = pageKey();
     try {
@@ -63,9 +77,14 @@
   }
 
   async function fetchStats() {
-    var client = window.SB.client();
-    if (!client) return null;
-    var res = await client.from("site_analytics").select("key,value");
+    var res;
+    if (window.CmsData && window.CmsData.getAnalyticsSnapshot) {
+      res = await window.CmsData.getAnalyticsSnapshot();
+    } else {
+      var client = window.SB.client();
+      if (!client) return null;
+      res = await client.from("site_analytics").select("key,value");
+    }
     if (res.error || !res.data) return null;
     var out = { visitors: 0, views: 0 };
     res.data.forEach(function (row) {
