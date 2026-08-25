@@ -21,9 +21,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const contentEl = document.getElementById('markdown-container');
 
     if (!fileName && !pdfName && !litName) {
-        titleEl.innerText = '系統錯誤';
-        statusEl.innerText = '未提供檔案參數 (Missing URL Parameter)';
-        contentEl.innerHTML = '<p>請從首頁目錄選擇要閱讀的筆記或簡報。</p>';
+        const copy = window.LYZSiteCopy || function (_k, fb) { return fb; };
+        titleEl.innerText = copy('note.error.title', '系統錯誤');
+        titleEl.setAttribute('data-section-key', 'note.error.title');
+        statusEl.innerText = copy('note.error.missing', '未提供檔案參數 (Missing URL Parameter)');
+        statusEl.setAttribute('data-section-key', 'note.error.missing');
+        contentEl.innerHTML = '<p data-section-key="note.error.hint">請從首頁目錄選擇要閱讀的筆記或簡報。</p>';
         return;
     }
 
@@ -66,11 +69,21 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(markdownText => {
                 let cleanMarkdown = markdownText.trim();
 
-                // robust frontmatter parsing (only if at very start of file)
+                // Only strip real YAML frontmatter (key: value), not literary --- dividers
                 if (cleanMarkdown.startsWith('---')) {
-                    const nextDashIndex = cleanMarkdown.indexOf('---', 3);
-                    if (nextDashIndex !== -1) {
-                        cleanMarkdown = cleanMarkdown.slice(nextDashIndex + 3).trimStart();
+                    const close = cleanMarkdown.search(/\r?\n---\s*(?:\r?\n|$)/);
+                    if (close !== -1) {
+                        const between = cleanMarkdown.slice(3, close);
+                        const yamlLines = between.split(/\r?\n/).filter((line) =>
+                            /^\s*[A-Za-z0-9_\u4e00-\u9fff][\w\u4e00-\u9fff.-]*\s*:/.test(line)
+                        );
+                        const sentenceMarks = (between.match(/[。！？]/g) || []).length;
+                        if (yamlLines.length && !(sentenceMarks >= 2 && yamlLines.length < 2)) {
+                            cleanMarkdown = cleanMarkdown
+                                .slice(close)
+                                .replace(/^\r?\n---\s*/, '')
+                                .trimStart();
+                        }
                     }
                 }
 

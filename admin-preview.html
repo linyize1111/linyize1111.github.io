@@ -1,0 +1,355 @@
+<!DOCTYPE HTML>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+    <link rel="icon" type="image/jpeg" href="images/av.jpg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>前台預覽 · LYZ</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- Match note.html stylesheet stack (same order / same public CSS). -->
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap" />
+  <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v9.2-about-markdown-1" />
+  <link rel="stylesheet" href="assets/css/site-custom.css?v=v9.2-about-markdown-1" />
+  <style>
+    /* Preview canvas only — never redefine article/card/gallery typography. */
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: transparent;
+    }
+    body.is-preview {
+      padding: 0;
+    }
+    #preview-background {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    #preview-public-shell {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+    }
+    #wrapper {
+      padding-top: 0 !important;
+    }
+    /* Hide public chrome that must not run in the iframe canvas */
+    #header,
+    #nav,
+    #desktop-global-nav,
+    #mobile-global-nav,
+    #copyright,
+    #global-nav,
+    #video-controls,
+    #loading-screen,
+    #bg-video,
+    #bg-music,
+    #sakura-canvas,
+    .mobile-controls-fab,
+    #reading-focus-toggle,
+    #btn-top {
+      display: none !important;
+    }
+    /* #main and #wrapper stay visible */
+    #preview-status {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.75rem;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      background: rgba(12, 14, 20, 0.82);
+      color: #e8ecf4;
+      backdrop-filter: blur(8px);
+    }
+    #preview-status[data-state="ok"] { border-bottom: 2px solid #3dcf8e; }
+    #preview-status[data-state="wait"] { border-bottom: 2px solid #d4a017; }
+    #preview-status[data-state="err"] { border-bottom: 2px solid #e45d5d; }
+    #preview-status code { font-size: 0.7rem; }
+    #preview-empty {
+      opacity: .7;
+      text-align: center;
+      padding: 3rem 1.25rem;
+      font-size: .95rem;
+    }
+    #preview-error {
+      margin: 1rem;
+      padding: 1rem 1.1rem;
+      border-radius: 10px;
+      background: rgba(180, 40, 40, 0.12);
+      border: 1px solid rgba(220, 80, 80, 0.35);
+      color: #b42318;
+      white-space: pre-wrap;
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.82rem;
+    }
+    [data-theme="dark"] #preview-error,
+    [data-theme="glass"] #preview-error {
+      color: #ffb4b4;
+      background: rgba(80, 20, 20, 0.35);
+    }
+  </style>
+</head>
+<body class="is-preview is-preload">
+  <div id="preview-background" aria-hidden="true"></div>
+  <div id="preview-status" data-state="wait" aria-live="polite">正在建立預覽…</div>
+
+  <div id="preview-public-shell">
+    <div id="wrapper">
+      <div id="main">
+        <div id="preview-empty">等待編輯器傳送草稿預覽…</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="assets/js/supabase-config.js"></script>
+  <script src="assets/js/supabase-client.js?v=v9.2-about-markdown-1"></script>
+  <script src="assets/js/site-sections.js?v=v9.2-about-markdown-1"></script>
+  <script src="assets/js/presentation-registry.js?v=v9.2-about-markdown-1"></script>
+  <script src="assets/js/article-media.js?v=v9.2-about-markdown-1"></script>
+  <script src="assets/js/article-renderer.js?v=v9.2-about-markdown-1"></script>
+  <script src="assets/js/preview-fixture.js?v=v9.2-about-markdown-1"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      var mainEl = document.getElementById("main");
+      var statusEl = document.getElementById("preview-status");
+      var lastPayload = null;
+      var lastError = null;
+      var lastDiagnostics = {
+        renderer: false,
+        media: false,
+        articleReceived: false,
+        mediaEnhanced: false,
+        imagesLoaded: 0,
+        imagesTotal: 0,
+        renderedVersion: null,
+        mode: null
+      };
+
+      function setTheme(theme) {
+        var t = theme === "dark" || theme === "glass" ? theme : "light";
+        if (t === "light") document.documentElement.removeAttribute("data-theme");
+        else document.documentElement.setAttribute("data-theme", t);
+        var bg = document.getElementById("preview-background");
+        if (t === "glass" && bg) {
+          bg.style.backgroundImage =
+            "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.18), transparent 55%), url('images/bg.jpg')";
+          bg.style.backgroundSize = "cover";
+          bg.style.backgroundPosition = "center";
+        } else if (bg) {
+          bg.style.backgroundImage = "";
+        }
+      }
+
+      function setReadingFocus(on) {
+        document.body.classList.toggle("reading-focus", !!on);
+        document.documentElement.classList.toggle("reading-focus", !!on);
+      }
+
+      function paintStatus(state, lines) {
+        if (!statusEl) return;
+        statusEl.setAttribute("data-state", state || "wait");
+        statusEl.innerHTML = (lines || []).map(function (line) {
+          return "<span>" + line + "</span>";
+        }).join("");
+      }
+
+      function showError(err, extra) {
+        lastError = err;
+        var msg = String((err && err.message) || err || "未知錯誤");
+        mainEl.innerHTML =
+          '<div id="preview-error" role="alert">[前台預覽載入失敗]\n' +
+          "Renderer: " + (window.SBArticleRenderer ? "loaded" : "missing") + "\n" +
+          "Media: " + (window.SBArticleMedia ? "loaded" : "missing") + "\n" +
+          "Article object: " + (lastDiagnostics.articleReceived ? "received" : "missing") + "\n" +
+          (extra ? extra + "\n" : "") +
+          "錯誤：\n" + msg +
+          "</div>";
+        paintStatus("err", [
+          "⚠ 預覽失敗",
+          "Renderer " + (window.SBArticleRenderer ? "✓" : "✗"),
+          "Media " + (window.SBArticleMedia ? "✓" : "✗")
+        ]);
+      }
+
+      function diagnoseImages() {
+        if (!window.SBArticleMedia || !window.SBArticleMedia.countLoadedImages) {
+          return { loaded: 0, total: 0 };
+        }
+        return window.SBArticleMedia.countLoadedImages(mainEl);
+      }
+
+      function refreshDiagStatus(ok) {
+        var img = diagnoseImages();
+        lastDiagnostics.imagesLoaded = img.loaded;
+        lastDiagnostics.imagesTotal = img.total;
+        lastDiagnostics.renderer = !!window.SBArticleRenderer;
+        lastDiagnostics.media = !!window.SBArticleMedia;
+        paintStatus(ok ? "ok" : "wait", [
+          ok ? "● 預覽已同步" : "● 等待預覽",
+          "Renderer " + (lastDiagnostics.renderer ? "✓" : "✗"),
+          "CSS ✓",
+          "Article " + (lastDiagnostics.articleReceived ? "✓" : "✗"),
+          "Media " + (lastDiagnostics.mediaEnhanced ? "✓" : "…"),
+          "Images " + img.loaded + " / " + img.total,
+          lastDiagnostics.renderedVersion != null ? ("v" + lastDiagnostics.renderedVersion) : ""
+        ]);
+      }
+
+      function preventPreviewNavigation(root) {
+        if (!root) return;
+        root.querySelectorAll("a[href]").forEach(function (a) {
+          var href = a.getAttribute("href") || "";
+          if (href === "#" || href.indexOf("javascript:") === 0) return;
+          a.addEventListener("click", function (e) {
+            e.preventDefault();
+          });
+        });
+      }
+
+      function renderPreview(payload) {
+        lastPayload = payload || {};
+        lastError = null;
+        var article = lastPayload.article;
+        var mode = lastPayload.mode === "card" ? "card" : "article";
+        var version = lastPayload.draftVersion != null ? lastPayload.draftVersion : null;
+        setTheme(lastPayload.theme || "light");
+        setReadingFocus(!!lastPayload.readingFocus && mode === "article");
+        lastDiagnostics.mode = mode;
+        lastDiagnostics.articleReceived = !!article;
+        lastDiagnostics.mediaEnhanced = false;
+
+        if (!article) {
+          mainEl.innerHTML = '<div id="preview-empty">等待編輯器傳送草稿預覽…</div>';
+          paintStatus("wait", ["● 等待預覽", "尚無草稿物件"]);
+          return { ok: false, reason: "no-article" };
+        }
+
+        var R = window.SBArticleRenderer;
+        if (!R || typeof R.renderArticleInto !== "function") {
+          showError(new Error("SBArticleRenderer 未載入"));
+          return { ok: false, reason: "no-renderer" };
+        }
+
+        Array.prototype.slice.call(document.body.classList).forEach(function (c) {
+          if (c.indexOf("presentation-") === 0 || c === "reading-page") document.body.classList.remove(c);
+        });
+        delete document.body.dataset.presentation;
+
+        try {
+          var emptyBody = !(article.body && String(article.body).trim());
+          if (mode === "card") {
+            R.renderCardInto(mainEl, article, 0);
+          } else {
+            R.renderArticleInto(mainEl, article, { applyReadingFocus: false });
+            if (lastPayload.readingFocus) setReadingFocus(true);
+            if (emptyBody) {
+              var md = mainEl.querySelector("#markdown-container");
+              if (md) {
+                var note = document.createElement("p");
+                note.className = "preview-empty-body";
+                note.style.cssText = "opacity:.65;text-align:center;padding:2rem 1rem;";
+                note.textContent = "目前草稿沒有正文";
+                md.appendChild(note);
+              }
+            }
+          }
+
+          lastDiagnostics.mediaEnhanced = !!(window.SBArticleMedia);
+          lastDiagnostics.renderedVersion = version;
+          preventPreviewNavigation(mainEl);
+          document.body.classList.remove("is-preload");
+          refreshDiagStatus(true);
+
+          // Re-check image loads shortly after
+          setTimeout(function () { refreshDiagStatus(true); }, 400);
+          setTimeout(function () { refreshDiagStatus(true); }, 1200);
+
+          return {
+            ok: true,
+            renderedVersion: version,
+            diagnostics: Object.assign({}, lastDiagnostics)
+          };
+        } catch (err) {
+          console.error("[admin-preview]", err);
+          showError(err);
+          return { ok: false, error: String(err && err.message || err) };
+        }
+      }
+
+      function ack(source, result) {
+        if (!source || !source.postMessage) return;
+        try {
+          source.postMessage({
+            type: "LYZ_ARTICLE_PREVIEW_ACK",
+            ok: !!(result && result.ok),
+            renderedVersion: result && result.renderedVersion,
+            diagnostics: result && result.diagnostics,
+            error: result && result.error
+          }, location.origin);
+        } catch (e) {}
+      }
+
+      window.LYZAdminPreview = {
+        ready: true,
+        version: "v8",
+        render: function (payload) {
+          return renderPreview(payload || {});
+        },
+        getLastError: function () { return lastError; },
+        getDiagnostics: function () { return Object.assign({}, lastDiagnostics); },
+        getLastPayload: function () { return lastPayload; }
+      };
+
+      window.addEventListener("message", function (e) {
+        if (e.origin !== location.origin) return;
+        var data = e.data;
+        if (!data || data.type !== "LYZ_ARTICLE_PREVIEW") return;
+        var result = renderPreview(data);
+        ack(e.source, result);
+      });
+
+      // Auto-render fixture when ?fixture=1 (no parent / no Supabase)
+      try {
+        var params = new URLSearchParams(location.search);
+        if (params.get("fixture") === "1" && window.LYZ_PREVIEW_FIXTURE) {
+          renderPreview({
+            mode: params.get("mode") === "card" ? "card" : "article",
+            theme: params.get("theme") || "light",
+            draftVersion: 0,
+            article: window.LYZ_PREVIEW_FIXTURE
+          });
+        }
+      } catch (e) {}
+
+      if (window.parent && window.parent !== window) {
+        try {
+          window.parent.postMessage({ type: "LYZ_ARTICLE_PREVIEW_READY", api: true }, location.origin);
+        } catch (e) {}
+      }
+
+      paintStatus("wait", [
+        "● 等待預覽",
+        "Renderer " + (window.SBArticleRenderer ? "✓" : "…"),
+        "Media " + (window.SBArticleMedia ? "✓" : "…")
+      ]);
+    })();
+  </script>
+</body>
+</html>

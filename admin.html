@@ -1,8 +1,9 @@
-<!DOCTYPE HTML>
+﻿<!DOCTYPE HTML>
 <html lang="zh-Hant">
 
 <head>
     <meta charset="utf-8" />
+    <link rel="icon" type="image/jpeg" href="images/av.jpg" />
     <title>後台管理 · LYZ's website</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
@@ -24,7 +25,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;900&display=swap">
-    <link rel="stylesheet" href="assets/css/admin.css" />
+    <link rel="stylesheet" href="assets/css/admin.css?v=v9.7-share-bg-1" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9.7-share-bg-1" />
 </head>
 
 <body class="admin">
@@ -77,23 +79,41 @@
         <div id="view-admin" class="hidden">
             <div class="tabs">
                 <div class="tab active" data-tab="articles">文章管理</div>
-                <div class="tab" data-tab="sections">區塊文字</div>
+                <div class="tab" data-tab="sections">網站內容</div>
             </div>
 
             <!-- 文章 -->
             <div id="tab-articles">
-                <!-- 零決策匯入：貼上就能存，不必想分類／標籤 -->
+                <!-- 快速匯入：先選分區，再貼上（heuristic 只建議、不覆寫分區） -->
                 <div class="card import-wizard" id="import-wizard">
-                    <h3>快速匯入 · 零決策</h3>
-                    <p class="muted import-promise">抱怨、碎念、突然的想法 → 直接貼上存成<strong>隨想</strong>。不必選分類、不必填標籤；系統會自動整理標題與篇幅。</p>
+                    <h3>快速匯入</h3>
+                    <p class="muted import-promise">第一步先選<strong>分區</strong>。系統只建議標題／分類，不會偷偷改你選的分區。</p>
+                    <div class="field full" style="margin-bottom:.85rem;">
+                        <label>1. 這篇是什麼？ *</label>
+                        <div class="section-pick" id="section-pick" role="radiogroup" aria-label="分區">
+                            <button type="button" class="section-pick__btn is-selected" data-section="notes" aria-pressed="true">
+                                <strong>隨筆</strong>
+                                <span>生活、觀點、閱讀／觀看心得</span>
+                            </button>
+                            <button type="button" class="section-pick__btn" data-section="literature" aria-pressed="false">
+                                <strong>文學創作</strong>
+                                <span>小說、詩、劇本、虛構文本</span>
+                            </button>
+                            <button type="button" class="section-pick__btn" data-section="academic" aria-pressed="false">
+                                <strong>學科筆記</strong>
+                                <span>課堂／研究／程式（僅管理員可見）</span>
+                            </button>
+                        </div>
+                        <input type="hidden" id="import-section" value="notes" />
+                    </div>
                     <ol class="import-steps muted">
-                        <li>貼上文字（Threads／FB／備忘錄／HackMD 都行）</li>
-                        <li>按「存成草稿」——完事</li>
-                        <li>（可選）「進大編輯繼續改」微調標題／排版後再發佈</li>
+                        <li>選分區（上方）</li>
+                        <li>貼上文字 → 預覽建議的標題／分類</li>
+                        <li>存成草稿；確認後再發佈</li>
                     </ol>
                     <div class="field full">
-                        <label>貼上內容</label>
-                        <textarea id="paste-blob" rows="10" placeholder="直接貼想法、抱怨、摘錄…&#10;&#10;不用寫分類／標籤。&#10;短的會自動變成「隨想」；長的會猜「長文／隨筆」。"></textarea>
+                        <label>2. 貼上內容</label>
+                        <textarea id="paste-blob" rows="10" placeholder="貼上全文或 Markdown…&#10;&#10;可含 YAML frontmatter。分區以你在上方的選擇為準。"></textarea>
                     </div>
                     <div class="import-actions">
                         <button type="button" class="btn primary" id="btn-quick-draft">存成草稿</button>
@@ -105,13 +125,6 @@
                     <details class="import-advanced">
                         <summary>進階選項（可跳過）</summary>
                         <div class="row" style="align-items:flex-end; margin-top:.75rem;">
-                            <div class="field" style="max-width:220px;">
-                                <label>預設分區</label>
-                                <select id="import-section">
-                                    <option value="literature">文學隨筆</option>
-                                    <option value="notes">學科筆記</option>
-                                </select>
-                            </div>
                             <div class="field" style="max-width:200px;">
                                 <label>篇幅提示（通常自動即可）</label>
                                 <select id="import-length">
@@ -139,13 +152,46 @@
                         <div class="field" style="max-width:220px;">
                             <label>分區</label>
                             <select id="list-section">
-                                <option value="literature">文學隨筆 (literature)</option>
-                                <option value="notes">學科筆記 (notes)</option>
+                                <option value="notes">隨筆</option>
+                                <option value="literature">文學創作</option>
+                                <option value="academic">學科筆記</option>
                             </select>
+                        </div>
+                        <div class="field" style="max-width:160px;">
+                            <label>狀態</label>
+                            <select id="list-status">
+                                <option value="all">全部</option>
+                                <option value="draft">只看草稿</option>
+                                <option value="published">只看已發佈</option>
+                            </select>
+                        </div>
+                        <div class="field" style="max-width:220px;">
+                            <label>搜尋標題</label>
+                            <input id="list-search" type="search" placeholder="輸入關鍵字…" />
                         </div>
                         <div class="field" style="max-width:160px; flex:0;">
                             <button class="btn primary" id="btn-new">+ 手動新增</button>
                         </div>
+                    </div>
+                    <p class="muted" id="list-hint" style="margin:0 0 .75rem;">點「編輯」時，頂部會顯示目前正在改哪一篇。</p>
+                    <div class="bulk-bar" id="bulk-bar">
+                        <label class="bulk-check-all"><input type="checkbox" id="bulk-select-all" /> 全選本頁</label>
+                        <span class="muted" id="bulk-count">已選 0</span>
+                        <select id="bulk-section" title="改分區">
+                            <option value="">改分區…</option>
+                            <option value="notes">→ 隨筆</option>
+                            <option value="literature">→ 文學創作</option>
+                            <option value="academic">→ 學科筆記</option>
+                        </select>
+                        <select id="bulk-category" title="改分類">
+                            <option value="">改分類…</option>
+                        </select>
+                        <select id="bulk-status" title="改狀態">
+                            <option value="">改狀態…</option>
+                            <option value="draft">→ 草稿</option>
+                            <option value="published">→ 發佈</option>
+                        </select>
+                        <button type="button" class="btn" id="btn-bulk-apply" disabled>套用批次</button>
                     </div>
                     <div id="article-list"></div>
                 </div>
@@ -158,14 +204,20 @@
                     <header class="editor-bar">
                         <div class="editor-bar-left">
                             <button type="button" class="btn" id="btn-cancel" title="返回文章列表">← 返回列表</button>
-                            <h3 id="form-title">新增文章</h3>
+                            <div class="editor-identity">
+                                <h3 id="form-title">新增文章</h3>
+                                <p id="form-context" class="editor-context" aria-live="polite">尚未選擇文章</p>
+                            </div>
                         </div>
                         <div class="editor-modes" role="tablist" aria-label="編輯檢視">
-                            <button type="button" class="mode-btn active" data-editor-mode="split" title="左右分欄">分欄</button>
-                            <button type="button" class="mode-btn" data-editor-mode="edit" title="只看 Markdown">編輯</button>
-                            <button type="button" class="mode-btn" data-editor-mode="preview" title="只看排版預覽">預覽</button>
+                            <button type="button" class="mode-btn active" data-editor-mode="split" title="左右分欄：編輯 + 前台預覽">分欄</button>
+                            <button type="button" class="mode-btn" data-editor-mode="edit" title="只看 Markdown 編輯">編輯</button>
+                            <button type="button" class="mode-btn" data-editor-mode="frontend" title="真實前台預覽">前台預覽</button>
+                            <button type="button" class="mode-btn" data-editor-mode="changes" title="草稿變更 diff">變更</button>
+                            <button type="button" class="mode-btn" data-editor-mode="markdown" title="原始 Markdown HTML 預覽">Markdown</button>
                         </div>
                         <div class="editor-bar-actions">
+                            <span id="editor-save-state" class="editor-save-state" aria-live="polite">已同步</span>
                             <label class="editor-status-label">
                                 <span class="sr-only">狀態</span>
                                 <select id="f-status" title="文章狀態">
@@ -189,8 +241,9 @@
                                     <div class="field">
                                         <label>分區 *</label>
                                         <select id="f-section">
-                                            <option value="literature">文學隨筆 (literature)</option>
-                                            <option value="notes">學科筆記 (notes)</option>
+                                            <option value="notes">隨筆</option>
+                                            <option value="literature">文學創作</option>
+                                            <option value="academic">學科筆記</option>
                                         </select>
                                     </div>
                                     <div class="field" style="max-width:100px;">
@@ -200,26 +253,142 @@
                                 </div>
                                 <div class="field full">
                                     <label>標題 *</label>
-                                    <input id="f-title" placeholder="可留空由系統取首句／日期隨想" />
+                                    <input id="f-title" placeholder="請填標題，或按「AI 整理與判斷」後確認" />
                                 </div>
                                 <div class="field full">
                                     <label>slug（網址代稱）*</label>
                                     <input id="f-slug" placeholder="可自動產生" />
                                 </div>
                                 <div class="field full">
-                                    <label>摘要（卡片顯示，可留空）</label>
-                                    <input id="f-summary" placeholder="一句話簡介" />
+                                    <label>摘要（語意摘要；短文可不顯示）</label>
+                                    <input id="f-summary" placeholder="一句話；勿用「本文探討…」報告腔" />
+                                    <label class="inline-check"><input type="checkbox" id="f-show-title" checked /> 前台顯示標題</label>
+                                    <label class="inline-check"><input type="checkbox" id="f-show-summary" checked /> 前台顯示摘要</label>
                                 </div>
                             </details>
 
-                            <details class="editor-meta-block">
-                                <summary>分類／標籤</summary>
+                            <details class="editor-meta-block" open>
+                                <summary>V3 呈現／可見性</summary>
+                                <div class="row">
+                                    <div class="field">
+                                        <label>presentation</label>
+                                        <select id="f-presentation">
+                                            <option value="">（未設定 → article-lite）</option>
+                                            <option value="fragment">fragment</option>
+                                            <option value="photo-note">photo-note</option>
+                                            <option value="journal">journal</option>
+                                            <option value="article-lite">article-lite</option>
+                                            <option value="longform">longform</option>
+                                            <option value="review">review</option>
+                                            <option value="reference">reference</option>
+                                            <option value="quote">quote</option>
+                                            <option value="fiction">fiction</option>
+                                            <option value="poetry">poetry</option>
+                                        </select>
+                                    </div>
+                                    <div class="field">
+                                        <label>content_type</label>
+                                        <input id="f-content-type" placeholder="例如 fragment / review / fiction" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="field">
+                                        <label>visibility</label>
+                                        <select id="f-visibility">
+                                            <option value="public">public（列表可見）</option>
+                                            <option value="unlisted">unlisted（僅網址）</option>
+                                            <option value="private">private（僅管理員）</option>
+                                        </select>
+                                    </div>
+                                    <div class="field">
+                                        <label>series</label>
+                                        <input id="f-series" placeholder="系列名稱（選填）" />
+                                    </div>
+                                </div>
+                                <p class="muted">前端只讀已存的 presentation；不會用字數重新猜測文類。</p>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>card_topic（列表辨識主題，≠ 標題）</label>
+                                        <input id="f-card-topic" placeholder="例如：卡繆" />
+                                    </div>
+                                    <div class="field">
+                                        <label class="chk">
+                                            <input type="checkbox" id="f-show-card-label" checked />
+                                            顯示 card_label
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="field full">
+                                    <label>card_label（列表口語辨識，不要寫進 title）</label>
+                                    <input id="f-card-label" placeholder="例如：最近又想到卡繆" />
+                                </div>
+                            </details>
+
+                            <details class="editor-meta-block" open>
+                                <summary>AI 整理與判斷（需人工確認）</summary>
+                                <p class="muted">AI 像編輯、不像代筆。結果只會出現在下方審核區，不會自動發佈或覆寫，除非你按採用。</p>
+                                <div class="import-actions" style="margin:.5rem 0 0;">
+                                    <button type="button" class="btn primary" id="btn-ai-analyze">AI 整理與判斷</button>
+                                    <button type="button" class="btn" id="btn-ai-meta-only">只重分析 metadata</button>
+                                    <span class="muted" id="ai-status"></span>
+                                </div>
+                                <div id="ai-review-panel" class="ai-review-panel hidden">
+                                    <p id="ai-r-warn" class="muted"></p>
+                                    <p class="muted" id="ai-r-meta"></p>
+                                    <dl class="ai-review-grid">
+                                        <div><dt>title</dt><dd id="ai-r-title">—</dd></div>
+                                        <div><dt>show_title</dt><dd id="ai-r-show-title">—</dd></div>
+                                        <div><dt>summary</dt><dd id="ai-r-summary">—</dd></div>
+                                        <div><dt>show_summary</dt><dd id="ai-r-show-summary">—</dd></div>
+                                        <div><dt>category</dt><dd id="ai-r-category">—</dd></div>
+                                        <div><dt>content_type</dt><dd id="ai-r-content-type">—</dd></div>
+                                        <div><dt>presentation</dt><dd id="ai-r-presentation">—</dd></div>
+                                        <div><dt>card_topic</dt><dd id="ai-r-card-topic">—</dd></div>
+                                        <div><dt>card_label</dt><dd id="ai-r-card-label">—</dd></div>
+                                        <div><dt>show_card_label</dt><dd id="ai-r-show-card-label">—</dd></div>
+                                        <div><dt>tags</dt><dd id="ai-r-tags">—</dd></div>
+                                        <div><dt>series</dt><dd id="ai-r-series">—</dd></div>
+                                        <div><dt>edit_level</dt><dd id="ai-r-edit-level">—</dd></div>
+                                        <div><dt>editorial_state</dt><dd id="ai-r-state">—</dd></div>
+                                        <div><dt>confidence</dt><dd id="ai-r-confidence">—</dd></div>
+                                        <div class="full"><dt>reason</dt><dd id="ai-r-reason">—</dd></div>
+                                        <div class="full"><dt>flags</dt><dd id="ai-r-flags">—</dd></div>
+                                        <div class="full"><dt>review</dt><dd id="ai-r-review">—</dd></div>
+                                    </dl>
+                                    <label>建議正文 clean_body（採用前請對照）</label>
+                                    <textarea id="ai-r-body" rows="8" readonly></textarea>
+                                    <div class="import-actions">
+                                        <button type="button" class="btn primary" id="btn-ai-apply-all">全部採用</button>
+                                        <button type="button" class="btn" id="btn-ai-apply-meta">只採用分類與呈現</button>
+                                        <button type="button" class="btn" id="btn-ai-apply-body">只採用排版修正</button>
+                                        <button type="button" class="btn" id="btn-ai-discard">放棄 AI 建議</button>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <details class="editor-meta-block" open>
+                                <summary>分類／標籤（請先確認）</summary>
+                                <p class="muted cat-guide">
+                                    <strong>隨想</strong>＝碎念　
+                                    <strong>日記</strong>＝當天生活　
+                                    <strong>散文</strong>＝整理過的長文（DB：隨筆）　
+                                    <strong>心得</strong>＝讀書／作品　
+                                    <strong>創作</strong>＝小說／詩／劇本
+                                </p>
+                                <div class="field full">
+                                    <label>分類 *</label>
+                                    <div class="chip-row" id="category-quick" aria-label="一鍵分類"></div>
+                                    <select id="f-category" style="margin-top:.5rem;"></select>
+                                    <p class="muted" id="length-hint"></p>
+                                </div>
                                 <div class="field full">
                                     <label>標籤（選填）</label>
                                     <input id="f-tags" placeholder="不必填；想標再點下方建議" />
                                     <div class="chip-row" id="tag-suggestions" aria-label="標籤建議">
                                         <button type="button" class="chip" data-tag="抱怨">+ 抱怨</button>
                                         <button type="button" class="chip" data-tag="想法">+ 想法</button>
+                                        <button type="button" class="chip" data-tag="生活">+ 生活</button>
+                                        <button type="button" class="chip" data-tag="閱讀">+ 閱讀</button>
                                         <button type="button" class="chip" data-tag="摘錄">+ 摘錄</button>
                                     </div>
                                 </div>
@@ -227,33 +396,16 @@
                                     <label>PDF 連結（選填）</label>
                                     <input id="f-pdf" placeholder="https://… 或留空" />
                                 </div>
-                                <details class="form-advanced" id="organize-details">
-                                    <summary>進階整理（分類可跳過）</summary>
-                                    <p class="muted" style="margin:.6rem 0 .4rem;">抱怨／碎念 →「隨想」；長篇 →「長文」。</p>
-                                    <div class="chip-row" id="category-quick" aria-label="一鍵分類">
-                                        <button type="button" class="chip" data-cat="隨想">隨想</button>
-                                        <button type="button" class="chip" data-cat="長文">長文</button>
-                                        <button type="button" class="chip" data-cat="隨筆">隨筆</button>
-                                        <button type="button" class="chip" data-cat="心得">心得</button>
-                                        <button type="button" class="chip" data-cat="創作">創作</button>
-                                    </div>
-                                    <div class="field" style="margin-top:.75rem;">
-                                        <label>分類（可空白，儲存時自動補）</label>
-                                        <input id="f-category" list="category-list" placeholder="例：隨想 / 長文 / 隨筆" />
-                                        <datalist id="category-list"></datalist>
-                                    </div>
-                                    <p class="muted" id="length-hint"></p>
-                                </details>
                             </details>
 
                             <details class="editor-meta-block">
                                 <summary>圖片（選填）</summary>
                                 <div class="field full">
                                     <label>主圖／封面（選填）</label>
-                                    <p class="muted" style="margin:0 0 .5rem;">可不設。沒有封面時，列表會以標題字首＋柔和底色呈現，不必每篇找圖或上傳。</p>
-                                    <div class="img-row">
+                                    <p class="muted" style="margin:0 0 .5rem;">可不設。可在下方欄位 <strong>Ctrl+V 貼上截圖</strong>、拖曳圖片，或按上傳。沒有封面時列表用標題字首呈現。</p>
+                                    <div class="img-row cover-drop" id="cover-drop">
                                         <img id="cover-thumb" class="thumb hidden" alt="" />
-                                        <input id="f-cover" placeholder="圖片 URL 或上傳" />
+                                        <input id="f-cover" placeholder="貼上圖片／URL，或右側上傳" />
                                         <label class="btn" style="margin:0;">
                                             上傳
                                             <input type="file" id="cover-file" accept="image/*" class="hidden" />
@@ -280,7 +432,7 @@
                             <div class="editor-pane editor-pane-write" id="editor-pane-write">
                                 <div class="pane-label pane-label-row">
                                     <span>Markdown</span>
-                                    <span class="pane-hint">Tab 縮排 · Ctrl+S 儲存</span>
+                                    <span class="pane-hint">可直接 Ctrl+V 貼上截圖 · Tab 縮排 · Ctrl+S 儲存</span>
                                 </div>
                                 <div class="md-toolbar" id="md-toolbar" role="toolbar" aria-label="Markdown 寫作工具列">
                                     <button type="button" class="md-tool" data-md="h2" title="標題 ##">H2</button>
@@ -290,33 +442,85 @@
                                     <button type="button" class="md-tool" data-md="italic" title="斜體 *"><em>I</em></button>
                                     <span class="md-tool-sep" aria-hidden="true"></span>
                                     <button type="button" class="md-tool" data-md="link" title="連結">連結</button>
-                                    <button type="button" class="md-tool" data-md="image" title="圖片語法">圖片</button>
+                                    <button type="button" class="md-tool" data-md="image" title="上傳圖片到內文（也可直接貼上）">貼圖</button>
+                                    <input type="file" id="body-image-file" accept="image/*" multiple class="hidden" />
                                     <span class="md-tool-sep" aria-hidden="true"></span>
                                     <button type="button" class="md-tool" data-md="ul" title="無序列表">• 列表</button>
                                     <button type="button" class="md-tool" data-md="ol" title="有序列表">1. 列表</button>
                                     <button type="button" class="md-tool" data-md="quote" title="引用">引用</button>
                                     <button type="button" class="md-tool" data-md="hr" title="分隔線">—</button>
                                     <button type="button" class="md-tool" data-md="code" title="行內程式碼">&lt;/&gt;</button>
+                                    <span class="muted" id="body-image-status" style="margin-left:.5rem;font-size:.85em;"></span>
                                 </div>
-                                <textarea id="f-body" placeholder="# 標題&#10;&#10;內文支援 Markdown…&#10;&#10;- 列表&#10;- **粗體**&#10;- [連結](https://…)&#10;&#10;> 引用&#10;&#10;可用上方工具列插入語法；Tab 縮排；Ctrl+S 儲存。" spellcheck="true"></textarea>
+                                <textarea id="f-body" placeholder="# 標題&#10;&#10;內文支援 Markdown…&#10;&#10;可直接 Ctrl+V / 拖曳貼上圖片（自動上傳）。&#10;&#10;- 列表&#10;- **粗體**&#10;- [連結](https://…)&#10;&#10;> 引用&#10;&#10;Tab 縮排；Ctrl+S 儲存。" spellcheck="true"></textarea>
                             </div>
                             <div class="editor-pane editor-pane-preview" id="editor-pane-preview">
-                                <div class="pane-label">即時預覽</div>
-                                <div id="md-preview" class="markdown-body md-preview-inner" aria-live="polite"></div>
+                                <div class="pane-label pane-label-row" id="preview-pane-label">
+                                    <span id="preview-pane-title">前台預覽</span>
+                                    <span class="pane-hint" id="preview-pane-hint">與 public 同一 renderer · 未儲存也能預覽</span>
+                                </div>
+
+                                <div id="frontend-preview-chrome" class="frontend-preview-chrome">
+                                    <div class="fp-group" role="group" aria-label="預覽類型">
+                                        <button type="button" class="fp-btn active" data-fp-view="article">文章頁</button>
+                                        <button type="button" class="fp-btn" data-fp-view="card">卡片</button>
+                                    </div>
+                                    <div class="fp-group" role="group" aria-label="主題">
+                                        <button type="button" class="fp-btn active" data-fp-theme="light">Light</button>
+                                        <button type="button" class="fp-btn" data-fp-theme="dark">Dark</button>
+                                        <button type="button" class="fp-btn" data-fp-theme="glass">Glass</button>
+                                    </div>
+                                    <div class="fp-group" role="group" aria-label="裝置寬度">
+                                        <button type="button" class="fp-btn active" data-fp-device="desktop">Desktop</button>
+                                        <button type="button" class="fp-btn" data-fp-device="tablet">Tablet</button>
+                                        <button type="button" class="fp-btn" data-fp-device="mobile">Mobile</button>
+                                    </div>
+                                    <div class="fp-group" role="group" aria-label="閱讀模式" id="fp-focus-group">
+                                        <button type="button" class="fp-btn active" data-fp-focus="off">背景</button>
+                                        <button type="button" class="fp-btn" data-fp-focus="on">專注閱讀</button>
+                                    </div>
+                                    <div class="fp-group fp-group--status" aria-live="polite">
+                                        <span id="fp-sync-status" class="fp-sync-status" data-state="wait">● 等待預覽</span>
+                                        <button type="button" class="fp-btn" data-fp-test-pipeline title="送出 fixture，不讀表單">測試預覽管線</button>
+                                        <button type="button" class="fp-btn" data-fp-reload title="重新載入預覽 iframe">重新載入預覽</button>
+                                    </div>
+                                    <a class="fp-live-link muted" id="fp-open-live" href="#" target="_blank" rel="noopener" hidden>開啟線上版本</a>
+                                </div>
+
+                                <div id="frontend-preview-wrap" class="preview-device-frame" data-device="desktop">
+                                    <iframe
+                                        id="frontend-preview-frame"
+                                        title="前台預覽"
+                                        src="admin-preview.html?v=v9.7-share-bg-1"
+                                        sandbox="allow-scripts allow-same-origin"
+                                    ></iframe>
+                                </div>
+
+                                <div id="md-preview" class="markdown-body md-preview-inner" aria-live="polite" hidden></div>
+
+                                <div id="changes-panel" class="changes-panel" hidden>
+                                    <div id="changes-warnings" class="changes-warnings"></div>
+                                    <div id="changes-stats" class="changes-stats muted"></div>
+                                    <div id="changes-meta" class="changes-meta"></div>
+                                    <div id="changes-body" class="changes-body">
+                                        <h4>正文 diff</h4>
+                                        <pre id="changes-body-diff" class="changes-diff"></pre>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 區塊文字 -->
+            <!-- 網站內容 Site Copy -->
             <div id="tab-sections" class="hidden">
                 <div class="card sections-intro">
-                    <h3>首頁／關於我 · 區塊文案</h3>
-                    <p class="muted">點左側清單選區塊，右側大框編輯。多數欄位以純文字＋換行顯示（前端會把換行變成 &lt;br&gt;）；含 Markdown 的欄位會標示並提供簡易預覽。</p>
+                    <h3>網站內容</h3>
+                    <p class="muted">依頁面分組編輯全站文案。即使資料庫尚無該列，也會顯示 schema fallback；按儲存會 UPSERT 到 site_sections。</p>
                 </div>
                 <div class="sections-workspace">
-                    <aside class="sections-nav card" id="sections-nav" aria-label="區塊清單">
+                    <aside class="sections-nav card" id="sections-nav" aria-label="網站內容清單">
                         <p class="muted sections-nav-empty" id="sections-nav-empty">載入中…</p>
                         <div id="sections-list"></div>
                     </aside>
@@ -328,12 +532,37 @@
                                 <code class="sec-key" id="sec-key"></code>
                             </div>
                             <div class="sections-editor-actions">
+                                <a class="btn" id="sec-open-page" href="#" target="_blank" rel="noopener" hidden>開啟對應頁面</a>
                                 <button type="button" class="btn primary" id="btn-sec-save">儲存此區塊</button>
                             </div>
                         </div>
                         <div class="field full">
                             <label for="sec-value">文案</label>
-                            <textarea id="sec-value" rows="14" placeholder="區塊文字…" spellcheck="true"></textarea>
+                            <div id="sec-md-toolbar" class="sec-md-toolbar hidden" role="toolbar" aria-label="Markdown 工具列">
+                                <button type="button" class="sec-md-btn" data-md="bold" title="粗體 **文字**"><b>B</b></button>
+                                <button type="button" class="sec-md-btn" data-md="italic" title="斜體 *文字*"><i>I</i></button>
+                                <button type="button" class="sec-md-btn" data-md="h2" title="小標 ##">H2</button>
+                                <button type="button" class="sec-md-btn" data-md="h3" title="次標 ###">H3</button>
+                                <button type="button" class="sec-md-btn" data-md="ul" title="清單 -">• 清單</button>
+                                <button type="button" class="sec-md-btn" data-md="quote" title="引用 >">❝</button>
+                                <button type="button" class="sec-md-btn" data-md="link" title="連結 [文字](url)">連結</button>
+                                <button type="button" class="sec-md-btn" data-md="hr" title="分隔線 ---">—</button>
+                                <button type="button" class="sec-md-btn" data-md="code" title="行內碼 `code`">`code`</button>
+                            </div>
+                            <textarea id="sec-value" rows="14" placeholder="網站內容…" spellcheck="true"></textarea>
+                            <details id="sec-md-help" class="sec-md-help hidden">
+                                <summary>About Markdown 可用語法</summary>
+                                <ul>
+                                    <li><code>**粗體**</code>　<code>*斜體*</code></li>
+                                    <li><code>## 小標</code>　<code>### 次標</code>（不會變全大寫）</li>
+                                    <li><code>- 清單項目</code></li>
+                                    <li><code>&gt; 引用一句話</code></li>
+                                    <li><code>[連結文字](https://…)</code></li>
+                                    <li><code>---</code> 輕量分隔線</li>
+                                    <li><code>`INTP`</code> 輕量行內碼</li>
+                                    <li>請勿整段空白縮排（會被誤判成 code block）</li>
+                                </ul>
+                            </details>
                         </div>
                         <div class="sec-preview-wrap">
                             <div class="pane-label">站上大致會長這樣</div>
@@ -380,9 +609,18 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 
     <script src="assets/js/supabase-config.js"></script>
-    <script src="assets/js/supabase-client.js"></script>
+    <script src="assets/js/supabase-client.js?v=v9.7-share-bg-1"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/admin.js"></script>
+    <script src="assets/js/site-copy-schema.js?v=v9.7-share-bg-1"></script>
+    <script src="assets/js/site-sections.js?v=v9.7-share-bg-1"></script>
+    <script src="assets/js/presentation-registry.js?v=v9.7-share-bg-1"></script>
+    <script src="assets/js/article-media.js?v=v9.7-share-bg-1"></script>
+    <script src="assets/js/article-renderer.js?v=v9.7-share-bg-1"></script>
+    <script src="assets/js/ai-editorial-schema.js?v=semantic-card-1"></script>
+    <script src="assets/js/ai-editorial-client.js?v=ai-v3-1"></script>
+    <script src="assets/js/preview-fixture.js?v=v9.7-share-bg-1"></script>
+    <script src="assets/js/about-markdown.js?v=v9.7-share-bg-1"></script>
+    <script src="assets/js/admin.js?v=v9.7-share-bg-1"></script>
 </body>
 
 </html>

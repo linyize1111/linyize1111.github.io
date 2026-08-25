@@ -1,302 +1,1059 @@
 /**
- * common.js
- *
- * Shared logic for LYZ's website:
- * 1. Loading screen
- * 2. Media controls (video + audio)
- * 3. Sakura canvas animation
- * 4. Three-mode theme system: light / dark / glass
+ * common.js — V5 runtime
+ * Fast first paint, resilient background, three themes, lightweight effects.
  */
+(function () {
+  "use strict";
 
-/* ─── 1. Loading Screen ─────────────────────────────────────── */
-function initLoadingScreen() {
-    var loader = document.getElementById('loading-screen');
-    if (!loader) return;
+  var THEMES = ["light", "dark", "glass"];
+  var THEME_META = {
+    light: { icon: '<i class="fas fa-sun"></i>', label: "亮色模式", next: "dark" },
+    dark: { icon: '<i class="fas fa-moon"></i>', label: "暗色模式", next: "glass" },
+    glass: { icon: '<i class="fas fa-eye"></i>', label: "玻璃模式", next: "light" }
+  };
 
-    window.addEventListener('load', function () {
-        setTimeout(function () {
-            loader.classList.add('fade-out');
-            setTimeout(function () {
-                loader.style.display = 'none';
-                var v = document.getElementById('bg-video');
-                if (v && sessionStorage.getItem('mediaPaused') !== 'true') {
-                    v.play().catch(function () { });
-                }
-            }, 700);
-        }, 400);
+  function afterPaint(fn) {
+    requestAnimationFrame(function () { requestAnimationFrame(fn); });
+  }
+
+  function idle(fn, timeout) {
+    if ("requestIdleCallback" in window) window.requestIdleCallback(fn, { timeout: timeout || 1200 });
+    else setTimeout(fn, Math.min(timeout || 600, 600));
+  }
+
+  /* Loading overlay must never wait for every CDN/media request. */
+  function dismissLoader() {
+    var loader = document.getElementById("loading-screen");
+    if (!loader || loader.dataset.dismissed === "1") return;
+    loader.dataset.dismissed = "1";
+    loader.classList.add("fade-out");
+    setTimeout(function () { loader.style.display = "none"; }, 260);
+  }
+
+  function initLoadingScreen() {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function () { afterPaint(dismissLoader); }, { once: true });
+    } else {
+      afterPaint(dismissLoader);
+    }
+    /* absolute safety cap */
+    setTimeout(dismissLoader, 900);
+  }
+
+  function applyTheme(theme) {
+    var t = THEMES.indexOf(theme) !== -1 ? theme : "light";
+    if (t === "light") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", t === "light" ? "#e8eef6" : t === "dark" ? "#0d1118" : "#0a1420");
+  }
+
+  function currentTheme() {
+    return document.documentElement.getAttribute("data-theme") || "light";
+  }
+
+  function initTheme() {
+    var saved = localStorage.getItem("colorTheme");
+    applyTheme(saved || "light");
+
+    function mount() {
+      var controls = document.getElementById("video-controls");
+      if (document.getElementById("btn-theme")) return;
+      var btn = document.createElement("button");
+      btn.id = "btn-theme";
+      btn.type = "button";
+      btn.style.cssText = "position:relative;";
+
+      function refresh() {
+        var meta = THEME_META[currentTheme()] || THEME_META.light;
+        btn.innerHTML = meta.icon;
+        btn.title = meta.label + " → " + THEME_META[meta.next].label;
+        btn.setAttribute("aria-label", meta.label);
+      }
+      refresh();
+      btn.addEventListener("click", function () {
+        var meta = THEME_META[currentTheme()] || THEME_META.light;
+        applyTheme(meta.next);
+        localStorage.setItem("colorTheme", meta.next);
+        refresh();
+      });
+
+      if (!controls) {
+        controls = document.createElement("div");
+        controls.id = "video-controls";
+        document.body.appendChild(controls);
+      }
+      controls.insertBefore(btn, controls.firstChild);
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
+    else mount();
+  }
+
+  function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+
+  function saveDataPreferred() {
+    try {
+      if (navigator.connection && navigator.connection.saveData) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  function startBackgroundVideo(video) {
+    if (!video) return;
+    if (prefersReducedMotion() || saveDataPreferred()) {
+      try { video.pause(); } catch (e) {}
+      video.removeAttribute("autoplay");
+      return;
+    }
+    video.muted = true;
+    video.play().catch(function () {});
+  }
+
+  function showSiteToast(title, detail) {
+    var el = document.getElementById("site-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "site-toast";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
+      el.setAttribute("data-section-key", "ui.toast.shell");
+      document.body.appendChild(el);
+    }
+    el.hidden = false;
+    el.innerHTML =
+      "<strong data-section-key=\"ui.toast.title\">" + String(title || "") + "</strong>" +
+      (detail ? "<code data-ui-copy=\"technical\">" + String(detail) + "</code>" : "");
+    el.classList.add("is-visible");
+    clearTimeout(showSiteToast._t);
+    showSiteToast._t = setTimeout(function () {
+      el.classList.remove("is-visible");
+      setTimeout(function () { el.hidden = true; }, 220);
+    }, 2000);
+  }
+  window.showSiteToast = showSiteToast;
+
+  function siteCopy(key, fallback) {
+    try {
+      var schema = window.LYZSiteCopySchema;
+      if (schema && typeof schema.byKey === "function") {
+        var entry = schema.byKey(key);
+        if (entry && entry.fallback != null && String(entry.fallback) !== "") return String(entry.fallback);
+      }
+    } catch (e) {}
+    return fallback;
+  }
+  window.LYZSiteCopy = siteCopy;
+
+  function stampStaticSiteCopyKeys() {
+    var logo = document.querySelector("a.logo");
+    if (logo && !logo.getAttribute("data-section-key")) {
+      logo.setAttribute("data-section-key", "site.brand");
+    }
+    var navMap = {
+      "index.html": "nav.home",
+      "directory.html": "nav.notes",
+      "literature.html": "nav.literature",
+      "about.html": "nav.about",
+      "academic.html": "nav.academic"
+    };
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#nav ul.links a[href], #header a.logo"),
+      function (a) {
+        if (a.classList.contains("logo")) {
+          if (!a.getAttribute("data-section-key")) a.setAttribute("data-section-key", "site.brand");
+          return;
+        }
+        var href = (a.getAttribute("href") || "").split("?")[0];
+        if (navMap[href] && !a.getAttribute("data-section-key")) {
+          a.setAttribute("data-section-key", navMap[href]);
+        }
+      }
+    );
+    var copyLi = document.querySelector("#copyright li:first-child");
+    if (copyLi && !copyLi.getAttribute("data-section-key")) {
+      copyLi.setAttribute("data-section-key", "footer.copyright");
+    }
+    var designLi = document.querySelector("#copyright li:nth-child(2)");
+    if (designLi && !designLi.querySelector("[data-section-key]")) {
+      var html = designLi.innerHTML;
+      if (/Design:/i.test(html) && !designLi.querySelector("[data-section-key]")) {
+        designLi.innerHTML =
+          '<span data-section-key="footer.designPrefix">Design:</span> ' +
+          '<a href="https://html5up.net" data-section-key="footer.designCredit">HTML5 UP</a>';
+      }
+    }
+    var menuToggle = document.querySelector("a.navPanelToggle");
+    if (menuToggle && !menuToggle.getAttribute("data-section-key")) {
+      menuToggle.setAttribute("data-section-key", "ui.nav.menuToggle");
+    }
+    Array.prototype.forEach.call(document.querySelectorAll(".social-copy-tip__hint"), function (el) {
+      if (!el.getAttribute("data-section-key")) el.setAttribute("data-section-key", "ui.social.copyHint");
     });
-}
+    Array.prototype.forEach.call(document.querySelectorAll(".social-copy-tip__id"), function (el) {
+      el.setAttribute("data-ui-copy", "technical");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("#nav .icons .label, #nav ul.icons .label"), function (el) {
+      var t = (el.textContent || "").trim().toLowerCase();
+      var keyMap = {
+        github: "ui.social.github",
+        instagram: "ui.social.instagram",
+        facebook: "ui.social.facebook",
+        discord: "ui.social.discord",
+        penana: "ui.social.penana",
+        mail: "ui.social.mail",
+        email: "ui.social.mail"
+      };
+      if (keyMap[t] && !el.getAttribute("data-section-key")) el.setAttribute("data-section-key", keyMap[t]);
+    });
+    var continueBtn = document.querySelector("#intro a.button.scrolly, .intro a.button.scrolly");
+    if (continueBtn && !continueBtn.getAttribute("data-section-key")) {
+      continueBtn.setAttribute("data-section-key", "home.intro.continue");
+    }
+    var focusToggle = document.getElementById("reading-focus-toggle");
+    if (focusToggle && !focusToggle.getAttribute("data-section-key")) {
+      focusToggle.setAttribute("data-section-key", "ui.controls.focus");
+    }
+    var themeBtn = document.getElementById("btn-theme");
+    if (themeBtn && !themeBtn.getAttribute("data-section-key")) {
+      themeBtn.setAttribute("data-section-key", "ui.controls.theme");
+    }
+  }
 
-/* ─── 2. Media Controls ─────────────────────────────────────── */
-function initMediaControls() {
-    document.addEventListener('DOMContentLoaded', function () {
-        var video = document.getElementById('bg-video');
-        var music = document.getElementById('bg-music');
-        var btnMute = document.getElementById('btn-mute');
-        var btnPlay = document.getElementById('btn-play');
+  function initMediaControls() {
+    function mount() {
+      var video = document.getElementById("bg-video");
+      var music = document.getElementById("bg-music");
+      var btnMute = document.getElementById("btn-mute");
+      var btnPlay = document.getElementById("btn-play");
+      var hint = document.getElementById("music-resume-hint");
+      if (!hint) {
+        hint = document.createElement("div");
+        hint.id = "music-resume-hint";
+        hint.className = "music-resume-hint";
+        hint.hidden = true;
+        hint.textContent = siteCopy("ui.music.resumeHint", "點一下頁面以繼續音樂");
+        hint.setAttribute("data-section-key", "ui.music.resumeHint");
+        document.body.appendChild(hint);
+      }
 
-        if (!video || !music || !btnMute || !btnPlay) return;
+      if (video && !prefersReducedMotion() && !saveDataPreferred()) {
+        idle(function () { startBackgroundVideo(video); }, 1200);
+      }
+      if (!music || !btnMute || !btnPlay) return;
 
-        video.muted = true;
-        var isMuted = (sessionStorage.getItem('mediaMuted') === 'true');
-        music.muted = isMuted;
+      var isMuted = sessionStorage.getItem("mediaMuted") === "true";
+      var desired = sessionStorage.getItem("musicDesiredPlaying") === "true";
+      music.muted = isMuted;
 
-        function updateMuteBtn() {
-            btnMute.innerHTML = music.muted
-                ? '<i class="fas fa-volume-mute"></i>'
-                : '<i class="fas fa-volume-up"></i>';
-        }
-        updateMuteBtn();
+      function updateMuteBtn() {
+        btnMute.innerHTML = music.muted
+          ? '<i class="fas fa-volume-mute"></i>'
+          : '<i class="fas fa-volume-up"></i>';
+      }
+      function updatePlayBtn() {
+        btnPlay.innerHTML = music.paused
+          ? '<i class="fas fa-play"></i>'
+          : '<i class="fas fa-pause"></i>';
+      }
+      function setDesired(on) {
+        desired = !!on;
+        sessionStorage.setItem("musicDesiredPlaying", String(desired));
+      }
+      function hideHint() {
+        hint.hidden = true;
+      }
+      function showHint() {
+        hint.hidden = false;
+      }
+      function tryPlayFromGesture() {
+        if (!desired) return;
+        music.play().then(function () {
+          hideHint();
+          updatePlayBtn();
+        }).catch(function () {});
+      }
 
-        var savedTime = sessionStorage.getItem('musicCurrentTime');
-        if (savedTime && !isNaN(savedTime)) {
-            var timeToSet = parseFloat(savedTime);
-            // 由於 preload="none" ，在音樂還沒載入 metadata 前無法設定 currentTime
-            if (music.readyState >= 1) { // HAVE_METADATA or higher
-                music.currentTime = timeToSet;
-            } else {
-                music.addEventListener('loadedmetadata', function () {
-                    music.currentTime = timeToSet;
-                }, { once: true });
-            }
-        }
+      updateMuteBtn();
+      updatePlayBtn();
 
-        // Default: music never autoplays. User must press play explicitly.
-        // Video still autoplays (muted) via initLoadingScreen.
+      var savedTime = Number(sessionStorage.getItem("musicCurrentTime") || 0);
+      if (savedTime > 0) {
+        var setTime = function () { try { music.currentTime = savedTime; } catch (e) {} };
+        if (music.readyState >= 1) setTime();
+        else music.addEventListener("loadedmetadata", setTime, { once: true });
+      }
+
+      if (desired) {
+        music.play().then(function () {
+          hideHint();
+          updatePlayBtn();
+        }).catch(function () {
+          // Autoplay blocked — keep desiredPlaying true; resume on next gesture.
+          showHint();
+          updatePlayBtn();
+          var once = function () {
+            document.removeEventListener("pointerdown", once, true);
+            document.removeEventListener("keydown", once, true);
+            tryPlayFromGesture();
+          };
+          document.addEventListener("pointerdown", once, true);
+          document.addEventListener("keydown", once, true);
+        });
+      } else {
         music.pause();
-        btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-        sessionStorage.setItem('musicPaused', 'true');
+      }
 
-        btnMute.addEventListener('click', function (e) {
-            e.stopPropagation();
-            music.muted = !music.muted;
-            updateMuteBtn();
-            sessionStorage.setItem('mediaMuted', music.muted);
-        });
+      btnMute.addEventListener("click", function (e) {
+        e.stopPropagation();
+        music.muted = !music.muted;
+        sessionStorage.setItem("mediaMuted", String(music.muted));
+        updateMuteBtn();
+      });
 
-        btnPlay.addEventListener('click', function () {
-            if (music.paused) {
-                if (video.paused) video.play().catch(function () { });
-                music.play().catch(function () { });
-                btnPlay.innerHTML = '<i class="fas fa-pause"></i>';
-                sessionStorage.setItem('musicPaused', 'false');
-                sessionStorage.setItem('mediaPaused', 'false');
-            } else {
-                music.pause();
-                btnPlay.innerHTML = '<i class="fas fa-play"></i>';
-                sessionStorage.setItem('musicPaused', 'true');
-            }
-        });
+      btnPlay.addEventListener("click", function () {
+        if (music.paused) {
+          if (video) startBackgroundVideo(video);
+          setDesired(true);
+          music.play().then(function () {
+            hideHint();
+            updatePlayBtn();
+          }).catch(function () {
+            showHint();
+            updatePlayBtn();
+          });
+        } else {
+          setDesired(false);
+          music.pause();
+          hideHint();
+          updatePlayBtn();
+        }
+      });
 
-        window.addEventListener('beforeunload', function () {
-            sessionStorage.setItem('mediaMuted', music.muted);
-            sessionStorage.setItem('mediaPaused', video.paused);
-            sessionStorage.setItem('musicPaused', music.paused);
-            sessionStorage.setItem('musicCurrentTime', music.currentTime);
-        });
-    });
-}
+      window.addEventListener("pagehide", function () {
+        sessionStorage.setItem("mediaMuted", String(music.muted));
+        sessionStorage.setItem("musicCurrentTime", String(music.currentTime || 0));
+        sessionStorage.setItem("musicDesiredPlaying", String(desired && !music.paused ? true : desired));
+        // Persist explicit desired flag even if currently buffering
+        if (desired) sessionStorage.setItem("musicDesiredPlaying", "true");
+      });
+    }
 
-/* ─── 3. Sakura Canvas ──────────────────────────────────────── */
-function initSakuraIfPresent() {
-    var canvas = document.getElementById('sakura-canvas');
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
+    else mount();
+  }
+
+  function initSakuraIfPresent() {
+    var canvas = document.getElementById("sakura-canvas");
     if (!canvas) return;
-    var ctx = canvas.getContext('2d');
+    canvas.style.pointerEvents = "none";
+    if (prefersReducedMotion() || saveDataPreferred()) {
+      canvas.style.display = "none";
+      return;
+    }
+    var ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    resize();
-    window.addEventListener('resize', resize);
-
-    var COLORS = [[255, 183, 197], [255, 160, 180], [255, 200, 210], [250, 140, 165], [255, 218, 225]];
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    var w0 = window.innerWidth;
+    var count = w0 <= 600 ? 16 : w0 < 900 ? 24 : 38;
+    var COLORS = [[255,183,197],[255,160,180],[255,200,210],[250,140,165],[255,218,225]];
     var petals = [];
+    var running = true;
+    var frame = 0;
+
+    function resize() {
+      var w = window.innerWidth, h = window.innerHeight;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
 
     function makePetal(top) {
-        var c = COLORS[Math.floor(Math.random() * COLORS.length)];
-        return {
-            x: Math.random() * canvas.width,
-            y: top ? -20 - Math.random() * 100 : Math.random() * canvas.height,
-            size: 8 + Math.random() * 14,
-            speedY: 0.25 + Math.random() * 0.45,
-            speedX: -0.1 + Math.random() * 0.3,
-            angle: Math.random() * Math.PI * 2,
-            spin: (Math.random() - 0.5) * 0.025,
-            sway: Math.random() * Math.PI * 2,
-            swaySpeed: 0.005 + Math.random() * 0.01,
-            swayAmp: 0.2 + Math.random() * 0.4,
-            alpha: 0.5 + Math.random() * 0.5,
-            r: c[0], g: c[1], b: c[2]
-        };
+      var c = COLORS[Math.floor(Math.random() * COLORS.length)];
+      return {
+        x: Math.random() * window.innerWidth,
+        y: top ? -30 - Math.random() * 100 : Math.random() * window.innerHeight,
+        size: (window.innerWidth <= 600 ? 5 : 7) + Math.random() * (window.innerWidth <= 600 ? 8 : 12),
+        speedY: 0.22 + Math.random() * 0.38,
+        speedX: -0.08 + Math.random() * 0.22,
+        angle: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.022,
+        sway: Math.random() * Math.PI * 2,
+        alpha: (window.innerWidth <= 600 ? 0.32 : 0.48) + Math.random() * (window.innerWidth <= 600 ? 0.28 : 0.42),
+        c: c
+      };
     }
 
-    for (var i = 0; i < 80; i++) petals.push(makePetal(false));
-
-    function drawPetal(p) {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.angle);
-        var w = p.size * 0.55, h = p.size;
-        ctx.beginPath();
-        ctx.moveTo(0, -h / 2);
-        ctx.bezierCurveTo(w, -h * 0.1, w, h * 0.4, 0, h / 2);
-        ctx.bezierCurveTo(-w, h * 0.4, -w, -h * 0.1, 0, -h / 2);
-        var g = ctx.createRadialGradient(0, -h * 0.1, 0, 0, 0, h / 2);
-        g.addColorStop(0, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + Math.min(1, p.alpha + 0.2).toFixed(2) + ')');
-        g.addColorStop(1, 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + (p.alpha * 0.3).toFixed(2) + ')');
-        ctx.fillStyle = g;
-        ctx.fill();
-        ctx.restore();
+    function draw(p) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      var w = p.size * 0.55, h = p.size;
+      ctx.beginPath();
+      ctx.moveTo(0, -h / 2);
+      ctx.bezierCurveTo(w, -h * 0.1, w, h * 0.4, 0, h / 2);
+      ctx.bezierCurveTo(-w, h * 0.4, -w, -h * 0.1, 0, -h / 2);
+      ctx.fillStyle = "rgba(" + p.c.join(",") + "," + p.alpha.toFixed(2) + ")";
+      ctx.fill();
+      ctx.restore();
     }
 
-    var rid;
     function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        petals.forEach(function (p, i) {
-            p.sway += p.swaySpeed;
-            p.x += p.speedX + Math.sin(p.sway) * p.swayAmp;
-            p.y += p.speedY;
-            p.angle += p.spin;
-            if (p.y > canvas.height + 30 || p.x < -60 || p.x > canvas.width + 60) {
-                petals[i] = makePetal(true);
-                petals[i].x = Math.random() * canvas.width;
-            }
-            drawPetal(petals[i]);
-        });
-        rid = requestAnimationFrame(animate);
+      if (!running) return;
+      frame = requestAnimationFrame(animate);
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      petals.forEach(function (p, i) {
+        p.sway += 0.009;
+        p.x += p.speedX + Math.sin(p.sway) * 0.28;
+        p.y += p.speedY;
+        p.angle += p.spin;
+        if (p.y > window.innerHeight + 35 || p.x < -50 || p.x > window.innerWidth + 50) petals[i] = makePetal(true);
+        draw(petals[i]);
+      });
     }
-    if (window._sakuraAnimId) cancelAnimationFrame(window._sakuraAnimId);
+
+    resize();
+    for (var i = 0; i < count; i++) petals.push(makePetal(false));
     animate();
-    window._sakuraAnimId = rid;
-}
+    window.addEventListener("resize", resize, { passive: true });
+    document.addEventListener("visibilitychange", function () {
+      running = !document.hidden;
+      if (running) animate();
+      else cancelAnimationFrame(frame);
+    });
+  }
 
-/* ─── 4. Three-Mode Theme System ───────────────────────────── */
-/**
- * Themes:
- *   'light' (default) — normal light panels
- *   'dark'            — dark glass panels
- *   'glass'           — transparent/no panel, text protected by shadows
- *
- * Applied via data-theme="" on <html>:
- *   light → attribute absent (default CSS)
- *   dark  → data-theme="dark"
- *   glass → data-theme="glass"
- */
-
-var THEMES = ['light', 'dark', 'glass'];
-
-var THEME_META = {
-    light: { icon: '<i class="fas fa-sun"></i>', label: '亮色模式 (Light)', next: 'dark' },
-    dark: { icon: '<i class="fas fa-moon"></i>', label: '暗色模式 (Dark)', next: 'glass' },
-    glass: { icon: '<i class="fas fa-eye"></i>', label: '透明模式 (Glass)', next: 'light' }
-};
-
-function applyTheme(theme) {
-    if (!theme || theme === 'light') {
-        document.documentElement.removeAttribute('data-theme');
-    } else {
-        document.documentElement.setAttribute('data-theme', theme);
+  function initHeroSpacer() {
+    function mount() {
+      if (document.getElementById("intro") || document.getElementById("page-hero-spacer")) return;
+      var main = document.getElementById("main");
+      if (!main || !main.parentNode) return;
+      var spacer = document.createElement("div");
+      spacer.id = "page-hero-spacer";
+      main.parentNode.insertBefore(spacer, main);
     }
-}
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
+    else mount();
+  }
 
-function currentTheme() {
-    return document.documentElement.getAttribute('data-theme') || 'light';
-}
+  function injectFooterStatsHost() {
+    if (document.getElementById("site-stats")) return;
+    var cr = document.getElementById("copyright");
+    var ul = cr && cr.querySelector("ul");
+    if (!ul) return;
+    var li = document.createElement("li");
+    li.className = "site-stats-li";
+    li.innerHTML = '<span id="site-stats" class="site-stats-wrap" aria-label="網站瀏覽統計"></span>';
+    ul.appendChild(li);
+  }
 
-function initTheme() {
-    var saved = localStorage.getItem('colorTheme');
-    var theme = (saved && THEMES.indexOf(saved) !== -1) ? saved : 'light';
-    applyTheme(theme);
-
-    document.addEventListener('DOMContentLoaded', function () {
-        var controls = document.getElementById('video-controls');
-        var btn = document.createElement('button');
-        btn.id = 'btn-theme';
-        btn.style.cssText = 'position:relative;';
-
-        function updateBtn() {
-            var t = currentTheme();
-            var meta = THEME_META[t];
-            btn.innerHTML = meta.icon;
-            btn.title = '切換：' + meta.label + ' → ' + THEME_META[meta.next].label;
-            btn.setAttribute('aria-label', meta.label);
-        }
-        updateBtn();
-
-        btn.addEventListener('click', function () {
-            var t = currentTheme();
-            var next = THEME_META[t].next;
-            applyTheme(next);
-            localStorage.setItem('colorTheme', next);
-            updateBtn();
-        });
-
-        if (controls) {
-            controls.insertBefore(btn, controls.firstChild);
-        } else {
-            var panel = document.createElement('div');
-            panel.id = 'video-controls';
-            panel.appendChild(btn);
-            document.body.appendChild(panel);
-        }
-    });
-}
-
-/* ─── Hero Spacer for Non-Index pages ───────────────────────
- * Index has a tall #intro section that lets background show.
- * All other pages go straight header→nav→#main, covering bg.
- * Fix: inject a transparent spacer div BEFORE #main on sub-pages.
- * The spacer is z-index 1 (above bg, below content) and fully
- * transparent so only the fixed background is visible through it.
- */
-function initHeroSpacer() {
-    document.addEventListener('DOMContentLoaded', function () {
-        // Only run on pages without #intro (sub-pages)
-        var intro = document.getElementById('intro');
-        if (intro) return; // Index — leave alone
-
-        var main = document.getElementById('main');
-        if (!main) return;
-
-        // Create the spacer
-        var spacer = document.createElement('div');
-        spacer.id = 'page-hero-spacer';
-        main.parentNode.insertBefore(spacer, main);
-    });
-}
-
-/* ─── Init ───────────────────────────────────────────────────── */
-function injectFooterStatsHost() {
-    document.addEventListener('DOMContentLoaded', function () {
-        if (document.getElementById('site-stats')) return;
-        var cr = document.getElementById('copyright');
-        if (!cr) return;
-        var ul = cr.querySelector('ul');
-        if (!ul) return;
-        var li = document.createElement('li');
-        li.className = 'site-stats-li';
-        li.innerHTML = '<span id="site-stats" class="site-stats-wrap" aria-label="網站瀏覽統計"></span>';
-        ul.appendChild(li);
-    });
-}
-
-function initAnalytics() {
+  function initAnalytics() {
     if (!window.SB || !window.SB.isConfigured || !window.SB.isConfigured()) return;
-    injectFooterStatsHost();
-    if (document.querySelector('script[data-site-analytics]')) return;
-    var s = document.createElement('script');
-    s.src = 'assets/js/analytics.js';
-    s.defer = true;
-    s.setAttribute('data-site-analytics', '1');
-    document.body.appendChild(s);
-}
+    idle(function () {
+      injectFooterStatsHost();
+      if (document.querySelector("script[data-site-analytics]")) return;
+      var s = document.createElement("script");
+      s.src = "assets/js/analytics.js";
+      s.defer = true;
+      s.setAttribute("data-site-analytics", "1");
+      document.body.appendChild(s);
+    }, 1600);
+  }
 
-function initCommon() {
-    initTheme();           // Must be first — applies theme before paint
-    initHeroSpacer();      // Inject hero spacer before #main on sub-pages
+  function initAdminNav() {
+    var PUBLIC_LINKS = [
+      { href: "index.html", label: "首頁", key: "nav.home" },
+      { href: "directory.html", label: "隨筆", key: "nav.notes" },
+      { href: "literature.html", label: "文學創作", key: "nav.literature" },
+      { href: "about.html", label: "關於我", key: "nav.about" },
+    ];
+    var ADMIN_LINK = { href: "academic.html", label: "學科筆記", key: "nav.academic" };
+    var menuOpen = false;
+
+    function currentPath() {
+      return (location.pathname || "").split("/").pop() || "index.html";
+    }
+
+    function buildLink(item, extraAttrs) {
+      var a = document.createElement("a");
+      a.href = item.href;
+      a.textContent = siteCopy(item.key, item.label);
+      if (item.key) a.setAttribute("data-section-key", item.key);
+      if (currentPath() === item.href) a.setAttribute("aria-current", "page");
+      if (extraAttrs) {
+        Object.keys(extraAttrs).forEach(function (k) {
+          a.setAttribute(k, extraAttrs[k]);
+        });
+      }
+      return a;
+    }
+
+    function retireLegacyGlobalNav() {
+      var legacy = document.getElementById("global-nav");
+      if (!legacy) return;
+      if (legacy.id === "desktop-global-nav" || legacy.id === "mobile-global-nav") return;
+      legacy.remove();
+    }
+
+    function ensureDesktopNav() {
+      var nav = document.getElementById("desktop-global-nav");
+      if (!nav) {
+        nav = document.createElement("nav");
+        nav.id = "desktop-global-nav";
+        document.body.appendChild(nav);
+      }
+      nav.className = "desktop-global-nav";
+      nav.setAttribute("aria-label", "主要導覽");
+      nav.removeAttribute("style");
+      return nav;
+    }
+
+    function ensureMobileNav() {
+      var nav = document.getElementById("mobile-global-nav");
+      if (!nav) {
+        nav = document.createElement("nav");
+        nav.id = "mobile-global-nav";
+        document.body.insertBefore(nav, document.body.firstChild);
+      }
+      nav.className = "mobile-global-nav";
+      nav.setAttribute("aria-label", "手機主要導覽");
+      nav.removeAttribute("style");
+      return nav;
+    }
+
+    function renderDesktopNav() {
+      var nav = ensureDesktopNav();
+      nav.innerHTML = "";
+      PUBLIC_LINKS.forEach(function (item) {
+        nav.appendChild(buildLink(item));
+      });
+      return nav;
+    }
+
+    function closeMenu() {
+      menuOpen = false;
+      var nav = document.getElementById("mobile-global-nav");
+      var btn = document.getElementById("mobile-nav-toggle");
+      var sheet = document.getElementById("mobile-nav-sheet");
+      var backdrop = document.getElementById("mobile-nav-backdrop");
+      if (nav) nav.classList.remove("is-open");
+      if (btn) btn.setAttribute("aria-expanded", "false");
+      if (sheet) sheet.hidden = true;
+      if (backdrop) backdrop.hidden = true;
+      document.body.classList.remove("mobile-nav-open");
+    }
+
+    function openMenu() {
+      menuOpen = true;
+      var nav = document.getElementById("mobile-global-nav");
+      var btn = document.getElementById("mobile-nav-toggle");
+      var sheet = document.getElementById("mobile-nav-sheet");
+      var backdrop = document.getElementById("mobile-nav-backdrop");
+      if (nav) nav.classList.add("is-open");
+      if (btn) btn.setAttribute("aria-expanded", "true");
+      if (sheet) sheet.hidden = false;
+      if (backdrop) backdrop.hidden = false;
+      document.body.classList.add("mobile-nav-open");
+      syncThemeChips(sheet || document);
+    }
+
+    function toggleMenu() {
+      if (menuOpen) closeMenu();
+      else openMenu();
+    }
+
+    function syncThemeColor() {
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (!meta) {
+        meta = document.createElement("meta");
+        meta.setAttribute("name", "theme-color");
+        document.head.appendChild(meta);
+      }
+      var t = currentTheme();
+      meta.setAttribute("content", t === "light" ? "#e8eef6" : t === "dark" ? "#0d1118" : "#0a1420");
+    }
+
+    function syncThemeChips(root) {
+      var scope = root || document;
+      var cur = currentTheme();
+      Array.prototype.forEach.call(scope.querySelectorAll(".mobile-nav-chip[data-theme-set]"), function (chip) {
+        var on = chip.getAttribute("data-theme-set") === cur;
+        chip.classList.toggle("is-active", on);
+        chip.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+
+    function fillSheetExtras(sheet) {
+      var extras = document.createElement("div");
+      extras.className = "mobile-nav-sheet__extras";
+      extras.innerHTML =
+        '<div class="mobile-nav-sheet__divider" role="separator"></div>' +
+        '<div class="mobile-nav-sheet__row" role="group" aria-label="主題">' +
+        '<button type="button" class="mobile-nav-chip" data-theme-set="light" data-section-key="ui.theme.light" aria-pressed="false">Light</button>' +
+        '<button type="button" class="mobile-nav-chip" data-theme-set="dark" data-section-key="ui.theme.dark" aria-pressed="false">Dark</button>' +
+        '<button type="button" class="mobile-nav-chip" data-theme-set="glass" data-section-key="ui.theme.glass" aria-pressed="false">Glass</button>' +
+        "</div>" +
+        '<div class="mobile-nav-sheet__social" role="group" aria-label="社群連結">' +
+        '<a class="mobile-social-link" href="https://github.com/linyize1111" target="_blank" rel="noopener" data-section-key="ui.social.github">' +
+        '<i class="icon brands fa-github" aria-hidden="true"></i><span>GitHub</span></a>' +
+        '<a class="mobile-social-link" href="https://www.instagram.com/linyize._.mcxi/" target="_blank" rel="noopener" data-section-key="ui.social.instagram">' +
+        '<i class="icon brands fa-instagram" aria-hidden="true"></i><span>Instagram</span></a>' +
+        '<a class="mobile-social-link" href="https://www.facebook.com/lin.jay.911547/" target="_blank" rel="noopener" data-section-key="ui.social.facebook">' +
+        '<i class="icon brands fa-facebook-f" aria-hidden="true"></i><span>Facebook</span></a>' +
+        '<span class="social-copy-wrap mobile-social-copy">' +
+        '<a class="mobile-social-link js-copy-id" href="#" role="button" data-copy-text="lookin_her_eyes" data-section-key="ui.social.discord" aria-label="複製 Discord ID lookin_her_eyes">' +
+        '<i class="icon brands fa-discord" aria-hidden="true"></i><span>Discord</span></a>' +
+        '<span class="social-copy-tip" role="tooltip">' +
+        '<code class="social-copy-tip__id" data-ui-copy="technical">lookin_her_eyes</code>' +
+        '<span class="social-copy-tip__hint" data-section-key="ui.social.copyHint">點擊複製</span></span></span>' +
+        '<a class="mobile-social-link" href="https://www.penana.com/user/374414/%E6%99%82%E9%9B%AA" target="_blank" rel="noopener" data-section-key="ui.social.penana">' +
+        '<i class="icon solid fa-pen" aria-hidden="true"></i><span>Penana</span></a>' +
+        '<a class="mobile-social-link" href="mailto:jay0975008815@gmail.com" data-section-key="ui.social.mail">' +
+        '<i class="icon fa-envelope" aria-hidden="true"></i><span>Mail</span></a>' +
+        "</div>";
+      sheet.appendChild(extras);
+      syncThemeChips(extras);
+      extras.addEventListener("click", function (e) {
+        var chip = e.target.closest("[data-theme-set]");
+        if (!chip) return;
+        var next = chip.getAttribute("data-theme-set");
+        applyTheme(next);
+        localStorage.setItem("colorTheme", next);
+        syncThemeColor();
+        syncThemeChips(extras);
+        var themeBtn = document.getElementById("btn-theme");
+        if (themeBtn) themeBtn.dispatchEvent(new Event("lyz-theme-refresh"));
+        closeMenu();
+      });
+    }
+
+    function renderMobileNav() {
+      var nav = ensureMobileNav();
+      nav.innerHTML = "";
+
+      var brand = document.createElement("a");
+      brand.className = "mobile-nav-brand";
+      brand.href = "index.html";
+      brand.textContent = siteCopy("ui.nav.mobileBrand", "LYZ");
+      brand.setAttribute("data-section-key", "ui.nav.mobileBrand");
+      brand.setAttribute("aria-label", "LYZ 首頁");
+
+      var toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.id = "mobile-nav-toggle";
+      toggle.className = "mobile-nav-toggle";
+      toggle.setAttribute("aria-label", "開啟選單");
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-controls", "mobile-nav-sheet");
+      toggle.innerHTML = '<span class="mobile-nav-toggle__bars" aria-hidden="true"></span>';
+
+      var sheet = document.createElement("div");
+      sheet.id = "mobile-nav-sheet";
+      sheet.className = "mobile-nav-sheet";
+      sheet.hidden = true;
+      sheet.setAttribute("role", "dialog");
+      sheet.setAttribute("aria-label", "網站選單");
+      var sheetLinks = document.createElement("div");
+      sheetLinks.className = "mobile-nav-sheet__links";
+      PUBLIC_LINKS.forEach(function (item) {
+        sheetLinks.appendChild(buildLink(item));
+      });
+      sheet.appendChild(sheetLinks);
+      fillSheetExtras(sheet);
+
+      var backdrop = document.getElementById("mobile-nav-backdrop");
+      if (!backdrop) {
+        backdrop = document.createElement("button");
+        backdrop.type = "button";
+        backdrop.id = "mobile-nav-backdrop";
+        backdrop.className = "mobile-nav-backdrop";
+        backdrop.hidden = true;
+        backdrop.setAttribute("aria-label", "關閉選單");
+        document.body.appendChild(backdrop);
+      }
+
+      nav.appendChild(brand);
+      nav.appendChild(toggle);
+      nav.appendChild(sheet);
+
+      toggle.addEventListener("click", function (e) {
+        e.stopPropagation();
+        toggleMenu();
+      });
+      backdrop.addEventListener("click", closeMenu);
+      sheet.addEventListener("click", function (e) {
+        if (e.target.closest("a")) closeMenu();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && menuOpen) closeMenu();
+      });
+      window.addEventListener(
+        "resize",
+        function () {
+          if (window.matchMedia("(min-width: 901px)").matches) closeMenu();
+        },
+        { passive: true }
+      );
+
+      syncThemeColor();
+      return nav;
+    }
+
+    function injectAdminNav(desktopNav, mobileNav) {
+      function place(container) {
+        if (!container || container.querySelector('[data-admin-nav="academic"]')) return;
+        var a = buildLink(ADMIN_LINK, { "data-admin-nav": "academic" });
+        var about = container.querySelector('a[href="about.html"]');
+        if (about) container.insertBefore(a, about);
+        else container.appendChild(a);
+      }
+      place(desktopNav);
+      var sheetLinks = mobileNav && mobileNav.querySelector(".mobile-nav-sheet__links");
+      place(sheetLinks);
+    }
+
+    function stripStaticAdminHints() {
+      Array.prototype.forEach.call(
+        document.querySelectorAll('a[href="academic.html"], li.nav-admin-only'),
+        function (el) {
+          if (el.getAttribute("data-admin-nav") === "academic") return;
+          if (el.closest("#desktop-global-nav, #mobile-global-nav")) return;
+          el.remove();
+        }
+      );
+    }
+
+    retireLegacyGlobalNav();
+    stripStaticAdminHints();
+    var desktopNav = renderDesktopNav();
+    var mobileNav = renderMobileNav();
+
+    function revealIfAdmin() {
+      if (!window.SBAuth || typeof window.SBAuth.isAdmin !== "function") return;
+      window.SBAuth
+        .isAdmin()
+        .then(function (ok) {
+          if (ok) injectAdminNav(desktopNav, mobileNav);
+        })
+        .catch(function () {});
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", revealIfAdmin, { once: true });
+    } else {
+      revealIfAdmin();
+    }
+    setTimeout(revealIfAdmin, 900);
+
+    document.addEventListener("lyz-theme-refresh", function () {});
+    var themeBtnPoll = setInterval(function () {
+      var themeBtn = document.getElementById("btn-theme");
+      if (!themeBtn) return;
+      clearInterval(themeBtnPoll);
+      themeBtn.addEventListener("lyz-theme-refresh", function () {
+        var meta = THEME_META[currentTheme()] || THEME_META.light;
+        themeBtn.innerHTML = meta.icon;
+        themeBtn.title = meta.label + " → " + THEME_META[meta.next].label;
+        themeBtn.setAttribute("aria-label", meta.label);
+        syncThemeColor();
+      });
+    }, 200);
+  }
+
+  function initMobileControlsFab() {
+    function mount() {
+      if (document.getElementById("mobile-controls-fab")) return;
+      var controls = document.getElementById("video-controls");
+      if (!controls) return;
+      controls.classList.add("site-controls");
+
+      var fab = document.createElement("button");
+      fab.type = "button";
+      fab.id = "mobile-controls-fab";
+      fab.className = "mobile-controls-fab";
+      fab.setAttribute("aria-label", "開啟控制選單");
+      fab.setAttribute("aria-expanded", "false");
+      fab.setAttribute("aria-controls", "mobile-controls-popover");
+      fab.innerHTML = '<span aria-hidden="true">◉</span>';
+
+      var pop = document.createElement("div");
+      pop.id = "mobile-controls-popover";
+      pop.className = "mobile-controls-popover";
+      pop.hidden = true;
+      pop.innerHTML =
+        '<button type="button" data-ctrl="theme" data-section-key="ui.controls.theme">🎨 切換主題</button>' +
+        '<button type="button" data-ctrl="focus" class="mobile-ctrl-focus" data-section-key="ui.controls.focus">專注閱讀</button>' +
+        '<button type="button" data-ctrl="mute" data-section-key="ui.controls.mute">🔊 音效</button>' +
+        '<button type="button" data-ctrl="play" data-section-key="ui.controls.play">🌸 背景效果</button>' +
+        '<button type="button" data-ctrl="top" class="mobile-ctrl-top" data-section-key="ui.controls.top" hidden>↑ 回頂端</button>';
+
+      document.body.appendChild(fab);
+      document.body.appendChild(pop);
+
+      function setOpen(open) {
+        fab.setAttribute("aria-expanded", open ? "true" : "false");
+        fab.classList.toggle("is-open", open);
+        pop.hidden = !open;
+        document.body.classList.toggle("mobile-controls-open", open);
+        if (open) syncControlStates();
+      }
+
+      function isSoundOn() {
+        var music = document.getElementById("bg-music");
+        if (music) return !music.muted;
+        return sessionStorage.getItem("mediaMuted") !== "true";
+      }
+
+      function isBgAnimOn() {
+        if (prefersReducedMotion() || saveDataPreferred()) return false;
+        var music = document.getElementById("bg-music");
+        if (music) return !music.paused;
+        var video = document.getElementById("bg-video");
+        return !!(video && !video.paused && video.style.visibility !== "hidden");
+      }
+
+      function syncControlStates() {
+        var focusOn = document.body.classList.contains("reading-focus");
+        var soundOn = false;
+        var bgOn = false;
+        try {
+          soundOn = isSoundOn();
+        } catch (e) {}
+        try {
+          bgOn = isBgAnimOn();
+        } catch (e) {}
+
+        var focusBtn = pop.querySelector('[data-ctrl="focus"]');
+        if (focusBtn) {
+          focusBtn.hidden = !document.getElementById("markdown-container");
+          focusBtn.setAttribute("data-active", focusOn ? "true" : "false");
+          focusBtn.textContent = focusOn ? "✓ 專注閱讀" : "專注閱讀";
+        }
+        var muteBtn = pop.querySelector('[data-ctrl="mute"]');
+        if (muteBtn) {
+          muteBtn.setAttribute("data-active", soundOn ? "true" : "false");
+          muteBtn.textContent = soundOn ? "✓ 🔊 音效" : "🔊 音效";
+        }
+        var playBtn = pop.querySelector('[data-ctrl="play"]');
+        if (playBtn) {
+          playBtn.setAttribute("data-active", bgOn ? "true" : "false");
+          playBtn.textContent = bgOn ? "✓ 🌸 背景效果" : "🌸 背景效果";
+        }
+        var themeBtn = pop.querySelector('[data-ctrl="theme"]');
+        if (themeBtn) {
+          var t = currentTheme();
+          themeBtn.textContent =
+            "🎨 主題 · " + (t === "glass" ? "Glass" : t === "dark" ? "Dark" : "Light");
+        }
+      }
+
+      fab.addEventListener("click", function (e) {
+        e.stopPropagation();
+        setOpen(pop.hidden);
+      });
+      document.addEventListener("click", function (e) {
+        if (!pop.hidden && !e.target.closest("#mobile-controls-popover") && e.target !== fab) {
+          setOpen(false);
+        }
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") setOpen(false);
+      });
+
+      pop.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-ctrl]");
+        if (!btn) return;
+        var action = btn.getAttribute("data-ctrl");
+        if (action === "theme") {
+          var t = document.getElementById("btn-theme");
+          if (t) t.click();
+        } else if (action === "focus") {
+          var f = document.getElementById("reading-focus-toggle");
+          if (f) f.click();
+          else {
+            var next = !document.body.classList.contains("reading-focus");
+            localStorage.setItem("readingFocus", String(next));
+            applyReadingFocus(next);
+          }
+        } else if (action === "mute") {
+          var m = document.getElementById("btn-mute");
+          if (m) m.click();
+        } else if (action === "play") {
+          var p = document.getElementById("btn-play");
+          if (p) p.click();
+        } else if (action === "top") {
+          window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+        }
+        syncControlStates();
+        if (action !== "theme" && action !== "mute" && action !== "play" && action !== "focus") {
+          setOpen(false);
+        } else {
+          setTimeout(syncControlStates, 80);
+        }
+      });
+
+      var topBtn = pop.querySelector(".mobile-ctrl-top");
+      function syncTop() {
+        if (!topBtn) return;
+        topBtn.hidden = window.scrollY <= 700;
+      }
+      syncTop();
+      window.addEventListener("scroll", syncTop, { passive: true });
+      syncControlStates();
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
+    else mount();
+  }
+
+  function applyReadingFocus(requested) {
+    /* Never force focus on render — only localStorage preference. */
+    var stored = localStorage.getItem("readingFocus") === "true";
+    var enable =
+      requested === true ? true : requested === false ? false : stored;
+    if (requested === true || requested === false) {
+      /* explicit toggle path already wrote localStorage */
+    }
+    document.body.classList.toggle("reading-focus", enable);
+    document.body.classList.add("reading-page");
+
+    var video = document.getElementById("bg-video");
+    var canvas = document.getElementById("sakura-canvas");
+    if (video) {
+      video.style.visibility = enable ? "hidden" : "";
+      if (enable) video.pause();
+      else idle(function () { startBackgroundVideo(video); }, 500);
+    }
+    if (canvas) canvas.style.visibility = enable ? "hidden" : "";
+
+    var btn = document.getElementById("reading-focus-toggle");
+    if (btn) btn.textContent = enable ? "顯示背景" : "專注閱讀";
+    return enable;
+  }
+  window.applyReadingFocus = applyReadingFocus;
+
+  function initReadingFocusUi() {
+    if (!document.getElementById("markdown-container")) return;
+    document.body.classList.add("reading-page");
+    var btn = document.getElementById("reading-focus-toggle");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "reading-focus-toggle";
+      btn.className = "reading-focus-toggle";
+      document.body.appendChild(btn);
+    }
+    btn.addEventListener("click", function () {
+      var next = !document.body.classList.contains("reading-focus");
+      localStorage.setItem("readingFocus", String(next));
+      applyReadingFocus(next);
+    });
+    applyReadingFocus();
+  }
+
+  function initScrollTopButton() {
+    var btn = document.getElementById("btn-top");
+    if (!btn) return;
+    var threshold = 700;
+    function sync() {
+      var show = window.scrollY > threshold;
+      btn.hidden = !show;
+      btn.classList.toggle("is-hidden", !show);
+    }
+    sync();
+    window.addEventListener("scroll", sync, { passive: true });
+  }
+
+  function initCopyIdTips() {
+    function flashTip(tip, ok) {
+      if (!tip) return;
+      tip.classList.add(ok ? "is-copied" : "is-failed");
+      var hint = tip.querySelector(".social-copy-tip__hint");
+      var prev = hint ? hint.textContent : "";
+      if (hint) hint.textContent = ok ? "已複製" : "複製失敗";
+      window.setTimeout(function () {
+        tip.classList.remove("is-copied", "is-failed");
+        if (hint) hint.textContent = prev || "點擊複製";
+      }, 1400);
+    }
+
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+      }
+      return new Promise(function (resolve, reject) {
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          if (ok) resolve();
+          else reject(new Error("copy failed"));
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }
+
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".js-copy-id");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var text = (btn.getAttribute("data-copy-text") || "").trim();
+      if (!text) return;
+      var wrap = btn.closest(".social-copy-wrap");
+      var tip = wrap && wrap.querySelector(".social-copy-tip");
+      copyText(text).then(
+        function () {
+          flashTip(tip, true);
+          if (typeof showSiteToast === "function") {
+            showSiteToast(siteCopy("ui.discord.copied", "✓ 已複製 Discord 使用者 ID"), text);
+          }
+        },
+        function () {
+          flashTip(tip, false);
+          if (typeof showSiteToast === "function") {
+            showSiteToast(siteCopy("ui.discord.copyFailed", "無法自動複製 Discord ID，請手動複製："), text);
+          } else {
+            window.prompt("請手動複製 Discord ID", text);
+          }
+        }
+      );
+    });
+  }
+
+  function initCommon() {
+    stampStaticSiteCopyKeys();
+    initTheme();
     initLoadingScreen();
+    initHeroSpacer();
     initMediaControls();
     initSakuraIfPresent();
+    initAdminNav();
+    initReadingFocusUi();
+    initScrollTopButton();
+    initMobileControlsFab();
+    initCopyIdTips();
     initAnalytics();
-}
+    // Re-stamp after nav chrome mounts
+    stampStaticSiteCopyKeys();
+  }
 
-initCommon();
+  initCommon();
+})();

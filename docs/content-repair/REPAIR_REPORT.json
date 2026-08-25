@@ -1,0 +1,378 @@
+{
+  "meta": {
+    "ran_at": "2026-08-06T16:31:00.110Z",
+    "apply_safe": false,
+    "counts": {
+      "total": 54,
+      "clean": 47,
+      "safe_auto_repair": 2,
+      "needs_review": 2,
+      "needs_manual_restore": 3,
+      "applied": 0
+    }
+  },
+  "applied": [],
+  "needs_manual_restore": [
+    {
+      "id": "a0ff6534-16ee-49cb-98dc-6008652a55b7",
+      "title": "搭建自己的網站",
+      "slug": "build-website",
+      "presentation": "reference",
+      "flags": [
+        "incomplete_stub_marker"
+      ],
+      "metrics": {
+        "titleLen": 7,
+        "bodyLen": 64,
+        "plainBodyLen": 63,
+        "summaryLen": 46,
+        "firstPlainLen": 45
+      },
+      "bucket": "needs_manual_restore",
+      "suggestions": [],
+      "restore_note": "疑似原文遺失或僅有 stub。不可憑空補寫。請人工貼回原文後再跑 pipeline。"
+    },
+    {
+      "id": "12248c6a-6d38-47fc-878f-c1210dedc98f",
+      "title": "普通心理學筆記",
+      "slug": "psychology",
+      "presentation": "reference",
+      "flags": [
+        "incomplete_stub_marker"
+      ],
+      "metrics": {
+        "titleLen": 7,
+        "bodyLen": 54,
+        "plainBodyLen": 53,
+        "summaryLen": 43,
+        "firstPlainLen": 37
+      },
+      "bucket": "needs_manual_restore",
+      "suggestions": [],
+      "restore_note": "疑似原文遺失或僅有 stub。不可憑空補寫。請人工貼回原文後再跑 pipeline。"
+    },
+    {
+      "id": "38181215-f37d-449d-bd10-708419c6e58d",
+      "title": "Python 學習紀錄",
+      "slug": "python-learning",
+      "presentation": "reference",
+      "flags": [
+        "incomplete_stub_marker"
+      ],
+      "metrics": {
+        "titleLen": 11,
+        "bodyLen": 157,
+        "plainBodyLen": 138,
+        "summaryLen": 44,
+        "firstPlainLen": 24
+      },
+      "bucket": "needs_manual_restore",
+      "suggestions": [],
+      "restore_note": "疑似原文遺失或僅有 stub。不可憑空補寫。請人工貼回原文後再跑 pipeline。"
+    }
+  ],
+  "needs_review": [
+    {
+      "id": "5e9bf718-95e7-48ff-b7f1-d6ccbfe6e382",
+      "title": "《如何閱讀一本書》閱讀筆記",
+      "slug": "如何讀一本書-閱讀心得",
+      "presentation": "reference",
+      "flags": [
+        "heading_hierarchy_skip"
+      ],
+      "metrics": {
+        "titleLen": 13,
+        "bodyLen": 4740,
+        "plainBodyLen": 4126,
+        "summaryLen": 47,
+        "firstPlainLen": 21
+      },
+      "bucket": "needs_review",
+      "suggestions": [
+        {
+          "field": "body",
+          "action": "fix_heading_levels",
+          "note": "標題階層有跳級；請人工檢查，勿自動重寫內文。"
+        }
+      ]
+    },
+    {
+      "id": "b928be8f-b0e1-4586-a7fa-f893888e545c",
+      "title": "機器學習基石課程筆記",
+      "slug": "machine-learning",
+      "presentation": "reference",
+      "flags": [
+        "heading_hierarchy_skip"
+      ],
+      "metrics": {
+        "titleLen": 10,
+        "bodyLen": 13005,
+        "plainBodyLen": 10374,
+        "summaryLen": 57,
+        "firstPlainLen": 635
+      },
+      "bucket": "needs_review",
+      "suggestions": [
+        {
+          "field": "body",
+          "action": "fix_heading_levels",
+          "note": "標題階層有跳級；請人工檢查，勿自動重寫內文。"
+        }
+      ]
+    }
+  ],
+  "safe_auto_repair": [
+    {
+      "id": "57b0a61e-0545-4f3c-a4e3-60c48e6902ce",
+      "title": "我真的很喜歡卡繆",
+      "slug": "我真的很喜歡卡繆",
+      "presentation": "fragment",
+      "flags": [
+        "title_duplicates_body_opening"
+      ],
+      "metrics": {
+        "titleLen": 8,
+        "bodyLen": 130,
+        "plainBodyLen": 130,
+        "summaryLen": 37,
+        "firstPlainLen": 130
+      },
+      "bucket": "safe_auto_repair",
+      "suggestions": [],
+      "proposed_changes": [
+        "cover_display_defaults"
+      ],
+      "proposed_patch_preview": {
+        "title": "我真的很喜歡卡繆",
+        "cover_display": {
+          "style": "none",
+          "ratio": "auto",
+          "fit": "contain",
+          "position": "center center"
+        },
+        "body_len": 131
+      }
+    },
+    {
+      "id": "e0422ffb-fca1-4082-aebd-6a4105f8f2b9",
+      "title": "大眾心理學其實不適合大眾讀",
+      "slug": "大眾心理學其實不適合大眾讀",
+      "presentation": "article-lite",
+      "flags": [
+        "title_duplicates_body_opening"
+      ],
+      "metrics": {
+        "titleLen": 13,
+        "bodyLen": 360,
+        "plainBodyLen": 360,
+        "summaryLen": 52,
+        "firstPlainLen": 360
+      },
+      "bucket": "safe_auto_repair",
+      "suggestions": [],
+      "proposed_changes": [
+        "cover_display_defaults"
+      ],
+      "proposed_patch_preview": {
+        "title": "大眾心理學其實不適合大眾讀",
+        "cover_display": {
+          "style": "inline",
+          "ratio": "16/9",
+          "fit": "cover",
+          "position": "center center"
+        },
+        "body_len": 361
+      }
+    }
+  ],
+  "clean_ids": [
+    {
+      "id": "c6a3c68d-8f90-43f9-b3f4-8e2ec62280cd",
+      "title": "資訊安全基礎知識"
+    },
+    {
+      "id": "a3ce235a-9dc0-422f-a9f3-01466275ab32",
+      "title": "高三進階程式設計課程學習成果"
+    },
+    {
+      "id": "90835079-36e4-4c55-9601-36d56424e901",
+      "title": "開發 Discord 聊天機器人"
+    },
+    {
+      "id": "ee221034-3aad-415b-804e-d253eb6f7d29",
+      "title": "學習歷程 117-11"
+    },
+    {
+      "id": "1f2ca188-1e49-4285-b268-cdb892cca0fd",
+      "title": "進擊的巨人與北歐神話"
+    },
+    {
+      "id": "399e7b27-378a-452c-8637-188b5fe6040b",
+      "title": "個體才是最重要的"
+    },
+    {
+      "id": "28a5ee3f-5fda-4709-97f5-7cc1f7b53b9b",
+      "title": "海面的霓虹"
+    },
+    {
+      "id": "38138e80-8d0e-44d4-9fa4-ab257ca79948",
+      "title": "困在數字遊戲裡"
+    },
+    {
+      "id": "8a6a10f9-4946-4d11-bee7-5a2d41245e10",
+      "title": "不願妥協，也是一種純真"
+    },
+    {
+      "id": "ef219e76-e57f-4e89-bf1e-be5ce977e643",
+      "title": "生命與法律的重量"
+    },
+    {
+      "id": "eef311f2-51f6-4c3b-8d8c-083db7bc83be",
+      "title": "夜裡的忠烈祠"
+    },
+    {
+      "id": "e7f9595c-8963-49d2-93d2-57d285ae1bd2",
+      "title": "抽離意義的性"
+    },
+    {
+      "id": "7a289d29-10ed-4613-b0f4-4198fefc6cbf",
+      "title": "紙本書與精神調律"
+    },
+    {
+      "id": "e582e260-6d95-4fef-bf9c-23f24e8ca0b3",
+      "title": "時間或許只是幻覺？"
+    },
+    {
+      "id": "09204f40-49d4-4c29-9e31-f4424a09a02e",
+      "title": "音樂可以拯救靈魂"
+    },
+    {
+      "id": "ed30b152-0c98-416f-b167-d1ce79f80f6a",
+      "title": "感情，或許是一張素紙"
+    },
+    {
+      "id": "b6d2d0b1-7f9a-433b-ad23-9d14f76d112d",
+      "title": "臺灣政治不該只剩二元對立"
+    },
+    {
+      "id": "112b5008-2e45-44ee-9390-7d380ec0203c",
+      "title": "簡談文筆"
+    },
+    {
+      "id": "4617b60e-5cb5-4028-b4b3-e1576bebcf12",
+      "title": "夢被枕頭悶殺"
+    },
+    {
+      "id": "891a4ef5-2e7f-4202-9c2c-e84a2a3ce0ff",
+      "title": "我們會開始對一切產生「恐怖谷」嗎？"
+    },
+    {
+      "id": "60a89582-6d2b-4dfa-a810-b405e527c84a",
+      "title": "咖啡的風味從哪裡來？談影響咖啡風味的變量"
+    },
+    {
+      "id": "77551a9e-c122-43a6-9436-2da45e2a3302",
+      "title": "科學不該成為新的教條"
+    },
+    {
+      "id": "7b953c20-c9d5-49b6-9485-39221e8397aa",
+      "title": "一些有關《無職轉生》的想法"
+    },
+    {
+      "id": "f929a42e-b267-4f5d-8d64-20702daf5a5a",
+      "title": "該死的咖啡因"
+    },
+    {
+      "id": "5d8e944f-e3a2-4fec-94ed-6ea71aa1ad8a",
+      "title": "取材"
+    },
+    {
+      "id": "c94ce8a9-3cea-4b16-904c-e4978905fe7b",
+      "title": "嘉義咖啡節"
+    },
+    {
+      "id": "93d5b260-aa20-45fb-945b-6310a41b017d",
+      "title": "感受與思考主義"
+    },
+    {
+      "id": "6eeeda2e-292d-4eda-b674-42648b256064",
+      "title": "贖回時間、自由與愛"
+    },
+    {
+      "id": "9f1f2b8d-4cc1-43ae-86f6-94e933fa3366",
+      "title": "四幕短詩：告白、分手、死亡、重逢"
+    },
+    {
+      "id": "7e426bee-03a5-407d-b728-f3cc40e38d65",
+      "title": "酒紅宴下"
+    },
+    {
+      "id": "b7450161-74d1-4abf-80c3-f63129e41e22",
+      "title": "下雨的夜晚"
+    },
+    {
+      "id": "ff3a52b9-8c57-4cf0-a380-5c429baab317",
+      "title": "忌日快樂"
+    },
+    {
+      "id": "208db295-d7ec-4d8b-8360-56346655fcfb",
+      "title": "看海隨想"
+    },
+    {
+      "id": "3e4b19ac-84b1-4ea6-8c06-f9025056bd03",
+      "title": "凌晨三點半的幸福"
+    },
+    {
+      "id": "c26807a9-1431-45ba-bfcc-e879e0198dea",
+      "title": "嗜血的邂逅"
+    },
+    {
+      "id": "249d13b2-4150-4c50-b155-5f3a4eb383b6",
+      "title": "《活俠傳》六周目心得"
+    },
+    {
+      "id": "e4335dde-05e4-4c67-be9c-2ff021a2b9a8",
+      "title": "《無窮盡的交響曲》閱讀心得與批判"
+    },
+    {
+      "id": "9a822c00-0d35-4f52-a789-c8b5b29c2a20",
+      "title": "《百年孤寂》閱讀心得"
+    },
+    {
+      "id": "35434d68-7f23-427e-bb06-d4835f80a522",
+      "title": "《盲目》閱讀心得"
+    },
+    {
+      "id": "f2bbc2ad-6423-4f22-bb1b-14657a7e732a",
+      "title": "論《鼠疫》中的責任、自由與感受"
+    },
+    {
+      "id": "ce077857-9a02-4975-89c1-9f6999714e1b",
+      "title": "《變形記》閱讀心得"
+    },
+    {
+      "id": "04be00a5-45d7-4e17-a7f5-b9e53ba29b63",
+      "title": "十四夜月與一隻貓"
+    },
+    {
+      "id": "8aa75604-8b6b-4730-97f6-eb7f9a953fc6",
+      "title": "贖回自由"
+    },
+    {
+      "id": "6660c706-ab66-456f-9480-6e92ffff51e7",
+      "title": "取材(主題謀殺) 創作後談"
+    },
+    {
+      "id": "142f76ca-ca66-480f-93b8-5704c5b2ae50",
+      "title": "活著真好啊。"
+    },
+    {
+      "id": "d006ad0b-a74c-4566-875b-81c6dec78458",
+      "title": "「美」究竟是怎麼出現的？"
+    },
+    {
+      "id": "0ac06d81-ae5f-4538-9e71-60a454f85bdf",
+      "title": "記憶與遺忘的鬥爭"
+    }
+  ]
+}

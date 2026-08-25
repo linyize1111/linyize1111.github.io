@@ -84,14 +84,32 @@
     return div.innerHTML;
   }
 
-  function renderMarkdown(md) {
+  /**
+   * Strip YAML frontmatter only when the block between --- looks like key: value YAML.
+   * Do NOT strip literary section dividers (--- ... ---) used in fiction.
+   */
+  function stripYamlFrontmatter(md) {
     var text = String(md == null ? "" : md);
-    // 移除開頭 frontmatter（--- ... ---）
-    if (text.trim().indexOf("---") === 0) {
-      var t = text.trim();
-      var next = t.indexOf("---", 3);
-      if (next !== -1) text = t.slice(next + 3);
-    }
+    var trimmed = text.trim();
+    if (trimmed.indexOf("---") !== 0) return text;
+    // Match closing --- on its own line (GFM hr / frontmatter end)
+    var close = trimmed.search(/\r?\n---\s*(?:\r?\n|$)/);
+    if (close === -1) return text;
+    var between = trimmed.slice(3, close);
+    // Real frontmatter: at least one yaml-ish "key: value" line, and not prose-heavy
+    var yamlLines = between.split(/\r?\n/).filter(function (line) {
+      return /^\s*[A-Za-z0-9_\u4e00-\u9fff][\w\u4e00-\u9fff.-]*\s*:/.test(line);
+    });
+    if (!yamlLines.length) return text;
+    // Refuse to strip if block looks like literary prose (many CJK sentences, few yaml keys)
+    var sentenceMarks = (between.match(/[。！？]/g) || []).length;
+    if (sentenceMarks >= 2 && yamlLines.length < 2) return text;
+    var rest = trimmed.slice(close).replace(/^\r?\n---\s*/, "");
+    return rest.replace(/^\r?\n/, "");
+  }
+
+  function renderMarkdown(md) {
+    var text = stripYamlFrontmatter(md);
     var html;
     if (window.marked) {
       try {
@@ -101,9 +119,10 @@
         html = "<pre></pre>";
       }
     } else {
+      // marked missing: never wrap the whole bio in <pre> (looks like broken Markdown)
       var d = document.createElement("div");
       d.textContent = text;
-      html = "<pre style='white-space:pre-wrap'>" + d.innerHTML + "</pre>";
+      html = d.innerHTML.replace(/\n/g, "<br />");
     }
     return sanitizeHtml(html);
   }
@@ -120,6 +139,7 @@
     client: client,
     sanitizeHtml: sanitizeHtml,
     renderMarkdown: renderMarkdown,
+    stripYamlFrontmatter: stripYamlFrontmatter,
     escapeText: escapeText,
     config: cfg,
   };

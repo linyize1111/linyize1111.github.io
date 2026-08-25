@@ -1,242 +1,144 @@
 /**
- * cms-public.js
+ * cms-public.js — V3 AI-first (data / controller)
  *
- * 公開端動態渲染（從 Supabase 讀取），涵蓋：
- *   1. 清單頁（literature.html / directory.html）：依 #posts-container[data-section]
- *      讀取 status='published' 文章，渲染 .note-item 卡片，並沿用 page-list.js
- *      的排序 / 篩選 / 分頁 / 輪播。
- *   2. 文章頁（note.html?id=<slug>&section=<section>）：讀取單篇並以
- *      marked + DOMPurify 安全渲染。
- *   3. 主要區塊文字：套用到任何帶有 [data-section-key] 的元素。
- *
- * ★ 若 Supabase 尚未設定（placeholder），本檔完全不動作，
- *   全站維持原本靜態 HTML 行為。★
+ * Loads articles from CmsData (static) or Supabase and mounts via SBArticleRenderer.
+ * Rendering lives in article-renderer.js (shared with admin preview).
+ * NEVER infers fragment/longform/photo-note from character or image counts.
  */
 (function () {
   "use strict";
+
+  function useStatic() {
+    return window.CmsData && window.CmsData.source && window.CmsData.source() === "static";
+  }
 
   var CONFIGURED =
     (window.CmsData && window.CmsData.isReady && window.CmsData.isReady()) ||
     (window.SB && window.SB.isConfigured && window.SB.isConfigured());
   if (CONFIGURED) window.__CMS_DYNAMIC__ = true;
 
-  var CAROUSEL_HINT = /^點擊圖片即前往/;
+  var ARTICLE_FIELDS =
+    "id,section,slug,title,summary,body,cover,images,category,tags,pdf_url,status,published_at,created_at,updated_at,sort_index,content_type,presentation,visibility,series,show_title,show_summary,ai_editorial,needs_ai_analysis,cover_display";
+  var ARTICLE_FIELDS_LEGACY =
+    "id,section,slug,title,summary,body,cover,images,category,tags,pdf_url,status,published_at,created_at,updated_at,sort_index";
 
-  function fmtDate(ts) {
-    if (!ts) return "";
-    try {
-      return new Date(ts).toISOString().slice(0, 10);
-    } catch (e) {
-      return "";
+  function R() {
+    return window.SBArticleRenderer || null;
+  }
+
+  function effectiveVisibility(a) {
+    if (window.SBPresentation) return window.SBPresentation.effectiveVisibility(a);
+    return "public";
+  }
+
+  function displayCategory(cat) {
+    if (window.SBSections && window.SBSections.displayCategory) {
+      return window.SBSections.displayCategory(cat);
     }
+    return String(cat || "").trim();
   }
 
   function esc(s) {
-    return window.SB.escapeText(s);
+    return window.SB && window.SB.escapeText ? window.SB.escapeText(s) : String(s || "");
   }
 
-  function articleUrl(a) {
-    return (
-      "note.html?id=" +
-      encodeURIComponent(a.slug) +
-      "&section=" +
-      encodeURIComponent(a.section)
-    );
-  }
-
-  function coverDisplayStyle(a) {
-    var fit = "contain";
-    var position = "center center";
-    if (a && a.cover_display && typeof a.cover_display === "object") {
-      if (a.cover_display.fit) fit = a.cover_display.fit;
-      if (a.cover_display.position) position = a.cover_display.position;
+  function buildCard(a, listIndex) {
+    var r = R();
+    if (!r || typeof r.buildCard !== "function") {
+      console.warn("[cms] SBArticleRenderer.buildCard missing");
+      return document.createElement("article");
     }
-    return (
-      "object-fit:" +
-      esc(fit) +
-      ";object-position:" +
-      esc(position) +
-      ";"
-    );
-  }
-
-  function collectSlides(a) {
-    var seen = new Set();
-    var slides = [];
-    var broken = /(?:^|\/)rat\.jpg$/i;
-    function push(src, caption) {
-      if (!src || seen.has(src) || broken.test(src)) return;
-      seen.add(src);
-      slides.push({ src: src, caption: caption || "" });
-    }
-    if (a.cover) push(a.cover, "");
-    var imgs = Array.isArray(a.images) ? a.images : [];
-    imgs.forEach(function (im) {
-      if (im && im.src) push(im.src, im.caption || "");
-    });
-    return slides;
-  }
-
-  function normalizeCategory(cat) {
-    var c = String(cat || "").trim();
-    if (c === "短思") return "隨想";
-    return c;
-  }
-
-  function isThoughtCategory(cat) {
-    return normalizeCategory(cat) === "隨想";
-  }
-
-  function shortSummary(text, maxLen) {
-    var s = String(text || "").replace(/\s+/g, " ").trim();
-    if (s.length <= maxLen) return s;
-    return s.slice(0, maxLen).replace(/\s+\S*$/, "") + "…";
-  }
-
-  function buildCard(a) {
-    var url = articleUrl(a);
-    var upload = fmtDate(a.published_at || a.created_at);
-    var edit = fmtDate(a.updated_at);
-    var cat = normalizeCategory(a.category || "");
-    var thought = isThoughtCategory(cat);
-    var slides = thought ? [] : collectSlides(a);
-    var imgStyle = coverDisplayStyle(a);
-    var hasCover = slides.length > 0;
-
-    var mediaHtml = "";
-    if (slides.length === 1) {
-      mediaHtml =
-        '<div class="card-media-zone"><a href="' +
-        url +
-        '" class="image fit"><img loading="lazy" src="' +
-        esc(slides[0].src) +
-        '" alt="" style="' +
-        imgStyle +
-        '" /></a></div>';
-    } else if (slides.length > 1) {
-      mediaHtml = '<div class="card-media-zone"><div class="card-carousel">';
-      slides.forEach(function (s) {
-        mediaHtml +=
-          '<div class="carousel-slide"><a href="' +
-          url +
-          '" class="image fit"><img loading="lazy" src="' +
-          esc(s.src) +
-          '" alt="" style="' +
-          imgStyle +
-          '" />' +
-          (s.caption
-            ? '<span class="carousel-caption">' + esc(s.caption) + "</span>"
-            : "") +
-          "</a></div>";
-      });
-      mediaHtml += "</div></div>";
-    }
-
-    var summary = String(a.summary || "").trim();
-    if (CAROUSEL_HINT.test(summary) && slides.length > 1) {
-      summary = "系列閱讀筆記，共 " + slides.length + " 張預覽圖。";
-    }
-    if (thought) summary = shortSummary(summary, 96);
-    var summaryHtml = summary
-      ? "<p>" + esc(summary) + "</p>"
-      : "";
-
-    var pdfBtn = "";
-    var safePdf = safeHttpsUrl(a.pdf_url);
-    if (safePdf && !thought) {
-      pdfBtn =
-        '<li><a href="' +
-        esc(safePdf) +
-        '" target="_blank" rel="noopener noreferrer" class="button primary">檢視 PDF</a></li>';
-    }
-
-    var actionsHtml = thought
-      ? '<ul class="actions special"><li><a href="' +
-        url +
-        '" class="button">閱讀</a></li></ul>'
-      : '<ul class="actions special"><li><a href="' +
-        url +
-        '" class="button">閱讀文章</a></li>' +
-        pdfBtn +
-        "</ul>";
-
-    var art = document.createElement("article");
-    art.className =
-      "note-item" +
-      (thought ? " is-thought" : "") +
-      (hasCover ? " note-item--has-cover" : " note-item--no-cover");
-    art.setAttribute("data-category", cat);
-    art.setAttribute("data-upload", upload);
-    art.setAttribute("data-edit", edit);
-    art.setAttribute("data-title", a.title || "");
-    art.setAttribute("data-has-cover", hasCover ? "1" : "0");
-    art.innerHTML =
-      "<header><span class=\"date\">" +
-      '<span class="meta-cat">' +
-      esc(cat || (thought ? "隨想" : "")) +
-      "</span>" +
-      '<span class="meta-up">上傳: ' +
-      esc(upload) +
-      "</span>" +
-      (thought
-        ? ""
-        : '<span class="meta-ed">編輯: ' + esc(edit) + "</span>") +
-      "</span>" +
-      '<h2><a href="' +
-      url +
-      '">' +
-      esc(a.title) +
-      "</a></h2></header>" +
-      mediaHtml +
-      '<div class="card-body">' +
-      summaryHtml +
-      actionsHtml +
-      "</div>";
-    return art;
-  }
-
-  function safeHttpsUrl(url) {
-    if (!url) return "";
-    try {
-      var u = new URL(String(url), window.location.origin);
-      if (u.protocol !== "https:") return "";
-      return u.href;
-    } catch (e) {
-      return "";
-    }
+    return r.buildCard(a, listIndex);
   }
 
   function initListWidgets() {
-    if (typeof window.enhanceNoCoverCards === "function")
-      window.enhanceNoCoverCards();
-    if (typeof window.initSortingAndFiltering === "function")
-      window.initSortingAndFiltering();
+    if (typeof window.enhanceNoCoverCards === "function") window.enhanceNoCoverCards();
+    if (typeof window.initSortingAndFiltering === "function") window.initSortingAndFiltering();
     if (typeof window.initCarousel === "function") window.initCarousel();
+  }
+
+  async function selectArticles(client, section) {
+    var q = client
+      .from("articles")
+      .select(ARTICLE_FIELDS)
+      .eq("section", section)
+      .eq("status", "published")
+      .order("sort_index", { ascending: false })
+      .order("published_at", { ascending: false });
+    var res = await q;
+    if (res.error && /column|does not exist|42703/i.test(res.error.message || "")) {
+      res = await client
+        .from("articles")
+        .select(ARTICLE_FIELDS_LEGACY)
+        .eq("section", section)
+        .eq("status", "published")
+        .order("sort_index", { ascending: false })
+        .order("published_at", { ascending: false });
+    }
+    return res;
   }
 
   async function renderList(container) {
     var section = container.getAttribute("data-section");
+    var listMode = container.getAttribute("data-list-mode") || "";
+
+    if (listMode === "academic") {
+      var isAdmin = false;
+      try {
+        if (window.SBAuth && window.SBAuth.isAdmin) isAdmin = !!(await window.SBAuth.isAdmin());
+      } catch (e) {
+        isAdmin = false;
+      }
+      if (!isAdmin) {
+        window.location.replace("index.html");
+        return;
+      }
+      document.body.classList.add("admin-gate-ok");
+    }
+
+    container.innerHTML =
+      '<div class="cms-loading" style="text-align:center;padding:40px 0;opacity:.7;">載入文章中…</div>';
+
     var res;
     try {
-      res = await window.CmsData.listPublishedArticles(section);
+      if (useStatic()) {
+        res = await window.CmsData.listPublishedArticles(section);
+      } else {
+        res = await selectArticles(window.SB.client(), section);
+      }
     } catch (e) {
       res = { error: e };
     }
 
     if (res.error) {
-      console.warn("[cms] 讀取文章失敗，改用靜態內容：", res.error.message || res.error);
-      initListWidgets();
+      console.warn("[cms] 讀取文章失敗：", res.error.message || res.error);
+      container.innerHTML =
+        '<div style="text-align:center;padding:40px 0;opacity:.75;">文章載入失敗，請稍後再試。</div>';
       return;
     }
 
     var rows = res.data || [];
+    if (listMode !== "academic") {
+      rows = rows.filter(function (a) {
+        return effectiveVisibility(a) === "public";
+      });
+    } else {
+      rows = rows.filter(function (a) {
+        var v = effectiveVisibility(a);
+        return v === "private" || (window.SBSections && window.SBSections.isAcademicCategory(a.category));
+      });
+    }
+    if (window.SBSections && window.SBSections.filterByListMode) {
+      rows = window.SBSections.filterByListMode(rows, listMode);
+    }
+
     container.innerHTML = "";
     if (!rows.length) {
       container.innerHTML =
         '<div style="text-align:center;padding:40px 0;opacity:.7;">尚無已發佈的文章。</div>';
     } else {
-      rows.forEach(function (a) {
-        container.appendChild(buildCard(a));
+      rows.forEach(function (a, index) {
+        container.appendChild(buildCard(a, index));
       });
     }
     initListWidgets();
@@ -254,97 +156,188 @@
     var postSection = document.querySelector("#main > section.post");
     if (!contentEl) return false;
 
-    var res = await window.CmsData.getPublishedArticle(slug, section);
-    if (res.error || !res.data || !res.data.length) {
+    var res;
+    if (useStatic()) {
+      res = await window.CmsData.getPublishedArticle(slug, section);
+    } else {
+      var client = window.SB.client();
+      var fields = ARTICLE_FIELDS;
+      var q = client.from("articles").select(fields).eq("slug", slug).eq("status", "published").limit(1);
+      if (section) q = q.eq("section", section);
+      res = await q;
+      if (res.error && /column|does not exist|42703/i.test(res.error.message || "")) {
+        q = client
+          .from("articles")
+          .select(ARTICLE_FIELDS_LEGACY)
+          .eq("slug", slug)
+          .eq("status", "published")
+          .limit(1);
+        if (section) q = q.eq("section", section);
+        res = await q;
+      }
+    }
+
+    function notFound() {
       if (titleEl) titleEl.innerText = "404 文章未找到";
       if (statusEl) statusEl.innerText = "Not Found";
       contentEl.innerHTML = "<p>找不到這篇文章，可能已被移除或尚未發佈。</p>";
       return true;
     }
 
-    var a = res.data[0];
-    if (titleEl) titleEl.innerText = a.title || "";
-    if (statusEl)
-      statusEl.innerText =
-        (a.category ? normalizeCategory(a.category) + " · " : "") +
-        "更新於 " +
-        fmtDate(a.updated_at || a.published_at);
+    if (res.error || !res.data || !res.data.length) return notFound();
 
-    if (postSection && a.cover) {
-      postSection.classList.add("has-article-hero");
-      var existingHero = postSection.querySelector(".article-hero");
-      if (existingHero) existingHero.remove();
-      var hero = document.createElement("div");
-      hero.className = "article-hero";
-      hero.innerHTML =
-        '<img src="' +
-        esc(a.cover) +
-        '" alt="" style="' +
-        coverDisplayStyle(a) +
-        '" />';
-      var header = postSection.querySelector("header.major");
-      if (header && header.nextSibling) {
-        postSection.insertBefore(hero, header.nextSibling);
-      } else {
-        postSection.appendChild(hero);
+    var a = res.data[0];
+    var vis = effectiveVisibility(a);
+    if (vis === "private") {
+      var isAdmin = false;
+      try {
+        if (window.SBAuth && window.SBAuth.isAdmin) isAdmin = !!(await window.SBAuth.isAdmin());
+      } catch (e) {
+        isAdmin = false;
+      }
+      if (!isAdmin) return notFound();
+    }
+
+    var r = R();
+    if (!r || typeof r.mountArticleReading !== "function") {
+      console.warn("[cms] SBArticleRenderer.mountArticleReading missing");
+      contentEl.innerHTML = window.SB.renderMarkdown(a.body || "");
+      return true;
+    }
+
+    return r.mountArticleReading(a, {
+      titleEl: titleEl,
+      statusEl: statusEl,
+      contentEl: contentEl,
+      postSection: postSection,
+      applyReadingFocus: true,
+    });
+  }
+
+  function normalizeSiteCopyMarkdown(value) {
+    var text = String(value == null ? "" : value).replace(/\r\n/g, "\n");
+    text = text.replace(/^\n+/, "").replace(/\n+$/, "");
+    var lines = text.split("\n");
+    var nonEmpty = lines.filter(function (l) { return l.trim().length; });
+    if (nonEmpty.length) {
+      var indents = nonEmpty.map(function (l) {
+        var m = l.match(/^[ \t]+/);
+        return m ? m[0].length : 0;
+      });
+      var min = Math.min.apply(null, indents);
+      if (min > 0) {
+        lines = lines.map(function (l) {
+          if (!l.trim()) return "";
+          return l.slice(min);
+        });
+        text = lines.join("\n");
       }
     }
-
-    var html = window.SB.renderMarkdown(a.body || "");
-    contentEl.innerHTML =
-      '<div class="markdown-body article-reading">' + html + "</div>";
-    if (postSection) postSection.classList.add("is-article-reading");
-
-    var firstH1 = contentEl.querySelector("h1");
-    if (firstH1 && titleEl && !a.title) {
-      titleEl.innerText = firstH1.textContent;
-      firstH1.remove();
-    }
-
-    if (window.renderMathInElement) {
-      try {
-        window.renderMathInElement(contentEl, {
-          delimiters: [
-            { left: "$$", right: "$$", display: true },
-            { left: "$", right: "$", display: false },
-          ],
-          throwOnError: false,
-        });
-      } catch (e) {}
-    }
-    return true;
+    return text;
   }
 
   async function applySections() {
     var nodes = document.querySelectorAll("[data-section-key]");
     if (!nodes.length) return;
-    var res = await window.CmsData.getSiteSections();
-    if (res.error || !res.data) return;
+    var schema = window.LYZSiteCopySchema;
     var map = {};
-    res.data.forEach(function (r) {
-      map[r.key] = r.value;
-    });
+    if (schema && Array.isArray(schema.ENTRIES)) {
+      schema.ENTRIES.forEach(function (e) {
+        if (e && e.key != null) map[e.key] = e.fallback;
+      });
+    }
+    try {
+      if (useStatic()) {
+        var staticRes = await window.CmsData.getSiteSections();
+        if (!staticRes.error && staticRes.data) {
+          staticRes.data.forEach(function (row) {
+            if (row && row.key != null && row.value != null) map[row.key] = row.value;
+          });
+        }
+      } else {
+        var client = window.SB.client();
+        if (client) {
+          var res = await client.from("site_sections").select("key,value");
+          if (!res.error && res.data) {
+            res.data.forEach(function (row) {
+              if (row && row.key != null && row.value != null) map[row.key] = row.value;
+            });
+          }
+        }
+      }
+    } catch (e) {}
     nodes.forEach(function (el) {
       var key = el.getAttribute("data-section-key");
-      if (map[key] == null) return;
+      if (map[key] == null || map[key] === "") return;
       var mode = el.getAttribute("data-section-mode") || "text";
-      if (mode === "markdown") {
-        el.innerHTML = window.SB.renderMarkdown(map[key]);
+      var entry = schema && schema.byKey ? schema.byKey(key) : null;
+      if (entry && entry.mode) mode = el.getAttribute("data-section-mode") || entry.mode;
+      var raw = map[key];
+      if (mode === "markdown" && window.SB && typeof window.SB.renderMarkdown === "function") {
+        var normalized = normalizeSiteCopyMarkdown(raw);
+        el.innerHTML = window.SB.renderMarkdown(normalized);
+        var onlyPre =
+          el.children.length === 1 &&
+          el.firstElementChild &&
+          el.firstElementChild.tagName === "PRE";
+        var accidentalCode =
+          String(raw).indexOf("```") < 0 &&
+          (onlyPre ||
+            (el.querySelector("pre > code") &&
+              el.querySelectorAll("p,h1,h2,h3,ul,ol,blockquote").length === 0));
+        if (accidentalCode) {
+          el.innerHTML = esc(normalized).replace(/\n/g, "<br />");
+        }
+        if (el.classList.contains("about-profile__body") || el.getAttribute("data-about-folds") === "1") {
+          if (typeof window.LYZEnhanceAboutMarkdownFolds === "function") {
+            window.LYZEnhanceAboutMarkdownFolds(el);
+          }
+        }
+      } else if (mode === "multiline") {
+        el.innerHTML = esc(normalizeSiteCopyMarkdown(raw)).replace(/\n/g, "<br />");
       } else {
-        el.innerHTML = esc(map[key]).replace(/\n/g, "<br />");
+        if (el.tagName === "A" || el.tagName === "OPTION" || el.tagName === "LABEL" || el.children.length === 0) {
+          el.textContent = raw;
+        } else {
+          el.innerHTML = esc(raw).replace(/\n/g, "<br />");
+        }
       }
     });
   }
 
+  window.LYZNormalizeSiteCopyMarkdown = normalizeSiteCopyMarkdown;
+
   document.addEventListener("DOMContentLoaded", function () {
-    if (!CONFIGURED) return;
     var container = document.getElementById("posts-container");
-    if (container && container.getAttribute("data-section")) {
-      renderList(container);
+    var listMode = container && container.getAttribute("data-list-mode");
+
+    if (CONFIGURED && container && container.getAttribute("data-section")) {
+      container.innerHTML =
+        '<div class="cms-loading" data-section-key="ui.loading.articles" style="text-align:center;padding:40px 0;opacity:.7;">載入文章中…</div>';
     }
-    if (document.getElementById("markdown-container")) {
-      renderArticle();
+
+    async function gateAcademicIfNeeded() {
+      if (listMode !== "academic") return true;
+      var isAdmin = false;
+      try {
+        if (window.SBAuth && window.SBAuth.isAdmin) isAdmin = !!(await window.SBAuth.isAdmin());
+      } catch (e) {
+        isAdmin = false;
+      }
+      if (!isAdmin) {
+        window.location.replace("index.html");
+        return false;
+      }
+      document.body.classList.add("admin-gate-ok");
+      return true;
     }
-    applySections();
+
+    gateAcademicIfNeeded().then(function (ok) {
+      if (!ok) return;
+      applySections();
+      if (!CONFIGURED) return;
+      if (container && container.getAttribute("data-section")) renderList(container);
+      if (document.getElementById("markdown-container")) renderArticle();
+    });
   });
 })();

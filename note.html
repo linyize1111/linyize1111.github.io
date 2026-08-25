@@ -1,11 +1,25 @@
 <!DOCTYPE HTML>
-<html>
+<html lang="zh-Hant">
 
 <head>
     <title>閱讀筆記 - LYZ's website</title>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;" />
+    <link rel="icon" type="image/jpeg" href="images/av.jpg" />
+    <meta name="description" content="LYZ 個人網站 — 生活、閱讀與創作" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LYZ's website" />
+    <meta property="og:title" content="閱讀筆記 - LYZ's website" />
+    <meta property="og:description" content="LYZ 個人網站 — 生活、閱讀與創作" />
+    <meta property="og:url" content="https://linyize1111.github.io/note.html" />
+    <meta property="og:image" content="https://linyize1111.github.io/images/bg.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="閱讀筆記 - LYZ's website" />
+    <meta name="twitter:description" content="LYZ 個人網站 — 生活、閱讀與創作" />
+    <meta name="twitter:image" content="https://linyize1111.github.io/images/bg.jpg" />
+    <link rel="canonical" href="https://linyize1111.github.io/note.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a1420" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;" />
     <link rel="stylesheet" href="assets/css/main.css" />
     <noscript>
         <link rel="stylesheet" href="assets/css/noscript.css" />
@@ -16,40 +30,8 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
-        #markdown-container {
-            text-align: left;
-        }
-
-        /* ── Image styles: these are the DEFINITIVE rules for note page images.
-           They MUST be here (not only in site-custom.css) because they need to
-           beat the base main.css cascade with higher specificity. ── */
-        #markdown-container img,
-        #markdown-container .markdown-body img,
-        #markdown-container p > img,
-        #markdown-container figure img,
-        #markdown-container a > img {
-            display: block !important;
-            max-width: min(100%, 860px) !important;
-            max-height: 65vh !important;   /* Not 250px — allow images to breathe */
-            width: auto !important;
-            height: auto !important;       /* Never force height: auto lets image scale naturally */
-            margin: 2.5rem auto !important;
-            border-radius: 10px !important;
-            box-shadow: 0 6px 28px rgba(0, 0, 0, 0.18) !important;
-            object-fit: contain !important;
-            background: rgba(0, 0, 0, 0.04);
-        }
-
-        /* Mobile */
-        @media screen and (max-width: 736px) {
-            #markdown-container img,
-            #markdown-container .markdown-body img {
-                max-height: 50vh !important;
-                border-radius: 8px !important;
-                margin: 1.75rem auto !important;
-            }
-        }
-
+        /* Non-media markdown chrome only — gallery/images owned by presentation-v3 + article-media */
+        #markdown-container { text-align: left; }
         #markdown-container pre {
             background: #212931;
             color: #ffffff;
@@ -58,22 +40,18 @@
             overflow-x: auto;
             margin: 1.5em 0;
         }
-
         #markdown-container code {
             background: rgba(144, 144, 144, 0.25);
             border-radius: 3px;
             padding: 0.25em 0.5em;
             font-family: "Courier New", monospace;
         }
-
         #markdown-container blockquote {
             border-left: solid 4px #18bfef;
             padding-left: 1.5em;
             font-style: italic;
             margin: 1.5em 0;
         }
-
-        /* figcaption styling */
         #markdown-container figcaption {
             text-align: center;
             font-size: 0.85rem;
@@ -87,7 +65,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
     <!-- Site Custom CSS: dark mode + image styles -->
-    <link rel="stylesheet" href="assets/css/site-custom.css" />
+    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v9.7-share-bg-1" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9.7-share-bg-1" />
 </head>
 
 <body class="is-preload">
@@ -106,7 +85,7 @@
     <div id="loading-screen"></div>
 
     <!--  影片與音樂背景 -->
-    <video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="none">
+    <video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="metadata" autoplay>
         <source src="images/bg-video.mp4" type="video/mp4">
     </video>
     <audio id="bg-music" loop preload="none">
@@ -119,20 +98,15 @@
     <canvas id="sakura-canvas"
         style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-    <!-- 全域導航器 -->
-    <div id="global-nav"
-        style="position: fixed; top: 20px; right: 20px; z-index: 10000; background: rgba(0, 0, 0, 0.5); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; gap: 15px;">
-        <a href="index.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首頁</a>
-        <a href="directory.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">筆記</a>
-        <a href="literature.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">文學</a>
-        <a href="about.html"
-            style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">關於我</a>
-    </div>
+                <!-- 全域導航器 -->
+                <nav id="desktop-global-nav" class="desktop-global-nav" aria-label="主要導覽">
+        <a href="index.html">首頁</a>
+        <a href="directory.html">隨筆</a>
+        <a href="literature.html">文學創作</a>
+        <a href="about.html">關於我</a>
+    </nav>
 
-    <!--  右下角影片控制 -->
+<!--  右下角影片控制 -->
     <div id="video-controls">
         <button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
             style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
@@ -148,19 +122,29 @@
         <nav id="nav">
             <ul class="links">
                 <li><a href="index.html">首頁</a></li>
-                <li><a href="directory.html">學科筆記</a></li>
-                <li><a href="literature.html">文學隨筆</a></li>
+                <li><a href="directory.html">隨筆</a></li>
+                <li><a href="literature.html">文學創作</a></li>
                 <li><a href="about.html">關於我</a></li>
             </ul>
-            <ul class="icons">
-                <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
+                        <ul class="icons">
+                <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope" title="Mail"><span
                             class="label">Mail</span></a></li>
-                <li><a href="https://github.com/linyize1111" target="_blank" class="icon brands fa-github"><span
+                <li><a href="https://github.com/linyize1111" target="_blank" class="icon brands fa-github" title="GitHub"><span
                             class="label">GitHub</span></a></li>
                 <li><a href="https://www.instagram.com/linyize._.mcxi/" target="_blank"
-                        class="icon brands fa-instagram"><span class="label">Instagram</span></a></li>
+                        class="icon brands fa-instagram" title="Instagram"><span class="label">Instagram</span></a></li>
                 <li><a href="https://www.facebook.com/lin.jay.911547/" target="_blank"
-                        class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
+                        class="icon brands fa-facebook-f" title="Facebook"><span class="label">Facebook</span></a></li>
+                <li class="social-copy-wrap">
+                    <a href="#" role="button" class="icon brands fa-discord js-copy-id" data-copy-text="lookin_her_eyes"
+                        aria-label="複製 Discord ID lookin_her_eyes"><span class="label">Discord</span></a>
+                    <span class="social-copy-tip" role="tooltip">
+                        <code class="social-copy-tip__id">lookin_her_eyes</code>
+                        <span class="social-copy-tip__hint">點擊複製</span>
+                    </span>
+                </li>
+                <li><a href="https://www.penana.com/user/374414/%E6%99%82%E9%9B%AA" target="_blank" rel="noopener"
+                        class="icon solid fa-pen" title="Penana"><span class="label">Penana</span></a></li>
             </ul>
         </nav>
 
@@ -199,17 +183,19 @@
     <script src="https://cdn.jsdelivr.net/npm/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
 
-    <script src="assets/js/common.js"></script>
+    <script src="assets/js/common.js?v=v9.7-share-bg-1"></script>
 
-    <!-- Supabase CMS：?id= 動態文章由 cms-public.js 安全渲染（marked + DOMPurify） -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- CMS (Plan A static — no Supabase client in production) -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
-    <script src="assets/js/data-source-config.js"></script>
-<script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/supabase-client.js"></script>
-<script src="assets/js/cms-data.js"></script>
-    <script src="assets/js/auth.js"></script>
-    <script src="assets/js/cms-public.js"></script>
+    <script src="assets/js/data-source-config.js?v=static-cutover-1"></script>
+    <script src="assets/js/supabase-client.js?v=static-cutover-1"></script>
+    <script src="assets/js/cms-data.js?v=static-cutover-1"></script>
+    <script src="assets/js/site-copy-schema.js?v=v9.7-share-bg-1"></script>
+<script src="assets/js/site-sections.js?v=v9.7-share-bg-1"></script>
+    <script src="assets/js/presentation-registry.js?v=v9.7-share-bg-1"></script>
+    <script src="assets/js/article-media.js?v=v9.7-share-bg-1"></script>
+    <script src="assets/js/article-renderer.js?v=v9.7-share-bg-1"></script>
+    <script src="assets/js/cms-public.js?v=static-cutover-1"></script>
 
     <script src="assets/js/page-note.js"></script>
 </body>

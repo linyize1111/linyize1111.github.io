@@ -1,137 +1,155 @@
-<!DOCTYPE HTML>
-<html>
+﻿<!DOCTYPE HTML>
+<html lang="zh-Hant">
 
 <head>
 	<title>關於我 - LYZ's website</title>
 	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-	<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;" />
+    <link rel="icon" type="image/jpeg" href="images/av.jpg" />
+    <meta name="description" content="關於 LYZ" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LYZ's website" />
+    <meta property="og:title" content="關於我 - LYZ's website" />
+    <meta property="og:description" content="關於 LYZ" />
+    <meta property="og:url" content="https://linyize1111.github.io/about.html" />
+    <meta property="og:image" content="https://linyize1111.github.io/images/bg.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="關於我 - LYZ's website" />
+    <meta name="twitter:description" content="關於 LYZ" />
+    <meta name="twitter:image" content="https://linyize1111.github.io/images/bg.jpg" />
+    <link rel="canonical" href="https://linyize1111.github.io/about.html" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a1420" />
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;" />
 	<link rel="stylesheet" href="assets/css/main.css" />
 	<noscript>
 		<link rel="stylesheet" href="assets/css/noscript.css" />
 	</noscript>
-    <!-- Google Fonts: loaded as <link> to avoid render-blocking @import -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300;1,700&family=Source+Sans+Pro:wght@900&display=swap">
-    <!-- Site Custom CSS: dark mode + image styles -->
-    <link rel="stylesheet" href="assets/css/site-custom.css" />
+    <link rel="stylesheet" href="assets/css/presentation-v3.css?v=v9.7-share-bg-1" />
+    <link rel="stylesheet" href="assets/css/site-custom.css?v=v9.7-share-bg-1" />
 </head>
 
 <body class="is-preload">
-    <!-- Theme FOUC prevention: apply saved theme before first paint -->
     <script>
         (function() {
             var saved = localStorage.getItem('colorTheme');
-            // Default is 'light' — only apply if saved is 'dark' or 'glass'
             if (saved === 'dark' || saved === 'glass') {
                 document.documentElement.setAttribute('data-theme', saved);
             }
         })();
     </script>
 
-    <!-- 真正的 Loading Screen -->
     <div id="loading-screen"></div>
 
-	<!--  影片與音樂背景 -->
-	<video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="none">
+	<video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="metadata" autoplay>
 		<source src="images/bg-video.mp4" type="video/mp4">
 	</video>
 	<audio id="bg-music" loop preload="none">
 		<source src="images/bg-music.mp3" type="audio/mpeg">
 	</audio>
 
-	
-
-	<!--  櫻花特效透明層（固定在最上層，不影響互動） -->
 	<canvas id="sakura-canvas"
 		style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
 
-	<!-- 全域導航器 -->
-	<div id="global-nav"
-		style="position: fixed; top: 20px; right: 20px; z-index: 10000; background: rgba(0, 0, 0, 0.5); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(5px); display: flex; gap: 15px;">
-		<a href="index.html"
-			style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">首頁</a>
-		<a href="directory.html"
-			style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">筆記</a>
-		<a href="literature.html"
-			style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">文學</a>
-		<a href="about.html"
-			style="color: white; font-weight: bold; text-decoration: none; border: none; font-size: 0.9em;">關於我</a>
-	</div>
+    <nav id="desktop-global-nav" class="desktop-global-nav" aria-label="主要導覽">
+        <a href="index.html" data-section-key="nav.home">首頁</a>
+        <a href="directory.html" data-section-key="nav.notes">隨筆</a>
+        <a href="literature.html" data-section-key="nav.literature">文學創作</a>
+        <a href="about.html" data-section-key="nav.about">關於我</a>
+    </nav>
 
-	<!--  右下角影片控制 -->
 	<div id="video-controls">
-		<button id="btn-top" title="回到頂部" onclick="window.scrollTo({top:0, behavior:'smooth'})"
-			style="margin-bottom: 5px;"><i class="fas fa-arrow-up"></i></button>
-		<button id="btn-mute" title="音效開/關"><i class="fas fa-volume-mute"></i></button>
-		<button id="btn-play" title="暫停/播放"><i class="fas fa-pause"></i></button>
+		<button id="btn-top" title="回到頂部" type="button"><i class="fas fa-arrow-up"></i></button>
+		<button id="btn-mute" title="音效開/關" type="button"><i class="fas fa-volume-mute"></i></button>
+		<button id="btn-play" title="暫停/播放" type="button"><i class="fas fa-pause"></i></button>
 	</div>
+    <div id="site-toast" role="status" aria-live="polite" hidden></div>
+    <div id="music-resume-hint" class="music-resume-hint" hidden>點一下頁面以繼續音樂</div>
 
 	<div id="wrapper" class="fade-in">
 
 		<header id="header">
-			<a href="index.html" class="logo">LYZ's website</a>
+			<a href="index.html" class="logo" data-section-key="site.brand">LYZ's website</a>
 		</header>
 
 		<nav id="nav">
 			<ul class="links">
-				<li><a href="index.html">首頁</a></li>
-				<li><a href="directory.html">學科筆記</a></li>
-				<li><a href="literature.html">文學隨筆</a></li>
-				<li class="active"><a href="about.html">關於我</a></li>
-			</ul>
-			<ul class="icons">
-				<li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope"><span
-							class="label">Mail</span></a></li>
-				<li><a href="https://github.com/linyize1111" target="_blank" class="icon brands fa-github"><span
-							class="label">GitHub</span></a></li>
-				<li><a href="https://www.instagram.com/linyize._.mcxi/" target="_blank"
-						class="icon brands fa-instagram"><span class="label">Instagram</span></a></li>
-				<li><a href="https://www.facebook.com/lin.jay.911547/" target="_blank"
-						class="icon brands fa-facebook-f"><span class="label">Facebook</span></a></li>
-			</ul>
+                <li><a href="index.html" data-section-key="nav.home">首頁</a></li>
+                <li><a href="directory.html" data-section-key="nav.notes">隨筆</a></li>
+                <li><a href="literature.html" data-section-key="nav.literature">文學創作</a></li>
+                <li class="active"><a href="about.html" data-section-key="nav.about">關於我</a></li>
+            </ul>
+            <ul class="icons">
+                <li><a href="mailto:jay0975008815@gmail.com" target="_blank" class="icon fa-envelope" title="Mail"><span class="label">Mail</span></a></li>
+                <li><a href="https://github.com/linyize1111" target="_blank" class="icon brands fa-github" title="GitHub"><span class="label">GitHub</span></a></li>
+                <li><a href="https://www.instagram.com/linyize._.mcxi/" target="_blank" class="icon brands fa-instagram" title="Instagram"><span class="label">Instagram</span></a></li>
+                <li><a href="https://www.facebook.com/lin.jay.911547/" target="_blank" class="icon brands fa-facebook-f" title="Facebook"><span class="label">Facebook</span></a></li>
+                <li class="social-copy-wrap">
+                    <a href="#" role="button" class="icon brands fa-discord js-copy-id" data-copy-text="lookin_her_eyes"
+                        aria-label="複製 Discord ID lookin_her_eyes"><span class="label">Discord</span></a>
+                    <span class="social-copy-tip" role="tooltip">
+                        <code class="social-copy-tip__id">lookin_her_eyes</code>
+                        <span class="social-copy-tip__hint">點擊複製</span>
+                    </span>
+                </li>
+                <li><a href="https://www.penana.com/user/374414/%E6%99%82%E9%9B%AA" target="_blank" rel="noopener"
+                        class="icon solid fa-pen" title="Penana"><span class="label">Penana</span></a></li>
+            </ul>
 		</nav>
 
 		<div id="main">
-			<article class="post featured">
-				<header class="major" style="text-align: center; padding: 0 1em;">
-					<span class="date">最近更新日期: 2026/03</span>
-					<h2 style="text-align: left;"><a href="#">關於我</a></h2>
-				</header>
-				<div style="text-align: left; padding: 0 1em;">
-					<span class="image right"
-						style="width: 350px; height: 350px; margin-left: 2em; margin-bottom: 2em; display: inline-block;">
-						<img loading="lazy" src="images/av.jpg" alt="Avatar"
-							style="width: 100%; height: 100%; object-fit: cover; object-position: center; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);" />
-					</span>
+			<article class="about-page">
+                <section class="about-profile">
+                    <header class="about-profile__masthead">
+                        <div class="about-profile__identity">
+                            <p class="about-updated" data-section-key="about.updated">最近更新日期: 2026/03</p>
+                            <h1 data-section-key="about.title">關於我</h1>
+                            <div class="about-profile__quote about-markdown about-markdown--intro" data-section-key="about.heading" data-section-mode="markdown">
+                                月季花四季盛放<br>
+                                說起來，落花時節就是花開時節呢。
+                            </div>
+                        </div>
+                        <figure class="about-profile__media static-media static-media--ambient">
+                            <div class="about-profile__ambient static-media__ambient" aria-hidden="true"></div>
+                            <img src="images/av.jpg" alt="" loading="eager" decoding="async" />
+                        </figure>
+                    </header>
+                    <div class="about-profile__body about-markdown" data-section-key="about.body" data-section-mode="markdown">
+                        <p><strong>您好，我是林佾則。</strong>目前就讀於國立中山大學資訊工程學系。</p>
+                        <p>我熱愛撰寫程式、沉浸於文學，也喜歡在閒暇時享受一杯好咖啡與音樂。這個網站最初是我在 2020 年建置的雛形，隨著學習歷程逐漸豐富，我於近期對它進行了全面的翻修。希望能藉由這個空間，記錄並分享我在技術追求與生活思索間的各種火花。</p>
+                    </div>
+                </section>
 
-					<h3 style="text-align: left;" data-section-key="about.heading">
-						月季花四季盛放<br>
-						說起來，落花時節就是花開時節呢。
-					</h3>
-
-					<p style="text-align: left; margin-top: 2em; line-height: 2;" data-section-key="about.body">
-						<strong>您好，我是林佾則。</strong>目前就讀於國立中山大學資訊工程學系。<br /><br />
-						我熱愛撰寫程式、沉浸於文學，也喜歡在閒暇時享受一杯好咖啡與音樂。這個網站最初是我在 2020
-						年建置的雛形，隨著學習歷程逐漸豐富，我於近期對它進行了全面的翻修。希望能藉由這個空間，記錄並分享我在技術追求與生活思索間的各種火花。
-					</p>
-
-					<h3 style="text-align: left; margin-top: 3em;">技術與學習軌跡：</h3>
-					<ul style="text-align: left; line-height: 2;">
-						<li><strong>程式語言：</strong>C++ (APCS 實作3 觀念4)、Python 開發</li>
-						<li><strong>網頁前端：</strong>HTML/CSS 架構設計、JavaScript 動態渲染 (CSR) 實作</li>
-						<li><strong>系統與工具：</strong>Git 基礎版本控制、GitHub Pages 部署</li>
-						<li><strong>進階理論：</strong>機器學習進階理論知識、資訊安全基礎知識</li>
-					</ul>
-				</div>
+                <section class="about-trajectory">
+                    <h2 data-section-key="about.trajectory.title">技術與學習軌跡</h2>
+                    <div class="about-trajectory__grid">
+                        <article class="about-trajectory__card">
+                            <h3 data-section-key="about.trajectory.1.title">程式語言</h3>
+                            <p data-section-key="about.trajectory.1.body">C++ (APCS 實作3 觀念4)、Python 開發</p>
+                        </article>
+                        <article class="about-trajectory__card">
+                            <h3 data-section-key="about.trajectory.2.title">網頁前端</h3>
+                            <p data-section-key="about.trajectory.2.body">HTML/CSS 架構設計、JavaScript 動態渲染 (CSR) 實作</p>
+                        </article>
+                        <article class="about-trajectory__card">
+                            <h3 data-section-key="about.trajectory.3.title">系統與工具</h3>
+                            <p data-section-key="about.trajectory.3.body">Git 基礎版本控制、GitHub Pages 部署</p>
+                        </article>
+                        <article class="about-trajectory__card">
+                            <h3 data-section-key="about.trajectory.4.title">進階理論</h3>
+                            <p data-section-key="about.trajectory.4.body">機器學習進階理論知識、資訊安全基礎知識</p>
+                        </article>
+                    </div>
+                </section>
 			</article>
 		</div>
 
 		<div id="copyright">
 			<ul>
-				<li>&copy; LYZ</li>
-				<li>Design: <a href="https://html5up.net">HTML5 UP</a></li>
+				<li data-section-key="footer.copyright">&copy; LYZ</li>
+				<li><span data-section-key="footer.designPrefix">Design:</span> <a href="https://html5up.net" data-section-key="footer.designCredit">HTML5 UP</a></li>
 			</ul>
 		</div>
 
@@ -148,16 +166,45 @@
 	<script src="https://cdn.jsdelivr.net/npm/zdog@1/dist/zdog.dist.min.js"></script>
 	<script src="assets/js/mouse-effect.js"></script>
 
-<!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
-<script src="assets/js/data-source-config.js"></script>
-<script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/supabase-client.js"></script>
-<script src="assets/js/cms-data.js"></script>
-<script src="assets/js/cms-public.js"></script>
-
-<script src="assets/js/common.js"></script>
+<script src="assets/js/data-source-config.js?v=static-cutover-1"></script>
+<script src="assets/js/supabase-client.js?v=static-cutover-1"></script>
+<script src="assets/js/cms-data.js?v=static-cutover-1"></script>
+<script src="assets/js/site-copy-schema.js?v=v9.7-share-bg-1"></script>
+<script src="assets/js/site-sections.js?v=v9.7-share-bg-1"></script>
+<script src="assets/js/presentation-registry.js?v=v9.7-share-bg-1"></script>
+<script src="assets/js/article-media.js?v=v9.7-share-bg-1"></script>
+<script src="assets/js/about-markdown.js?v=v9.7-share-bg-1"></script>
+<script src="assets/js/cms-public.js?v=static-cutover-1"></script>
+<script src="assets/js/common.js?v=v9.7-share-bg-1"></script>
+<script>
+  (function () {
+    var profile = document.querySelector(".about-profile");
+    var img = document.querySelector(".about-profile__media img");
+    var ambient = document.querySelector(".about-profile__ambient");
+    if (!profile || !img) return;
+    function setAmbient() {
+      var src = img.currentSrc || img.getAttribute("src");
+      if (ambient && src) ambient.style.backgroundImage = 'url("' + src.replace(/"/g, '\\"') + '")';
+    }
+    function markOk() {
+      profile.classList.add("has-media");
+      profile.classList.remove("media-failed");
+      setAmbient();
+    }
+    function markFail() {
+      profile.classList.add("media-failed");
+      profile.classList.remove("has-media");
+    }
+    img.addEventListener("load", markOk);
+    img.addEventListener("error", markFail);
+    if (img.complete) {
+      if (img.naturalWidth > 0) markOk();
+      else markFail();
+    }
+  })();
+</script>
 </body>
 
 </html>

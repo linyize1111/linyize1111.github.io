@@ -2280,7 +2280,7 @@ input[type="button"].large,
 button.large,
 .button.large {
 	font-size: 0.9rem;
-	height: 3.5rem;
+	height: 2.4rem;
 	line-height: 3.5rem;
 	padding: 0 2.75rem;
 }
@@ -3373,7 +3373,7 @@ table.alt tbody tr td {
 	z-index: -1;
 }
 
-/* 影片背景 */
+	/* 影片背景 — z-index 必須 >= 0，否則會沉到 body 底色後面消失 */
 #bg-video {
 	position: fixed;
 	top: 0;
@@ -3381,7 +3381,7 @@ table.alt tbody tr td {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
-	z-index: -2;
+	z-index: 0;
 	pointer-events: none;
 }
 
@@ -3402,8 +3402,7 @@ table.alt tbody tr td {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 3.5rem;
-	/* Increase size to make them more prominent than social icons */
+	width: 2.4rem; /* V6 compact */
 	height: 3.5rem;
 	border-radius: 50%;
 	border: none;

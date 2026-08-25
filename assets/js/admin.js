@@ -7,13 +7,38 @@
 (function () {
   "use strict";
 
+  // literature = 文學創作
+  // notes + essay list = 隨筆（含心得）
+  // notes + academic list = 學科筆記（導覽僅 admin）
+  var ACADEMIC_CATEGORIES = ["資訊安全", "機器學習", "程式語言", "人文"];
   var CATEGORIES = {
-    literature: ["隨想", "隨筆", "心得", "創作", "長文"],
-    notes: ["資訊安全", "機器學習", "程式語言", "人文", "隨想", "長文"],
+    literature: ["創作", "長文"],
+    notes: ["隨想", "日記", "心得", "隨筆"],
+    academic: ["資訊安全", "機器學習", "程式語言", "人文"],
+  };
+  var CATEGORY_CHIPS = {
+    literature: [
+      { cat: "創作", title: "小說、詩、劇本", label: "創作" },
+      { cat: "長文", title: "長篇創作／論述", label: "長文" },
+    ],
+    notes: [
+      { cat: "隨想", title: "碎念、抱怨、隨便發", label: "隨想" },
+      { cat: "日記", title: "當天生活紀錄、札記", label: "日記" },
+      { cat: "心得", title: "閱讀／觀影心得", label: "心得" },
+      { cat: "隨筆", title: "整理過的散文（UI：散文）", label: "散文" },
+    ],
+    academic: [
+      { cat: "資訊安全", title: "資安筆記", label: "資訊安全" },
+      { cat: "機器學習", title: "ML 筆記", label: "機器學習" },
+      { cat: "程式語言", title: "程式學習", label: "程式語言" },
+      { cat: "人文", title: "其他學科／人文", label: "人文" },
+    ],
   };
   var MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-  var SHORT_CHARS = 450;
-  var LONG_CHARS = 2200;
+  // V3: no SHORT_CHARS / LONG_CHARS semantic thresholds
+  var lastAiAnalysis = null;
+  var editingArticleId = null;
+  var articlesCache = [];
 
   var $ = function (id) { return document.getElementById(id); };
   var client = null;
@@ -24,9 +49,22 @@
   var editorMode = "split"; // split | edit | preview
   var formDirty = false;
   var formSnapshot = "";
+  var originalArticleSnapshot = null;
+  var previewIframeReady = false;
+  var draftPreviewVersion = 0;
+  var lastPreviewRenderedVersion = null;
+  var lastPreviewDiagnostics = null;
+  var frontendPreviewView = "article";
+  var frontendPreviewTheme = "glass";
+  var frontendPreviewDevice = "mobile";
+  var frontendPreviewFocus = false;
+  var lastAiBodyApplied = false;
+  var frontendPreviewTimer = null;
   var sectionsCache = [];
   var activeSectionKey = null;
   var sectionDirty = false;
+  var mediaUploadedUnsaved = false;
+  var selectedIds = {};
 
   var SECTION_META = {
     "home.intro.title": { title: "首頁 · 歡迎標題", desc: "首頁 hero 主標題（短句）", mode: "text" },
@@ -91,7 +129,8 @@
     if (out.blob.size > MAX_UPLOAD_BYTES) throw new Error("壓縮後仍超過 5MB");
     var bucket = window.SB.config.bucket || "article-images";
     var rand = Math.random().toString(36).slice(2, 8);
-    var path = (section || "misc") + "/" + Date.now() + "-" + rand + "." + out.ext;
+    var sec = typeof dbSection === "function" ? dbSection(section) : section;
+    var path = (sec || "misc") + "/" + Date.now() + "-" + rand + "." + out.ext;
     var up = await client.storage.from(bucket).upload(path, out.blob, {
       contentType: out.type, upsert: false,
     });
@@ -100,18 +139,135 @@
     return pub.data.publicUrl;
   }
 
-  // ---------- 分類 datalist ----------
-  function refreshCategoryList() {
-    var section = $("f-section").value;
-    var dl = $("category-list");
-    dl.innerHTML = (CATEGORIES[section] || [])
-      .map(function (c) { return '<option value="' + c + '"></option>'; })
-      .join("");
+  function setBodyImageStatus(html, isErr) {
+    var el = $("body-image-status");
+    if (!el) return;
+    el.innerHTML = html || "";
+    el.style.color = isErr ? "#c0392b" : "";
   }
 
-  // ---------- 文章清單 ----------
+  function displayCategoryLabel(cat) {
+    if (window.SBSections && window.SBSections.displayCategory) {
+      return window.SBSections.displayCategory(cat);
+    }
+    var n = normalizeCategory(cat);
+    return n === "隨筆" ? "散文" : n;
+  }
+
+  function updateSaveStateUi() {
+    var el = $("editor-save-state");
+    if (!el) return;
+    if (formDirty || mediaUploadedUnsaved) {
+      var parts = [];
+      if (mediaUploadedUnsaved) parts.push("✓ 圖片已上傳");
+      parts.push("● 文章尚未儲存");
+      el.textContent = parts.join(" · ");
+      el.classList.add("is-dirty");
+    } else {
+      el.textContent = "已同步";
+      el.classList.remove("is-dirty");
+    }
+  }
+
+  function selectedIdList() {
+    return Object.keys(selectedIds).filter(function (id) { return selectedIds[id]; });
+  }
+
+  function updateBulkUi() {
+    var n = selectedIdList().length;
+    var count = $("bulk-count");
+    if (count) count.textContent = "已選 " + n;
+    var apply = $("btn-bulk-apply");
+    if (apply) apply.disabled = n === 0;
+  }
+
+  function clipboardImageFile(clipboardData) {
+    if (!clipboardData || !clipboardData.items) return null;
+    var items = clipboardData.items;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].kind === "file" && /^image\//.test(items[i].type)) {
+        return items[i].getAsFile();
+      }
+    }
+    return null;
+  }
+
+  function insertMarkdownAtCursor(md) {
+    var ta = $("f-body");
+    if (!ta) return;
+    var start = ta.selectionStart;
+    var end = ta.selectionEnd;
+    var before = ta.value.slice(0, start);
+    var needLead = before.length && !/\n\n$/.test(before) && !/\n$/.test(before);
+    var block = (needLead ? "\n\n" : before.endsWith("\n") && !before.endsWith("\n\n") ? "\n" : "") + md + "\n\n";
+    replaceBodyRange(start, end, block, start + block.length, start + block.length);
+  }
+
+  /** 上傳一或多張圖，插入正文 Markdown（可貼上／拖曳／工具列） */
+  async function uploadImagesIntoBody(files) {
+    files = Array.prototype.filter.call(files || [], function (f) {
+      return f && /^image\//.test(f.type);
+    });
+    if (!files.length) return;
+    setBodyImageStatus('<span class="spinner-inline"></span> 上傳圖片中…');
+    var ok = 0;
+    var errMsg = "";
+    for (var i = 0; i < files.length; i++) {
+      try {
+        var url = await uploadImage(files[i], ($("f-section") && $("f-section").value) || "notes");
+        insertMarkdownAtCursor("![](" + url + ")");
+        ok++;
+      } catch (err) {
+        errMsg = err && err.message ? err.message : String(err);
+      }
+    }
+    if (ok) {
+      mediaUploadedUnsaved = true;
+      markFormDirty();
+    }
+    if (ok && !errMsg) setBodyImageStatus("✓ 圖片已上傳（" + ok + "）· ● 文章尚未儲存");
+    else if (ok && errMsg) setBodyImageStatus("已貼上 " + ok + " 張；部分失敗：" + errMsg, true);
+    else setBodyImageStatus("上傳失敗：" + (errMsg || "未知錯誤"), true);
+  }
+
+  // ---------- 分類 datalist ----------
+  function refreshCategoryList() {
+    var section = ($("f-section") && $("f-section").value) || ($("list-section") && $("list-section").value) || "notes";
+    var cats = CATEGORIES[section] || [];
+    var sel = $("f-category");
+    var cur = sel ? normalizeCategory(sel.value) : "";
+    if (sel && sel.tagName === "SELECT") {
+      sel.innerHTML = cats
+        .map(function (c) {
+          return '<option value="' + c + '">' + displayCategoryLabel(c) + "</option>";
+        })
+        .join("");
+      if (cur && cats.indexOf(cur) !== -1) sel.value = cur;
+      else if (cats.length) sel.value = cats[0];
+    } else if (sel) {
+      var dl = $("category-list");
+      if (dl) {
+        dl.innerHTML = cats.map(function (c) { return '<option value="' + c + '"></option>'; }).join("");
+      }
+    }
+    var bulkCat = $("bulk-category");
+    if (bulkCat) {
+      var keep = bulkCat.value;
+      bulkCat.innerHTML =
+        '<option value="">改分類…</option>' +
+        cats
+          .map(function (c) {
+            return '<option value="' + c + '">' + displayCategoryLabel(c) + "</option>";
+          })
+          .join("");
+      if (keep) bulkCat.value = keep;
+    }
+    refreshCategoryChips();
+  }
+
   async function loadArticles() {
-    var section = $("list-section").value;
+    var uiSection = $("list-section").value;
+    var section = dbSection(uiSection);
     var listEl = $("article-list");
     listEl.innerHTML = '<p class="muted"><span class="spinner-inline"></span> 載入中…</p>';
     var res = await client
@@ -121,52 +277,366 @@
       .order("sort_index", { ascending: false })
       .order("updated_at", { ascending: false });
     if (res.error) { listEl.innerHTML = '<p class="muted">讀取失敗：' + res.error.message + "</p>"; return; }
-    var rows = res.data || [];
-    if (!rows.length) { listEl.innerHTML = '<p class="muted">此分區尚無文章。</p>'; return; }
+    articlesCache = (res.data || []).filter(function (a) {
+      var academic = isAcademicCategory(a.category);
+      if (uiSection === "academic") return academic;
+      if (uiSection === "notes") return !academic;
+      return true;
+    });
+    if (!articlesCache.length) { listEl.innerHTML = '<p class="muted">此分區尚無文章。</p>'; return; }
+    renderArticleList(articlesCache);
+  }
+
+  // ---------- 文章清單 ----------
+  function sectionLabel(section, category) {
+    if (section === "notes" && isAcademicCategory(category)) return "學科筆記";
+    if (section === "notes") return "隨筆";
+    if (section === "academic") return "學科筆記";
+    return "文學創作";
+  }
+
+  function dbSection(uiSection) {
+    return uiSection === "academic" ? "notes" : uiSection;
+  }
+
+  function isAcademicCategory(cat) {
+    var c = normalizeCategory(cat);
+    return ACADEMIC_CATEGORIES.indexOf(c) !== -1;
+  }
+
+  function refreshCategoryChips() {
+    var row = $("category-quick");
+    var guide = document.querySelector(".cat-guide");
+    var section = ($("f-section") && $("f-section").value) || "literature";
+    var chips = CATEGORY_CHIPS[section] || CATEGORY_CHIPS.literature;
+    if (row) {
+      row.innerHTML = chips
+        .map(function (c) {
+          return (
+            '<button type="button" class="chip" data-cat="' +
+            c.cat +
+            '" title="' +
+            c.title +
+            '">' +
+            (c.label || displayCategoryLabel(c.cat)) +
+            "</button>"
+          );
+        })
+        .join("");
+    }
+    if (guide) {
+      if (section === "notes") {
+        guide.innerHTML =
+          "<strong>隨想</strong>＝碎念　<strong>日記</strong>＝當天生活　<strong>心得</strong>＝閱讀／觀影　<strong>散文</strong>＝整理過的長文（DB：隨筆）<br /><span style=\"opacity:.85\">「感想」已退場。閱讀心得請放隨筆區。</span>";
+      } else if (section === "academic") {
+        guide.innerHTML =
+          "學科筆記：僅管理員導覽可見。分類選資安／機器學習／程式／人文。";
+      } else {
+        guide.innerHTML =
+          "<strong>創作</strong>＝小說／詩／劇本　<strong>長文</strong>＝長篇創作或文學論述<br /><span style=\"opacity:.85\">讀書心得請改放到「隨筆」。</span>";
+      }
+    }
+    syncCategoryChips();
+  }
+
+  function statusLabel(status) {
+    return status === "published" ? "已發佈" : "草稿";
+  }
+
+  function updateFormChrome() {
+    var titleEl = $("form-title");
+    var ctxEl = $("form-context");
+    if (!titleEl) return;
+    var id = ($("f-id") && $("f-id").value) || "";
+    var title = (($("f-title") && $("f-title").value) || "").trim();
+    var cat = normalizeCategory(($("f-category") && $("f-category").value) || "");
+    var status = ($("f-status") && $("f-status").value) || "draft";
+    var section = ($("f-section") && $("f-section").value) || "literature";
+    var slug = (($("f-slug") && $("f-slug").value) || "").trim();
+
+    if (!id && !title) {
+      titleEl.textContent = "新增文章";
+    } else {
+      titleEl.textContent = (id ? "編輯：" : "新增：") + (title || "（尚未命名）");
+    }
+    if (ctxEl) {
+      ctxEl.textContent =
+        sectionLabel(section, cat) +
+        " · " +
+        (cat ? displayCategoryLabel(cat) : "未分類") +
+        " · " +
+        statusLabel(status) +
+        (slug ? " · " + slug : "") +
+        (id ? " · #" + String(id).slice(0, 8) : " · 尚未存檔");
+    }
+    document.title = (title || (id ? "編輯文章" : "新增文章")) + " · 後台";
+    highlightActiveListItem(id || editingArticleId);
+  }
+
+  function highlightActiveListItem(id) {
+    var listEl = $("article-list");
+    if (!listEl) return;
+    Array.prototype.forEach.call(listEl.querySelectorAll(".list-item"), function (el) {
+      var match = id && el.getAttribute("data-id") === String(id);
+      el.classList.toggle("is-active", !!match);
+    });
+  }
+
+  function renderArticleList(rows) {
+    var listEl = $("article-list");
+    if (!listEl) return;
+    var statusFilter = ($("list-status") && $("list-status").value) || "all";
+    var q = (($("list-search") && $("list-search").value) || "").trim().toLowerCase();
+    var filtered = (rows || []).filter(function (a) {
+      if (statusFilter !== "all" && a.status !== statusFilter) return false;
+      if (q && String(a.title || "").toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    var hint = $("list-hint");
+    if (hint) {
+      hint.textContent =
+        "共 " + (rows || []).length + " 篇" +
+        (filtered.length !== (rows || []).length ? "（目前顯示 " + filtered.length + " 篇）" : "") +
+        "。可勾選後批次改分區／分類／狀態。";
+    }
+    if (!filtered.length) {
+      listEl.innerHTML = '<p class="muted">沒有符合條件的文章。</p>';
+      updateBulkUi();
+      return;
+    }
     listEl.innerHTML = "";
-    rows.forEach(function (a) {
+    filtered.forEach(function (a) {
       var div = document.createElement("div");
       div.className = "list-item";
-      div.innerHTML =
-        '<div class="meta"><h4>' + window.SB.escapeText(a.title) + "</h4>" +
-        '<small>' + window.SB.escapeText(a.category || "—") + " · " +
+      div.setAttribute("data-id", a.id);
+      if (editingArticleId && String(editingArticleId) === String(a.id)) {
+        div.classList.add("is-active");
+      }
+      var check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "bulk-check";
+      check.checked = !!selectedIds[a.id];
+      check.addEventListener("change", function () {
+        if (check.checked) selectedIds[a.id] = true;
+        else delete selectedIds[a.id];
+        updateBulkUi();
+      });
+      var meta = document.createElement("div");
+      meta.className = "meta";
+      meta.innerHTML =
+        "<h4>" + window.SB.escapeText(a.title) + "</h4>" +
+        "<small>" +
+        '<span class="badge cat">' + window.SB.escapeText(displayCategoryLabel(a.category) || "未分類") + "</span> · " +
         window.SB.escapeText((a.updated_at || "").slice(0, 10)) + " · " +
-        '<span class="badge ' + a.status + '">' + a.status + "</span></small></div>";
+        '<span class="badge ' + a.status + '">' + statusLabel(a.status) + "</span>" +
+        (a.slug ? " · <code>" + window.SB.escapeText(a.slug) + "</code>" : "") +
+        "</small>";
       var btn = document.createElement("button");
       btn.className = "btn";
       btn.textContent = "編輯";
       btn.addEventListener("click", function () { openForm(a.id); });
+      div.appendChild(check);
+      div.appendChild(meta);
       div.appendChild(btn);
       listEl.appendChild(div);
     });
+    updateBulkUi();
+  }
+
+  async function applyBulkMetadata() {
+    var ids = selectedIdList();
+    if (!ids.length) return;
+    var nextSection = ($("bulk-section") && $("bulk-section").value) || "";
+    var nextCat = ($("bulk-category") && $("bulk-category").value) || "";
+    var nextStatus = ($("bulk-status") && $("bulk-status").value) || "";
+    if (!nextSection && !nextCat && !nextStatus) {
+      msg("global-msg", "請先選擇要改的分區／分類／狀態", "err");
+      return;
+    }
+    var lines = [ids.length + " selected"];
+    if (nextSection) lines.push("section → " + nextSection);
+    if (nextCat) lines.push("category → " + displayCategoryLabel(nextCat));
+    if (nextStatus) lines.push("status → " + nextStatus);
+    if (!window.confirm("將套用以下變更？\n\n" + lines.join("\n"))) return;
+
+    var payload = {};
+    if (nextSection) payload.section = dbSection(nextSection);
+    if (nextCat) payload.category = normalizeCategory(nextCat);
+    if (nextStatus) payload.status = nextStatus;
+
+    msg("global-msg", '<span class="spinner-inline"></span> 批次更新中…', "ok");
+    var done = 0;
+    var err = "";
+    for (var i = 0; i < ids.length; i++) {
+      var res = await client.from("articles").update(payload).eq("id", ids[i]);
+      if (res.error) { err = res.error.message || String(res.error); break; }
+      done++;
+    }
+    if (err) msg("global-msg", "批次部分失敗（成功 " + done + "）：" + err, "err");
+    else msg("global-msg", "已更新 " + done + " 篇 ✔", "ok");
+    selectedIds = {};
+    if ($("bulk-section")) $("bulk-section").value = "";
+    if ($("bulk-category")) $("bulk-category").value = "";
+    if ($("bulk-status")) $("bulk-status").value = "";
+    if ($("bulk-select-all")) $("bulk-select-all").checked = false;
+    await loadArticles();
   }
 
   // ---------- images editor ----------
   function renderImagesEditor() {
     var box = $("images-editor");
+    if (!box) return;
     box.innerHTML = "";
+    box.classList.add("images-editor--v8");
     currentImages.forEach(function (im, idx) {
       var row = document.createElement("div");
       row.className = "img-row";
+      row.draggable = true;
+      row.dataset.index = String(idx);
+
+      var handle = document.createElement("span");
+      handle.className = "img-row__handle";
+      handle.title = "拖曳排序";
+      handle.textContent = "⋮⋮";
+
+      var order = document.createElement("span");
+      order.className = "img-row__order muted";
+      order.textContent = String(idx + 1);
+
       var thumb = document.createElement("img");
-      thumb.className = "thumb"; thumb.src = im.src;
+      thumb.className = "thumb";
+      thumb.src = im.src;
+      thumb.alt = "";
+      thumb.loading = "lazy";
+
+      var meta = document.createElement("div");
+      meta.className = "img-row__meta";
+      var url = document.createElement("div");
+      url.className = "img-row__url muted";
+      url.textContent = im.src;
+      url.title = im.src;
       var cap = document.createElement("input");
-      cap.placeholder = "圖說（選填）"; cap.value = im.caption || "";
+      cap.placeholder = "圖說（選填）";
+      cap.value = im.caption || "";
       cap.addEventListener("input", function () {
         currentImages[idx].caption = cap.value;
         markFormDirty();
       });
+      meta.appendChild(url);
+      meta.appendChild(cap);
+
       var del = document.createElement("button");
-      del.className = "btn danger"; del.textContent = "移除";
+      del.type = "button";
+      del.className = "btn danger";
+      del.textContent = "移除";
       del.addEventListener("click", function () {
-        currentImages.splice(idx, 1); renderImagesEditor(); markFormDirty();
+        currentImages.splice(idx, 1);
+        renderImagesEditor();
+        markFormDirty();
       });
-      row.appendChild(thumb); row.appendChild(cap); row.appendChild(del);
+
+      row.addEventListener("dragstart", function (e) {
+        row.classList.add("is-dragging");
+        e.dataTransfer.setData("text/plain", String(idx));
+        e.dataTransfer.effectAllowed = "move";
+      });
+      row.addEventListener("dragend", function () {
+        row.classList.remove("is-dragging");
+      });
+      row.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        row.classList.add("is-drop-target");
+      });
+      row.addEventListener("dragleave", function () {
+        row.classList.remove("is-drop-target");
+      });
+      row.addEventListener("drop", function (e) {
+        e.preventDefault();
+        row.classList.remove("is-drop-target");
+        var from = parseInt(e.dataTransfer.getData("text/plain"), 10);
+        var to = idx;
+        if (!isFinite(from) || from === to) return;
+        var moved = currentImages.splice(from, 1)[0];
+        currentImages.splice(to, 0, moved);
+        renderImagesEditor();
+        markFormDirty();
+      });
+
+      row.appendChild(handle);
+      row.appendChild(order);
+      row.appendChild(thumb);
+      row.appendChild(meta);
+      row.appendChild(del);
       box.appendChild(row);
     });
   }
 
   // ---------- 開啟 / 重置表單（大編輯 overlay） ----------
+
+  // ---------- V6.2 True frontend preview + draft safety ----------
+  function cloneJson(obj) {
+    try {
+      return structuredClone(obj);
+    } catch (e) {
+      return JSON.parse(JSON.stringify(obj || null));
+    }
+  }
+
+  function collectDraftArticle() {
+    var id = ($("f-id") && $("f-id").value) || "";
+    var topic = $("f-card-topic") ? $("f-card-topic").value.trim() : "";
+    var label = $("f-card-label") ? $("f-card-label").value.trim() : "";
+    var showLabel = $("f-show-card-label") ? !!$("f-show-card-label").checked : !!label;
+    var prev =
+      window.__lastOpenedAiEditorial && typeof window.__lastOpenedAiEditorial === "object"
+        ? window.__lastOpenedAiEditorial
+        : {};
+    var display = Object.assign({}, prev.display || {}, {
+      card_topic: topic,
+      card_label: label,
+      show_card_label: showLabel && !!label,
+    });
+    var ai = Object.assign({}, prev, {
+      display: display,
+      card_topic: topic,
+      card_label: label,
+      show_card_label: display.show_card_label,
+    });
+    var tags = (($("f-tags") && $("f-tags").value) || "")
+      .split(/[,，、]+/)
+      .map(function (t) { return t.trim(); })
+      .filter(Boolean);
+    var nowIso = new Date().toISOString();
+    var base = originalArticleSnapshot || {};
+    return {
+      id: id || null,
+      section: dbSection(($("f-section") && $("f-section").value) || "notes"),
+      title: ($("f-title") && $("f-title").value) || "",
+      slug: ($("f-slug") && $("f-slug").value) || "",
+      summary: ($("f-summary") && $("f-summary").value) || "",
+      category: ($("f-category") && $("f-category").value) || "",
+      tags: tags,
+      body: ($("f-body") && $("f-body").value) || "",
+      content_type: ($("f-content-type") && $("f-content-type").value) || null,
+      presentation: ($("f-presentation") && $("f-presentation").value) || null,
+      visibility: ($("f-visibility") && $("f-visibility").value) || "public",
+      series: ($("f-series") && $("f-series").value.trim()) || null,
+      show_title: $("f-show-title") ? !!$("f-show-title").checked : true,
+      show_summary: $("f-show-summary") ? !!$("f-show-summary").checked : true,
+      cover: ($("f-cover") && $("f-cover").value.trim()) || null,
+      cover_display: base.cover_display || null,
+      images: Array.isArray(currentImages) ? currentImages.slice() : [],
+      pdf_url: ($("f-pdf") && $("f-pdf").value.trim()) || null,
+      ai_editorial: ai,
+      status: ($("f-status") && $("f-status").value) || "draft",
+      published_at: base.published_at || null,
+      created_at: base.created_at || nowIso,
+      updated_at: nowIso,
+      sort_index: parseInt(($("f-sort") && $("f-sort").value) || "0", 10) || 0,
+    };
+  }
+
   function updateMdPreview() {
     var preview = $("md-preview");
     var body = $("f-body");
@@ -183,43 +653,685 @@
     }
   }
 
+  function setPreviewSyncStatus(state, detail) {
+    var el = $("fp-sync-status");
+    if (!el) return;
+    el.setAttribute("data-state", state || "wait");
+    var label =
+      state === "ok"
+        ? "● 預覽已同步"
+        : state === "err"
+          ? "⚠ 預覽失敗"
+          : state === "load"
+            ? "● 正在載入 iframe"
+            : state === "ready"
+              ? "● Renderer ready"
+              : state === "sent"
+                ? "● Draft sent"
+                : "● 等待預覽";
+    el.textContent = detail ? label + " · " + detail : label;
+  }
+
+  var forcePreviewTimer = null;
+  var forcePreviewAttempts = null;
+  var lastBuiltPreviewPayload = null;
+  var pendingPreviewPayload = null;
+  var previewWatchdogTimer = null;
+  var previewLastError = null;
+
+  function buildPreviewPayload(articleOverride) {
+    draftPreviewVersion += 1;
+    var article = articleOverride || collectDraftArticle();
+    lastBuiltPreviewPayload = {
+      type: "LYZ_ARTICLE_PREVIEW",
+      mode: frontendPreviewView === "card" ? "card" : "article",
+      theme: frontendPreviewTheme || "light",
+      readingFocus: !!frontendPreviewFocus && frontendPreviewView !== "card",
+      draftVersion: draftPreviewVersion,
+      article: article,
+    };
+    pendingPreviewPayload = lastBuiltPreviewPayload;
+    return lastBuiltPreviewPayload;
+  }
+
+  function applyPreviewResult(result, payload) {
+    if (previewWatchdogTimer) {
+      clearTimeout(previewWatchdogTimer);
+      previewWatchdogTimer = null;
+    }
+    if (!result) {
+      previewLastError = "無回應";
+      setPreviewSyncStatus("err", "無回應");
+      return;
+    }
+    if (result.ok) {
+      previewLastError = null;
+      lastPreviewRenderedVersion = result.renderedVersion;
+      lastPreviewDiagnostics = result.diagnostics || null;
+      var ver = result.renderedVersion != null ? result.renderedVersion : (payload && payload.draftVersion);
+      var synced =
+        result.renderedVersion == null ||
+        (payload && result.renderedVersion === payload.draftVersion) ||
+        result.renderedVersion === draftPreviewVersion;
+      setPreviewSyncStatus(
+        synced ? "ok" : "wait",
+        synced ? ("Draft rendered v" + ver) : "渲染中…"
+      );
+    } else {
+      previewLastError = result.error || result.reason || "renderer exception";
+      setPreviewSyncStatus("err", previewLastError);
+    }
+    updateLiveCompareLink(payload && payload.article);
+  }
+
+  function startPreviewWatchdog(payload) {
+    if (previewWatchdogTimer) clearTimeout(previewWatchdogTimer);
+    previewWatchdogTimer = setTimeout(function () {
+      previewWatchdogTimer = null;
+      var frame = $("frontend-preview-frame");
+      var api = null;
+      try {
+        api = frame && frame.contentWindow && frame.contentWindow.LYZAdminPreview;
+      } catch (e) {}
+      var readyState = "n/a";
+      try {
+        readyState = frame && frame.contentDocument ? frame.contentDocument.readyState : "blocked";
+      } catch (e2) {
+        readyState = "cross-origin?";
+      }
+      if (lastPreviewRenderedVersion === (payload && payload.draftVersion)) return;
+      previewLastError = "watchdog timeout";
+      setPreviewSyncStatus(
+        "err",
+        "前台預覽沒有回應 · iframe:" +
+          readyState +
+          " API:" +
+          (api ? "yes" : "no") +
+          " req:v" +
+          (payload && payload.draftVersion) +
+          " got:v" +
+          (lastPreviewRenderedVersion == null ? "-" : lastPreviewRenderedVersion) +
+          " err:" +
+          (previewLastError || "-")
+      );
+    }, 1500);
+  }
+
+  function tryRenderPreviewPayload(payload) {
+    var frame = $("frontend-preview-frame");
+    if (!frame) return { ok: false, reason: "no-frame" };
+    try {
+      var win = frame.contentWindow;
+      if (!win) return { ok: false, reason: "iframe contentWindow null" };
+      var api = win.LYZAdminPreview;
+      if (api && typeof api.render === "function" && api.ready !== false) {
+        previewIframeReady = true;
+        setPreviewSyncStatus("sent", "v" + payload.draftVersion);
+        startPreviewWatchdog(payload);
+        var result = api.render(payload);
+        applyPreviewResult(result, payload);
+        return result && result.ok
+          ? { ok: true, result: result }
+          : { ok: false, reason: (result && result.error) || "renderer exception", result: result };
+      }
+      return { ok: false, reason: "iframe API unavailable" };
+    } catch (e) {
+      previewLastError = String(e && e.message || e);
+      return { ok: false, reason: "iframe API unavailable: " + previewLastError };
+    }
+  }
+
+  function pushPreviewPayload(payload) {
+    pendingPreviewPayload = payload;
+    lastBuiltPreviewPayload = payload;
+    var out = tryRenderPreviewPayload(payload);
+    if (out.ok) return out;
+    // Keep pending; retries / onload will pick it up. Do not hide direct API errors behind silent postMessage.
+    setPreviewSyncStatus("load", out.reason || "waiting iframe API");
+    return out;
+  }
+
+  function sendFrontendPreview() {
+    try {
+      var payload = buildPreviewPayload();
+      pushPreviewPayload(payload);
+      forceFrontendPreview();
+    } catch (e) {
+      setPreviewSyncStatus("err", "Payload error: " + (e && e.message || e));
+      console.error("[admin preview]", e);
+    }
+  }
+
+  function forceFrontendPreview() {
+    if (forcePreviewTimer) {
+      clearTimeout(forcePreviewTimer);
+      forcePreviewTimer = null;
+    }
+    var delays = [0, 50, 150, 300, 700];
+    var payload = pendingPreviewPayload;
+    if (!payload) {
+      try {
+        payload = buildPreviewPayload();
+      } catch (err) {
+        setPreviewSyncStatus("err", "Payload error: " + (err && err.message || err));
+        return;
+      }
+    } else {
+      // Refresh article fields / chrome options, keep draftVersion
+      try {
+        if (!payload._fixture) {
+          payload.article = collectDraftArticle();
+        }
+        payload.mode = frontendPreviewView === "card" ? "card" : "article";
+        payload.theme = frontendPreviewTheme || "light";
+        payload.readingFocus = !!frontendPreviewFocus && frontendPreviewView !== "card";
+      } catch (e) {}
+    }
+    pendingPreviewPayload = payload;
+    setPreviewSyncStatus("load", "force retry…");
+    var i = 0;
+    function attempt() {
+      var out = tryRenderPreviewPayload(payload);
+      if (out.ok) {
+        forcePreviewAttempts = null;
+        return;
+      }
+      i += 1;
+      if (i >= delays.length) {
+        setPreviewSyncStatus("err", out.reason || "iframe API unavailable");
+        return;
+      }
+      var wait = delays[i] - delays[i - 1];
+      forcePreviewTimer = setTimeout(attempt, Math.max(0, wait));
+    }
+    forcePreviewAttempts = delays;
+    attempt();
+  }
+
+  function testPreviewPipeline() {
+    var fixture = window.LYZ_PREVIEW_FIXTURE;
+    if (!fixture) {
+      setPreviewSyncStatus("err", "LYZ_PREVIEW_FIXTURE missing — check preview-fixture.js");
+      return;
+    }
+    var article = cloneJson(fixture);
+    article.body = (article.body || "") + "\n\nTEST-PREVIEW-123\n";
+    article.title = (article.title || "Fixture") + " · TEST-PREVIEW-123";
+    draftPreviewVersion += 1;
+    var payload = {
+      type: "LYZ_ARTICLE_PREVIEW",
+      mode: "article",
+      theme: frontendPreviewTheme || "light",
+      readingFocus: false,
+      draftVersion: draftPreviewVersion,
+      article: article,
+      _fixture: true,
+    };
+    setPreviewSyncStatus("sent", "fixture v" + draftPreviewVersion);
+    pushPreviewPayload(payload);
+    forceFrontendPreview();
+  }
+
+  function reloadFrontendPreviewFrame() {
+    var frame = $("frontend-preview-frame");
+    if (!frame) return;
+    previewIframeReady = false;
+    lastPreviewRenderedVersion = null;
+    setPreviewSyncStatus("load", "重新載入預覽…");
+    frame.src = "admin-preview.html?v=v9.1-layout-recovery-1&t=" + Date.now();
+  }
+
+  function scheduleFrontendPreview() {
+    if (frontendPreviewTimer) clearTimeout(frontendPreviewTimer);
+    frontendPreviewTimer = setTimeout(function () {
+      frontendPreviewTimer = null;
+      try {
+        buildPreviewPayload();
+        forceFrontendPreview();
+      } catch (e) {
+        setPreviewSyncStatus("err", "Payload error: " + (e && e.message || e));
+      }
+      if (editorMode === "changes") renderChangesPanel();
+    }, 160);
+  }
+
+  function bindFrontendPreviewChrome() {
+    window.addEventListener("message", function (e) {
+      if (e.origin !== location.origin) return;
+      var data = e.data || {};
+      if (data.type === "LYZ_ARTICLE_PREVIEW_READY") {
+        previewIframeReady = true;
+        setPreviewSyncStatus("ready", "READY");
+        if (pendingPreviewPayload) forceFrontendPreview();
+      }
+      if (data.type === "LYZ_ARTICLE_PREVIEW_ACK") {
+        applyPreviewResult(
+          {
+            ok: !!data.ok,
+            renderedVersion: data.renderedVersion,
+            diagnostics: data.diagnostics,
+            error: data.error,
+          },
+          pendingPreviewPayload || lastBuiltPreviewPayload
+        );
+      }
+    });
+
+    var frame = $("frontend-preview-frame");
+    if (frame) {
+      setPreviewSyncStatus("load", "waiting iframe");
+      frame.addEventListener("load", function () {
+        previewIframeReady = false;
+        setPreviewSyncStatus("load", "iframe loaded");
+        if (pendingPreviewPayload) forceFrontendPreview();
+      });
+      try {
+        if (frame.contentDocument && frame.contentDocument.readyState === "complete") {
+          if (pendingPreviewPayload) forceFrontendPreview();
+        }
+      } catch (e) {}
+    }
+
+    var chrome = $("frontend-preview-chrome");
+    if (chrome) {
+      chrome.addEventListener("click", function (e) {
+        var reloadBtn = e.target.closest("[data-fp-reload]");
+        if (reloadBtn) {
+          reloadFrontendPreviewFrame();
+          return;
+        }
+        var testBtn = e.target.closest("[data-fp-test-pipeline]");
+        if (testBtn) {
+          testPreviewPipeline();
+          return;
+        }
+        var btn = e.target.closest("[data-fp-view], [data-fp-theme], [data-fp-device], [data-fp-focus]");
+        if (!btn) return;
+        if (btn.hasAttribute("data-fp-view")) {
+          frontendPreviewView = btn.getAttribute("data-fp-view") || "article";
+        }
+        if (btn.hasAttribute("data-fp-theme")) {
+          frontendPreviewTheme = btn.getAttribute("data-fp-theme") || "glass";
+        }
+        if (btn.hasAttribute("data-fp-device")) {
+          frontendPreviewDevice = btn.getAttribute("data-fp-device") || "mobile";
+        }
+        if (btn.hasAttribute("data-fp-focus")) {
+          frontendPreviewFocus = btn.getAttribute("data-fp-focus") === "on";
+        }
+        setFrontendChromeUi();
+        scheduleFrontendPreview();
+      });
+    }
+    setFrontendChromeUi();
+    setPreviewSyncStatus("load", "初始化");
+  }
+
   function scheduleMdPreview() {
     if (previewTimer) clearTimeout(previewTimer);
-    previewTimer = setTimeout(updateMdPreview, 120);
+    previewTimer = setTimeout(function () {
+      updateMdPreview();
+      scheduleFrontendPreview();
+    }, 120);
+  }
+
+  function updateLiveCompareLink(article) {
+    var link = $("fp-open-live");
+    if (!link) return;
+    var a = article || collectDraftArticle();
+    var published = (($("f-status") && $("f-status").value) || "") === "published";
+    if (published && a.slug) {
+      link.hidden = false;
+      link.href =
+        "note.html?id=" +
+        encodeURIComponent(a.slug) +
+        "&section=" +
+        encodeURIComponent(a.section || "notes");
+    } else {
+      link.hidden = true;
+      link.removeAttribute("href");
+    }
+  }
+
+  function setFrontendChromeUi() {
+    document.querySelectorAll("[data-fp-view]").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-fp-view") === frontendPreviewView);
+    });
+    document.querySelectorAll("[data-fp-theme]").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-fp-theme") === frontendPreviewTheme);
+    });
+    document.querySelectorAll("[data-fp-device]").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-fp-device") === frontendPreviewDevice);
+    });
+    document.querySelectorAll("[data-fp-focus]").forEach(function (btn) {
+      var on = btn.getAttribute("data-fp-focus") === "on";
+      btn.classList.toggle("active", on === frontendPreviewFocus);
+    });
+    var wrap = $("frontend-preview-wrap");
+    if (wrap) wrap.setAttribute("data-device", frontendPreviewDevice || "desktop");
+    var focusGroup = $("fp-focus-group");
+    if (focusGroup) focusGroup.style.display = frontendPreviewView === "card" ? "none" : "";
+  }
+
+  function syncPreviewPaneChrome(mode) {
+    var title = $("preview-pane-title");
+    var hint = $("preview-pane-hint");
+    var chrome = $("frontend-preview-chrome");
+    var wrap = $("frontend-preview-wrap");
+    var md = $("md-preview");
+    var changes = $("changes-panel");
+    if (mode === "markdown") {
+      if (title) title.textContent = "Markdown 預覽";
+      if (hint) hint.textContent = "格式檢查（非真實前台）";
+      if (chrome) chrome.hidden = true;
+      if (wrap) wrap.hidden = true;
+      if (md) md.hidden = false;
+      if (changes) changes.hidden = true;
+    } else if (mode === "changes") {
+      if (title) title.textContent = "變更";
+      if (hint) hint.textContent = "草稿 vs 開啟時的已存版本";
+      if (chrome) chrome.hidden = true;
+      if (wrap) wrap.hidden = true;
+      if (md) md.hidden = true;
+      if (changes) changes.hidden = false;
+    } else {
+      if (title) title.textContent = "前台預覽";
+      if (hint) hint.textContent = "與 public 同一 renderer · 未儲存也能預覽";
+      if (chrome) chrome.hidden = false;
+      if (wrap) wrap.hidden = false;
+      if (md) md.hidden = true;
+      if (changes) changes.hidden = true;
+    }
   }
 
   function setEditorMode(mode) {
-    if (mode !== "split" && mode !== "edit" && mode !== "preview") mode = "split";
+    var allowed = { split: 1, edit: 1, frontend: 1, changes: 1, markdown: 1, preview: 1 };
+    if (!allowed[mode]) mode = "split";
+    if (mode === "preview") mode = "frontend";
     editorMode = mode;
     var main = $("editor-main");
     if (main) main.setAttribute("data-layout", mode);
     document.querySelectorAll(".mode-btn").forEach(function (btn) {
       btn.classList.toggle("active", btn.getAttribute("data-editor-mode") === mode);
     });
-    if (mode === "preview" || mode === "split") updateMdPreview();
+    syncPreviewPaneChrome(mode);
+    if (mode === "markdown") updateMdPreview();
+    if (mode === "changes") renderChangesPanel();
+    if (mode === "split" || mode === "frontend") scheduleFrontendPreview();
+  }
+
+  function countParagraphs(text) {
+    return String(text || "")
+      .split(/\n\s*\n/)
+      .map(function (p) { return p.trim(); })
+      .filter(Boolean).length;
+  }
+
+  function lineDiff(oldText, newText) {
+    var a = String(oldText || "").replace(/\r\n/g, "\n").split("\n");
+    var b = String(newText || "").replace(/\r\n/g, "\n").split("\n");
+    var max = Math.max(a.length, b.length);
+    // Lightweight LCS-ish: map equal lines greedily
+    var out = [];
+    var i = 0;
+    var j = 0;
+    while (i < a.length || j < b.length) {
+      if (i < a.length && j < b.length && a[i] === b[j]) {
+        out.push({ t: "ctx", line: a[i] });
+        i++; j++;
+        continue;
+      }
+      if (j < b.length && (i >= a.length || a.indexOf(b[j], i) === -1 || a.indexOf(b[j], i) > i + 8)) {
+        out.push({ t: "add", line: b[j] });
+        j++;
+        continue;
+      }
+      if (i < a.length) {
+        out.push({ t: "del", line: a[i] });
+        i++;
+        continue;
+      }
+      out.push({ t: "add", line: b[j++] });
+      if (out.length > 4000) break;
+    }
+    return out;
+  }
+
+  function escapeHtml(s) {
+    return String(s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function buildSafetyWarnings(original, draft) {
+    var warns = [];
+    if (!original) return warns;
+    var ob = String(original.body || "");
+    var nb = String(draft.body || "");
+    var oLen = ob.length;
+    var nLen = nb.length;
+    if (oLen > 80 && nLen < oLen * 0.55) {
+      warns.push(
+        "⚠ 正文比已儲存版本少了大量內容。\n舊版：" +
+          oLen +
+          " 字\n目前：" +
+          nLen +
+          " 字\n請確認不是貼上／標題解析造成的截斷。"
+      );
+    }
+    var oImgs = Array.isArray(original.images) ? original.images.length : 0;
+    var nImgs = Array.isArray(draft.images) ? draft.images.length : 0;
+    if (oImgs >= 2 && nImgs < oImgs - 1) {
+      warns.push("⚠ 圖片數突然下降（" + oImgs + " → " + nImgs + "）");
+    }
+    if ((original.title || "").trim() && !(draft.title || "").trim()) {
+      warns.push("⚠ 標題變空");
+    }
+    if ((original.status || "") === "published" && (draft.status || "") === "draft") {
+      warns.push("⚠ 狀態由 published → draft");
+    }
+    if ((original.visibility || "public") === "public" && (draft.visibility || "") === "private") {
+      warns.push("⚠ 可見性由 public → private");
+    }
+    if (original.show_title !== false && draft.show_title === false) {
+      warns.push("⚠ show_title：true → false");
+    }
+    var title = String(draft.title || "");
+    if (title.length > 80) {
+      var head = ob.slice(0, Math.min(200, ob.length)).replace(/\s+/g, "");
+      var tNorm = title.replace(/\s+/g, "");
+      if (head && tNorm && (head.indexOf(tNorm.slice(0, 40)) !== -1 || tNorm.indexOf(head.slice(0, 40)) !== -1)) {
+        warns.push("⚠ 標題疑似包含正文內容");
+      }
+    }
+    return warns;
+  }
+
+  function renderChangesPanel() {
+    var warningsEl = $("changes-warnings");
+    var statsEl = $("changes-stats");
+    var metaEl = $("changes-meta");
+    var bodyDiffEl = $("changes-body-diff");
+    if (!warningsEl || !statsEl || !metaEl || !bodyDiffEl) return;
+
+    var draft = collectDraftArticle();
+    var original = originalArticleSnapshot;
+    var warns = buildSafetyWarnings(original || {}, draft);
+    warningsEl.innerHTML = warns
+      .map(function (w) {
+        return '<div class="warn">' + escapeHtml(w).replace(/\n/g, "<br>") + "</div>";
+      })
+      .join("");
+
+    var oBody = original ? String(original.body || "") : "";
+    var nBody = String(draft.body || "");
+    var oChars = oBody.length;
+    var nChars = nBody.length;
+    var oParas = countParagraphs(oBody);
+    var nParas = countParagraphs(nBody);
+    statsEl.textContent =
+      "正文\n\n原版：" +
+      oChars +
+      " 字 / " +
+      oParas +
+      " 段\n新版：" +
+      nChars +
+      " 字 / " +
+      nParas +
+      " 段\n\n" +
+      (nChars - oChars >= 0 ? "+" : "") +
+      (nChars - oChars) +
+      " 字\n" +
+      (nParas - oParas >= 0 ? "+" : "") +
+      (nParas - oParas) +
+      " 段";
+
+    var fields = [
+      ["title", "標題"],
+      ["summary", "摘要"],
+      ["category", "分類"],
+      ["presentation", "presentation"],
+      ["content_type", "content_type"],
+      ["visibility", "visibility"],
+      ["series", "series"],
+      ["show_title", "show_title"],
+      ["show_summary", "show_summary"],
+      ["status", "狀態"],
+      ["cover", "封面"],
+    ];
+    function fieldVal(obj, key) {
+      if (!obj) return "";
+      if (key === "show_title" || key === "show_summary") return String(!!obj[key]);
+      if (key === "cover") return obj.cover || "";
+      return obj[key] == null ? "" : String(obj[key]);
+    }
+    var oDisp = original && original.ai_editorial && original.ai_editorial.display
+      ? original.ai_editorial.display
+      : {};
+    var nDisp = draft.ai_editorial && draft.ai_editorial.display ? draft.ai_editorial.display : {};
+    var rows = fields
+      .map(function (pair) {
+        var key = pair[0];
+        var label = pair[1];
+        var ov = fieldVal(original, key);
+        var nv = fieldVal(draft, key);
+        var changed = ov !== nv;
+        return (
+          '<div class="' +
+          (changed ? "changed" : "") +
+          '"><dt>' +
+          escapeHtml(label) +
+          "</dt><dd>" +
+          (changed
+            ? escapeHtml(ov || "（空）") + " → " + escapeHtml(nv || "（空）")
+            : escapeHtml(nv || "（空）")) +
+          "</dd></div>"
+        );
+      })
+      .join("");
+    rows +=
+      '<div class="' +
+      ((oDisp.card_topic || "") !== (nDisp.card_topic || "") ? "changed" : "") +
+      '"><dt>card_topic</dt><dd>' +
+      escapeHtml((oDisp.card_topic || "（空）") + " → " + (nDisp.card_topic || "（空）")) +
+      "</dd></div>";
+    rows +=
+      '<div class="' +
+      ((oDisp.card_label || "") !== (nDisp.card_label || "") ? "changed" : "") +
+      '"><dt>card_label</dt><dd>' +
+      escapeHtml((oDisp.card_label || "（空）") + " → " + (nDisp.card_label || "（空）")) +
+      "</dd></div>";
+    var oTags = ((original && original.tags) || []).join(", ");
+    var nTags = (draft.tags || []).join(", ");
+    rows +=
+      '<div class="' +
+      (oTags !== nTags ? "changed" : "") +
+      '"><dt>tags</dt><dd>' +
+      escapeHtml((oTags || "（空）") + (oTags !== nTags ? " → " + (nTags || "（空）") : "")) +
+      "</dd></div>";
+    var oImgN = original && Array.isArray(original.images) ? original.images.length : 0;
+    var nImgN = Array.isArray(draft.images) ? draft.images.length : 0;
+    rows +=
+      '<div class="' +
+      (oImgN !== nImgN ? "changed" : "") +
+      '"><dt>images</dt><dd>' +
+      oImgN +
+      " → " +
+      nImgN +
+      "</dd></div>";
+
+    metaEl.innerHTML = "<h4>Metadata</h4><dl>" + rows + "</dl>";
+
+    var diff = lineDiff(oBody, nBody);
+    var html = "";
+    if (lastAiBodyApplied && oBody !== nBody) {
+      html += '<div class="diff-ai">AI 修改 · 正文來自 AI clean_body</div>\n';
+    }
+    if (!original) {
+      html += '<div class="diff-ctx">（新文章：尚無已存版本）</div>\n';
+    }
+    var shown = 0;
+    diff.forEach(function (row) {
+      if (row.t === "ctx") return; // keep panel focused on changes
+      shown++;
+      if (shown > 300) return;
+      var cls = row.t === "add" ? "diff-add" : row.t === "del" ? "diff-del" : "diff-ctx";
+      var prefix = row.t === "add" ? "+ " : row.t === "del" ? "- " : "  ";
+      html +=
+        '<div class="' +
+        cls +
+        '">' +
+        escapeHtml(prefix + row.line) +
+        "</div>";
+    });
+    if (!shown) html += '<div class="diff-ctx">正文無變更</div>';
+    bodyDiffEl.innerHTML = html;
+  }
+
+  function verifySavedAgainstSubmitted(submitted, saved) {
+    if (!submitted || !saved) return [];
+    var keys = [
+      "title",
+      "summary",
+      "category",
+      "presentation",
+      "content_type",
+      "visibility",
+      "series",
+      "show_title",
+      "show_summary",
+      "body",
+      "cover",
+      "status",
+      "slug",
+    ];
+    var mismatches = [];
+    keys.forEach(function (k) {
+      var a = submitted[k];
+      var b = saved[k];
+      if (k === "show_title" || k === "show_summary") {
+        a = !!a;
+        b = !!b;
+      }
+      if (a == null) a = "";
+      if (b == null) b = "";
+      if (String(a) !== String(b)) mismatches.push(k);
+    });
+    return mismatches;
   }
 
   function captureFormSnapshot() {
-    formSnapshot = JSON.stringify({
-      id: ($("f-id") && $("f-id").value) || "",
-      section: ($("f-section") && $("f-section").value) || "",
-      status: ($("f-status") && $("f-status").value) || "",
-      category: ($("f-category") && $("f-category").value) || "",
-      title: ($("f-title") && $("f-title").value) || "",
-      slug: ($("f-slug") && $("f-slug").value) || "",
-      summary: ($("f-summary") && $("f-summary").value) || "",
-      tags: ($("f-tags") && $("f-tags").value) || "",
-      pdf: ($("f-pdf") && $("f-pdf").value) || "",
-      sort: ($("f-sort") && $("f-sort").value) || "",
-      cover: ($("f-cover") && $("f-cover").value) || "",
-      body: ($("f-body") && $("f-body").value) || "",
-      images: currentImages,
-    });
+    formSnapshot = JSON.stringify(collectDraftArticle());
     formDirty = false;
+    mediaUploadedUnsaved = false;
+    updateSaveStateUi();
   }
 
   function markFormDirty() {
     formDirty = true;
+    updateSaveStateUi();
+    scheduleFrontendPreview();
   }
 
   function confirmLeaveEditor() {
@@ -234,6 +1346,9 @@
     document.body.classList.remove("editor-open");
     if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
     formDirty = false;
+    editingArticleId = null;
+    highlightActiveListItem(null);
+    document.title = "後台管理 · LYZ's website";
   }
 
   function showEditor() {
@@ -243,6 +1358,8 @@
     document.body.classList.add("editor-open");
     setEditorMode(editorMode || "split");
     updateMdPreview();
+    scheduleFrontendPreview();
+    setFrontendChromeUi();
     updateLengthHint();
   }
 
@@ -306,7 +1423,11 @@
     else if (action === "bold") wrapSelection("**", "**", "粗體文字");
     else if (action === "italic") wrapSelection("*", "*", "斜體文字");
     else if (action === "link") wrapSelection("[", "](https://)", "連結文字");
-    else if (action === "image") wrapSelection("![", "](https://)", "圖說");
+    else if (action === "image") {
+      var pick = $("body-image-file");
+      if (pick) pick.click();
+      else wrapSelection("![", "](https://)", "圖說");
+    }
     else if (action === "ul") prefixSelectedLines("- ");
     else if (action === "ol") prefixSelectedLines("1. ");
     else if (action === "quote") prefixSelectedLines("> ");
@@ -361,6 +1482,23 @@
     $("f-cover").value = "";
     $("cover-thumb").classList.add("hidden");
     $("f-body").value = "";
+    if ($("f-content-type")) $("f-content-type").value = "";
+    if ($("f-presentation")) $("f-presentation").value = "";
+    if ($("f-visibility")) {
+      $("f-visibility").value = $("list-section").value === "academic" ? "private" : "public";
+    }
+    if ($("f-series")) $("f-series").value = "";
+    if ($("f-show-title")) $("f-show-title").checked = true;
+    if ($("f-show-summary")) $("f-show-summary").checked = true;
+    if ($("f-card-topic")) $("f-card-topic").value = "";
+    if ($("f-card-label")) $("f-card-label").value = "";
+    if ($("f-show-card-label")) $("f-show-card-label").checked = true;
+    window.__lastOpenedAiEditorial = {};
+    lastAiAnalysis = null;
+    lastAiBodyApplied = false;
+    originalArticleSnapshot = null;
+    if ($("ai-review-panel")) $("ai-review-panel").classList.add("hidden");
+    if ($("ai-status")) $("ai-status").textContent = "";
     currentImages = [];
     renderImagesEditor();
     refreshCategoryList();
@@ -370,17 +1508,51 @@
 
   async function openForm(id) {
     resetForm();
+    editingArticleId = id || null;
     $("btn-delete").classList.toggle("hidden", !id);
-    $("form-title").textContent = id ? "編輯文章" : "新增文章";
     showEditor();
+    updateFormChrome();
     if (id) {
       var res = await client.from("articles").select("*").eq("id", id).single();
       if (res.error) { msg("form-msg", "讀取失敗：" + res.error.message, "err"); return; }
       var a = res.data;
+      originalArticleSnapshot = cloneJson(a);
       $("f-id").value = a.id;
-      $("f-section").value = a.section;
+      editingArticleId = a.id;
+      window.__lastOpenedAiEditorial =
+        a.ai_editorial && typeof a.ai_editorial === "object" ? cloneJson(a.ai_editorial) : {};
+      var catNorm = normalizeCategory(a.category || "");
+      $("f-section").value =
+        a.section === "notes" && isAcademicCategory(catNorm) ? "academic" : a.section;
       $("f-status").value = a.status;
-      $("f-category").value = normalizeCategory(a.category || "");
+      $("f-category").value = catNorm;
+      if ($("f-content-type")) $("f-content-type").value = a.content_type || "";
+      if ($("f-presentation")) $("f-presentation").value = a.presentation || "";
+      if ($("f-visibility")) {
+        $("f-visibility").value = a.visibility || (isAcademicCategory(catNorm) ? "private" : "public");
+      }
+      if ($("f-series")) $("f-series").value = a.series || "";
+      if ($("f-show-title")) $("f-show-title").checked = a.show_title !== false;
+      if ($("f-show-summary")) $("f-show-summary").checked = !!a.show_summary;
+      (function fillCardDisplay() {
+        var ae = a.ai_editorial && typeof a.ai_editorial === "object" ? a.ai_editorial : {};
+        var d = ae.display && typeof ae.display === "object" ? ae.display : {};
+        if ($("f-card-topic")) {
+          $("f-card-topic").value = d.card_topic || ae.card_topic || "";
+        }
+        if ($("f-card-label")) {
+          $("f-card-label").value = d.card_label || ae.card_label || "";
+        }
+        if ($("f-show-card-label")) {
+          var show =
+            typeof d.show_card_label === "boolean"
+              ? d.show_card_label
+              : typeof ae.show_card_label === "boolean"
+                ? ae.show_card_label
+                : true;
+          $("f-show-card-label").checked = show;
+        }
+      })();
       $("f-title").value = a.title || "";
       $("f-slug").value = a.slug || "";
       $("f-summary").value = a.summary || "";
@@ -394,9 +1566,18 @@
       renderImagesEditor();
       refreshCategoryList();
       updateMdPreview();
+      scheduleFrontendPreview();
       updateLengthHint();
+      syncCategoryChips();
+      updateFormChrome();
+      if (!a.presentation) setAiStatus("此篇尚無 presentation，建議執行 AI 整理與判斷", false);
+    } else {
+      originalArticleSnapshot = null;
+      syncCategoryChips();
+      updateFormChrome();
     }
     captureFormSnapshot();
+    scheduleFrontendPreview();
     var bodyEl = $("f-body");
     if (bodyEl && editorMode !== "preview") {
       setTimeout(function () { bodyEl.focus(); }, 50);
@@ -419,12 +1600,9 @@
   }
 
   function detectLengthKind(body, forced) {
-    if (forced === "short") return "short";
-    if (forced === "long") return "long";
-    var n = String(body || "").replace(/\s+/g, "").length;
-    if (n <= SHORT_CHARS) return "short";
-    if (n >= LONG_CHARS) return "long";
-    return "medium";
+    // V3: length is a reference signal only — never a semantic class.
+    if (forced === "short" || forced === "long") return forced;
+    return "unknown";
   }
 
   function lengthLabel(kind) {
@@ -434,22 +1612,53 @@
   }
 
   function normalizeCategory(cat) {
+    if (window.SBSections && window.SBSections.normalizeCategory) {
+      return window.SBSections.normalizeCategory(cat);
+    }
     var c = String(cat || "").trim();
-    if (c === "短思") return "隨想";
+    if (c === "短思" || c === "碎念" || c === "短文") return "隨想";
+    if (c === "生活札記" || c === "札記" || c === "日常") return "日記";
+    if (c === "短感想" || c === "隨感" || c === "感想") return "隨想";
+    if (c === "閱讀心得" || c === "讀後感" || c === "心得感想") return "心得";
+    if (c === "文學創作" || c === "小說" || c === "詩") return "創作";
+    if (c === "散文" || c === "長隨筆") return "隨筆";
     return c;
   }
 
   function isThoughtCategory(cat) {
     var c = normalizeCategory(cat);
-    return c === "隨想";
+    return c === "隨想" || c === "日記";
   }
 
-  function todayThoughtTitle() {
+  function isLightListCategory(cat) {
+    return isThoughtCategory(cat);
+  }
+
+  /** 謹慎推測分類 */
+  function suggestCategory(title, body, section, existing) {
+    // V3: semantic classification is AI/human only. Regex/length must not decide.
+    void title; void body; void section;
+    return normalizeCategory(existing || "") || "";
+  }
+
+  function syncCategoryChips() {
+    var cur = normalizeCategory(($("f-category") && $("f-category").value) || "");
+    var row = $("category-quick");
+    if (!row) return;
+    Array.prototype.forEach.call(row.querySelectorAll(".chip"), function (btn) {
+      var cat = btn.getAttribute("data-cat");
+      btn.classList.toggle("is-selected", cat === cur);
+    });
+  }
+
+  function todayThoughtTitle(catHint) {
     var d = new Date();
     var y = d.getFullYear();
     var m = String(d.getMonth() + 1).padStart(2, "0");
     var day = String(d.getDate()).padStart(2, "0");
-    return y + "-" + m + "-" + day + " 隨想";
+    var cat = normalizeCategory(catHint || ($("f-category") && $("f-category").value) || "隨想");
+    var label = cat === "日記" ? "日記" : "隨想";
+    return y + "-" + m + "-" + day + " " + label;
   }
 
   function firstSentenceTitle(text) {
@@ -461,26 +1670,18 @@
   }
 
   function ensureThoughtTitle(out) {
-    var title = String(out.title || "").trim();
-    var weak = !title || title === "未命名匯入" || /^https?:\/\//i.test(title);
-    if (!weak) return;
-    if (out.lengthKind === "short" || isThoughtCategory(out.category)) {
-      var fromBody = firstSentenceTitle(out.body || out.summary || "");
-      out.title = fromBody || todayThoughtTitle();
-    } else if (!title) {
-      out.title = firstSentenceTitle(out.body) || todayThoughtTitle();
-    }
+    // V3: never invent title from first sentence / length.
+    void out;
   }
 
   function updateLengthHint() {
     var el = $("length-hint");
     if (!el) return;
     var body = ($("f-body") && $("f-body").value) || "";
-    var kind = detectLengthKind(body, "auto");
     var n = String(body).replace(/\s+/g, "").length;
     el.textContent = n
-      ? ("篇幅提示：" + lengthLabel(kind) + "（約 " + n + " 字）— 抱怨／碎念 → 隨想；HackMD／長筆記 → 長文。")
-      : "";
+      ? ("約 " + n + " 字（僅供參考）。分類／presentation 請用「AI 整理與判斷」或手動選擇。")
+      : "貼上後請按「AI 整理與判斷」，或手動填分類。AI 失敗時不會用字數規則猜。";
   }
 
   function addTagSuggestion(tag) {
@@ -490,12 +1691,18 @@
     if (cur.indexOf(tag) !== -1) return;
     cur.push(tag);
     input.value = cur.join(", ");
+    markFormDirty();
+    updateFormChrome();
   }
 
   function setCategoryQuick(cat) {
     var input = $("f-category");
     if (!input) return;
     input.value = normalizeCategory(cat);
+    syncCategoryChips();
+    markFormDirty();
+    updateFormChrome();
+    updateLengthHint();
   }
 
   function ensureCategoryOnSave() {
@@ -504,14 +1711,8 @@
       $("f-category").value = cat;
       return cat;
     }
-    var body = ($("f-body") && $("f-body").value) || "";
-    var kind = detectLengthKind(body, "auto");
-    var section = ($("f-section") && $("f-section").value) || "literature";
-    if (kind === "short") cat = "隨想";
-    else if (kind === "long") cat = section === "notes" ? "人文" : "長文";
-    else cat = section === "notes" ? "人文" : "隨筆";
-    $("f-category").value = cat;
-    return cat;
+    msg("form-msg", "請先選擇分類，或執行「AI 整理與判斷」後確認。", "err");
+    return "";
   }
 
   function isJunkSocialLine(line) {
@@ -548,8 +1749,9 @@
       if (/publish|發佈|发布/i.test(v)) out.status = "published";
       else if (/draft|草稿/i.test(v)) out.status = "draft";
     } else if (k === "section" || k === "分區") {
-      if (/note|筆記|學科/i.test(v)) out.section = "notes";
-      else if (/liter|文學|隨筆/i.test(v)) out.section = "literature";
+      if (/academic|學科/i.test(v)) out.section = "academic";
+      else if (/note|雜記|隨筆|隨想區/i.test(v)) out.section = "notes";
+      else if (/liter|文學|創作區/i.test(v)) out.section = "literature";
     } else if (k === "length" || k === "篇幅" || k === "kind") {
       if (/短|隨想|抱怨|碎念|short|thought/i.test(v)) out.lengthKind = "short";
       else if (/長|long/i.test(v)) out.lengthKind = "long";
@@ -577,13 +1779,20 @@
     }
 
     if (text.indexOf("---") === 0) {
-      var end = text.indexOf("\n---", 3);
-      if (end !== -1) {
-        text.slice(3, end).split("\n").forEach(function (line) {
-          var m = line.match(/^([^\s:#]+)\s*[:：]\s*(.+)$/);
-          if (m) parseMetaLine(m[1], m[2].replace(/^["']|["']$/g, ""), out);
+      var close = text.search(/\r?\n---\s*(?:\r?\n|$)/);
+      if (close !== -1) {
+        var between = text.slice(3, close);
+        var yamlLines = between.split(/\r?\n/).filter(function (line) {
+          return /^\s*[A-Za-z0-9_\u4e00-\u9fff][\w\u4e00-\u9fff.-]*\s*[:：]/.test(line);
         });
-        text = text.slice(end + 4).trim();
+        var sentenceMarks = (between.match(/[。！？]/g) || []).length;
+        if (yamlLines.length && !(sentenceMarks >= 2 && yamlLines.length < 2)) {
+          between.split("\n").forEach(function (line) {
+            var m = line.match(/^([^\s:#]+)\s*[:：]\s*(.+)$/);
+            if (m) parseMetaLine(m[1], m[2].replace(/^["']|["']$/g, ""), out);
+          });
+          text = text.slice(close).replace(/^\r?\n---\s*/, "").trim();
+        }
       }
     }
 
@@ -621,10 +1830,9 @@
         bodyStart = i;
         break;
       }
-      if (!out.title && line.length < 120) {
-        out.title = line.replace(/^["「『]|["」』]$/g, "");
-        bodyStart = i + 1;
-        break;
+      // V3: first non-empty line is only a title candidate; keep it in body
+      if (!out.title && !out._titleCandidate) {
+        out._titleCandidate = line.replace(/^["「『]|["」』]$/g, "");
       }
       break;
     }
@@ -672,22 +1880,23 @@
 
     if (out.category) out.category = normalizeCategory(out.category);
 
-    if (!out.category) {
-      var sectionGuess = out.section || opts.section || ($("import-section") && $("import-section").value) || ($("f-section") && $("f-section").value) || "literature";
-      // 只認明確寫在 meta 的分類；內文出現「心得」等字不硬猜，避免誤標
-      if (out.lengthKind === "short") out.category = "隨想";
-      else if (out.lengthKind === "long") out.category = sectionGuess === "notes" ? "人文" : "長文";
-      else out.category = sectionGuess === "notes" ? "人文" : "隨筆";
-    }
+    // 使用者在匯入第一步選的分區永遠優先；heuristic / frontmatter 不可覆寫
+    var lockedSection = opts.section || ($("import-section") && $("import-section").value) || "";
+    if (lockedSection) out.section = lockedSection;
+    else if (!out.section) out.section = "notes";
 
-    if (!out.section) {
-      out.section = opts.section || ($("import-section") && $("import-section").value) || "literature";
+    var sectionForCat = out.section || "notes";
+    if (out.category) {
+      var allowed = CATEGORIES[sectionForCat] || CATEGORIES.notes;
+      if (allowed.indexOf(out.category) === -1) out.category = "";
     }
     if (!out.status) out.status = "draft";
     ensureThoughtTitle(out);
     if (!out.slug && out.title) out.slug = slugify(out.title);
-    if (!out.slug) out.slug = "import-" + Date.now().toString(36);
-    if (!out.summary) out.summary = plainSummary(out.body).slice(0, 120);
+    if (!out.slug) out.slug = "draft-" + Date.now().toString(36);
+    if (!out.summary) out.summary = "";
+    out.needs_ai_analysis = true;
+    out.human_review_required = true;
     return out;
   }
 
@@ -701,7 +1910,7 @@
     badge.className = "badge length-" + (parsed.lengthKind || "medium");
     $("preview-meta").textContent =
       "分區 " + (parsed.section || "—") +
-      " · 分類 " + (parsed.category || "自動") +
+      " · 分類 " + (parsed.category ? displayCategoryLabel(parsed.category) : "自動") +
       " · 標籤 " + ((parsed.tags && parsed.tags.length) ? parsed.tags.join(", ") : "空白（可選）") +
       " · slug " + (parsed.slug || "—") +
       (parsed.cover ? " · 已抓到封面圖" : "") +
@@ -709,8 +1918,10 @@
     var hint = $("preview-hint");
     if (hint) {
       hint.textContent = isThoughtCategory(parsed.category)
-        ? "已當成「隨想」：抱怨／碎念／突然的想法都適合這裡。標題可之後再改。"
-        : "分類已自動填好；若想改成隨想或長文，進大編輯後點一鍵即可。";
+        ? (normalizeCategory(parsed.category) === "日記"
+          ? "已當成「日記」：當天生活／札記類。若其實是碎念，請改點「隨想」。"
+          : "已當成「隨想」：抱怨／碎念／隨便發都適合。若是當天生活紀錄，請改點「日記」。")
+        : "分類推測為「" + (parsed.category || "—") + "」。進大編輯後可一鍵改成隨想／日記／心得／創作。";
     }
     $("preview-summary").textContent = parsed.summary || "（無摘要）";
     $("preview-body").textContent = (parsed.body || "").slice(0, 1200) + ((parsed.body || "").length > 1200 ? "\n…" : "");
@@ -748,6 +1959,8 @@
     refreshCategoryList();
     updateLengthHint();
     updateMdPreview();
+    syncCategoryChips();
+    updateFormChrome();
     markFormDirty();
   }
 
@@ -761,20 +1974,24 @@
     var id = $("f-id").value;
     var bodyVal = ($("f-body") && $("f-body").value) || "";
     var title = $("f-title").value.trim();
-    if (!title) {
-      var kind = detectLengthKind(bodyVal, "auto");
-      title = (kind === "short" ? firstSentenceTitle(bodyVal) : "") || todayThoughtTitle();
-      $("f-title").value = title;
-    }
-    var slug = $("f-slug").value.trim() || slugify(title);
-    if (!title) { msg("form-msg", "請填標題", "err"); return; }
+    var slug = $("f-slug").value.trim() || (title ? slugify(title) : "");
+    if (!title) { msg("form-msg", "請填標題（或先跑 AI 整理並確認）。系統不會再用首句／字數自動命名。", "err"); return; }
     if (!slug) { msg("form-msg", "請填 slug", "err"); return; }
     $("f-slug").value = slug;
 
+    var draftForGuard = collectDraftArticle();
+    var truncWarns = buildSafetyWarnings(originalArticleSnapshot || {}, draftForGuard);
+    if (truncWarns.length) {
+      var proceed = window.confirm(truncWarns.join("\n\n") + "\n\n仍要儲存嗎？");
+      if (!proceed) return;
+    }
+
     var category = ensureCategoryOnSave();
+    if (!category) return;
     var tags = $("f-tags").value.split(/[,，、]+/).map(function (t) { return t.trim(); }).filter(Boolean);
+    var uiSection = $("f-section").value;
     var payload = {
-      section: $("f-section").value,
+      section: dbSection(uiSection),
       slug: slug,
       title: title,
       summary: $("f-summary").value.trim(),
@@ -786,13 +2003,76 @@
       pdf_url: $("f-pdf").value.trim() || null,
       status: $("f-status").value,
       sort_index: parseInt($("f-sort").value, 10) || 0,
+      content_type: ($("f-content-type") && $("f-content-type").value) || null,
+      presentation: ($("f-presentation") && $("f-presentation").value) || null,
+      visibility: ($("f-visibility") && $("f-visibility").value) || "public",
+      series: ($("f-series") && $("f-series").value.trim()) || null,
+      show_title: $("f-show-title") ? !!$("f-show-title").checked : null,
+      show_summary: $("f-show-summary") ? !!$("f-show-summary").checked : null,
+      needs_ai_analysis: !(($("f-presentation") && $("f-presentation").value)),
     };
+    // Merge semantic card display into ai_editorial (never overwrites article.title)
+    (function stampCardDisplay() {
+      if (!$("f-card-topic") && !$("f-card-label")) return;
+      var topic = $("f-card-topic") ? $("f-card-topic").value.trim() : "";
+      var label = $("f-card-label") ? $("f-card-label").value.trim() : "";
+      var showLabel = $("f-show-card-label") ? !!$("f-show-card-label").checked : !!label;
+      var prev =
+        window.__lastOpenedAiEditorial && typeof window.__lastOpenedAiEditorial === "object"
+          ? window.__lastOpenedAiEditorial
+          : {};
+      var display = Object.assign({}, prev.display || {}, {
+        card_topic: topic,
+        card_label: label,
+        show_card_label: showLabel && !!label,
+      });
+      var next = Object.assign({}, prev, {
+        display: display,
+        card_topic: topic,
+        card_label: label,
+        show_card_label: display.show_card_label,
+      });
+      if (lastAiAnalysis) {
+        next.analyzed_at = new Date().toISOString();
+        next.source = next.source || "admin_ai_confirm";
+        next.confidence = lastAiAnalysis.confidence;
+        next.reason = lastAiAnalysis.reason;
+        next.flags = lastAiAnalysis.flags || next.flags || [];
+        next.edit_level = lastAiAnalysis.edit_level || next.edit_level;
+        next.human_review_required = !!lastAiAnalysis.human_review_required;
+        next.semantic_card_version = "v1";
+      }
+      payload.ai_editorial = next;
+      window.__lastOpenedAiEditorial = next;
+    })();
+    if (uiSection === "academic") {
+      payload.visibility = ($("f-visibility") && $("f-visibility").value) || "private";
+    }
+    // Drop unknown columns until 0007 applied (retry without V3 fields on schema error)
+    payload._v3 = true;
 
     $("btn-save").disabled = true;
     msg("form-msg", '<span class="spinner-inline"></span> 儲存中…', "ok");
     var res;
+    delete payload._v3;
     if (id) res = await client.from("articles").update(payload).eq("id", id).select().single();
     else res = await client.from("articles").insert(payload).select().single();
+
+    if (res.error && /column|does not exist|42703/i.test(res.error.message || "")) {
+      delete payload.content_type;
+      delete payload.presentation;
+      delete payload.visibility;
+      delete payload.series;
+      delete payload.show_title;
+      delete payload.show_summary;
+      delete payload.needs_ai_analysis;
+      if (id) res = await client.from("articles").update(payload).eq("id", id).select().single();
+      else res = await client.from("articles").insert(payload).select().single();
+      if (!res.error) {
+        msg("form-msg", "已儲存（資料庫尚未套用 0007，V3 metadata 未寫入）。", "ok");
+      }
+    }
+
     $("btn-save").disabled = false;
 
     if (res.error) {
@@ -802,11 +2082,27 @@
       msg("form-msg", "儲存失敗：" + m, "err");
       return;
     }
-    msg("form-msg", "已儲存 ✔", "ok");
+    var submitted = collectDraftArticle();
+    submitted.id = res.data.id;
+    var mismatches = verifySavedAgainstSubmitted(submitted, res.data);
+    if (mismatches.length) {
+      msg("form-msg", "⚠ 資料庫回讀內容與送出內容不同：" + mismatches.join(", "), "err");
+    } else {
+      msg("form-msg", "已儲存 ✔", "ok");
+    }
     $("f-id").value = res.data.id;
+    editingArticleId = res.data.id;
+    originalArticleSnapshot = cloneJson(res.data);
+    if (res.data.ai_editorial && typeof res.data.ai_editorial === "object") {
+      window.__lastOpenedAiEditorial = cloneJson(res.data.ai_editorial);
+    }
+    lastAiBodyApplied = false;
     $("btn-delete").classList.remove("hidden");
-    $("form-title").textContent = "編輯文章";
+    mediaUploadedUnsaved = false;
+    setBodyImageStatus("");
     captureFormSnapshot();
+    updateFormChrome();
+    scheduleFrontendPreview();
     loadArticles();
   }
 
@@ -924,14 +2220,39 @@
     loadArticles();
   }
 
-  // ---------- 區塊文字 ----------
+  // ---------- 網站內容（Site Copy CMS） ----------
   function sectionMeta(key) {
-    return SECTION_META[key] || {
+    var schema = window.LYZSiteCopySchema && window.LYZSiteCopySchema.byKey
+      ? window.LYZSiteCopySchema.byKey(key)
+      : null;
+    if (schema) {
+      return {
+        title: schema.label || key,
+        desc: schema.description || "",
+        mode: schema.mode || "text",
+        page: schema.page,
+        group: schema.group,
+        fallback: schema.fallback || "",
+        pageUrl: schema.pageUrl || "",
+      };
+    }
+    return {
       title: key,
       desc: "自訂區塊文字",
       mode: "text",
+      fallback: "",
+      pageUrl: "",
     };
   }
+
+  var PAGE_LABELS = {
+    global: "全站",
+    home: "首頁",
+    directory: "隨筆",
+    literature: "文學創作",
+    about: "關於我",
+    academic: "學科筆記",
+  };
 
   function escapeHtml(s) {
     return window.SB && window.SB.escapeText
@@ -943,6 +2264,35 @@
           .replace(/"/g, "&quot;");
   }
 
+  function isAboutMarkdownKey(key) {
+    return key === "about.body" || key === "about.heading";
+  }
+
+  function normalizePreviewMarkdown(raw) {
+    if (typeof window.LYZNormalizeSiteCopyMarkdown === "function") {
+      return window.LYZNormalizeSiteCopyMarkdown(raw);
+    }
+    var text = String(raw == null ? "" : raw).replace(/\r\n/g, "\n");
+    text = text.replace(/^\n+/, "").replace(/\n+$/, "");
+    var lines = text.split("\n");
+    var nonEmpty = lines.filter(function (l) { return l.trim().length; });
+    if (nonEmpty.length) {
+      var indents = nonEmpty.map(function (l) {
+        var m = l.match(/^[ \t]+/);
+        return m ? m[0].length : 0;
+      });
+      var min = Math.min.apply(null, indents);
+      if (min > 0) {
+        lines = lines.map(function (l) {
+          if (!l.trim()) return "";
+          return l.slice(min);
+        });
+        text = lines.join("\n");
+      }
+    }
+    return text;
+  }
+
   function updateSectionPreview() {
     var preview = $("sec-preview");
     var ta = $("sec-value");
@@ -950,15 +2300,90 @@
     var meta = sectionMeta(activeSectionKey || "");
     var val = ta.value || "";
     if (!val.trim()) {
-      preview.innerHTML = "";
+      preview.innerHTML = '<span class="muted">（使用 fallback／空白）</span>';
+      preview.className = "sec-preview";
       return;
     }
     if (meta.mode === "markdown" && window.SB && typeof window.SB.renderMarkdown === "function") {
-      preview.innerHTML = window.SB.renderMarkdown(val);
-      preview.className = "sec-preview markdown-body";
+      var html = window.SB.renderMarkdown(normalizePreviewMarkdown(val));
+      // Accidental indented code → plain breaks (same guard as public site copy)
+      if (html.indexOf("<pre>") >= 0 && String(val).indexOf("```") < 0) {
+        html = escapeHtml(normalizePreviewMarkdown(val)).replace(/\n/g, "<br />");
+      }
+      preview.innerHTML = html;
+      if (isAboutMarkdownKey(activeSectionKey)) {
+        preview.className =
+          "sec-preview about-markdown" +
+          (activeSectionKey === "about.heading" ? " about-markdown--intro" : "");
+        if (activeSectionKey === "about.body" && typeof window.LYZEnhanceAboutMarkdownFolds === "function") {
+          preview.removeAttribute("data-folds-ready");
+          window.LYZEnhanceAboutMarkdownFolds(preview);
+        }
+      } else {
+        preview.className = "sec-preview markdown-body";
+      }
+    } else if (meta.mode === "multiline") {
+      preview.innerHTML = escapeHtml(val).replace(/\n/g, "<br />");
+      preview.className = "sec-preview";
     } else {
       preview.innerHTML = escapeHtml(val).replace(/\n/g, "<br />");
       preview.className = "sec-preview";
+    }
+  }
+
+  function wrapSecMarkdown(prefix, suffix, placeholder) {
+    var ta = $("sec-value");
+    if (!ta) return;
+    var start = ta.selectionStart || 0;
+    var end = ta.selectionEnd || 0;
+    var value = ta.value || "";
+    var selected = value.slice(start, end) || placeholder || "";
+    var next = value.slice(0, start) + prefix + selected + suffix + value.slice(end);
+    ta.value = next;
+    var cursor = start + prefix.length + selected.length;
+    ta.focus();
+    ta.setSelectionRange(start + prefix.length, cursor);
+    sectionDirty = true;
+    updateSectionPreview();
+  }
+
+  function applySecMarkdownAction(action) {
+    var ta = $("sec-value");
+    if (!ta) return;
+    if (action === "bold") return wrapSecMarkdown("**", "**", "粗體");
+    if (action === "italic") return wrapSecMarkdown("*", "*", "斜體");
+    if (action === "h2") return wrapSecMarkdown("\n## ", "\n", "小標");
+    if (action === "h3") return wrapSecMarkdown("\n### ", "\n", "次標");
+    if (action === "ul") {
+      var start = ta.selectionStart || 0;
+      var end = ta.selectionEnd || 0;
+      var chunk = (ta.value || "").slice(start, end) || "項目";
+      var listed = chunk
+        .split(/\n/)
+        .map(function (line) {
+          var t = line.replace(/^\s*[-*]\s+/, "").trim();
+          return t ? "- " + t : "- ";
+        })
+        .join("\n");
+      ta.setRangeText(listed, start, end, "end");
+      sectionDirty = true;
+      updateSectionPreview();
+      return;
+    }
+    if (action === "quote") return wrapSecMarkdown("\n> ", "\n", "引用一句話");
+    if (action === "link") return wrapSecMarkdown("[", "](https://)", "連結文字");
+    if (action === "hr") return wrapSecMarkdown("\n\n---\n\n", "", "");
+    if (action === "code") return wrapSecMarkdown("`", "`", "code");
+  }
+
+  function syncSecMarkdownChrome(key) {
+    var meta = sectionMeta(key || "");
+    var toolbar = $("sec-md-toolbar");
+    var help = $("sec-md-help");
+    var show = meta.mode === "markdown";
+    if (toolbar) toolbar.classList.toggle("hidden", !show);
+    if (help) {
+      help.classList.toggle("hidden", !show || !isAboutMarkdownKey(key));
     }
   }
 
@@ -970,23 +2395,55 @@
     if (!sectionsCache.length) {
       if (empty) {
         empty.classList.remove("hidden");
-        empty.textContent = "尚無區塊資料（可先套用 0001 SQL 的種子）。";
+        empty.textContent = "尚無 schema（請確認 site-copy-schema.js 已載入）。";
       }
       return;
     }
     if (empty) empty.classList.add("hidden");
+
+    var byPage = {};
     sectionsCache.forEach(function (r) {
       var meta = sectionMeta(r.key);
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "sec-nav-item" + (r.key === activeSectionKey ? " active" : "");
-      btn.setAttribute("data-sec-key", r.key);
-      var snip = String(r.value || "").replace(/\s+/g, " ").trim().slice(0, 48);
-      btn.innerHTML =
-        '<span class="sec-nav-title">' + escapeHtml(meta.title) + "</span>" +
-        '<span class="sec-nav-snip">' + escapeHtml(snip || "（空白）") + "</span>";
-      btn.addEventListener("click", function () { openSectionEditor(r.key); });
-      box.appendChild(btn);
+      var page = meta.page || "global";
+      if (!byPage[page]) byPage[page] = [];
+      byPage[page].push(r);
+    });
+
+    var pageOrder =
+      (window.LYZSiteCopySchema && window.LYZSiteCopySchema.pages && window.LYZSiteCopySchema.pages()) ||
+      Object.keys(byPage);
+
+    pageOrder.forEach(function (page) {
+      var rows = byPage[page];
+      if (!rows || !rows.length) return;
+      var head = document.createElement("div");
+      head.className = "sec-nav-group";
+      head.textContent = PAGE_LABELS[page] || page;
+      box.appendChild(head);
+      rows.forEach(function (r) {
+        var meta = sectionMeta(r.key);
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "sec-nav-item" + (r.key === activeSectionKey ? " active" : "");
+        btn.setAttribute("data-sec-key", r.key);
+        var snip = String(r.value != null && r.value !== "" ? r.value : r.fallback || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 48);
+        var badge = r.fromDb ? "" : '<span class="sec-badge">fallback</span>';
+        btn.innerHTML =
+          '<span class="sec-nav-title">' +
+          escapeHtml(meta.title) +
+          badge +
+          "</span>" +
+          '<span class="sec-nav-snip">' +
+          escapeHtml(snip || "（空白）") +
+          "</span>";
+        btn.addEventListener("click", function () {
+          openSectionEditor(r.key);
+        });
+        box.appendChild(btn);
+      });
     });
   }
 
@@ -994,67 +2451,94 @@
     if (sectionDirty && activeSectionKey && activeSectionKey !== key) {
       if (!window.confirm("目前區塊有未儲存變更，確定切換？")) return;
     }
-    var row = sectionsCache.find(function (r) { return r.key === key; });
-    if (!row) return;
     activeSectionKey = key;
-    sectionDirty = false;
+    var row = sectionsCache.find(function (r) {
+      return r.key === key;
+    });
     var meta = sectionMeta(key);
     var editor = $("sections-editor");
     var placeholder = $("sections-placeholder");
-    if (editor) editor.classList.remove("hidden");
     if (placeholder) placeholder.classList.add("hidden");
+    if (editor) editor.classList.remove("hidden");
     if ($("sec-title")) $("sec-title").textContent = meta.title;
-    if ($("sec-desc")) $("sec-desc").textContent = meta.desc;
+    if ($("sec-desc")) $("sec-desc").textContent = meta.desc || "";
     if ($("sec-key")) $("sec-key").textContent = key;
-    if ($("sec-value")) $("sec-value").value = row.value || "";
-    if ($("sec-status")) $("sec-status").textContent = "";
-    updateSectionPreview();
+    if ($("sec-value")) {
+      $("sec-value").value =
+        row && row.value != null && row.value !== ""
+          ? row.value
+          : meta.fallback || "";
+    }
+    var openLink = $("sec-open-page");
+    if (openLink) {
+      if (meta.pageUrl) {
+        openLink.hidden = false;
+        openLink.href = meta.pageUrl;
+      } else {
+        openLink.hidden = true;
+      }
+    }
+    if ($("sec-status")) {
+      $("sec-status").textContent = row && row.fromDb ? "已儲存於資料庫" : "目前顯示 schema fallback（尚未 UPSERT）";
+    }
+    sectionDirty = false;
     renderSectionsNav();
+    syncSecMarkdownChrome(key);
+    updateSectionPreview();
   }
 
   async function saveActiveSection() {
     if (!activeSectionKey) return;
     var ta = $("sec-value");
-    var btn = $("btn-sec-save");
     if (!ta) return;
-    if (btn) btn.disabled = true;
-    if ($("sec-status")) $("sec-status").textContent = "儲存中…";
-    var up = await client.from("site_sections").update({ value: ta.value }).eq("key", activeSectionKey);
-    if (btn) btn.disabled = false;
+    msg("sec-status", "");
+    var payload = { key: activeSectionKey, value: ta.value };
+    var up = await client.from("site_sections").upsert(payload, { onConflict: "key" });
     if (up.error) {
-      if ($("sec-status")) $("sec-status").textContent = "儲存失敗：" + up.error.message;
-      msg("global-msg", "儲存失敗：" + up.error.message, "err");
-      return;
+      // fallback to update then insert
+      var upd = await client.from("site_sections").update({ value: ta.value }).eq("key", activeSectionKey);
+      if (upd.error) {
+        var ins = await client.from("site_sections").insert(payload);
+        if (ins.error) {
+          msg("sec-status", "儲存失敗：" + (ins.error.message || upd.error.message || up.error.message), "err");
+          return;
+        }
+      }
     }
-    sectionsCache.forEach(function (r) {
-      if (r.key === activeSectionKey) r.value = ta.value;
-    });
     sectionDirty = false;
-    if ($("sec-status")) $("sec-status").textContent = "已儲存 ✔";
-    msg("global-msg", "已儲存區塊 " + activeSectionKey + " ✔", "ok");
-    setTimeout(function () { msg("global-msg", ""); }, 2500);
-    renderSectionsNav();
+    await loadSections();
+    openSectionEditor(activeSectionKey);
+    msg("sec-status", "已儲存 ✔", "ok");
   }
 
   async function loadSections() {
-    var empty = $("sections-nav-empty");
-    if (empty) {
-      empty.classList.remove("hidden");
-      empty.textContent = "載入中…";
-    }
-    var list = $("sections-list");
-    if (list) list.innerHTML = "";
-    var res = await client.from("site_sections").select("key,value").order("key");
-    if (res.error) {
-      if (empty) empty.textContent = "讀取失敗：" + res.error.message;
-      return;
-    }
-    sectionsCache = res.data || [];
-    activeSectionKey = null;
-    sectionDirty = false;
-    if ($("sections-editor")) $("sections-editor").classList.add("hidden");
-    if ($("sections-placeholder")) $("sections-placeholder").classList.remove("hidden");
+    var dbMap = {};
+    try {
+      var res = await client.from("site_sections").select("key,value").order("key");
+      if (!res.error && res.data) {
+        res.data.forEach(function (r) {
+          dbMap[r.key] = r.value;
+        });
+      }
+    } catch (e) {}
+
+    var entries =
+      (window.LYZSiteCopySchema && window.LYZSiteCopySchema.ENTRIES) ||
+      Object.keys(SECTION_META || {}).map(function (k) {
+        return { key: k, fallback: "" };
+      });
+
+    sectionsCache = entries.map(function (e) {
+      var has = Object.prototype.hasOwnProperty.call(dbMap, e.key);
+      return {
+        key: e.key,
+        value: has ? dbMap[e.key] : "",
+        fallback: e.fallback || "",
+        fromDb: has,
+      };
+    });
     renderSectionsNav();
+    if (activeSectionKey) openSectionEditor(activeSectionKey);
   }
 
   // ---------- 進入後台 ----------
@@ -1126,6 +2610,7 @@
   // ---------- 事件綁定 ----------
   function bind() {
     bindClearAuthButtons();
+    bindFrontendPreviewChrome();
     var g = $("btn-google");
     if (g) g.addEventListener("click", function () {
       window.SBAuth.signInWithGoogle(window.location.href.split("#")[0]);
@@ -1144,6 +2629,10 @@
     });
 
     $("list-section").addEventListener("change", loadArticles);
+    if ($("list-status")) $("list-status").addEventListener("change", function () { renderArticleList(articlesCache); });
+    if ($("list-search")) {
+      $("list-search").addEventListener("input", function () { renderArticleList(articlesCache); });
+    }
     $("btn-new").addEventListener("click", function () { openForm(null); });
     $("btn-cancel").addEventListener("click", function () { closeForm(false); });
     $("btn-save").addEventListener("click", saveArticle);
@@ -1198,6 +2687,13 @@
         updateSectionPreview();
       });
     }
+    if ($("sec-md-toolbar")) {
+      $("sec-md-toolbar").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-md]");
+        if (!btn) return;
+        applySecMarkdownAction(btn.getAttribute("data-md"));
+      });
+    }
 
     var parseBtn = $("btn-parse-paste");
     function runParse(showPreview) {
@@ -1243,7 +2739,30 @@
         $("paste-status").textContent = "已進大編輯；左側寫 Markdown，右側看排版，改完再儲存";
       });
     }
-    var quickDraft = $("btn-quick-draft");
+    
+    if ($("btn-ai-analyze")) {
+      $("btn-ai-analyze").addEventListener("click", function () { runAiAnalyze("analyze_and_format"); });
+    }
+    if ($("btn-ai-meta-only")) {
+      $("btn-ai-meta-only").addEventListener("click", function () { runAiAnalyze("metadata_only"); });
+    }
+    if ($("btn-ai-apply-all")) {
+      $("btn-ai-apply-all").addEventListener("click", function () { applyAiAnalysis("all"); });
+    }
+    if ($("btn-ai-apply-meta")) {
+      $("btn-ai-apply-meta").addEventListener("click", function () { applyAiAnalysis("meta"); });
+    }
+    if ($("btn-ai-apply-body")) {
+      $("btn-ai-apply-body").addEventListener("click", function () { applyAiAnalysis("body"); });
+    }
+    if ($("btn-ai-discard")) {
+      $("btn-ai-discard").addEventListener("click", function () {
+        lastAiAnalysis = null;
+        if ($("ai-review-panel")) $("ai-review-panel").classList.add("hidden");
+        setAiStatus("已放棄 AI 建議");
+      });
+    }
+var quickDraft = $("btn-quick-draft");
     if (quickDraft) {
       quickDraft.addEventListener("click", async function () {
         var parsed = runParse(true);
@@ -1271,9 +2790,58 @@
       });
     }
 
-    if ($("import-section") && $("list-section")) {
+    function setImportSection(sec) {
+      if (!sec) return;
+      if ($("import-section")) $("import-section").value = sec;
+      if ($("list-section")) $("list-section").value = sec;
+      var pick = $("section-pick");
+      if (pick) {
+        Array.prototype.forEach.call(pick.querySelectorAll("[data-section]"), function (btn) {
+          var on = btn.getAttribute("data-section") === sec;
+          btn.classList.toggle("is-selected", on);
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+      }
+      refreshCategoryList();
+    }
+
+    var sectionPick = $("section-pick");
+    if (sectionPick) {
+      sectionPick.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-section]");
+        if (!btn) return;
+        setImportSection(btn.getAttribute("data-section"));
+        loadArticles();
+      });
+      setImportSection(($("import-section") && $("import-section").value) || "notes");
+    } else if ($("import-section") && $("list-section")) {
       $("import-section").addEventListener("change", function () {
         $("list-section").value = $("import-section").value;
+      });
+    }
+
+    if ($("bulk-select-all")) {
+      $("bulk-select-all").addEventListener("change", function () {
+        var on = !!$("bulk-select-all").checked;
+        Array.prototype.forEach.call(document.querySelectorAll(".bulk-check"), function (cb) {
+          cb.checked = on;
+          var row = cb.closest(".list-item");
+          var id = row && row.getAttribute("data-id");
+          if (!id) return;
+          if (on) selectedIds[id] = true;
+          else delete selectedIds[id];
+        });
+        updateBulkUi();
+      });
+    }
+    if ($("btn-bulk-apply")) {
+      $("btn-bulk-apply").addEventListener("click", function () { applyBulkMetadata(); });
+    }
+    if ($("list-section")) {
+      $("list-section").addEventListener("change", function () {
+        selectedIds = {};
+        if ($("bulk-select-all")) $("bulk-select-all").checked = false;
+        refreshCategoryList();
       });
     }
 
@@ -1292,7 +2860,6 @@
         var btn = e.target.closest("[data-cat]");
         if (!btn) return;
         setCategoryQuick(btn.getAttribute("data-cat"));
-        markFormDirty();
       });
     }
 
@@ -1300,6 +2867,7 @@
       if (!$("f-slug").value.trim() && $("f-title").value.trim()) {
         $("f-slug").value = slugify($("f-title").value);
       }
+      updateFormChrome();
     });
     if ($("f-body")) {
       $("f-body").addEventListener("input", function () {
@@ -1307,15 +2875,71 @@
         updateLengthHint();
         scheduleMdPreview();
       });
+      $("f-body").addEventListener("paste", function (e) {
+        var file = clipboardImageFile(e.clipboardData);
+        if (!file) return;
+        e.preventDefault();
+        uploadImagesIntoBody([file]);
+      });
     }
+
+    var writePane = $("editor-pane-write");
+    if (writePane) {
+      writePane.addEventListener("dragover", function (e) {
+        if (e.dataTransfer && Array.prototype.some.call(e.dataTransfer.types || [], function (t) {
+          return t === "Files";
+        })) {
+          e.preventDefault();
+          writePane.classList.add("is-drop-target");
+        }
+      });
+      writePane.addEventListener("dragleave", function () {
+        writePane.classList.remove("is-drop-target");
+      });
+      writePane.addEventListener("drop", function (e) {
+        writePane.classList.remove("is-drop-target");
+        var files = e.dataTransfer && e.dataTransfer.files;
+        if (!files || !files.length) return;
+        var imgs = Array.prototype.filter.call(files, function (f) {
+          return /^image\//.test(f.type);
+        });
+        if (!imgs.length) return;
+        e.preventDefault();
+        uploadImagesIntoBody(imgs);
+      });
+    }
+
+    var bodyImageFile = $("body-image-file");
+    if (bodyImageFile) {
+      bodyImageFile.addEventListener("change", function (e) {
+        var files = Array.from(e.target.files || []);
+        if (files.length) uploadImagesIntoBody(files);
+        e.target.value = "";
+      });
+    }
+    if ($("f-category")) $("f-category").addEventListener("change", function () {
+      markFormDirty();
+      syncCategoryChips();
+      updateFormChrome();
+    });
     ["f-title", "f-slug", "f-summary", "f-tags", "f-pdf", "f-category", "f-cover", "f-sort"].forEach(function (id) {
       var el = $(id);
-      if (el) el.addEventListener("input", markFormDirty);
+      if (el) el.addEventListener("input", function () {
+        markFormDirty();
+        if (id === "f-title" || id === "f-category" || id === "f-slug") {
+          if (id === "f-category") syncCategoryChips();
+          updateFormChrome();
+        }
+      });
     });
-    if ($("f-status")) $("f-status").addEventListener("change", markFormDirty);
+    if ($("f-status")) $("f-status").addEventListener("change", function () {
+      markFormDirty();
+      updateFormChrome();
+    });
     $("f-section").addEventListener("change", function () {
       markFormDirty();
       refreshCategoryList();
+      updateFormChrome();
     });
     $("f-cover").addEventListener("input", function () {
       var v = $("f-cover").value.trim();
@@ -1334,18 +2958,65 @@
       });
     }
 
+    async function setCoverFromFile(file) {
+      if (!file || !/^image\//.test(file.type)) return;
+      var status = $("cover-status");
+      if (status) status.innerHTML = '<span class="spinner-inline"></span> 上傳封面中…';
+      try {
+        var urlStr = await uploadImage(file, ($("f-section") && $("f-section").value) || "notes");
+        $("f-cover").value = urlStr;
+        $("cover-thumb").src = urlStr;
+        $("cover-thumb").classList.remove("hidden");
+        mediaUploadedUnsaved = true;
+        if (status) status.textContent = "✓ 封面已上傳 · ● 文章尚未儲存";
+        markFormDirty();
+      } catch (err) {
+        if (status) status.textContent = "失敗：" + (err.message || err);
+      }
+    }
+
     $("cover-file").addEventListener("change", async function (e) {
       var file = e.target.files[0]; if (!file) return;
-      $("cover-status").innerHTML = '<span class="spinner-inline"></span> 上傳中…';
-      try {
-        var urlStr = await uploadImage(file, $("f-section").value);
-        $("f-cover").value = urlStr;
-        $("cover-thumb").src = urlStr; $("cover-thumb").classList.remove("hidden");
-        $("cover-status").textContent = "已上傳 ✔";
-        markFormDirty();
-      } catch (err) { $("cover-status").textContent = "失敗：" + (err.message || err); }
+      await setCoverFromFile(file);
       e.target.value = "";
     });
+
+    var coverInput = $("f-cover");
+    if (coverInput) {
+      coverInput.addEventListener("paste", function (e) {
+        var file = clipboardImageFile(e.clipboardData);
+        if (!file) return;
+        e.preventDefault();
+        setCoverFromFile(file);
+      });
+    }
+
+    var coverDrop = $("cover-drop");
+    if (coverDrop) {
+      coverDrop.addEventListener("dragover", function (e) {
+        if (e.dataTransfer && Array.prototype.some.call(e.dataTransfer.types || [], function (t) {
+          return t === "Files";
+        })) {
+          e.preventDefault();
+          coverDrop.classList.add("is-drop-target");
+        }
+      });
+      coverDrop.addEventListener("dragleave", function () {
+        coverDrop.classList.remove("is-drop-target");
+      });
+      coverDrop.addEventListener("drop", function (e) {
+        coverDrop.classList.remove("is-drop-target");
+        var files = e.dataTransfer && e.dataTransfer.files;
+        if (!files || !files.length) return;
+        var img = null;
+        for (var i = 0; i < files.length; i++) {
+          if (/^image\//.test(files[i].type)) { img = files[i]; break; }
+        }
+        if (!img) return;
+        e.preventDefault();
+        setCoverFromFile(img);
+      });
+    }
 
     $("more-file").addEventListener("change", async function (e) {
       var files = Array.from(e.target.files || []); if (!files.length) return;
@@ -1363,7 +3034,135 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  
+
+  // ---------- V3 AI editorial review ----------
+  function setAiStatus(text, isErr) {
+    var el = $("ai-status");
+    if (!el) return;
+    el.textContent = text || "";
+    el.style.color = isErr ? "#f4708a" : "";
+  }
+
+  function renderAiReview(analysis, meta) {
+    lastAiAnalysis = analysis;
+    var panel = $("ai-review-panel");
+    if (!panel) return;
+    panel.classList.remove("hidden");
+    function setText(id, v) { var el = $(id); if (el) el.textContent = v == null ? "—" : String(v); }
+    setText("ai-r-title", analysis.title);
+    setText("ai-r-show-title", analysis.show_title ? "顯示" : "隱藏");
+    setText("ai-r-summary", analysis.summary || "（空）");
+    setText("ai-r-show-summary", analysis.show_summary ? "顯示" : "隱藏");
+    setText("ai-r-category", analysis.category);
+    setText("ai-r-content-type", analysis.content_type);
+    setText("ai-r-presentation", analysis.presentation);
+    setText("ai-r-card-topic", analysis.card_topic || "（無）");
+    setText("ai-r-card-label", analysis.card_label || "（無）");
+    setText(
+      "ai-r-show-card-label",
+      typeof analysis.show_card_label === "boolean"
+        ? analysis.show_card_label
+          ? "顯示"
+          : "隱藏"
+        : analysis.card_label
+          ? "顯示"
+          : "—"
+    );
+    setText("ai-r-tags", (analysis.tags || []).join(", ") || "（無）");
+    setText("ai-r-series", analysis.series || "（無）");
+    setText("ai-r-edit-level", analysis.edit_level);
+    setText("ai-r-state", analysis.editorial_state);
+    setText("ai-r-confidence", String(analysis.confidence));
+    setText("ai-r-reason", analysis.reason || "");
+    setText("ai-r-flags", (analysis.flags || []).join(", ") || "（無）");
+    setText("ai-r-review", analysis.human_review_required ? "需要人工確認" : "可快速採用");
+    setText("ai-r-meta", meta ? ((meta.provider || "") + " / " + (meta.model || "") + " / " + (meta.analyzed_at || "")) : "");
+    var bodyDiff = $("ai-r-body");
+    if (bodyDiff) bodyDiff.value = analysis.clean_body || "";
+    var warn = $("ai-r-warn");
+    if (warn) {
+      warn.textContent = analysis.human_review_required
+        ? "此結果標記為需要人工確認，請逐項檢查後再採用。不會自動發佈。"
+        : "請確認後再採用。AI 不會自動發佈。";
+    }
+  }
+
+  function applyAiAnalysis(mode) {
+    if (!lastAiAnalysis) {
+      setAiStatus("沒有可採用的 AI 結果", true);
+      return;
+    }
+    var a = lastAiAnalysis;
+    if (mode === "all" || mode === "meta" || mode === "taxonomy") {
+      if (a.title != null) $("f-title").value = a.title;
+      if ($("f-show-title")) $("f-show-title").checked = !!a.show_title;
+      if (a.summary != null) $("f-summary").value = a.summary;
+      if ($("f-show-summary")) $("f-show-summary").checked = !!a.show_summary;
+      if (a.category) {
+        $("f-category").value = normalizeCategory(a.category);
+        syncCategoryChips();
+      }
+      if ($("f-content-type")) $("f-content-type").value = a.content_type || "";
+      if ($("f-presentation")) $("f-presentation").value = a.presentation || "";
+      if (a.tags && $("f-tags")) $("f-tags").value = a.tags.join(", ");
+      if ($("f-series")) $("f-series").value = a.series || "";
+      // Semantic card label ≠ author title — never write card_label into f-title
+      if ($("f-card-topic") && a.card_topic != null) $("f-card-topic").value = a.card_topic;
+      if ($("f-card-label") && a.card_label != null) $("f-card-label").value = a.card_label;
+      if ($("f-show-card-label") && typeof a.show_card_label === "boolean") {
+        $("f-show-card-label").checked = a.show_card_label;
+      }
+    }
+    if ((mode === "all" || mode === "body") && a.clean_body != null) {
+      $("f-body").value = a.clean_body;
+      lastAiBodyApplied = true;
+      scheduleMdPreview();
+    }
+    scheduleFrontendPreview();
+    if (editorMode === "changes") renderChangesPanel();
+    if (a.ai_editorial || true) {
+      // provenance stamped on next successful save via fields
+    }
+    markFormDirty();
+    updateFormChrome();
+    updateLengthHint();
+    setAiStatus("已套用 AI 建議（" + mode + "）。請再按「儲存」；不會自動發佈。");
+  }
+
+  async function runAiAnalyze(mode) {
+    if (!window.SBAiEditorial) {
+      setAiStatus("AI 模組未載入", true);
+      return;
+    }
+    setAiStatus("AI 分析中…");
+    var article = {
+      id: ($("f-id") && $("f-id").value) || null,
+      title: ($("f-title") && $("f-title").value) || "",
+      body: ($("f-body") && $("f-body").value) || "",
+      category: ($("f-category") && $("f-category").value) || "",
+      tags: (($("f-tags") && $("f-tags").value) || "").split(/[,，、]+/).map(function (t) { return t.trim(); }).filter(Boolean),
+      cover: ($("f-cover") && $("f-cover").value) || null,
+      images: currentImages,
+      section: ($("f-section") && $("f-section").value) || "",
+      summary: ($("f-summary") && $("f-summary").value) || "",
+    };
+    if (!article.body.trim()) {
+      setAiStatus("請先貼上或填寫正文", true);
+      return;
+    }
+    var res = await window.SBAiEditorial.analyzeArticle(article, mode || "analyze_and_format");
+    if (!res.ok) {
+      setAiStatus((res.unavailable ? "AI unavailable — " : "") + (res.error || "失敗") + "。請改為手動填寫，系統不會用字數規則猜測。", true);
+      lastAiAnalysis = null;
+      return;
+    }
+    renderAiReview(res.analysis, res.meta);
+    setAiStatus("AI 分析完成。請審核後選擇採用方式。");
+  }
+
+
+document.addEventListener("DOMContentLoaded", function () {
     bind();
     refreshView();
     if (window.SBAuth && window.SB && window.SB.isConfigured()) {

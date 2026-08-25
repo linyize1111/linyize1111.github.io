@@ -1,4 +1,4 @@
-# Local secrets — never commit
+# Local secrets ? never commit
 .env
 .env.*
 !.env.example
@@ -14,6 +14,11 @@ _migration_tmp/
 
 # Node
 node_modules/
+
+# Local/live dumps ? do not publish on Pages
+docs/content-repair/LIVE_ARTICLES_EXPORT.json
+
+artifacts/
 
 # OS / editor
 .DS_Store

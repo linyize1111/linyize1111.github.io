@@ -19,16 +19,19 @@ function ok(name, cond, detail) {
 }
 
 const cfg = fs.readFileSync(path.join(ROOT, "assets", "js", "data-source-config.js"), "utf8");
-ok("prod_default_supabase", /source:\s*"supabase"/.test(cfg));
+ok("prod_default_static", /source:\s*"static"/.test(cfg));
 
 const ds = fs.readFileSync(path.join(ROOT, "assets", "js", "cms-data.js"), "utf8");
 ok("no_service_role_in_cms_data", !/service_role|SERVICE_ROLE|DATABASE_URL|neon\.tech/i.test(ds));
 
-const pages = ["index.html", "about.html", "literature.html", "directory.html", "note.html"];
-for (const p of pages) {
+const publicPages = ["index.html", "about.html", "literature.html", "directory.html", "note.html"];
+for (const p of publicPages) {
   const html = fs.readFileSync(path.join(ROOT, p), "utf8");
   ok(p + "_loads_data_source_config", html.includes("data-source-config.js"));
   ok(p + "_loads_cms_data", html.includes("cms-data.js"));
+  ok(p + "_no_supabase_js_cdn", !html.includes("@supabase/supabase-js"));
+  ok(p + "_no_supabase_config_script", !html.includes("supabase-config.js"));
+  ok(p + "_csp_no_supabase_connect", !/connect-src[^;]*supabase/i.test(html));
 }
 
 const supabaseCfg = fs.readFileSync(path.join(ROOT, "assets", "js", "supabase-config.js"), "utf8");
@@ -37,7 +40,6 @@ ok(
   !/service[_-]?role[_-]?key\s*[:=]\s*["']eyJ/i.test(supabaseCfg) &&
     !/service_role["']\s*:\s*["']eyJ/i.test(supabaseCfg)
 );
-ok("anon_key_present_public", /anonKey:\s*"eyJ/.test(supabaseCfg));
 
 // content/cms must not contain obvious secrets
 function walk(dir, acc = []) {
