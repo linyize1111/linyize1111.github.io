@@ -27,13 +27,26 @@ function readConfig() {
 }
 
 function normArticle(a) {
+  function normUrl(u) {
+    if (!u) return u;
+    var s = String(u);
+    var m = s.match(/\/notes\/([^/?#]+\.(?:webp|jpg|jpeg|png|gif))(?:[?#].*)?$/i);
+    if (m) return "images/cms/notes/" + m[1];
+    return s;
+  }
+  function normBody(body) {
+    return String(body || "").replace(
+      /https:\/\/[^/]+\.supabase\.co\/storage\/v1\/object\/public\/article-images\/notes\/([^)\s"']+)/g,
+      "images/cms/notes/$1"
+    );
+  }
   return {
     section: a.section,
     slug: a.slug,
     title: a.title,
     summary: a.summary || "",
-    body: a.body || "",
-    cover: a.cover || null,
+    body: normBody(a.body),
+    cover: normUrl(a.cover || null),
     category: a.category || null,
     status: a.status,
     sort_index: a.sort_index || 0,
