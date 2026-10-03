@@ -4,9 +4,11 @@
   "description": "Massively by HTML5 UP\r html5up.net | @ajlkn\r Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)",
   "main": "server.js",
   "scripts": {
-    "test": "node tools/migration_security_tests.mjs && node tools/parity_check.mjs --offline",
+    "test": "node tools/migration_security_tests.mjs && node tools/parity_check.mjs --offline && node tools/build_static_from_markdown.mjs --check",
     "test:security": "node tools/migration_security_tests.mjs",
     "test:parity": "node tools/parity_check.mjs",
+    "articles:check": "node tools/build_static_from_markdown.mjs --check",
+    "articles:build": "node tools/build_static_from_markdown.mjs --write",
     "export:static": "node tools/export_supabase_to_static.mjs",
     "export:static:dry": "node tools/export_supabase_to_static.mjs --dry-run",
     "verify:backup": "node tools/verify_backup_restore.mjs",
