@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * parity_check.mjs — compare live Supabase (anon) vs content/cms static export
- * Exit 0 on match; 1 on mismatch / fetch failure (fail closed).
+ * parity_check.mjs — validate the static export offline, or compare it with
+ * live Supabase when explicitly requested. The live project may be paused.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -63,6 +63,33 @@ async function main() {
   }
   const staticArts = readJson(path.join(CMS, "articles.json"));
   const staticSecs = readJson(path.join(CMS, "site_sections.json"));
+  const manifest = readJson(path.join(CMS, "manifest.json"));
+  if (!Array.isArray(staticArts) || !Array.isArray(staticSecs)) {
+    throw new Error("static CMS articles and sections must be arrays");
+  }
+  if (manifest.article_count !== staticArts.length || manifest.section_count !== staticSecs.length) {
+    throw new Error("static CMS manifest counts do not match exported data");
+  }
+  const articleKeys = new Set();
+  for (const article of staticArts) {
+    if (!article.section || !article.slug || !article.title || article.status !== "published") {
+      throw new Error("static CMS contains an invalid or unpublished article");
+    }
+    const articleKey = key(article);
+    if (articleKeys.has(articleKey)) throw new Error("duplicate static article: " + articleKey);
+    articleKeys.add(articleKey);
+  }
+  const sectionKeys = new Set();
+  for (const section of staticSecs) {
+    if (!section.key || section.value == null || sectionKeys.has(section.key)) {
+      throw new Error("static CMS contains an invalid or duplicate section");
+    }
+    sectionKeys.add(section.key);
+  }
+  if (process.argv.includes("--offline")) {
+    console.log(`[static] OK: ${staticArts.length} articles, ${staticSecs.length} sections`);
+    return;
+  }
   const cfg = readConfig();
   const h = { apikey: cfg.anonKey, Authorization: "Bearer " + cfg.anonKey };
   const artRes = await fetch(

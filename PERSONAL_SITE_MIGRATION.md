@@ -58,9 +58,9 @@ Verified before cutover: 46 articles, 10 sections, 14 referenced storage objects
 | Command | Purpose |
 |---------|---------|
 | `npm run export:static` | Refresh `content/cms/*` from live anon API |
-| `npm run test:parity` | Live vs static field parity |
+| `npm run test:parity` | Live vs static field parity; requires the personal-site Supabase project to be running |
 | `npm run test:security` | Static-mode guardrails |
-| `npm test` | security + parity |
+| `npm test` | Offline security and static export integrity checks; works while Supabase is paused |
 | `node tools/mirror_storage_to_static.mjs` | Rewrite Storage URLs → `images/cms/notes/` |
 | `node tools/verify_backup_restore.mjs <dir>` | Offline backup integrity |
 
