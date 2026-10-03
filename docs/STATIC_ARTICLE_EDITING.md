@@ -5,10 +5,10 @@
 ## 修改現有文章
 
 1. 在 GitHub 網頁打開對應 `.md`，按鉛筆編輯，保留最上方 `---` 之間的 `id` 和 `section`。可修改 `title`、`slug`、`category`、`published_at` 及下方正文。`status: draft` 會讓文章從公開索引移除。
-2. 將變更存入分支／PR，而不是直接覆蓋主分支。提交前在本機執行 `npm run articles:build`，檢查 `content/cms/articles.json` 的差異，然後執行 `npm test`。兩個檔案應一同進入 PR。
-3. 合併後等候 GitHub Pages 部署，才在公開網址驗證標題、內文、圖片和手機排版。
+2. 將變更存入**同一個儲存庫的新分支**，不要直接改 `main`。到 GitHub 的 **Actions → Build static articles → Run workflow**，選擇剛編輯的分支並啟動。這個手動流程會產生 `articles.json`、跑測試，然後只把產出的文章索引與 manifest 提交回該分支；沒有每天排程，也不會在電腦上跳出視窗。僅站長帳號能執行，`main` 分支不會被這個流程直接修改。
+3. 等 workflow 顯示成功，在 PR 的 Files changed 檢查 Markdown 與產出的文章索引；確認沒有錯字或非預期刪除才合併。合併後等候 GitHub Pages 部署，並在公開網址驗證標題、內文、圖片和手機排版。
 
-目前尚未提供純 GitHub 網頁的一鍵發佈；如果只透過 GitHub 網頁改 Markdown，需要請維護者在本機執行第 2 步。不要誤以為 GitHub 儲存檔案就已經發佈。
+也可以在本機執行 `npm run articles:build`、`npm test`，將 Markdown、JSON 與 manifest 一起提交 PR。**GitHub 儲存 Markdown 或 workflow 成功都不等於已公開發佈；合併 PR 且 Pages 部署成功才算完成。**
 
 ## 新增文章
 
