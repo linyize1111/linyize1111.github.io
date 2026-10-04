@@ -220,7 +220,7 @@
 
     <!--  影片與音樂背景 -->
     <video id="bg-video" muted loop playsinline poster="images/bg.jpg" preload="metadata" autoplay>
-        <source src="images/bg-video.mp4" type="video/mp4">
+        <source data-src="images/bg-video.mp4" type="video/mp4">
     </video>
     <audio id="bg-music" loop preload="none">
         <source src="images/bg-music.mp3" type="audio/mpeg">
@@ -349,6 +349,7 @@
     <script src="https://cdn.jsdelivr.net/npm/zdog@1/dist/zdog.dist.min.js"></script>
     <script src="assets/js/mouse-effect.js"></script>
     <!-- 櫻花特效由 common.js 的 initSakuraIfPresent() 統一初始化 -->
+    <script src="assets/js/responsive-video.js?v=v9.7-mobile-reading-1"></script>
     <script src="assets/js/common.js?v=v9.7-share-bg-1"></script>
 
     <!-- Supabase CMS：未設定時自動略過，維持現有靜態內容 -->
