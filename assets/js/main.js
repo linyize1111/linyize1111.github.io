@@ -110,12 +110,12 @@
 
 	};
 
-	// Play initial animations on page load.
-		$window.on('load', function() {
-			window.setTimeout(function() {
-				$body.removeClass('is-preload');
-			}, 100);
-		});
+	// This script sits after the page markup. Reveal it without waiting for
+	// third-party scripts or background media to finish loading; either event can
+	// be slow enough to leave the first screen blank for several seconds.
+		window.setTimeout(function() {
+			$body.removeClass('is-preload');
+		}, 100);
 
 	// Scrolly.
 		$('.scrolly').scrolly();
