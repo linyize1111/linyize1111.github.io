@@ -492,6 +492,7 @@ textarea { width: 100%; min-height: 150px; padding: 14px; resize: vertical; }
 .gate-card { max-width: 560px; }.gate-mark { color: #9fd8ff; background: rgba(89,178,255,.12); border-color: rgba(89,178,255,.25); }.gate-card .modal-actions { flex-wrap: wrap; }
 body.gated #main-nav,
 body.gated .mobile-bottom-nav { display: none !important; }
+body.gated .nav-toggle { display: none !important; }
 body.gated main > .view:not(#view-landing):not(#view-privacy):not(#view-terms) { display: none !important; }
 body.gated #view-landing.view.active { display: block !important; }
 body.gated #view-privacy.view.active,
@@ -891,8 +892,9 @@ body:not(.flavor-local) .admin-row-cover-jump { display: none !important; }
 @media (max-width: 980px) {
   .landing-cards { grid-template-columns: 1fr; }
   .submit-id-row { grid-template-columns: 1fr; }
-  .main-nav { display: none !important; }
-  .nav-toggle { display: none; }
+  .main-nav { display: none; }
+  .main-nav.open { display: flex; }
+  .nav-toggle { display: grid; }
   .mobile-bottom-nav {
     display: grid;
     grid-template-columns: repeat(6, minmax(0,1fr));
