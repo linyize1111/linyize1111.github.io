@@ -64,6 +64,7 @@
       this.initArm();
       this.initCursorDot();
       this.bindEvents();
+      this._onScroll();
       this.start();
     }
 
@@ -268,7 +269,9 @@
 
     _onScroll() {
       if (!this.illo) return;
-      this.illo.translate.x = window.scrollX;
+      // Paw prints use document coordinates; move the fixed canvas the opposite
+      // way as the viewport scrolls on both axes.
+      this.illo.translate.x = -window.scrollX;
       this.illo.translate.y = -window.scrollY;
       this.illo.updateRenderGraph();
     }
