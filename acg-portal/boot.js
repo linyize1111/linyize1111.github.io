@@ -1,22 +1,5 @@
 (() => {
   "use strict";
-  const gate = document.getElementById("age-gate");
-  const enter = document.getElementById("age-enter");
-  const leave = document.getElementById("age-leave");
-  const confirmed = () => {
-    try { return localStorage.getItem("acg_age_confirmed") === "1"; } catch (_) { return false; }
-  };
-  const dismiss = () => {
-    gate?.classList.remove("open");
-    if (!document.querySelector(".modal.open")) document.body.style.overflow = "";
-  };
-  if (confirmed()) dismiss();
-  enter?.addEventListener("click", () => {
-    try { localStorage.setItem("acg_age_confirmed", "1"); } catch (_) { /* private mode */ }
-    dismiss();
-  });
-  leave?.addEventListener("click", () => { location.href = "https://www.google.com/"; });
-
   const host = location.hostname;
   const local = host === "localhost" || host === "127.0.0.1" || host === "[::1]"
     || location.protocol === "file:";
