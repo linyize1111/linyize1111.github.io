@@ -3719,3 +3719,15 @@ body.admin-gated-page.admin-gate-ok #wrapper {
 }
 #pagination-controls button:disabled { opacity: 0.35; cursor: default; }
 #page-info { font-size: 0.85em; opacity: 0.7; text-align: center; margin-bottom: 0.5rem; }
+
+/* Mobile video can remain a black frame when autoplay/metadata is unavailable.
+   Use the existing poster artwork instead, and give dark-on-light article text
+   a real reading surface. Glass mode intentionally keeps its transparent look. */
+@media screen and (max-width: 736px) {
+  #bg-video { display: none !important; }
+  html:not([data-theme="glass"]) #main {
+    background: var(--panel-bg) !important;
+    border-radius: 18px;
+    overflow: hidden;
+  }
+}
