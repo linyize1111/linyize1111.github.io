@@ -5029,7 +5029,10 @@
     nav.classList.toggle("open", open);
     ["#mobile-menu-button"].forEach(selector => {
       const button = $(selector);
-      if (button) button.setAttribute("aria-expanded", String(open));
+      if (button) {
+        button.setAttribute("aria-expanded", String(open));
+        button.setAttribute("aria-label", open ? "關閉選單" : "開啟選單");
+      }
     });
   }
 
@@ -5054,7 +5057,7 @@
     rememberView(view === "landing" || view === "privacy" || view === "terms" ? "home" : view);
     $$(".view").forEach(section => section.classList.toggle("active", section.id === `view-${view}`));
     $$("[data-view]").forEach(link => link.classList.toggle("active", link.dataset.view === view));
-    $("#main-nav")?.classList.remove("open");
+    toggleMobileMenu(false);
     if (view === "home") {
       if (state.homeShowingRandom && state.bulkWorks.length) renderHomeRandomResults(state.bulkWorks);
       else renderHomeArchive();
