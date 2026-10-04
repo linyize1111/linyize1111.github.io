@@ -1390,7 +1390,7 @@
         : "還沒有收藏或紀錄。先去作品庫或用編號搜尋。";
     }
     grid.innerHTML = rows.slice(0, 60).map(archiveTicketHtml).join("")
-      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor.png?v=2.1.1" alt=""><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
+      || `<div class="empty-state"><img class="mentor-image" style="width:96px;margin:0 auto 16px;border-radius:20px" src="assets/yoru-mentor-small.jpg?v=2.2.6-media" alt="" width="640" height="645" decoding="async"><p>資料庫還是空的。去作品庫或隨機抽一張紀錄卡吧。</p></div>`;
   }
 
   function randomPool() {
