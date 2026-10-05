@@ -10,7 +10,7 @@
     const cover = document.createElement("script");
     cover.src = "cover-egress.js?v=2.2.5-egress";
     const app = document.createElement("script");
-    app.src = "app.js?v=2.2.6-media";
+    app.src = "app.js?v=2.2.7-auth";
     cover.onload = () => document.body.appendChild(app);
     cover.onerror = () => document.body.appendChild(app);
     document.body.appendChild(cover);
