@@ -17,7 +17,7 @@
     }
   });
 
-  const APP_VERSION = "2.2.4";
+  const APP_VERSION = "2.2.7-auth";
   const MEMBER_WORK_COLUMNS = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class,plot_axis";
   const MEMBER_WORK_COLUMNS_LEGACY = "id,platform,work_id,display_title,display_author,language,public_tags,static_tags,has_hidden_title,has_hidden_tags,created_at,policy_class";
   const MEMBER_WORKS_VIEW = "member_works_v21";
@@ -5673,6 +5673,7 @@
     bindEvents();
     loadDrawHistory();
     detectGoogleProvider();
+    window.dispatchEvent(new Event("acg:auth-ready"));
     renderAnnouncements().catch(() => {});
     const bootShare = parseLocationHash();
     supabase.auth.onAuthStateChange((event, session) => {
