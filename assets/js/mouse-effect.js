@@ -51,6 +51,8 @@
       this._onScroll = this._onScroll.bind(this);
       this._onVis = this._onVis.bind(this);
       this._onResize = this._onResize.bind(this);
+      this._tick = this._tick.bind(this);
+      this._lastDotPressed = null;
       if (this.enabled) this.mount();
     }
 
@@ -88,6 +90,7 @@
       this.illo = null;
       this.padList = [];
       this.clickFx = [];
+      this._lastDotPressed = null;
       this.mounted = false;
     }
 
@@ -115,6 +118,9 @@
 
     setCursorDotPressed(pressed) {
       if (!this.cursorDot) return;
+      pressed = !!pressed;
+      if (this._lastDotPressed === pressed) return;
+      this._lastDotPressed = pressed;
       this.cursorDot.classList.toggle("is-pressed", !!pressed);
       // 同步強制隱藏，不靠下一幀 _tick，避免按下瞬間仍看得見紅點
       // 同時清掉尺寸／底色，避免部分瀏覽器 getComputedStyle(opacity) 誤報仍可見
@@ -303,7 +309,7 @@
 
     _tick() {
       if (!this.running) return;
-      this._raf = requestAnimationFrame(this._tick.bind(this));
+      this._raf = requestAnimationFrame(this._tick);
       if (!this.visible || !this.catArm) return;
 
       var now = performance.now();
@@ -334,6 +340,7 @@
         this.setCursorDotPressed(this.isPressed);
       }
 
+      var removedPrint = false;
       for (var i = this.padList.length - 1; i >= 0; i--) {
         var pad = this.padList[i];
         var delta = now - pad.createdAt;
@@ -346,10 +353,13 @@
         if (delta > this.maxPrintLifeTime) {
           pad.group.remove();
           this.padList.splice(i, 1);
+          removedPrint = true;
         }
       }
 
-      if (this.illo) this.illo.updateRenderGraph();
+      // The Zdog canvas only contains footprints; keep the final clear frame,
+      // but avoid redrawing an empty full-screen canvas on every idle frame.
+      if (this.illo && (this.padList.length || removedPrint)) this.illo.updateRenderGraph();
     }
   }
 
