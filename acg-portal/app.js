@@ -1419,8 +1419,14 @@
 
   function drawRandom(count) {
     const pool = randomPool();
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    state.bulkWorks = shuffled.slice(0, count);
+    const shuffled = [...pool];
+    const drawCount = Math.min(count, shuffled.length);
+    // Partial Fisher-Yates: every work has the same chance to enter the draw.
+    for (let index = 0; index < drawCount; index += 1) {
+      const swapIndex = index + Math.floor(Math.random() * (shuffled.length - index));
+      [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+    }
+    state.bulkWorks = shuffled.slice(0, drawCount);
     state.homeShowingRandom = true;
     if ($("#home-summary")) $("#home-summary").textContent = `從 ${pool.length.toLocaleString()} 筆 Archive 抽出 ${state.bulkWorks.length} 張`;
     renderHomeRandomResults(state.bulkWorks);
