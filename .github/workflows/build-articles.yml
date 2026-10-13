@@ -11,7 +11,7 @@ permissions:
 jobs:
   build:
     if: github.actor == 'linyize1111' && github.ref_name != 'main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
