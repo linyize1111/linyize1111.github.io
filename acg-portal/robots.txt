@@ -1,6 +1,0 @@
-User-agent: *
-Disallow: /
-Noindex: /
-
-User-agent: Googlebot
-Disallow: /
